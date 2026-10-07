@@ -1,0 +1,146 @@
+{
+  "id": "funaab",
+  "name": "FUNAAB (Federal University of Agriculture, Abeokuta)",
+  "shortName": "FUNAAB Campus",
+  "spawn": [0, 0, 8],
+  "bounds": {
+    "minX": -70,
+    "maxX": 70,
+    "minZ": -70,
+    "maxZ": 70
+  },
+  "colleges": [
+    { "code": "COLENG", "name": "College of Engineering", "color": "#2563eb" },
+    { "code": "COLFHEC", "name": "College of Food Science & Human Ecology", "color": "#16a34a" },
+    { "code": "COLAMRUD", "name": "College of Agricultural Management & Rural Dev", "color": "#d97706" },
+    { "code": "COLPLANT", "name": "College of Plant Science & Crop Production", "color": "#65a30d" },
+    { "code": "COLANIM", "name": "College of Animal Science & Livestock Production", "color": "#ea580c" },
+    { "code": "COLVET", "name": "College of Veterinary Medicine", "color": "#dc2626" },
+    { "code": "COLBIOS", "name": "College of Biological Sciences", "color": "#059669" },
+    { "code": "COLPHYS", "name": "College of Physical Sciences", "color": "#7c3aed" }
+  ],
+  "locations": [
+    {
+      "id": "main-gate",
+      "name": "Ceremonial Main Gate",
+      "type": "landmark",
+      "position": [0, 0, 35],
+      "description": "The iconic FUNAAB Resumption Gate & Arch."
+    },
+    {
+      "id": "car-park",
+      "name": "Campus Keke Park",
+      "type": "transport",
+      "position": [-18, 0, 18],
+      "description": "Catch a yellow Keke Napep to ride around campus."
+    },
+    {
+      "id": "colfhec",
+      "name": "COLFHEC Complex",
+      "type": "college",
+      "position": [-30, 0, -20],
+      "description": "Lecture theatres and academic building."
+    },
+    {
+      "id": "bank-atm",
+      "name": "FUNAAB Microfinance / ATM Gallery",
+      "type": "bank",
+      "position": [22, 0, 18],
+      "description": "Check your balance, see transactions & transfer cash."
+    },
+    {
+      "id": "buka-food",
+      "name": "Mama Cass / Campus Buka",
+      "type": "food",
+      "position": [25, 0, -8],
+      "description": "Hot Jollof Rice, Suya, Shawarma and Cold Drinks."
+    },
+    {
+      "id": "hostel-social",
+      "name": "Iyalode Hostel / Social Chill Square",
+      "type": "social",
+      "position": [15, 0, -35],
+      "description": "Benches, gazebos, and music lounge where students hang out."
+    },
+    {
+      "id": "ps-room",
+      "name": "FUNAAB Game Den (PlayStation Room)",
+      "type": "gaming",
+      "position": [-20, 0, -38],
+      "description": "Challenge other students to a 1v1 console showdown."
+    },
+    {
+      "id": "sports-field",
+      "name": "Campus Pitch & Sports Field",
+      "type": "sports",
+      "position": [-40, 0, 5],
+      "description": "Open grass pitch with goalposts for free play."
+    }
+  ],
+  "kekeRoutes": [
+    {
+      "id": "route-alpha",
+      "name": "Main Gate - COLFHEC - Hostel Express",
+      "fare": 50,
+      "stops": [
+        { "id": "stop-carpark", "name": "Keke Park", "position": [-18, 0, 18], "duration": 4.0 },
+        { "id": "stop-colfhec", "name": "COLFHEC Stop", "position": [-26, 0, -18], "duration": 4.0 },
+        { "id": "stop-hostel", "name": "Hostel Square", "position": [15, 0, -30], "duration": 4.0 },
+        { "id": "stop-bank", "name": "Bank & Food Court", "position": [22, 0, 12], "duration": 4.0 }
+      ],
+      "waypoints": [
+        [-18, 0, 18],
+        [-18, 0, 0],
+        [-26, 0, -18],
+        [-24, 0, -32],
+        [0, 0, -35],
+        [15, 0, -30],
+        [22, 0, -10],
+        [22, 0, 12],
+        [5, 0, 20],
+        [-18, 0, 18]
+      ]
+    }
+  ],
+  "interactables": [
+    {
+      "id": "atm-terminal-1",
+      "type": "atm",
+      "label": "Access ATM",
+      "actionText": "Check Balance & Transfer",
+      "position": [20, 0, 16],
+      "radius": 3.0
+    },
+    {
+      "id": "food-stall-1",
+      "type": "food",
+      "label": "Mama Buka Food Stand",
+      "actionText": "Buy Food & Drinks",
+      "position": [24, 0, -6],
+      "radius": 3.5
+    },
+    {
+      "id": "ps5-station-1",
+      "type": "playstation",
+      "label": "PlayStation 5 Match Station",
+      "actionText": "Launch 1v1 PS Challenge",
+      "position": [-20, 0, -36],
+      "radius": 3.0
+    },
+    {
+      "id": "keke-stop-1",
+      "type": "keke_stop",
+      "label": "Enter Campus Keke",
+      "actionText": "Board Keke (₦50)",
+      "position": [-18, 0, 18],
+      "radius": 4.0
+    }
+  ],
+  "foodMenu": [
+    { "id": "jollof_chicken", "name": "Jollof Rice & Crispy Chicken", "price": 800, "icon": "🍗", "type": "food" },
+    { "id": "shawarma_beef", "name": "Campus Special Beef Shawarma", "price": 1200, "icon": "🌯", "type": "food" },
+    { "id": "suya_spicy", "name": "FUNAAB Evening Beef Suya", "price": 600, "icon": "🥩", "type": "food" },
+    { "id": "cold_water", "name": "Chilled Bottle Water", "price": 150, "icon": "💧", "type": "drink" },
+    { "id": "malt_drink", "name": "Chilled Malt Drink", "price": 400, "icon": "🥤", "type": "drink" }
+  ]
+}

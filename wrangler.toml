@@ -1,0 +1,16 @@
+name = "funaab-life-backend"
+main = "worker/index.ts"
+compatibility_date = "2024-04-05"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [
+  { name = "WORLD_ROOM", class_name = "WorldRoomDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["WorldRoomDO"]
+
+[vars]
+ENVIRONMENT = "production"
