@@ -98,12 +98,27 @@ export const PlayerInteractionModal: React.FC = () => {
             /* Action Buttons */
             <div className="mt-6 space-y-2.5">
               <button
+                id="btn-dm-student"
                 onClick={() => {
-                  setActiveModal(null);
+                  useSocialStore.getState().openDm({
+                    id: selectedPlayer.id,
+                    username: selectedPlayer.username,
+                    college: selectedPlayer.college,
+                  });
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition"
+                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition"
               >
-                <MessageSquare className="w-4 h-4" /> Chat Nearby
+                <MessageSquare className="w-4 h-4" /> 💬 Message Privately (DM)
+              </button>
+
+              <button
+                onClick={() => {
+                  useGameStore.getState().setSendMoneyRecipient(selectedPlayer.username);
+                  useGameStore.getState().setActiveModal('send_money');
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition"
+              >
+                <span>💸</span> Send Money
               </button>
 
               <button

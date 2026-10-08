@@ -23,7 +23,7 @@ export const BankModal: React.FC = () => {
     }
 
     if (!user) return;
-    const res = await transferMoney(user.id, recipient.trim(), numAmount);
+    const res = await transferMoney(user.id, user.username, recipient.trim(), numAmount);
     if (res.success) {
       setTransferStatus(`Successfully sent ₦${numAmount.toLocaleString()} to @${recipient}`);
       setRecipient('');

@@ -7,9 +7,16 @@ export const isSupabaseConfigured = Boolean(
   supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-project')
 );
 
-// Fallback or real client
+// Production browser client with session persistence & automatic refresh
 export const supabase: SupabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      },
+    })
   : (null as unknown as SupabaseClient);
 
 // Local persistence storage helper for fallback/guest mode

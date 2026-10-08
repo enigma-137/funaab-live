@@ -1,46 +1,316 @@
-// Cloudflare Worker + Durable Objects Multiplayer Room for FUNAAB Life
+// Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
   WORLD_ROOM: DurableObjectNamespace;
+  SUPABASE_JWT_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
+  ENABLE_GUEST_MODE?: string;
+}
+
+interface SessionData {
+  connectionId: string;
+  id: string; // Authoritative Supabase User UUID
+  username: string;
+  college: string;
+  avatarConfig: any;
+  room: string;
+  currentLectureId?: string;
+  seatNumber?: number;
+  lastPacketTime: number;
+  packetCount: number;
+}
+
+interface PlayerState {
+  id: string;
+  connectionId: string;
+  username: string;
+  college: string;
+  avatarConfig: any;
+  position: [number, number, number];
+  rotation: number;
+  animation: string;
+  kekeRiding?: boolean;
+  kekeId?: string;
+  currentZone?: string;
+  currentLectureId?: string;
+  seatNumber?: number;
+  lastUpdated: number;
+}
+
+interface KekeState {
+  id: string;
+  routeId: string;
+  position: [number, number, number];
+  rotation: number;
+  speed: number;
+  currentWaypointIndex: number;
+  passengers: string[];
+  currentStopName: string;
+  isStopped: boolean;
+}
+
+interface PSMatchState {
+  id: string;
+  stationId: string;
+  hostId: string;
+  hostName: string;
+  guestId?: string;
+  guestName?: string;
+  status: 'waiting' | 'in_progress' | 'finished';
+  currentRound: number;
+  totalRounds: number;
+  hostScore: number;
+  guestScore: number;
+  hostChoice?: string;
+  guestChoice?: string;
+  roundResult?: string;
+  winnerName?: string;
+  updatedAt: number;
+}
+
+interface LectureRoomState {
+  lectureId: string;
+  activeStudents: Record<string, {
+    connectionId: string;
+    studentId: string;
+    username: string;
+    college: string;
+    seatNumber: number;
+    isHandRaised: boolean;
+    joinedAt: number;
+  }>;
+  lecturerSpeech: string;
+  boardText: string;
+  startedAt: number;
+}
+
+const KEKE_WAYPOINTS: Array<{ pos: [number, number, number]; stopName?: string; waitTime?: number }> = [
+  { pos: [-22, 0, 20], stopName: 'Main Keke Park', waitTime: 4000 },
+  { pos: [-22, 0, 8], stopName: 'Passing Eatery' },
+  { pos: [-22, 0, -8], stopName: 'Passing Health Centre' },
+  { pos: [-26, 0, -28], stopName: 'COLFHEC / Floral World Stop', waitTime: 4000 },
+  { pos: [-8, 0, -28], stopName: 'Passing Senate' },
+  { pos: [12, 0, -28], stopName: 'JAO / Library Stop', waitTime: 3500 },
+  { pos: [24, 0, -12], stopName: 'Iyalode Hostel Stop', waitTime: 3500 },
+  { pos: [24, 0, 16], stopName: 'Bank & ATM Stop', waitTime: 3000 },
+  { pos: [0, 0, 20], stopName: 'Passing Landmark Plaza' },
+];
+
+function getZoneName(x: number, z: number, currentLectureId?: string): string {
+  if (currentLectureId) {
+    if (currentLectureId.includes('fst')) return 'In Class — Food Chemistry';
+    if (currentLectureId.includes('eng')) return 'In Class — Thermodynamics';
+    if (currentLectureId.includes('bio')) return 'In Class — Genetics';
+    return 'In Class';
+  }
+  if (x >= -28 && x <= -20 && z >= -24 && z <= -16) return 'Floral World';
+  if (x >= -52 && x <= -24 && z >= -14 && z <= 14) return 'Sports Centre';
+  if (x >= -32 && x <= -12 && z >= 12 && z <= 28) return 'Main Car Park';
+  if (x >= -24 && x <= -16 && z >= 0 && z <= 10) return 'Campus Eatery';
+  if (x >= -26 && x <= -14 && z >= -16 && z <= -4) return 'Health Centre';
+  if (x >= -36 && x <= -20 && z >= -40 && z <= -24) return 'COLFHEC';
+  if (x >= -16 && x <= 16 && z >= -38 && z <= -20) return 'Senate & Library';
+  if (x >= 18 && x <= 30 && z >= 12 && z <= 24) return 'Bank & ATM';
+  if (x >= 20 && x <= 34 && z >= -18 && z <= -4) return 'Iyalode Hostel';
+  if (x >= -12 && x <= 12 && z >= 12 && z <= 24) return 'W-Landmark Plaza';
+  if (x >= -6 && x <= 6 && z >= 26 && z <= 50) return 'Main Gate';
+  return 'Campus Grounds';
+}
+
+/**
+ * Verifies Supabase JWT and extracts authoritative claims.
+ * If jwtSecret is supplied, verifies cryptographic signature via WebCrypto HMAC SHA-256.
+ */
+async function verifySupabaseJwt(
+  token: string,
+  jwtSecret?: string
+): Promise<{ sub: string; email?: string; role?: string } | null> {
+  if (!token || typeof token !== 'string') return null;
+
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(payloadJson);
+
+    // Verify expiration timestamp
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < nowSec) {
+      console.warn('[JWT] Token expired');
+      return null;
+    }
+
+    // Cryptographic signature check if secret is configured in Worker
+    if (jwtSecret) {
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(jwtSecret);
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify']
+      );
+
+      const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
+      const binarySig = Uint8Array.from(
+        atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')),
+        (c) => c.charCodeAt(0)
+      );
+
+      const isValid = await crypto.subtle.verify('HMAC', cryptoKey, binarySig, dataToVerify);
+      if (!isValid) {
+        console.warn('[JWT] Signature verification failed');
+        return null;
+      }
+    }
+
+    if (!payload.sub) return null;
+
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      role: payload.role,
+    };
+  } catch (err) {
+    console.error('[JWT] Verification error:', err);
+    return null;
+  }
 }
 
 export class WorldRoomDO {
   private state: DurableObjectState;
-  private sessions: Map<WebSocket, { id: string; username: string; college: string; avatarConfig: any }>;
-  private players: Map<string, any>;
-  private kekes: Map<string, any>;
-  private psMatches: Map<string, any>;
-  private tickInterval: any;
+  private env: Env;
+  private sessions: Map<WebSocket, SessionData>;
+  private players: Map<string, PlayerState>; // Keyed by connectionId
+  private kekes: Map<string, KekeState>;
+  private psMatches: Map<string, PSMatchState>;
+  private lectureRooms: Map<string, LectureRoomState>;
+  private kekeWaypointTimer: number = 0;
+  private isSimulationRunning: boolean = false;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
+    this.env = env;
     this.sessions = new Map();
     this.players = new Map();
     this.kekes = new Map();
     this.psMatches = new Map();
+    this.lectureRooms = new Map();
 
-    // Initialize Keke simulation in DO
+    // Initialize campus Keke vehicle
     this.kekes.set('keke-1', {
       id: 'keke-1',
       routeId: 'route-alpha',
-      position: [-18, 0, 18],
+      position: [-22, 0, 20],
       rotation: 0,
-      speed: 4.5,
+      speed: 4.8,
       currentWaypointIndex: 0,
       passengers: [],
-      currentStopName: 'Keke Park',
+      currentStopName: 'Main Keke Park',
       isStopped: false,
     });
+
+    this.startSimulationLoop();
+  }
+
+  private startSimulationLoop() {
+    if (this.isSimulationRunning) return;
+    this.isSimulationRunning = true;
+
+    // Run 10Hz tick for batch updates & Keke simulation
+    setInterval(() => {
+      this.tickKekeSimulation();
+      this.broadcastBatchPlayers();
+    }, 100);
+  }
+
+  private tickKekeSimulation() {
+    const keke = this.kekes.get('keke-1');
+    if (!keke) return;
+
+    const currentWP = KEKE_WAYPOINTS[keke.currentWaypointIndex];
+    if (!currentWP) return;
+
+    if (keke.isStopped) {
+      if (Date.now() > this.kekeWaypointTimer) {
+        keke.isStopped = false;
+        keke.currentWaypointIndex = (keke.currentWaypointIndex + 1) % KEKE_WAYPOINTS.length;
+      }
+      return;
+    }
+
+    const [tx, , tz] = currentWP.pos;
+    const [cx, cy, cz] = keke.position;
+    const dx = tx - cx;
+    const dz = tz - cz;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist < 0.8) {
+      if (currentWP.stopName && currentWP.waitTime) {
+        keke.isStopped = true;
+        keke.currentStopName = currentWP.stopName;
+        this.kekeWaypointTimer = Date.now() + currentWP.waitTime;
+      } else {
+        keke.currentWaypointIndex = (keke.currentWaypointIndex + 1) % KEKE_WAYPOINTS.length;
+      }
+    } else {
+      const step = 0.45;
+      const angle = Math.atan2(dx, dz);
+      keke.position = [cx + Math.sin(angle) * step, cy, cz + Math.cos(angle) * step];
+      keke.rotation = angle;
+    }
+  }
+
+  private broadcastBatchPlayers() {
+    if (this.players.size === 0) return;
+
+    const updates: Record<string, any> = {};
+    for (const [connId, player] of this.players) {
+      updates[connId] = {
+        id: player.id,
+        connectionId: connId,
+        username: player.username,
+        college: player.college,
+        avatarConfig: player.avatarConfig,
+        position: player.position,
+        rotation: player.rotation,
+        animation: player.animation,
+        kekeRiding: player.kekeRiding,
+        kekeId: player.kekeId,
+        currentLectureId: player.currentLectureId,
+        currentZone: player.currentLectureId
+          ? getZoneName(0, 0, player.currentLectureId)
+          : (player.currentZone || getZoneName(player.position?.[0] || 0, player.position?.[2] || 0)),
+      };
+    }
+
+    const payload = JSON.stringify({
+      type: 'players_batch',
+      updates,
+      kekes: Object.fromEntries(this.kekes),
+    });
+
+    for (const [ws, session] of this.sessions) {
+      if (ws.readyState === WebSocket.OPEN && session.room === 'world:funaab:main') {
+        try {
+          ws.send(payload);
+        } catch (e) {}
+      }
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.headers.get('Upgrade') === 'websocket') {
+      const token = url.searchParams.get('token');
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
-      await this.handleSession(server);
+      await this.handleSession(server, token);
 
       return new Response(null, {
         status: 101,
@@ -48,66 +318,138 @@ export class WorldRoomDO {
       });
     }
 
-    if (url.pathname === '/status') {
+    if (url.pathname === '/health' || url.pathname === '/status') {
       return new Response(
         JSON.stringify({
-          playersCount: this.players.size,
-          players: Array.from(this.players.values()),
+          status: 'ok',
+          playersOnline: this.players.size,
+          activeSessions: this.sessions.size,
+          activeMatches: this.psMatches.size,
+          activeLectureRooms: this.lectureRooms.size,
         }),
         { headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    return new Response('FUNAAB Life Durable Object Room Ready', { status: 200 });
+    return new Response('FUNAAB Life Realtime World Engine Ready', { status: 200 });
   }
 
-  private async handleSession(webSocket: WebSocket) {
+  private async handleSession(webSocket: WebSocket, initialToken: string | null) {
     webSocket.accept();
 
-    let sessionPlayerId: string | null = null;
+    let sessionConnId: string | null = null;
+    let authenticatedUserId: string | null = null;
+    let sessionRoom: string = 'world:funaab:main';
+
+    // Pre-verify token from URL handshake if present
+    if (initialToken) {
+      const verified = await verifySupabaseJwt(initialToken, this.env.SUPABASE_JWT_SECRET);
+      if (verified) {
+        authenticatedUserId = verified.sub;
+      }
+    }
 
     webSocket.addEventListener('message', async (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data as string);
+        const raw = event.data;
+        if (typeof raw !== 'string') return;
+        const data = JSON.parse(raw);
+
+        // Lightweight abuse/rate limiting per connection
+        const session = this.sessions.get(webSocket);
+        const now = Date.now();
+        if (session) {
+          if (now - session.lastPacketTime < 1000) {
+            session.packetCount++;
+            if (session.packetCount > 60) {
+              // Too many packets in 1 sec
+              return;
+            }
+          } else {
+            session.lastPacketTime = now;
+            session.packetCount = 1;
+          }
+        }
 
         switch (data.type) {
           case 'join': {
-            const { user } = data;
-            sessionPlayerId = user.id;
+            const { player, room = 'world:funaab:main', token } = data;
+            const effectiveToken = token || initialToken;
 
-            this.sessions.set(webSocket, {
-              id: user.id,
-              username: user.username,
-              college: user.college,
-              avatarConfig: user.avatarConfig,
-            });
+            // Strict Authenticated User ID derivation
+            if (effectiveToken) {
+              const verified = await verifySupabaseJwt(effectiveToken, this.env.SUPABASE_JWT_SECRET);
+              if (verified) {
+                authenticatedUserId = verified.sub;
+              }
+            }
 
-            const playerState = {
-              id: user.id,
-              username: user.username,
-              college: user.college,
-              avatarConfig: user.avatarConfig,
-              position: user.position || [0, 0, 8],
-              rotation: user.rotation || 0,
-              animation: 'idle',
+            const guestEnabled = this.env.ENABLE_GUEST_MODE === 'true';
+            if (!authenticatedUserId) {
+              if (guestEnabled) {
+                // Allow guest development identifier
+                authenticatedUserId = player.id || `guest_${Math.random().toString(36).substring(2, 9)}`;
+              } else {
+                console.warn('[AUTH] Connection rejected: No valid Supabase JWT and guest mode is disabled');
+                webSocket.send(JSON.stringify({ type: 'error', message: 'Unauthorized session. Please sign in.' }));
+                webSocket.close(4001, 'Unauthorized');
+                return;
+              }
+            }
+
+            sessionRoom = room;
+            const assignedConnId: string =
+              player.connectionId || `conn_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            sessionConnId = assignedConnId;
+
+            const sessionData: SessionData = {
+              connectionId: assignedConnId,
+              id: authenticatedUserId,
+              username: String(player.username || 'Student').slice(0, 24),
+              college: String(player.college || 'COLENG').slice(0, 16),
+              avatarConfig: player.avatarConfig || {},
+              room: sessionRoom,
+              lastPacketTime: Date.now(),
+              packetCount: 1,
+            };
+
+            this.sessions.set(webSocket, sessionData);
+
+            const playerState: PlayerState = {
+              id: authenticatedUserId,
+              connectionId: assignedConnId,
+              username: sessionData.username,
+              college: sessionData.college,
+              avatarConfig: sessionData.avatarConfig,
+              position: Array.isArray(player.position) ? player.position : [0, 0, 8],
+              rotation: Number(player.rotation) || 0,
+              animation: String(player.animation || 'idle'),
+              kekeRiding: false,
               lastUpdated: Date.now(),
             };
 
-            this.players.set(user.id, playerState);
+            this.players.set(assignedConnId, playerState);
 
-            // Send init payload to newly joined client
+            // Send full initial snapshot
+            const roomPlayers: Record<string, any> = {};
+            for (const [cId, p] of this.players) {
+              roomPlayers[cId] = p;
+            }
+
             webSocket.send(
               JSON.stringify({
-                type: 'init',
-                yourId: user.id,
-                players: Object.fromEntries(this.players),
+                type: 'snapshot',
+                yourConnectionId: assignedConnId,
+                yourId: authenticatedUserId,
+                players: roomPlayers,
                 kekes: Object.fromEntries(this.kekes),
                 activeMatches: Object.fromEntries(this.psMatches),
               })
             );
 
-            // Broadcast to other peers
-            this.broadcast(
+            // Broadcast player_joined to peers in the main room
+            this.broadcastToRoom(
+              sessionRoom,
               JSON.stringify({
                 type: 'player_joined',
                 player: playerState,
@@ -118,44 +460,129 @@ export class WorldRoomDO {
           }
 
           case 'move': {
-            if (!sessionPlayerId) return;
-            const existing = this.players.get(sessionPlayerId);
-            if (existing) {
-              existing.position = data.position;
-              existing.rotation = data.rotation;
-              existing.animation = data.animation;
-              existing.kekeRiding = data.kekeRiding;
-              existing.lastUpdated = Date.now();
+            if (!sessionConnId) return;
+            const player = this.players.get(sessionConnId);
+            if (player) {
+              player.position = data.position;
+              player.rotation = data.rotation;
+              player.animation = data.animation;
+              player.kekeRiding = data.kekeRiding;
+              player.kekeId = data.kekeId;
+              player.lastUpdated = Date.now();
             }
             break;
           }
 
+          case 'ping': {
+            webSocket.send(JSON.stringify({ type: 'pong', t: data.t }));
+            break;
+          }
+
           case 'chat': {
-            if (!sessionPlayerId) return;
-            const player = this.players.get(sessionPlayerId);
-            if (!player) return;
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            const player = this.players.get(sessionConnId);
+            if (!session || !player) return;
+
+            const chatText = String(data.text || '').trim().slice(0, 300);
+            if (!chatText) return;
 
             const chatMsg = {
               type: 'chat_message',
-              id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-              senderId: sessionPlayerId,
-              senderName: player.username,
-              college: player.college,
-              text: data.text.slice(0, 300), // sanitize length
+              id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+              senderId: session.id,
+              senderConnectionId: sessionConnId,
+              senderName: session.username,
+              college: session.college,
+              text: chatText,
               timestamp: Date.now(),
               position: player.position,
             };
 
-            this.broadcast(JSON.stringify(chatMsg));
+            this.broadcastToRoom(session.room, JSON.stringify(chatMsg));
+            break;
+          }
+
+          case 'private_chat_message': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+
+            const recipientId = String(data.recipientId || '').trim();
+            const recipientConnId = String(data.recipientConnectionId || '').trim();
+            const text = String(data.text || '').trim().slice(0, 500);
+            if (!text) return;
+
+            const dmPayload = JSON.stringify({
+              type: 'private_chat_message',
+              id: `dm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              senderId: session.id, // Server-Authoritative sender UUID
+              senderConnectionId: sessionConnId,
+              senderName: session.username,
+              recipientId,
+              text,
+              timestamp: Date.now(),
+            });
+
+            // Route directly to recipient socket
+            let delivered = false;
+            for (const [targetWs, targetSession] of this.sessions) {
+              if (
+                (recipientConnId && targetSession.connectionId === recipientConnId) ||
+                (recipientId && targetSession.id === recipientId)
+              ) {
+                try {
+                  targetWs.send(dmPayload);
+                  delivered = true;
+                } catch (e) {}
+              }
+            }
+
+            // Echo back confirmation to sender
+            webSocket.send(dmPayload);
+            break;
+          }
+
+          case 'p2p_transfer': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+
+            const recipientName = String(data.recipientUsername || '').trim();
+            const amount = Number(data.amount) || 0;
+            if (amount <= 0 || !recipientName) return;
+
+            // Authoritative notification to recipient if connected
+            for (const [targetWs, targetSession] of this.sessions) {
+              if (targetSession.username.toLowerCase() === recipientName.toLowerCase()) {
+                try {
+                  targetWs.send(
+                    JSON.stringify({
+                      type: 'p2p_transfer_received',
+                      senderUsername: session.username,
+                      amount,
+                      timestamp: Date.now(),
+                    })
+                  );
+                } catch (e) {}
+              }
+            }
             break;
           }
 
           case 'keke_enter': {
-            if (!sessionPlayerId) return;
+            if (!sessionConnId) return;
             const keke = this.kekes.get(data.kekeId || 'keke-1');
-            if (keke && keke.passengers.length < 3 && !keke.passengers.includes(sessionPlayerId)) {
-              keke.passengers.push(sessionPlayerId);
-              this.broadcast(
+            if (keke && keke.passengers.length < 3 && !keke.passengers.includes(sessionConnId)) {
+              keke.passengers.push(sessionConnId);
+              const player = this.players.get(sessionConnId);
+              if (player) {
+                player.kekeRiding = true;
+                player.kekeId = keke.id;
+              }
+
+              this.broadcastToRoom(
+                'world:funaab:main',
                 JSON.stringify({
                   type: 'keke_sync',
                   kekeId: keke.id,
@@ -170,11 +597,18 @@ export class WorldRoomDO {
           }
 
           case 'keke_exit': {
-            if (!sessionPlayerId) return;
+            if (!sessionConnId) return;
             const keke = this.kekes.get(data.kekeId || 'keke-1');
             if (keke) {
-              keke.passengers = keke.passengers.filter((id: string) => id !== sessionPlayerId);
-              this.broadcast(
+              keke.passengers = keke.passengers.filter((id) => id !== sessionConnId);
+              const player = this.players.get(sessionConnId);
+              if (player) {
+                player.kekeRiding = false;
+                player.kekeId = undefined;
+              }
+
+              this.broadcastToRoom(
+                'world:funaab:main',
                 JSON.stringify({
                   type: 'keke_sync',
                   kekeId: keke.id,
@@ -189,14 +623,14 @@ export class WorldRoomDO {
           }
 
           case 'ps_challenge_create': {
-            if (!sessionPlayerId) return;
-            const player = this.players.get(sessionPlayerId);
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
             const matchId = `match-${Date.now()}`;
-            const match = {
+            const match: PSMatchState = {
               id: matchId,
               stationId: data.stationId || 'ps5-station-1',
-              hostId: sessionPlayerId,
-              hostName: player?.username || 'Player 1',
+              hostId: sessionConnId,
+              hostName: session?.username || 'Player 1',
               status: 'waiting',
               currentRound: 1,
               totalRounds: 3,
@@ -205,38 +639,36 @@ export class WorldRoomDO {
               updatedAt: Date.now(),
             };
             this.psMatches.set(matchId, match);
-            this.broadcast(JSON.stringify({ type: 'ps_match_update', match }));
+            this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
             break;
           }
 
           case 'ps_challenge_join': {
-            if (!sessionPlayerId) return;
-            const player = this.players.get(sessionPlayerId);
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
             const match = this.psMatches.get(data.matchId);
-            if (match && match.status === 'waiting') {
-              match.guestId = sessionPlayerId;
-              match.guestName = player?.username || 'Player 2';
+            if (match && match.status === 'waiting' && match.hostId !== sessionConnId) {
+              match.guestId = sessionConnId;
+              match.guestName = session?.username || 'Player 2';
               match.status = 'in_progress';
               match.updatedAt = Date.now();
-              this.broadcast(JSON.stringify({ type: 'ps_match_update', match }));
+              this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
             }
             break;
           }
 
           case 'ps_action': {
-            if (!sessionPlayerId) return;
+            if (!sessionConnId) return;
             const match = this.psMatches.get(data.matchId);
             if (!match || match.status !== 'in_progress') return;
 
-            if (sessionPlayerId === match.hostId) {
+            if (sessionConnId === match.hostId) {
               match.hostChoice = data.choice;
-            } else if (sessionPlayerId === match.guestId) {
+            } else if (sessionConnId === match.guestId) {
               match.guestChoice = data.choice;
             }
 
-            // If both players picked their direction/move
             if (match.hostChoice && match.guestChoice) {
-              // Host is Shooter, Guest is Goalkeeper for odd rounds, flip for even
               const shooterIsHost = match.currentRound % 2 === 1;
               const shooterChoice = shooterIsHost ? match.hostChoice : match.guestChoice;
               const keeperChoice = shooterIsHost ? match.guestChoice : match.hostChoice;
@@ -261,27 +693,243 @@ export class WorldRoomDO {
                 match.guestChoice = undefined;
               }
               match.updatedAt = Date.now();
-              this.broadcast(JSON.stringify({ type: 'ps_match_update', match }));
-            } else {
-              // Wait for other player's turn
-              this.broadcast(JSON.stringify({ type: 'ps_match_update', match }));
+              this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
             }
+            break;
+          }
+
+          // LECTURE & CLASSROOM SYSTEM
+          case 'lecture_enter': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+
+            const lectureId = String(data.lectureId || '');
+            const seatNumber = Number(data.seatNumber) || 1;
+
+            session.room = `world:funaab:lecture:${lectureId}`;
+            session.currentLectureId = lectureId;
+            session.seatNumber = seatNumber;
+
+            const player = this.players.get(sessionConnId);
+            if (player) {
+              player.currentLectureId = lectureId;
+              player.seatNumber = seatNumber;
+              player.currentZone = getZoneName(0, 0, lectureId);
+            }
+
+            let roomState = this.lectureRooms.get(lectureId);
+            if (!roomState) {
+              roomState = {
+                lectureId,
+                activeStudents: {},
+                lecturerSpeech: 'Welcome to class. Please take your seats.',
+                boardText: 'Lecture In Session',
+                startedAt: Date.now(),
+              };
+              this.lectureRooms.set(lectureId, roomState);
+            }
+
+            roomState.activeStudents[sessionConnId] = {
+              connectionId: sessionConnId,
+              studentId: session.id,
+              username: session.username,
+              college: session.college,
+              seatNumber,
+              isHandRaised: false,
+              joinedAt: Date.now(),
+            };
+
+            // Send classroom state to entering student
+            webSocket.send(
+              JSON.stringify({
+                type: 'lecture_room_snapshot',
+                lectureId,
+                roomState,
+                yourSeatNumber: seatNumber,
+              })
+            );
+
+            // Broadcast to other students in the lecture room
+            this.broadcastToRoom(
+              session.room,
+              JSON.stringify({
+                type: 'lecture_student_joined',
+                student: roomState.activeStudents[sessionConnId],
+              }),
+              webSocket
+            );
+            break;
+          }
+
+          case 'lecture_leave': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session || !session.currentLectureId) return;
+
+            const prevLectureId = session.currentLectureId;
+            const roomState = this.lectureRooms.get(prevLectureId);
+            if (roomState) {
+              delete roomState.activeStudents[sessionConnId];
+              this.broadcastToRoom(
+                session.room,
+                JSON.stringify({
+                  type: 'lecture_student_left',
+                  connectionId: sessionConnId,
+                })
+              );
+            }
+
+            session.room = 'world:funaab:main';
+            session.currentLectureId = undefined;
+            session.seatNumber = undefined;
+
+            const player = this.players.get(sessionConnId);
+            if (player) {
+              player.currentLectureId = undefined;
+              player.seatNumber = undefined;
+              player.currentZone = getZoneName(player.position[0], player.position[2]);
+            }
+            break;
+          }
+
+          case 'lecture_chat': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session || !session.currentLectureId) return;
+
+            const text = String(data.text || '').trim().slice(0, 200);
+            if (!text) return;
+
+            const lectureMsg = {
+              type: 'lecture_chat_message',
+              id: `lec-msg-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+              senderId: session.id,
+              senderConnectionId: sessionConnId,
+              senderName: session.username,
+              college: session.college,
+              text,
+              seatNumber: session.seatNumber || 1,
+              timestamp: Date.now(),
+            };
+
+            this.broadcastToRoom(session.room, JSON.stringify(lectureMsg));
+            break;
+          }
+
+          case 'lecture_hand_raise': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session || !session.currentLectureId) return;
+
+            const isRaised = Boolean(data.isHandRaised);
+            const roomState = this.lectureRooms.get(session.currentLectureId);
+            if (roomState && roomState.activeStudents[sessionConnId]) {
+              roomState.activeStudents[sessionConnId].isHandRaised = isRaised;
+              this.broadcastToRoom(
+                session.room,
+                JSON.stringify({
+                  type: 'lecture_hand_raise_sync',
+                  connectionId: sessionConnId,
+                  isHandRaised: isRaised,
+                })
+              );
+            }
+            break;
+          }
+
+          case 'lawn_fine_issued': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+
+            this.broadcastToRoom(
+              'world:funaab:main',
+              JSON.stringify({
+                type: 'activity_event',
+                eventType: 'lawn_fine',
+                username: session.username,
+                amount: 500,
+                timestamp: Date.now(),
+              })
+            );
+            break;
+          }
+
+          case 'job_completed': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+
+            this.broadcastToRoom(
+              'world:funaab:main',
+              JSON.stringify({
+                type: 'activity_event',
+                eventType: 'campus_job',
+                username: session.username,
+                jobTitle: String(data.jobTitle || 'Errand').slice(0, 50),
+                reward: Number(data.reward) || 300,
+                timestamp: Date.now(),
+              })
+            );
+            break;
+          }
+
+          case 'report_user': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            console.log(
+              `[MODERATION] User report filed by @${session?.username} (${session?.id}) against ${data.reportedUserId}: ${data.reason}`
+            );
+            webSocket.send(
+              JSON.stringify({
+                type: 'report_confirmed',
+                message: 'Your report has been submitted to Campus Security for review.',
+              })
+            );
             break;
           }
         }
       } catch (err) {
-        console.error('DO WebSocket Error:', err);
+        console.error('[DO] Message processing error:', err);
       }
     });
 
     const cleanup = () => {
-      if (sessionPlayerId) {
-        this.players.delete(sessionPlayerId);
-        // Remove from keke if riding
+      if (sessionConnId) {
+        const session = this.sessions.get(webSocket);
+
+        // Remove from lecture room if inside one
+        if (session && session.currentLectureId) {
+          const roomState = this.lectureRooms.get(session.currentLectureId);
+          if (roomState) {
+            delete roomState.activeStudents[sessionConnId];
+            this.broadcastToRoom(
+              session.room,
+              JSON.stringify({
+                type: 'lecture_student_left',
+                connectionId: sessionConnId,
+              })
+            );
+          }
+        }
+
+        // Remove from keke passengers
         this.kekes.forEach((keke) => {
-          keke.passengers = keke.passengers.filter((id: string) => id !== sessionPlayerId);
+          keke.passengers = keke.passengers.filter((id) => id !== sessionConnId);
         });
-        this.broadcast(JSON.stringify({ type: 'player_left', id: sessionPlayerId }));
+
+        this.players.delete(sessionConnId);
+
+        // Broadcast player_left to main world
+        this.broadcastToRoom(
+          'world:funaab:main',
+          JSON.stringify({
+            type: 'player_left',
+            connectionId: sessionConnId,
+            id: session?.id,
+          })
+        );
       }
       this.sessions.delete(webSocket);
     };
@@ -290,14 +938,12 @@ export class WorldRoomDO {
     webSocket.addEventListener('error', cleanup);
   }
 
-  private broadcast(message: string, skipSocket?: WebSocket) {
-    for (const [ws] of this.sessions) {
-      if (ws !== skipSocket) {
+  private broadcastToRoom(room: string, message: string, skipSocket?: WebSocket) {
+    for (const [ws, session] of this.sessions) {
+      if (session.room === room && ws !== skipSocket && ws.readyState === WebSocket.OPEN) {
         try {
           ws.send(message);
-        } catch (e) {
-          // Closed socket
-        }
+        } catch (e) {}
       }
     }
   }
@@ -307,11 +953,39 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Support multiple world rooms (e.g. world:funaab:main)
+    // Set CORS headers
+    const origin = request.headers.get('Origin') || '*';
+    const allowedOrigins = (env.ALLOWED_ORIGINS || '*').split(',').map((o) => o.trim());
+    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+
+    const corsHeaders: Record<string, string> = {
+      'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Upgrade',
+      'Access-Control-Allow-Credentials': 'true',
+    };
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // Support multiple room namespaces if needed
     const roomId = url.searchParams.get('room') || 'world:funaab:main';
     const id = env.WORLD_ROOM.idFromName(roomId);
     const stub = env.WORLD_ROOM.get(id);
 
-    return stub.fetch(request);
+    const response = await stub.fetch(request);
+    const newHeaders = new Headers(response.headers);
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      if (!newHeaders.has(key)) {
+        newHeaders.set(key, value);
+      }
+    }
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
   },
 };

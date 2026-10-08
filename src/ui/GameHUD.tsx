@@ -3,6 +3,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useSocialStore } from '../stores/socialStore';
+import { useJobStore } from '../stores/jobStore';
+import { useInputStore } from '../stores/inputStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 import {
   Users,
@@ -11,11 +13,19 @@ import {
   LogOut,
   Send,
   MessageSquare,
-  Landmark,
-  Wifi,
-  WifiOff,
+  Briefcase,
+  Gift,
   Radio,
+  MapPin,
+  CheckCircle2,
+  XCircle,
+  GraduationCap,
+  Sparkles,
+  ChevronUp,
+  ChevronDown,
+  X,
 } from 'lucide-react';
+import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedule';
 
 export const GameHUD: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -25,18 +35,27 @@ export const GameHUD: React.FC = () => {
     selectedPlayer,
     isRidingKeke,
     currentKekeId,
+    isOnRestrictedLawn,
+    currentTerrainType,
     kekes,
     setActiveModal,
+    setSelectedHallLocationId,
     setRidingKeke,
     connectionStatus,
+    playerRef,
   } = useGameStore();
 
-  const { balance, deductFare } = useWalletStore();
-  const { messages, addFriend } = useSocialStore();
+  const { balance } = useWalletStore();
+  const { messages } = useSocialStore();
+  const { activeJob, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
+  const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore();
 
   const [chatInput, setChatInput] = useState('');
-  const [isChatExpanded, setIsChatExpanded] = useState(true);
+  const [isChatExpanded, setIsChatExpanded] = useState(!isTouchDevice);
+  const [jobNotice, setJobNotice] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  const activeKeke = Object.values(kekes)[0];
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -51,9 +70,11 @@ export const GameHUD: React.FC = () => {
   };
 
   const handleInteractButton = async () => {
+    triggerHaptic(25);
+
     if (isRidingKeke && currentKekeId) {
       networkManager.exitKeke(currentKekeId);
-      setRidingKeke(false, null);
+      setRidingKeke(false, null, null);
       return;
     }
 
@@ -63,58 +84,130 @@ export const GameHUD: React.FC = () => {
           setActiveModal('bank');
           break;
         case 'food':
-          setActiveModal('food');
+        case 'restaurant_dining':
+          setActiveModal('floral_world');
+          break;
+        case 'lecture_hall':
+          setSelectedHallLocationId(nearbyInteractable.targetId || nearbyInteractable.id || 'colfhec-lecture-hall');
+          setActiveModal('lecture_hall');
           break;
         case 'playstation':
           setActiveModal('ps_match');
           break;
-        case 'keke_stop': {
-          const activeKeke = Object.values(kekes)[0];
-          if (activeKeke) {
-            const ok = await deductFare(user?.id || 'guest', 50, activeKeke.currentStopName || 'Next Stop');
-            if (ok) {
-              networkManager.enterKeke(activeKeke.id);
-              setRidingKeke(true, activeKeke.id);
-            }
-          }
+        case 'keke_stop':
+          setActiveModal('keke_destination');
           break;
-        }
+        case 'job_board':
+          setActiveModal('campus_jobs');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
     }
   };
 
+  const handlePickup = () => {
+    triggerHaptic(20);
+    pickupDeliveryPackage();
+    setJobNotice('📦 Package/Document picked up! Head to destination.');
+    setTimeout(() => setJobNotice(null), 3500);
+  };
+
+  const handleDeliver = async () => {
+    if (!user) return;
+    triggerHaptic(30);
+    const res = await completeActiveJob(user.id);
+    if (res.success) {
+      setJobNotice(`🎉 Job Complete! +₦${res.reward.toLocaleString()}`);
+      setTimeout(() => setJobNotice(null), 4000);
+    }
+  };
+
   if (!user) return null;
 
+  const playerPos = playerRef?.current?.position || [0, 0, 0];
+  const jobProx = checkJobProximity(playerPos);
+
+  const getInteractIcon = () => {
+    if (isRidingKeke) return '🛺';
+    if (!nearbyInteractable) return '💬';
+    switch (nearbyInteractable.type) {
+      case 'keke_stop':
+        return '🛺';
+      case 'lecture_hall':
+        return '🎓';
+      case 'food':
+      case 'restaurant_dining':
+        return '🍲';
+      case 'atm':
+        return '🏧';
+      case 'job_board':
+        return '💼';
+      case 'playstation':
+        return '🎮';
+      default:
+        return '✨';
+    }
+  };
+
+  const getInteractLabel = () => {
+    if (isRidingKeke) return 'Exit Campus Keke';
+    if (nearbyInteractable) {
+      switch (nearbyInteractable.type) {
+        case 'keke_stop':
+          return 'Enter Keke (from ₦50)';
+        case 'lecture_hall':
+          return 'View Lecture Schedule';
+        case 'food':
+        case 'restaurant_dining':
+          return 'Order Food & Drinks';
+        case 'atm':
+          return 'Open ATM & Transfer';
+        case 'job_board':
+          return 'View Campus Jobs';
+        case 'playstation':
+          return '1v1 PS5 Challenge';
+        default:
+          return nearbyInteractable.actionText || 'Interact';
+      }
+    }
+    if (selectedPlayer) {
+      return `Talk with @${selectedPlayer.username}`;
+    }
+    return 'Interact';
+  };
+
   return (
-    <div className="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 sm:p-6 font-['Plus_Jakarta_Sans'] select-none">
+    <div
+      className="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-3 sm:p-6 font-['Plus_Jakarta_Sans'] select-none"
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       {/* 1. TOP BAR */}
-      <div className="flex items-start justify-between w-full">
-        {/* Top Left: Profile & Wallet Pill */}
-        <div className="flex items-center gap-3 pointer-events-auto">
+      <div className="flex items-start justify-between w-full gap-2">
+        {/* Top Left: Profile & Wallet Pill & Job Shortcut */}
+        <div className="flex items-center gap-1.5 sm:gap-3 pointer-events-auto flex-wrap">
           {/* Student ID Badge */}
-          <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/60 shadow-xl">
+          <div className="flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-slate-900/90 backdrop-blur-md border border-slate-700/60 shadow-xl">
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-md"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-md shrink-0"
               style={{ backgroundColor: user.avatarConfig.shirtColor || '#15803d' }}
             >
               {user.username[0].toUpperCase()}
             </div>
             <div>
-              <div className="text-xs font-bold text-white leading-tight font-['Outfit'] flex items-center gap-1.5">
+              <div className="text-[11px] sm:text-xs font-bold text-white leading-tight font-['Outfit'] flex items-center gap-1.5">
                 <span>@{user.username}</span>
-                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-800 text-emerald-400 border border-slate-700">
+                <span className="text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-800 text-emerald-400 border border-slate-700">
                   {user.college}
                 </span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+              <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-slate-400">
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
                     connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
                   }`}
                 />
-                <span>{connectionStatus === 'connected' ? 'Live on Campus' : 'Connecting...'}</span>
+                <span className="hidden sm:inline">{connectionStatus === 'connected' ? 'Live on Campus' : 'Connecting...'}</span>
               </div>
             </div>
           </div>
@@ -122,34 +215,144 @@ export const GameHUD: React.FC = () => {
           {/* Quick ATM / Wallet Badge */}
           <button
             onClick={() => setActiveModal('bank')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-900/85 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition transform active:scale-95 group"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition transform active:scale-95 group"
             title="Open ATM & Bank"
           >
-            <div className="w-7 h-7 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-xs group-hover:scale-110 transition">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-xs group-hover:scale-110 transition">
               ₦
             </div>
             <div className="text-left">
-              <div className="text-[9px] text-slate-400 font-semibold uppercase">Wallet</div>
-              <div className="font-extrabold text-emerald-300 font-mono text-xs">
+              <div className="text-[8px] sm:text-[9px] text-slate-400 font-semibold uppercase">Wallet</div>
+              <div className="font-extrabold text-emerald-300 font-mono text-[11px] sm:text-xs">
                 ₦{balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
               </div>
             </div>
           </button>
+
+          {/* Campus Jobs Board Quick Button */}
+          <button
+            onClick={() => setActiveModal('campus_jobs')}
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-indigo-950/80 hover:border-indigo-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
+            title="Campus Jobs Board"
+          >
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition">
+              <Briefcase className="w-3.5 h-3.5" />
+            </div>
+            <div className="text-left hidden md:block">
+              <div className="text-[9px] text-slate-400 font-semibold uppercase">Earn ₦</div>
+              <div className="font-bold text-indigo-300 text-xs">Jobs Board</div>
+            </div>
+          </button>
+
+          {/* Daily Reward Quick Button */}
+          <button
+            onClick={() => setActiveModal('daily_reward')}
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-amber-950/80 hover:border-amber-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
+            title="Claim Daily Allowance"
+          >
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-600/30 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
+              <Gift className="w-3.5 h-3.5" />
+            </div>
+            <div className="text-left hidden md:block">
+              <div className="text-[9px] text-slate-400 font-semibold uppercase">Daily</div>
+              <div className="font-bold text-amber-300 text-xs">+₦200</div>
+            </div>
+          </button>
+
+          {/* Lecture Halls & Timetable Quick Button */}
+          {(() => {
+            const info = getActiveLectureForTime(Date.now());
+            const liveLecture = info.activeLecture;
+            const nextLec = info.nextLecture || getNextLecture(Date.now());
+            return (
+              <button
+                id="btn-hud-lecture-timetable"
+                onClick={() => setActiveModal('lecture_hall')}
+                className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${
+                  liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
+                } shadow-xl text-xs transition group`}
+                title={liveLecture ? `Live Class: ${liveLecture.courseCode}` : 'Lecture Timetable'}
+              >
+                <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${liveLecture ? 'bg-emerald-500/30 border border-emerald-400/60 text-emerald-300' : 'bg-slate-700/40 text-slate-300'} flex items-center justify-center group-hover:scale-110 transition`}>
+                  <GraduationCap className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-left hidden md:block">
+                  <div className="text-[9px] text-slate-400 font-semibold uppercase">
+                    {liveLecture ? '● Live Class' : 'Timetable'}
+                  </div>
+                  <div className="font-bold text-emerald-300 text-xs">
+                    {liveLecture ? liveLecture.courseCode : nextLec?.courseCode || 'Lectures'}
+                  </div>
+                </div>
+              </button>
+            );
+          })()}
         </div>
 
+        {/* Top Center: Keke Transit Active Indicator */}
+        {isRidingKeke && (
+          <div className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-amber-950/90 border border-amber-400 text-amber-200 text-xs shadow-2xl backdrop-blur-md animate-pulse">
+            <span className="text-base">🛺</span>
+            <div>
+              <div className="font-black text-white font-['Outfit'] text-[11px] sm:text-xs">
+                Riding Campus Keke
+              </div>
+              <div className="text-[9px] sm:text-[10px] text-amber-300">
+                Next: <strong className="text-white">{activeKeke?.currentStopName || 'Campus Route'}</strong>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Right: Actions & Stats */}
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
           {/* Online Counter */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/85 backdrop-blur-md border border-slate-800 text-xs text-slate-300 shadow-lg">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 text-xs text-slate-300 shadow-lg">
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
             <span className="font-bold text-white">{onlineCount}</span>
             <span className="text-slate-400 text-[11px]">Online</span>
           </div>
 
+          {/* Direct Messages (DMs) Modal Button with Red Unread Badge */}
+          <button
+            id="btn-hud-dms"
+            onClick={() => {
+              const { directMessages, openDm, activeDmPartner, friends } = useSocialStore.getState();
+              const partners = Object.keys(directMessages);
+              if (activeDmPartner) {
+                setActiveModal('private_chat');
+              } else if (partners.length > 0) {
+                const latestPartner = partners[0];
+                openDm({
+                  id: latestPartner,
+                  username: latestPartner,
+                  college: 'STUDENT',
+                });
+              } else if (friends.length > 0) {
+                openDm({
+                  id: friends[0].id,
+                  username: friends[0].username,
+                  college: friends[0].college,
+                });
+              } else {
+                setActiveModal('friends');
+              }
+            }}
+            className="relative p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
+            title="Direct Messages (DMs)"
+          >
+            <MessageSquare className="w-4 h-4" />
+            {useSocialStore.getState().unreadDmCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white font-extrabold text-[10px] flex items-center justify-center border-2 border-slate-950 animate-pulse shadow-md">
+                {useSocialStore.getState().unreadDmCount}
+              </span>
+            )}
+          </button>
+
           {/* Friends Modal Button */}
           <button
             onClick={() => setActiveModal('friends')}
-            className="p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Friends List"
           >
             <Users className="w-4 h-4" />
@@ -158,7 +361,7 @@ export const GameHUD: React.FC = () => {
           {/* Inventory Modal Button */}
           <button
             onClick={() => setActiveModal('inventory')}
-            className="p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Backpack Inventory"
           >
             <Backpack className="w-4 h-4" />
@@ -167,7 +370,7 @@ export const GameHUD: React.FC = () => {
           {/* Help Modal Button */}
           <button
             onClick={() => setActiveModal('help')}
-            className="p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Controls & Campus Guide"
           >
             <HelpCircle className="w-4 h-4" />
@@ -176,7 +379,7 @@ export const GameHUD: React.FC = () => {
           {/* Logout Button */}
           <button
             onClick={logout}
-            className="p-2.5 rounded-xl bg-slate-900/85 hover:bg-red-950/60 text-slate-400 hover:text-red-400 backdrop-blur-md border border-slate-700/60 shadow-lg transition"
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-red-950/60 text-slate-400 hover:text-red-400 backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Leave Campus"
           >
             <LogOut className="w-4 h-4" />
@@ -184,29 +387,90 @@ export const GameHUD: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. CENTER CONTEXT INTERACTION PROMPT */}
-      <div className="flex flex-col items-center justify-center my-auto">
+      {/* ACTIVE JOB BANNER & NOTICES */}
+      {activeJob && (
+        <div className="mx-auto my-1 pointer-events-auto max-w-md w-full animate-in slide-in-from-top-4">
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border-2 border-indigo-500/60 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">{activeJob.icon}</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] sm:text-xs font-black text-white font-['Outfit']">{activeJob.title}</span>
+                  <span className="text-[10px] font-bold text-emerald-400 font-mono">+₦{activeJob.reward}</span>
+                </div>
+                <div className="text-[10px] sm:text-[11px] text-slate-300 flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
+                  {activeJob.status === 'accepted' ? (
+                    <span className="truncate">Pick up: <strong className="text-white">{activeJob.source}</strong> ({jobProx.distance}m)</span>
+                  ) : (
+                    <span className="truncate">Deliver: <strong className="text-white">{activeJob.destination}</strong> ({jobProx.distance}m)</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {jobProx.canPickup && (
+                <button
+                  onClick={handlePickup}
+                  className="px-2.5 py-1.5 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg animate-pulse flex items-center gap-1"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Pick Up
+                </button>
+              )}
+              {jobProx.canDeliver && (
+                <button
+                  onClick={handleDeliver}
+                  className="px-2.5 py-1.5 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg animate-pulse flex items-center gap-1"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Deliver (+₦{activeJob.reward})
+                </button>
+              )}
+              <button
+                onClick={cancelJob}
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-red-950/60 text-slate-400 hover:text-red-400 text-xs"
+                title="Cancel Job"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {jobNotice && (
+        <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-bounce">
+          <div className="p-2.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold text-center shadow-2xl backdrop-blur-md">
+            {jobNotice}
+          </div>
+        </div>
+      )}
+
+      {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
+      <div className="flex flex-col items-center justify-center mt-auto mb-2 pointer-events-auto">
         {(nearbyInteractable || selectedPlayer || isRidingKeke) && (
-          <div className="pointer-events-auto animate-bounce duration-1000">
+          <div className="animate-bounce duration-1000">
             <button
               onClick={handleInteractButton}
-              className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-950/90 hover:bg-slate-900 text-white border-2 border-emerald-400 shadow-2xl backdrop-blur-xl transition transform active:scale-95"
+              className="flex items-center gap-3 px-5 py-3 sm:px-6 sm:py-3.5 rounded-3xl bg-slate-950/95 hover:bg-slate-900 text-white border-2 border-emerald-400 shadow-2xl backdrop-blur-2xl transition transform active:scale-95 min-h-[50px]"
             >
-              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-black font-extrabold flex items-center justify-center font-mono text-sm shadow-md">
-                E
-              </div>
-              <div className="text-left">
-                <div className="text-[10px] uppercase font-extrabold text-emerald-400 tracking-wider">
-                  {isRidingKeke
-                    ? 'Riding Keke'
-                    : nearbyInteractable?.label || 'Nearby Student'}
+              {isTouchDevice ? (
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white text-lg flex items-center justify-center shadow-lg shrink-0">
+                  {getInteractIcon()}
                 </div>
-                <div className="text-sm font-bold text-white font-['Outfit']">
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-black font-extrabold flex items-center justify-center font-mono text-sm shadow-md shrink-0">
+                  E
+                </div>
+              )}
+              <div className="text-left">
+                <div className="text-[10px] uppercase font-black text-emerald-400 tracking-wider">
                   {isRidingKeke
-                    ? 'Press E to Exit Keke'
-                    : nearbyInteractable
-                    ? nearbyInteractable.actionText
-                    : `Talk / Profile: @${selectedPlayer?.username}`}
+                    ? 'In Transit'
+                    : nearbyInteractable?.label || 'Student Interaction'}
+                </div>
+                <div className="text-sm font-extrabold text-white font-['Outfit']">
+                  {getInteractLabel()}
                 </div>
               </div>
             </button>
@@ -214,69 +478,110 @@ export const GameHUD: React.FC = () => {
         )}
       </div>
 
-      {/* 3. BOTTOM BAR: PROXIMITY CHAT */}
-      <div className="w-full max-w-md pointer-events-auto">
-        <div className="rounded-2xl bg-slate-900/80 backdrop-blur-md border border-slate-700/60 shadow-2xl overflow-hidden">
-          {/* Chat Header */}
-          <div
-            onClick={() => setIsChatExpanded(!isChatExpanded)}
-            className="flex items-center justify-between px-4 py-2 bg-slate-950/80 cursor-pointer border-b border-slate-800"
-          >
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-200 font-['Outfit']">
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Campus Proximity Chat</span>
-            </div>
-            <span className="text-[10px] text-slate-500">
-              {isChatExpanded ? '▾ Hide' : '▴ Show'}
-            </span>
-          </div>
-
-          {/* Chat Body */}
-          {isChatExpanded && (
-            <>
-              <div className="p-3.5 space-y-2 max-h-44 overflow-y-auto text-xs">
-                {messages.map((msg) => (
-                  <div key={msg.id} className="leading-snug break-words">
-                    {msg.isSystem ? (
-                      <div className="text-[11px] text-emerald-300/90 italic bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-500/20">
-                        📢 {msg.text}
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-1.5">
-                        <span className="font-extrabold text-slate-100 shrink-0">
-                          @{msg.senderName}
-                          <span className="text-[9px] font-bold text-emerald-400 ml-1">
-                            [{msg.college}]
-                          </span>
-                          :
-                        </span>
-                        <span className="text-slate-200">{msg.text}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <div ref={chatBottomRef} />
+      {/* 3. BOTTOM BAR: PROXIMITY CHAT & LAWN STATUS */}
+      <div className="flex items-end justify-between w-full gap-2 sm:gap-4 pointer-events-none">
+        {/* Proximity Chat Window (Responsive & Touch-Friendly) */}
+        <div className="w-full max-w-md pointer-events-auto">
+          {/* If on mobile and collapsed, show sleek floating chat toggle */}
+          {isTouchDevice && !isChatExpanded ? (
+            <button
+              onClick={() => setIsChatExpanded(true)}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700/60 shadow-2xl backdrop-blur-md transition active:scale-95"
+            >
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-bold font-['Outfit']">Chat ({messages.length})</span>
+              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+          ) : (
+            <div className="rounded-2xl bg-slate-900/90 backdrop-blur-md border border-slate-700/60 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+              {/* Chat Header */}
+              <div
+                onClick={() => setIsChatExpanded(!isChatExpanded)}
+                className="flex items-center justify-between px-3.5 py-2 bg-slate-950/90 cursor-pointer border-b border-slate-800"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-200 font-['Outfit']">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Campus Proximity Chat</span>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                  <span>{isChatExpanded ? '▾ Minimize' : '▴ Expand'}</span>
+                </div>
               </div>
 
-              {/* Chat Input */}
-              <form onSubmit={handleSendChat} className="flex border-t border-slate-800 p-2 gap-2 bg-slate-950/90">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Say something to nearby students..."
-                  maxLength={250}
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500"
-                />
-                <button
-                  type="submit"
-                  disabled={!chatInput.trim()}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition flex items-center justify-center"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </>
+              {/* Chat Body */}
+              {isChatExpanded && (
+                <>
+                  <div className="p-3 space-y-1.5 max-h-36 sm:max-h-44 overflow-y-auto text-xs">
+                    {messages.length === 0 ? (
+                      <div className="text-[11px] text-slate-500 italic text-center py-2">
+                        No messages yet. Say hello to nearby students!
+                      </div>
+                    ) : (
+                      messages.map((msg) => (
+                        <div key={msg.id} className="leading-snug break-words">
+                          {msg.isSystem ? (
+                            <div className="text-[10px] sm:text-[11px] text-emerald-300/90 italic bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-500/20">
+                              📢 {msg.text}
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-1.5">
+                              <span className="font-extrabold text-slate-100 shrink-0">
+                                @{msg.senderName}
+                                <span className="text-[8px] sm:text-[9px] font-bold text-emerald-400 ml-1">
+                                  [{msg.college}]
+                                </span>
+                                :
+                              </span>
+                              <span className="text-slate-200">{msg.text}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                    <div ref={chatBottomRef} />
+                  </div>
+
+                  {/* Chat Input with Touch Focus Isolation */}
+                  <form onSubmit={handleSendChat} className="flex border-t border-slate-800 p-2 gap-2 bg-slate-950/95">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      placeholder="Say something to nearby students..."
+                      maxLength={250}
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim()}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition flex items-center justify-center shrink-0"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Right: Live Terrain & Lawn Rule Status Pill */}
+        <div className="pointer-events-auto hidden sm:flex items-center gap-2">
+          {isOnRestrictedLawn ? (
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-red-950/90 border border-red-500/60 shadow-xl backdrop-blur-md animate-pulse">
+              <span className="text-xs">⚠️</span>
+              <div className="text-[10px]">
+                <span className="font-extrabold text-red-300 uppercase">Restricted Lawn</span>
+                <span className="text-red-400 text-[9px] ml-1.5">(Risk ₦500 Fine)</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-900/80 border border-slate-700/50 shadow-lg backdrop-blur-md text-[10px] text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Zone: <strong className="text-white capitalize">{currentTerrainType}</strong></span>
+            </div>
           )}
         </div>
       </div>

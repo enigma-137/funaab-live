@@ -1,12 +1,25 @@
 import { create } from 'zustand';
 import { ChatMessage } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
+import { useGameStore } from './gameStore';
 
-interface Friend {
+export interface Friend {
   id: string;
   username: string;
   college: string;
   status: 'accepted' | 'pending';
+}
+
+export interface DmPartner {
+  id: string;
+  username: string;
+  college: string;
+}
+
+export interface ReportTarget {
+  id: string;
+  username: string;
+  college?: string;
 }
 
 interface SocialState {
@@ -15,8 +28,28 @@ interface SocialState {
   blockedUserIds: string[];
   messages: ChatMessage[];
   unreadCount: number;
+
+  // Direct Messaging
+  directMessages: Record<string, ChatMessage[]>; // Keyed by partner's username (case-insensitive)
+  unreadDmsByPartner: Record<string, number>; // Unread count per partner username
+  activeDmPartner: DmPartner | null;
+  unreadDmCount: number;
+  lastIncomingDm: ChatMessage | null;
+
+  // Safety & Reporting
+  activeReportUser: ReportTarget | null;
+
   loadSocialData: (userId: string) => void;
   addMessage: (msg: ChatMessage) => void;
+  addDirectMessage: (msg: ChatMessage) => void;
+  dismissLastIncomingDm: () => void;
+
+  openDm: (partner: DmPartner) => void;
+  closeDm: () => void;
+
+  openReportModal: (target: ReportTarget) => void;
+  closeReportModal: () => void;
+
   addFriend: (userId: string, targetUser: { id: string; username: string; college: string }) => void;
   removeFriend: (userId: string, targetId: string) => void;
   muteUser: (userId: string, targetId: string) => void;
@@ -44,6 +77,13 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   ],
   unreadCount: 0,
 
+  directMessages: {},
+  unreadDmsByPartner: {},
+  activeDmPartner: null,
+  unreadDmCount: 0,
+  lastIncomingDm: null,
+  activeReportUser: null,
+
   loadSocialData: (userId: string) => {
     const friends = localDB.getFriends(userId);
     const mutes = localDB.getMutes(userId);
@@ -66,6 +106,91 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       messages: [...state.messages.slice(-60), msg], // keep last 60
       unreadCount: state.unreadCount + 1,
     }));
+  },
+
+  addDirectMessage: (msg: ChatMessage) => {
+    const { blockedUserIds, mutedUserIds, activeDmPartner } = get();
+    if (blockedUserIds.includes(msg.senderId) || mutedUserIds.includes(msg.senderId)) {
+      return;
+    }
+
+    // Determine the partner key
+    const key = (msg.isPrivate && msg.recipientUsername && msg.senderName)
+      ? (msg.recipientUsername.toLowerCase() === activeDmPartner?.username.toLowerCase()
+          ? msg.recipientUsername.toLowerCase()
+          : msg.senderName.toLowerCase())
+      : (msg.senderName || 'dm').toLowerCase();
+
+    set((state) => {
+      const existing = state.directMessages[key] || [];
+      const updatedList = [...existing, msg];
+      const isCurrentlyViewing = activeDmPartner && activeDmPartner.username.toLowerCase() === key;
+
+      const newPartnerUnread = isCurrentlyViewing
+        ? 0
+        : (state.unreadDmsByPartner[key] || 0) + 1;
+
+      const updatedUnreadByPartner = {
+        ...state.unreadDmsByPartner,
+        [key]: newPartnerUnread,
+      };
+
+      const totalUnread = Object.values(updatedUnreadByPartner).reduce((acc, c) => acc + c, 0);
+
+      return {
+        directMessages: {
+          ...state.directMessages,
+          [key]: updatedList,
+        },
+        unreadDmsByPartner: updatedUnreadByPartner,
+        unreadDmCount: totalUnread,
+        lastIncomingDm: !isCurrentlyViewing ? msg : state.lastIncomingDm,
+      };
+    });
+  },
+
+  dismissLastIncomingDm: () => {
+    set({ lastIncomingDm: null });
+  },
+
+  openDm: (partner: DmPartner) => {
+    const partnerKey = partner.username.toLowerCase();
+    set((state) => {
+      const updatedUnreadByPartner = {
+        ...state.unreadDmsByPartner,
+        [partnerKey]: 0,
+      };
+      const totalUnread = Object.values(updatedUnreadByPartner).reduce((acc, c) => acc + c, 0);
+
+      return {
+        activeDmPartner: partner,
+        unreadDmsByPartner: updatedUnreadByPartner,
+        unreadDmCount: totalUnread,
+        lastIncomingDm: state.lastIncomingDm?.senderName.toLowerCase() === partnerKey ? null : state.lastIncomingDm,
+      };
+    });
+    useGameStore.getState().setActiveModal('private_chat');
+  },
+
+  closeDm: () => {
+    set({ activeDmPartner: null });
+    const { activeModal, setActiveModal } = useGameStore.getState();
+    if (activeModal === 'private_chat') {
+      setActiveModal(null);
+    }
+  },
+
+  openReportModal: (target: ReportTarget) => {
+    set({ activeReportUser: target });
+    useGameStore.getState().setActiveModal('report_user');
+  },
+
+  closeReportModal: () => {
+    set({ activeReportUser: null });
+    const { activeModal, setActiveModal } = useGameStore.getState();
+    if (activeModal === 'report_user') {
+      setActiveModal(null);
+    }
   },
 
   addFriend: (userId: string, targetUser: { id: string; username: string; college: string }) => {
@@ -139,5 +264,5 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     }
   },
 
-  resetUnread: () => set({ unreadCount: 0 }),
+  resetUnread: () => set({ unreadCount: 0, unreadDmCount: 0 }),
 }));

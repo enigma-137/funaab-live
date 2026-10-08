@@ -3,6 +3,8 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { AvatarConfig } from '../../types/game';
+import { useSocialStore } from '../../stores/socialStore';
+import { MessageSquare } from 'lucide-react';
 
 interface AvatarModelProps {
   username: string;
@@ -26,6 +28,10 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   const rightArmRef = useRef<THREE.Mesh>(null);
   const headRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Mesh>(null);
+
+  const { unreadDmsByPartner, openDm } = useSocialStore();
+  const unreadCount = unreadDmsByPartner[username.toLowerCase()] || 0;
+  const hasUnreadDm = unreadCount > 0;
 
   // Procedural limb animation based on state
   useFrame((state) => {
@@ -82,15 +88,35 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
 
   return (
     <group ref={groupRef}>
-      {/* Floating Username & College Badge */}
+      {/* Floating Username & College Badge & Unread DM Alert */}
       <Html
-        position={[0, 2.35, 0]}
+        position={[0, hasUnreadDm ? 2.55 : 2.35, 0]}
         center
         distanceFactor={18}
         zIndexRange={[100, 0]}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: hasUnreadDm ? 'auto' : 'none' }}
       >
         <div className="flex flex-col items-center gap-0.5 select-none transition-all scale-95 hover:scale-100">
+          {/* Unread DM Overhead Alert Bubble */}
+          {hasUnreadDm && !isLocal && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                openDm({
+                  id: username,
+                  username,
+                  college,
+                });
+              }}
+              className="mb-1 flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white font-extrabold text-[11px] shadow-2xl border-2 border-white animate-bounce pointer-events-auto cursor-pointer transition transform active:scale-95"
+              title={`Click to read ${unreadCount} new message(s) from @${username}`}
+            >
+              <MessageSquare className="w-3.5 h-3.5 fill-white text-white" />
+              <span>Message ({unreadCount})</span>
+              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700/60 shadow-lg">
             <span
               className="w-2 h-2 rounded-full ring-2 ring-white/20 animate-pulse"

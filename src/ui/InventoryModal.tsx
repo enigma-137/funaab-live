@@ -1,7 +1,7 @@
 import React from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
-import { X, Backpack, Sparkles } from 'lucide-react';
+import { X, Backpack } from 'lucide-react';
 
 export const InventoryModal: React.FC = () => {
   const { inventory } = useWalletStore();

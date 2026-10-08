@@ -14,12 +14,34 @@ import { PlayerInteractionModal } from './ui/PlayerInteractionModal';
 import { FriendsModal } from './ui/FriendsModal';
 import { InventoryModal } from './ui/InventoryModal';
 import { HelpModal } from './ui/HelpModal';
+import { KekeDestinationModal } from './ui/KekeDestinationModal';
+import { LawnViolationToast } from './ui/LawnViolationToast';
+import { CampusJobsModal } from './ui/CampusJobsModal';
+import { SendMoneyModal } from './ui/SendMoneyModal';
+import { DailyRewardModal } from './ui/DailyRewardModal';
+import { ActivityFeed } from './ui/ActivityFeed';
+import { DevDebugPanel } from './ui/DevDebugPanel';
+
+import { ClassroomView } from './game/world/ClassroomScene';
+import { ClassroomHUD } from './ui/ClassroomHUD';
+import { LectureHallModal } from './ui/LectureHallModal';
+import { FloralWorldModal } from './ui/FloralWorldModal';
+import { PrivateChatModal } from './ui/PrivateChatModal';
+import { ReportUserModal } from './ui/ReportUserModal';
+import { DmNotificationToast } from './ui/DmNotificationToast';
+import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
+import { useLectureStore } from './stores/lectureStore';
 
 export const App: React.FC = () => {
-  const { user, isAuthenticated } = useAuthStore();
-  const { activeModal } = useGameStore();
+  const { user, isAuthenticated, isInitializingAuth, initialize } = useAuthStore();
+  const { activeModal, setActiveModal, selectedHallLocationId } = useGameStore();
   const { loadWallet } = useWalletStore();
   const { loadSocialData } = useSocialStore();
+  const { isInClassroom } = useLectureStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -37,17 +59,54 @@ export const App: React.FC = () => {
     };
   }, [isAuthenticated, user]);
 
+  if (isInitializingAuth) {
+    return (
+      <div className="relative w-screen h-screen overflow-hidden bg-[#070d08] text-slate-100 flex flex-col items-center justify-center font-['Plus_Jakarta_Sans']">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-3xl animate-pulse">
+            🎓
+          </div>
+          <div className="text-center">
+            <h2 className="font-['Outfit'] font-bold text-xl text-white tracking-tight">
+              FUNAAB <span className="text-emerald-400">Life</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Restoring campus session...</p>
+          </div>
+          <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden mt-2">
+            <div className="w-full h-full bg-emerald-400 animate-[shimmer_1.5s_infinite]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated || !user) {
     return <LandingPage />;
   }
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#070d08]">
-      {/* 3D Canvas World */}
-      <WorldScene />
+      {/* 3D World / Classroom View */}
+      {isInClassroom ? (
+        <>
+          <ClassroomView />
+          <ClassroomHUD />
+        </>
+      ) : (
+        <>
+          <WorldScene />
+          <GameHUD />
+        </>
+      )}
 
-      {/* Head-Up Display Overlay */}
-      <GameHUD />
+      {/* Live Campus Activity Feed */}
+      <ActivityFeed />
+
+      {/* Incoming Private DM Notification Toast */}
+      <DmNotificationToast />
+
+      {/* Lawn Rule Security Fine Toast */}
+      <LawnViolationToast />
 
       {/* Dynamic Interaction & Feature Modals */}
       {activeModal === 'bank' && <BankModal />}
@@ -57,6 +116,28 @@ export const App: React.FC = () => {
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}
       {activeModal === 'help' && <HelpModal />}
+      {activeModal === 'keke_destination' && <KekeDestinationModal />}
+      {activeModal === 'campus_jobs' && <CampusJobsModal />}
+      {activeModal === 'send_money' && <SendMoneyModal />}
+      {activeModal === 'daily_reward' && <DailyRewardModal />}
+      {activeModal === 'lecture_hall' && (
+        <LectureHallModal
+          isOpen={true}
+          hallLocationId={selectedHallLocationId || 'colfhec-lecture-hall'}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+      {activeModal === 'floral_world' && (
+        <FloralWorldModal isOpen={true} onClose={() => setActiveModal(null)} />
+      )}
+      {activeModal === 'private_chat' && <PrivateChatModal />}
+      {activeModal === 'report_user' && <ReportUserModal />}
+
+      {/* First-time Mobile Touch Tutorial Overlay */}
+      <MobileTutorialOverlay />
+
+      {/* Dev Multiplayer & Physics Diagnostics HUD */}
+      <DevDebugPanel />
     </div>
   );
 };

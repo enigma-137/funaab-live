@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import worldData from '../worlds/funaab/world.json';
-import { Sparkles, Users, ArrowRight, ShieldCheck, MapPin, Play } from 'lucide-react';
+import { Users, ArrowRight, ShieldCheck, MapPin, Play } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
   const { guestLogin, login, signup, isLoading, error } = useAuthStore();
   const [username, setUsername] = useState('');
   const [college, setCollege] = useState('COLENG');
-  const [isAuthMode, setIsAuthMode] = useState(false);
+  const isGuestModeEnabled = import.meta.env.VITE_ENABLE_GUEST_MODE === 'true';
+  const [isAuthMode, setIsAuthMode] = useState(!isGuestModeEnabled);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleQuickEnter = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isGuestModeEnabled) return;
     const finalName = username.trim() || `Aluta_${Math.floor(Math.random() * 900 + 100)}`;
     guestLogin(finalName, college);
   };
@@ -68,7 +70,7 @@ export const LandingPage: React.FC = () => {
         {/* Left Side: Product Intro */}
         <div className="lg:col-span-7 space-y-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
+
             The Virtual Nigerian Campus Experience
           </div>
 
@@ -83,21 +85,59 @@ export const LandingPage: React.FC = () => {
             Walk past the Ceremonial Main Gate, catch a yellow Keke Napep to COLFHEC, grab hot Jollof at Mama Buka, or challenge your peers in the PlayStation Room.
           </p>
 
-          <div className="grid grid-cols-3 gap-3 pt-2">
+          {/* Campus Live Status Card */}
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 backdrop-blur-md shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="font-['Outfit'] font-extrabold text-sm text-white">FUNAAB LIFE • Campus is online</span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold text-xs">
+                Active Session
+              </span>
+            </div>
+            <div className="text-xs text-slate-300 mb-2">
+              Popular right now on campus:
+            </div>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Car Park</span>
+                <strong className="text-emerald-400 font-mono">· 8</strong>
+              </div>
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                <span>Sports Centre</span>
+                <strong className="text-indigo-300 font-mono">· 6</strong>
+              </div>
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span>COLBIOS</span>
+                <strong className="text-amber-300 font-mono">· 4</strong>
+              </div>
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                <span>Senate Plaza</span>
+                <strong className="text-teal-300 font-mono">· 3</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 pt-1">
             <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
               <div className="text-2xl mb-1">🛺</div>
               <div className="font-bold text-white text-xs">Live Keke Rides</div>
-              <div className="text-[11px] text-slate-400">Hop in and tour campus stops</div>
+              <div className="text-[11px] text-slate-400">Hop in & travel (₦50–₦150)</div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-2xl mb-1">💬</div>
-              <div className="font-bold text-white text-xs">Proximity Chat</div>
-              <div className="text-[11px] text-slate-400">Talk & make campus friends</div>
+              <div className="text-2xl mb-1">💼</div>
+              <div className="font-bold text-white text-xs">Campus Jobs</div>
+              <div className="text-[11px] text-slate-400">Deliver food & earn ₦300</div>
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-2xl mb-1">🎮</div>
-              <div className="font-bold text-white text-xs">1v1 PS Showdown</div>
-              <div className="text-[11px] text-slate-400">Penalty shootout battles</div>
+              <div className="text-2xl mb-1">💸</div>
+              <div className="font-bold text-white text-xs">Send Money</div>
+              <div className="text-[11px] text-slate-400">P2P student transfers</div>
             </div>
           </div>
         </div>
@@ -109,13 +149,15 @@ export const LandingPage: React.FC = () => {
               <h2 className="font-['Outfit'] font-bold text-xl text-white">
                 {isAuthMode ? (isSignUp ? 'Create Account' : 'Sign In') : 'Instant Campus Entry'}
               </h2>
-              <button
-                type="button"
-                onClick={() => setIsAuthMode(!isAuthMode)}
-                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-4"
-              >
-                {isAuthMode ? 'Guest Mode' : 'Account Login'}
-              </button>
+              {isGuestModeEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthMode(!isAuthMode)}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-4"
+                >
+                  {isAuthMode ? 'Guest Mode' : 'Account Login'}
+                </button>
+              )}
             </div>
 
             {error && (

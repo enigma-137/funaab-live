@@ -55,14 +55,15 @@ export const HelpModal: React.FC = () => {
 
           <div>
             <h3 className="font-bold text-white text-sm font-['Outfit'] mb-2 flex items-center gap-1.5 text-amber-400">
-              <Landmark className="w-4 h-4" /> Campus Hotspots
+              <Landmark className="w-4 h-4" /> Campus Rules & Hotspots
             </h3>
             <ul className="space-y-1.5 list-disc pl-4 text-slate-300">
-              <li><strong className="text-white">Main Gate:</strong> The grand resumption gate entrance.</li>
-              <li><strong className="text-white">Car Park & Keke Rank:</strong> Catch a yellow Keke Napep for ₦50 to ride around stops.</li>
-              <li><strong className="text-white">COLFHEC:</strong> The college academic complex.</li>
+              <li><strong className="text-emerald-400">🌿 FUNAAB Lawn Rule:</strong> Walking across green lawns is strictly prohibited! Campus Security officers patrol the grounds and will fine violators <strong className="text-red-400">₦500</strong>. Use paved footpaths and roads. (Sports Centre turf is legal).</li>
+              <li><strong className="text-amber-400">🛺 Destination Keke Transit:</strong> Board yellow Keke Napeps at the Car Park or stops, choose your destination, and enjoy automatic road transit across campus (fares: ₦50 - ₦150).</li>
+              <li><strong className="text-white">Main Gate:</strong> The ceremonial resumption gate monument.</li>
+              <li><strong className="text-white">COLFHEC & Senate:</strong> Academic lecture halls and central library.</li>
               <li><strong className="text-white">Microfinance ATM:</strong> View your balance & transfer money to other students.</li>
-              <li><strong className="text-white">Mama Cass Buka:</strong> Buy hot Jollof Rice, Suya, Shawarma, and cold drinks.</li>
+              <li><strong className="text-white">Mama Buka Canteen:</strong> Buy hot Jollof Rice, Suya, Shawarma, and cold drinks.</li>
               <li><strong className="text-white">PS Game Den:</strong> Play 1v1 multiplayer penalty shootout against other online students.</li>
             </ul>
           </div>

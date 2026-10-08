@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import worldData from '../../worlds/funaab/world.json';
 import { useGameStore } from '../../stores/gameStore';
+import { networkManager } from '../multiplayer/networkManager';
+import { KekeDestination } from '../../types/game';
 
 export const KekeVehicle: React.FC = () => {
   const kekeRef = useRef<THREE.Group>(null);
@@ -11,7 +13,17 @@ export const KekeVehicle: React.FC = () => {
   const rearLeftWheelRef = useRef<THREE.Mesh>(null);
   const rearRightWheelRef = useRef<THREE.Mesh>(null);
 
-  const { updateKeke, isRidingKeke, currentKekeId } = useGameStore();
+  const {
+    updateKeke,
+    isRidingKeke,
+    currentKekeId,
+    targetKekeDestinationId,
+    setRidingKeke,
+    players,
+    myConnectionId,
+  } = useGameStore();
+
+  const destinations = (worldData.kekeDestinations || []) as KekeDestination[];
 
   // Load waypoints and stops from world data
   const route = worldData.kekeRoutes[0];
@@ -24,12 +36,14 @@ export const KekeVehicle: React.FC = () => {
     t: number;
     stopTimer: number;
     currentStopName: string;
+    currentStopId: string;
     isStopped: boolean;
   }>({
     currentIndex: 0,
     t: 0,
     stopTimer: 0,
-    currentStopName: 'Car Park Stop',
+    currentStopName: 'Main Keke Park',
+    currentStopId: 'stop-carpark',
     isStopped: false,
   });
 
@@ -52,7 +66,7 @@ export const KekeVehicle: React.FC = () => {
     const nextWP = waypoints[nextIndex];
 
     const segmentDistance = currentWP.distanceTo(nextWP);
-    const speed = 4.8; // units per second
+    const speed = 5.2; // units per second (smooth road cruising)
     const step = (speed * delta) / Math.max(0.1, segmentDistance);
 
     state.t += step;
@@ -64,13 +78,30 @@ export const KekeVehicle: React.FC = () => {
       // Check if this waypoint matches a designated Stop
       const matchedStop = route.stops.find((s) => {
         const stopPos = new THREE.Vector3(...s.position);
-        return stopPos.distanceTo(nextWP) < 2.0;
+        return stopPos.distanceTo(nextWP) < 2.5;
       });
 
       if (matchedStop) {
         state.isStopped = true;
-        state.stopTimer = matchedStop.duration || 4.0;
+        state.stopTimer = matchedStop.duration || 3.5;
         state.currentStopName = matchedStop.name;
+        state.currentStopId = matchedStop.id;
+
+        // Check if local player is riding and has selected this destination
+        if (isRidingKeke && currentKekeId) {
+          const matchingDest = destinations.find((d) => d.id === targetKekeDestinationId);
+          const isAtDestination =
+            matchingDest &&
+            (matchingDest.name.toLowerCase().includes(matchedStop.name.toLowerCase()) ||
+              matchedStop.name.toLowerCase().includes(matchingDest.name.toLowerCase()) ||
+              new THREE.Vector3(...matchingDest.position).distanceTo(new THREE.Vector3(...matchedStop.position)) < 8.0);
+
+          if (isAtDestination) {
+            // Drop passenger safely at roadside
+            networkManager.exitKeke(currentKekeId);
+            setRidingKeke(false, null, null);
+          }
+        }
       }
     }
 
@@ -89,7 +120,7 @@ export const KekeVehicle: React.FC = () => {
     kekeRef.current.rotation.y = targetAngle;
 
     // Wheel rotation animation
-    const wheelRot = delta * 12;
+    const wheelRot = delta * 14;
     if (frontWheelRef.current) frontWheelRef.current.rotation.x += wheelRot;
     if (rearLeftWheelRef.current) rearLeftWheelRef.current.rotation.x += wheelRot;
     if (rearRightWheelRef.current) rearRightWheelRef.current.rotation.x += wheelRot;
@@ -103,8 +134,10 @@ export const KekeVehicle: React.FC = () => {
     });
   });
 
+  const activeTargetDest = destinations.find((d) => d.id === targetKekeDestinationId);
+
   return (
-    <group ref={kekeRef} position={[-18, 0, 18]}>
+    <group ref={kekeRef} position={[-22, 0, 20]}>
       {/* Floating Keke Status & Stop Banner */}
       <Html
         position={[0, 2.6, 0]}
@@ -114,17 +147,27 @@ export const KekeVehicle: React.FC = () => {
         style={{ pointerEvents: 'none' }}
       >
         <div className="flex flex-col items-center gap-1 select-none">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/90 backdrop-blur-md border border-amber-500/60 shadow-xl">
-            <span className="text-sm">🛺</span>
-            <span className="font-bold text-xs text-amber-300 font-['Outfit'] tracking-wide">
-              CAMPUS KEKE
-            </span>
-            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500 text-black">
-              ₦50 FARE
-            </span>
-          </div>
+          {isRidingKeke && activeTargetDest ? (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/95 backdrop-blur-md border border-amber-400 shadow-2xl animate-pulse">
+              <span className="text-sm">🛺</span>
+              <span className="font-bold text-xs text-amber-300 font-['Outfit']">
+                Going to {activeTargetDest.name}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/90 backdrop-blur-md border border-amber-500/60 shadow-xl">
+              <span className="text-sm">🛺</span>
+              <span className="font-bold text-xs text-amber-300 font-['Outfit'] tracking-wide">
+                CAMPUS KEKE
+              </span>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500 text-black">
+                TRANSIT
+              </span>
+            </div>
+          )}
+
           {progressRef.current.isStopped && (
-            <div className="px-2 py-0.5 rounded bg-emerald-600/90 text-white font-bold text-[10px] animate-bounce shadow-md">
+            <div className="px-2.5 py-0.5 rounded-lg bg-emerald-600/95 text-white font-extrabold text-[10px] animate-bounce shadow-lg border border-emerald-400">
               🚏 Stop: {progressRef.current.currentStopName}
             </div>
           )}
