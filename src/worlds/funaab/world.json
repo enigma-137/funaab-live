@@ -2,12 +2,12 @@
   "id": "funaab",
   "name": "FUNAAB (Federal University of Agriculture, Abeokuta)",
   "shortName": "FUNAAB Campus",
-  "spawn": [0, 0, 10],
+  "spawn": [0, 0, 15],
   "bounds": {
-    "minX": -70,
-    "maxX": 70,
-    "minZ": -70,
-    "maxZ": 70
+    "minX": -95,
+    "maxX": 95,
+    "minZ": -95,
+    "maxZ": 95
   },
   "colleges": [
     { "code": "COLENG", "name": "College of Engineering", "color": "#2563eb" },
@@ -24,133 +24,133 @@
       "id": "main-gate",
       "name": "Ceremonial Main Gate",
       "type": "landmark",
-      "position": [0, 0, 44],
+      "position": [0, 0, 58],
       "description": "The grand FUNAAB Entrance Monument with Nigerian & University flags and sweeping arches."
     },
     {
       "id": "ceremonial-road",
       "name": "Ceremonial Road Boulevard",
       "type": "transport",
-      "position": [0, 0, 30],
+      "position": [0, 0, 42],
       "description": "Tree-lined avenue connecting the Main Gate to the Central Campus."
     },
     {
       "id": "w-landmark",
       "name": "W-Landmark / Resumption Plaza",
       "type": "landmark",
-      "position": [0, 0, 18],
+      "position": [0, 0, 24],
       "description": "The iconic Twin-Triangle 'W' ceremonial monument and landscaped plaza."
     },
     {
       "id": "car-park",
       "name": "Main Car Park & Keke Terminal",
       "type": "transport",
-      "position": [-22, 0, 20],
+      "position": [-30, 0, 26],
       "description": "Central transport terminal to catch yellow Keke Napeps across campus."
     },
     {
       "id": "sports-centre",
       "name": "FUNAAB Sports Centre",
       "type": "sports",
-      "position": [-38, 0, 0],
+      "position": [-50, 0, 0],
       "description": "Football pitch, running track, and athletic field."
     },
     {
       "id": "food-court",
       "name": "Tantalizers & Campus Buka",
       "type": "food",
-      "position": [-20, 0, 5],
+      "position": [-28, 0, 6],
       "description": "Hot Jollof Rice, Suya Grill, Shawarma, and cold drinks by the pitch."
     },
     {
       "id": "health-centre",
       "name": "FUNAAB Health Centre",
       "type": "service",
-      "position": [-20, 0, -10],
+      "position": [-28, 0, -16],
       "description": "University clinic, pharmacy, and medical services."
     },
     {
       "id": "bank-atm",
       "name": "FUNAAB Microfinance Bank & ATM",
       "type": "bank",
-      "position": [24, 0, 18],
+      "position": [32, 0, 24],
       "description": "Check balance, cash transactions, and campus banking."
     },
     {
       "id": "senate-library",
       "name": "Senate & 'Nimbe Adedipe Library",
       "type": "academic",
-      "position": [0, 0, -32],
+      "position": [0, 0, -44],
       "description": "Administrative headquarters and central university library."
     },
     {
       "id": "colfhec",
       "name": "COLFHEC Academic Complex",
       "type": "college",
-      "position": [-28, 0, -32],
+      "position": [-38, 0, -44],
       "description": "Food Science & Human Ecology lecture halls and laboratories."
     },
     {
       "id": "coleng",
       "name": "COLENG Engineering Complex",
       "type": "college",
-      "position": [-14, 0, -44],
+      "position": [-18, 0, -60],
       "description": "Engineering workshops and technology lecture theatres."
     },
     {
       "id": "colerm-colplant",
       "name": "COLERM & COLPLANT Plaza",
       "type": "college",
-      "position": [18, 0, -32],
+      "position": [26, 0, -44],
       "description": "Environmental Resources and Plant Science academic buildings."
     },
     {
       "id": "agromet",
       "name": "Agromet Meteorological Station",
       "type": "research",
-      "position": [36, 0, 5],
+      "position": [48, 0, 6],
       "description": "Campus weather observation and agricultural research field."
     },
     {
       "id": "hostel-social",
       "name": "Iyalode Hostel & Social Chill Square",
       "type": "social",
-      "position": [26, 0, -12],
+      "position": [34, 0, -16],
       "description": "Hostel residence block, garden gazebos, and student chill area."
     },
     {
       "id": "ps-room",
       "name": "FUNAAB Game Den (PlayStation 5 Room)",
       "type": "gaming",
-      "position": [28, 0, -6],
+      "position": [38, 0, -6],
       "description": "1v1 penalty showdown console matches against other students."
     },
     {
       "id": "floral-world",
       "name": "Floral World Restaurant (COLFHEC)",
       "type": "restaurant",
-      "position": [-24, 0, -22],
+      "position": [-32, 0, -28],
       "description": "Premier campus restaurant and outdoor garden diner serving hot meals and drinks."
     },
     {
       "id": "colfhec-lecture-hall",
       "name": "COLFHEC Lecture Hall 1",
       "type": "lecture_hall",
-      "position": [-30, 0, -26],
+      "position": [-40, 0, -36],
       "description": "Food Chemistry, Nutrition & Human Ecology multi-tier lecture auditorium."
     },
     {
       "id": "central-lecture-hall",
       "name": "Central Lecture Theatre (CLT)",
       "type": "lecture_hall",
-      "position": [-8, 0, -26],
+      "position": [-10, 0, -36],
       "description": "General Engineering, Thermodynamics & University-wide lecture theatre."
     },
     {
       "id": "colbios-lecture-hall",
       "name": "COLBIOS Lecture Hall A",
       "type": "lecture_hall",
-      "position": [8, 0, -26],
+      "position": [10, 0, -36],
       "description": "Genetics, Cell Biology & Microbiology student lecture auditorium."
     }
   ],
@@ -160,34 +160,34 @@
       "name": "Ceremonial - Academic - Hostel Campus Loop",
       "fare": 50,
       "stops": [
-        { "id": "stop-carpark", "name": "Main Keke Park", "position": [-22, 0, 20], "duration": 4.0 },
-        { "id": "stop-sports", "name": "Sports & Food Court", "position": [-20, 0, 5], "duration": 4.0 },
-        { "id": "stop-health", "name": "Health Centre Stop", "position": [-20, 0, -10], "duration": 4.0 },
-        { "id": "stop-colfhec", "name": "COLFHEC & Senate", "position": [-26, 0, -24], "duration": 4.0 },
-        { "id": "stop-library", "name": "Senate & Library Plaza", "position": [0, 0, -24], "duration": 4.0 },
-        { "id": "stop-hostel", "name": "Hostel & Game Den", "position": [22, 0, -12], "duration": 4.0 },
-        { "id": "stop-bank", "name": "Microfinance Bank", "position": [24, 0, 14], "duration": 4.0 },
-        { "id": "stop-wplaza", "name": "W-Landmark Plaza", "position": [0, 0, 22], "duration": 4.0 }
+        { "id": "stop-carpark", "name": "Main Keke Park", "position": [-30, 0, 26], "duration": 4.0 },
+        { "id": "stop-sports", "name": "Sports & Food Court", "position": [-28, 0, 6], "duration": 4.0 },
+        { "id": "stop-health", "name": "Health Centre Stop", "position": [-28, 0, -16], "duration": 4.0 },
+        { "id": "stop-colfhec", "name": "COLFHEC & Senate", "position": [-38, 0, -36], "duration": 4.0 },
+        { "id": "stop-library", "name": "Senate & Library Plaza", "position": [0, 0, -36], "duration": 4.0 },
+        { "id": "stop-hostel", "name": "Hostel & Game Den", "position": [32, 0, -16], "duration": 4.0 },
+        { "id": "stop-bank", "name": "Microfinance Bank", "position": [32, 0, 20], "duration": 4.0 },
+        { "id": "stop-wplaza", "name": "W-Landmark Plaza", "position": [0, 0, 28], "duration": 4.0 }
       ],
       "waypoints": [
-        [-22, 0, 20],
-        [-20, 0, 12],
-        [-20, 0, 5],
-        [-20, 0, -3],
-        [-20, 0, -10],
-        [-22, 0, -18],
-        [-26, 0, -24],
-        [-15, 0, -24],
-        [0, 0, -24],
-        [12, 0, -24],
-        [22, 0, -18],
-        [22, 0, -12],
-        [22, 0, 0],
-        [24, 0, 14],
-        [15, 0, 22],
-        [0, 0, 22],
-        [-12, 0, 22],
-        [-22, 0, 20]
+        [-30, 0, 26],
+        [-28, 0, 16],
+        [-28, 0, 6],
+        [-28, 0, -5],
+        [-28, 0, -16],
+        [-30, 0, -28],
+        [-38, 0, -36],
+        [-20, 0, -36],
+        [0, 0, -36],
+        [18, 0, -36],
+        [32, 0, -28],
+        [32, 0, -16],
+        [32, 0, 0],
+        [32, 0, 20],
+        [20, 0, 28],
+        [0, 0, 28],
+        [-16, 0, 28],
+        [-30, 0, 26]
       ]
     }
   ],
@@ -197,40 +197,40 @@
       "type": "atm",
       "label": "Access FUNAAB ATM",
       "actionText": "Check Balance & Transfer Cash",
-      "position": [24, 0, 22.2],
-      "radius": 3.5
+      "position": [32, 0, 28.5],
+      "radius": 4.0
     },
     {
       "id": "food-stall-1",
       "type": "food",
       "label": "Tantalizers / Mama Buka Food Stand",
       "actionText": "Buy Hot Jollof & Suya",
-      "position": [-20, 0, 7],
-      "radius": 3.5
+      "position": [-28, 0, 9.5],
+      "radius": 4.0
     },
     {
       "id": "floral-world-counter",
       "type": "food",
       "label": "Floral World Restaurant Counter",
       "actionText": "Order Floral World Specials (from ₦150)",
-      "position": [-24, 0, -20],
-      "radius": 3.8
+      "position": [-32, 0, -25],
+      "radius": 4.2
     },
     {
       "id": "floral-world-dining",
       "type": "restaurant_dining",
       "label": "Floral World Outdoor Dining",
       "actionText": "Sit & Dine with Friends",
-      "position": [-22, 0, -18],
-      "radius": 3.5
+      "position": [-30, 0, -22],
+      "radius": 4.0
     },
     {
       "id": "lecture-hall-colfhec",
       "type": "lecture_hall",
       "label": "COLFHEC Lecture Hall 1",
       "actionText": "Enter Food Chemistry Lecture",
-      "position": [-30, 0, -24],
-      "radius": 4.2,
+      "position": [-40, 0, -36],
+      "radius": 4.5,
       "targetId": "funaab-fst-201"
     },
     {
@@ -238,8 +238,8 @@
       "type": "lecture_hall",
       "label": "Central Lecture Theatre",
       "actionText": "Enter Thermodynamics Lecture",
-      "position": [-8, 0, -24],
-      "radius": 4.2,
+      "position": [-10, 0, -36],
+      "radius": 4.5,
       "targetId": "funaab-eng-203"
     },
     {
@@ -247,8 +247,8 @@
       "type": "lecture_hall",
       "label": "COLBIOS Lecture Hall A",
       "actionText": "Enter Genetics Lecture",
-      "position": [8, 0, -24],
-      "radius": 4.2,
+      "position": [10, 0, -36],
+      "radius": 4.5,
       "targetId": "funaab-bio-205"
     },
     {
@@ -256,40 +256,40 @@
       "type": "playstation",
       "label": "FUNAAB PS5 Match Station",
       "actionText": "Challenge Peer to 1v1 Penalty Showdown",
-      "position": [28, 0, -4],
-      "radius": 3.2
+      "position": [38, 0, -3],
+      "radius": 4.0
     },
     {
       "id": "keke-stop-1",
       "type": "keke_stop",
       "label": "Campus Keke Terminal",
       "actionText": "Board Keke Tour (₦50)",
-      "position": [-22, 0, 20],
-      "radius": 4.5
+      "position": [-30, 0, 26],
+      "radius": 5.0
     },
     {
       "id": "job-board-carpark",
       "type": "job_board",
       "label": "Campus Jobs & Errands Board",
       "actionText": "View Available Jobs & Earn Cash",
-      "position": [-22, 0, 16],
-      "radius": 4.0
+      "position": [-30, 0, 20],
+      "radius": 4.2
     },
     {
       "id": "job-board-food",
       "type": "job_board",
       "label": "Mama Buka Delivery Board",
       "actionText": "Accept Food Delivery Job (₦300)",
-      "position": [-18, 0, 8],
-      "radius": 4.0
+      "position": [-25, 0, 10],
+      "radius": 4.2
     },
     {
       "id": "job-board-sports",
       "type": "job_board",
       "label": "Sports Assistant Board",
       "actionText": "Accept Sports Task (₦200)",
-      "position": [-26, 0, 2],
-      "radius": 4.0
+      "position": [-36, 0, 2],
+      "radius": 4.2
     }
   ],
   "terrainZones": [
@@ -298,175 +298,175 @@
       "name": "Sports Centre Football Turf",
       "type": "sports",
       "restricted": false,
-      "bounds": { "minX": -52, "maxX": -24, "minZ": -12, "maxZ": 12 }
+      "bounds": { "minX": -70, "maxX": -34, "minZ": -16, "maxZ": 16 }
     },
     {
       "id": "road-ceremonial",
       "name": "Ceremonial Boulevard",
       "type": "road",
       "restricted": false,
-      "bounds": { "minX": -6, "maxX": 6, "minZ": 14, "maxZ": 50 }
+      "bounds": { "minX": -8, "maxX": 8, "minZ": 24, "maxZ": 65 }
     },
     {
       "id": "road-central-ring",
       "name": "Central Campus Ring Road",
       "type": "road",
       "restricted": false,
-      "bounds": { "minX": -45, "maxX": 45, "minZ": 16, "maxZ": 24 }
+      "bounds": { "minX": -60, "maxX": 60, "minZ": 22, "maxZ": 34 }
     },
     {
       "id": "road-western-ave",
       "name": "Western Campus Avenue",
       "type": "road",
       "restricted": false,
-      "bounds": { "minX": -24, "maxX": -16, "minZ": -30, "maxZ": 20 }
+      "bounds": { "minX": -34, "maxX": -24, "minZ": -40, "maxZ": 28 }
     },
     {
       "id": "road-eastern-ave",
       "name": "Eastern Campus Avenue",
       "type": "road",
       "restricted": false,
-      "bounds": { "minX": 20, "maxX": 28, "minZ": -30, "maxZ": 20 }
+      "bounds": { "minX": 26, "maxX": 38, "minZ": -40, "maxZ": 28 }
     },
     {
       "id": "road-academic-ring",
       "name": "Northern Academic Avenue",
       "type": "road",
       "restricted": false,
-      "bounds": { "minX": -32, "maxX": 28, "minZ": -29, "maxZ": -21 }
+      "bounds": { "minX": -45, "maxX": 38, "minZ": -42, "maxZ": -30 }
     },
     {
       "id": "path-carpark-food",
       "name": "Car Park - Food Court Paved Walkway",
       "type": "path",
       "restricted": false,
-      "bounds": { "minX": -24, "maxX": -17, "minZ": 2, "maxZ": 20 }
+      "bounds": { "minX": -34, "maxX": -24, "minZ": 2, "maxZ": 28 }
     },
     {
       "id": "path-central-promenade",
       "name": "Central Senate Paved Promenade",
       "type": "path",
       "restricted": false,
-      "bounds": { "minX": -4, "maxX": 4, "minZ": -24, "maxZ": 18 }
+      "bounds": { "minX": -5, "maxX": 5, "minZ": -36, "maxZ": 24 }
     },
     {
       "id": "path-colfhec-walkway",
       "name": "COLFHEC Academic Walkway",
       "type": "path",
       "restricted": false,
-      "bounds": { "minX": -32, "maxX": -18, "minZ": -28, "maxZ": -20 }
+      "bounds": { "minX": -44, "maxX": -24, "minZ": -40, "maxZ": -26 }
     },
     {
       "id": "path-hostel-walkway",
       "name": "Hostel & Bank Paved Walkway",
       "type": "path",
       "restricted": false,
-      "bounds": { "minX": 18, "maxX": 28, "minZ": -22, "maxZ": 16 }
+      "bounds": { "minX": 24, "maxX": 38, "minZ": -30, "maxZ": 22 }
     },
     {
       "id": "plaza-w-landmark",
       "name": "W-Landmark Ceremonial Plaza",
       "type": "plaza",
       "restricted": false,
-      "bounds": { "minX": -12, "maxX": 12, "minZ": 12, "maxZ": 24 }
+      "bounds": { "minX": -16, "maxX": 16, "minZ": 16, "maxZ": 32 }
     },
     {
       "id": "plaza-senate",
       "name": "Senate & Library Quadrangle",
       "type": "plaza",
       "restricted": false,
-      "bounds": { "minX": -16, "maxX": 16, "minZ": -38, "maxZ": -20 }
+      "bounds": { "minX": -22, "maxX": 22, "minZ": -52, "maxZ": -28 }
     },
     {
       "id": "carpark-main",
       "name": "Main Car Park Lot",
       "type": "carpark",
       "restricted": false,
-      "bounds": { "minX": -32, "maxX": -12, "minZ": 12, "maxZ": 28 }
+      "bounds": { "minX": -44, "maxX": -16, "minZ": 16, "maxZ": 36 }
     },
     {
       "id": "building-colfhec",
       "name": "COLFHEC Lecture Building",
       "type": "building",
       "restricted": false,
-      "bounds": { "minX": -36, "maxX": -20, "minZ": -40, "maxZ": -24 }
+      "bounds": { "minX": -48, "maxX": -28, "minZ": -54, "maxZ": -34 }
     },
     {
       "id": "building-health",
       "name": "Health Centre Hall",
       "type": "building",
       "restricted": false,
-      "bounds": { "minX": -26, "maxX": -14, "minZ": -16, "maxZ": -4 }
+      "bounds": { "minX": -36, "maxX": -20, "minZ": -24, "maxZ": -8 }
     },
     {
       "id": "building-food",
       "name": "Tantalizers Canteen Area",
       "type": "building",
       "restricted": false,
-      "bounds": { "minX": -24, "maxX": -16, "minZ": 0, "maxZ": 10 }
+      "bounds": { "minX": -34, "maxX": -22, "minZ": 0, "maxZ": 14 }
     },
     {
       "id": "building-bank",
       "name": "Bank & ATM Pavilion",
       "type": "building",
       "restricted": false,
-      "bounds": { "minX": 18, "maxX": 30, "minZ": 12, "maxZ": 24 }
+      "bounds": { "minX": 24, "maxX": 40, "minZ": 16, "maxZ": 32 }
     },
     {
       "id": "building-hostel",
       "name": "Hostel & Game Den Block",
       "type": "building",
       "restricted": false,
-      "bounds": { "minX": 20, "maxX": 34, "minZ": -18, "maxZ": -4 }
+      "bounds": { "minX": 28, "maxX": 46, "minZ": -24, "maxZ": -6 }
     },
     {
       "id": "lawn-gate-west",
       "name": "Ceremonial Gate West Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": -28, "maxX": -6, "minZ": 26, "maxZ": 46 }
+      "bounds": { "minX": -38, "maxX": -8, "minZ": 34, "maxZ": 60 }
     },
     {
       "id": "lawn-gate-east",
       "name": "Ceremonial Gate East Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": 6, "maxX": 28, "minZ": 26, "maxZ": 46 }
+      "bounds": { "minX": 8, "maxX": 38, "minZ": 34, "maxZ": 60 }
     },
     {
       "id": "lawn-central-west",
       "name": "Central Campus West Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": -16, "maxX": -4, "minZ": -18, "maxZ": 14 }
+      "bounds": { "minX": -22, "maxX": -5, "minZ": -24, "maxZ": 20 }
     },
     {
       "id": "lawn-central-east",
       "name": "Central Campus East Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": 4, "maxX": 20, "minZ": -18, "maxZ": 14 }
+      "bounds": { "minX": 5, "maxX": 26, "minZ": -24, "maxZ": 20 }
     },
     {
       "id": "lawn-senate-front",
       "name": "Senate Front Ornamental Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": -12, "maxX": 12, "minZ": -20, "maxZ": -10 }
+      "bounds": { "minX": -18, "maxX": 18, "minZ": -28, "maxZ": -14 }
     },
     {
       "id": "lawn-colfhec-border",
       "name": "COLFHEC Border Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": -38, "maxX": -26, "minZ": -20, "maxZ": 12 }
+      "bounds": { "minX": -50, "maxX": -34, "minZ": -28, "maxZ": 16 }
     },
     {
       "id": "lawn-hostel-meadow",
       "name": "Hostel Green Belt Lawn",
       "type": "lawn",
       "restricted": true,
-      "bounds": { "minX": 28, "maxX": 48, "minZ": -26, "maxZ": 2 }
+      "bounds": { "minX": 36, "maxX": 62, "minZ": -36, "maxZ": 4 }
     }
   ],
   "kekeDestinations": [
@@ -474,7 +474,7 @@
       "id": "dest-carpark",
       "name": "Main Car Park & Keke Terminal",
       "fare": 50,
-      "position": [-22, 0, 20],
+      "position": [-30, 0, 26],
       "stopIndex": 0,
       "icon": "🚏",
       "description": "Central campus parking and major transport hub."
@@ -483,7 +483,7 @@
       "id": "dest-food",
       "name": "Tantalizers & Campus Buka",
       "fare": 50,
-      "position": [-20, 0, 5],
+      "position": [-28, 0, 6],
       "stopIndex": 1,
       "icon": "🍗",
       "description": "Hot Jollof, shawarma, suya, and drinks."
@@ -492,7 +492,7 @@
       "id": "dest-sports",
       "name": "FUNAAB Sports Centre",
       "fare": 70,
-      "position": [-20, 0, 0],
+      "position": [-28, 0, 0],
       "stopIndex": 2,
       "icon": "⚽",
       "description": "Football pitch, running track, and sports field."
@@ -501,7 +501,7 @@
       "id": "dest-health",
       "name": "FUNAAB Health Centre",
       "fare": 70,
-      "position": [-20, 0, -10],
+      "position": [-28, 0, -16],
       "stopIndex": 3,
       "icon": "🏥",
       "description": "University medical clinic and pharmacy."
@@ -510,7 +510,7 @@
       "id": "dest-colfhec",
       "name": "COLFHEC Academic Complex",
       "fare": 100,
-      "position": [-26, 0, -24],
+      "position": [-38, 0, -36],
       "stopIndex": 4,
       "icon": "🏛️",
       "description": "Food Science and Human Ecology lecture halls."
@@ -519,7 +519,7 @@
       "id": "dest-library",
       "name": "Senate & 'Nimbe Adedipe Library",
       "fare": 100,
-      "position": [0, 0, -24],
+      "position": [0, 0, -36],
       "stopIndex": 5,
       "icon": "📚",
       "description": "Administrative headquarters and central library."
@@ -528,7 +528,7 @@
       "id": "dest-hostel",
       "name": "Iyalode Hostel & Game Den",
       "fare": 120,
-      "position": [22, 0, -12],
+      "position": [32, 0, -16],
       "stopIndex": 6,
       "icon": "🎮",
       "description": "Student hostels and 1v1 PlayStation 5 room."
@@ -537,7 +537,7 @@
       "id": "dest-bank",
       "name": "Microfinance Bank & ATM",
       "fare": 100,
-      "position": [24, 0, 14],
+      "position": [32, 0, 20],
       "stopIndex": 7,
       "icon": "🏦",
       "description": "Check balance, cash transfers, and ATM."
@@ -546,7 +546,7 @@
       "id": "dest-wplaza",
       "name": "W-Landmark Plaza",
       "fare": 50,
-      "position": [0, 0, 22],
+      "position": [0, 0, 28],
       "stopIndex": 8,
       "icon": "🏛️",
       "description": "Twin-Triangle ceremonial monument quadrangle."
@@ -555,7 +555,7 @@
       "id": "dest-floral-world",
       "name": "Floral World Restaurant / COLFHEC",
       "fare": 100,
-      "position": [-24, 0, -20],
+      "position": [-32, 0, -28],
       "stopIndex": 4,
       "icon": "🌸",
       "description": "Popular student eatery, garden diner, and COLFHEC lecture precinct."
@@ -567,14 +567,14 @@
       "name": "Officer Babatunde",
       "title": "Central Quad Patrol",
       "speed": 2.2,
-      "detectionRadius": 13.0,
+      "detectionRadius": 14.0,
       "points": [
-        [0, 0, 16],
-        [12, 0, 4],
-        [12, 0, -14],
-        [0, 0, -22],
-        [-12, 0, -14],
-        [-12, 0, 4]
+        [0, 0, 20],
+        [16, 0, 4],
+        [16, 0, -18],
+        [0, 0, -28],
+        [-16, 0, -18],
+        [-16, 0, 4]
       ]
     },
     {
@@ -582,12 +582,12 @@
       "name": "Officer Adeyemi",
       "title": "Ceremonial Avenue Patrol",
       "speed": 2.0,
-      "detectionRadius": 13.0,
+      "detectionRadius": 14.0,
       "points": [
-        [-8, 0, 24],
-        [-8, 0, 42],
-        [8, 0, 42],
-        [8, 0, 24]
+        [-10, 0, 30],
+        [-10, 0, 54],
+        [10, 0, 54],
+        [10, 0, 30]
       ]
     },
     {
@@ -595,13 +595,13 @@
       "name": "Officer Okon",
       "title": "College Shortcut Patrol",
       "speed": 2.3,
-      "detectionRadius": 13.0,
+      "detectionRadius": 14.0,
       "points": [
-        [-16, 0, 18],
-        [-16, 0, 2],
-        [-16, 0, -16],
-        [-24, 0, -16],
-        [-24, 0, 2]
+        [-22, 0, 24],
+        [-22, 0, 4],
+        [-22, 0, -22],
+        [-32, 0, -22],
+        [-32, 0, 4]
       ]
     }
   ],

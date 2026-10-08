@@ -38,86 +38,86 @@ export const CampusEnvironment: React.FC = () => {
   return (
     <group>
       {/* ══════════════════════════════════════════════════════════════════════
-          1. TERRAIN & WORLD PERIMETER BOUNDARIES
+          1. TERRAIN & WORLD PERIMETER BOUNDARIES (Spacious 200m x 200m footprint)
       ══════════════════════════════════════════════════════════════════════ */}
       <RigidBody type="fixed" colliders={false}>
         {/* FUNAAB Campus Grass Lawn */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-          <planeGeometry args={[160, 160]} />
+          <planeGeometry args={[220, 220]} />
           <meshStandardMaterial color="#2d5526" roughness={0.9} />
         </mesh>
 
         {/* Physical Ground Plane Collider */}
-        <CuboidCollider args={[80, 0.5, 80]} position={[0, -0.5, 0]} />
+        <CuboidCollider args={[110, 0.5, 110]} position={[0, -0.5, 0]} />
 
-        {/* 4 Invisible World Perimeter Walls (Bounds: ±70m) */}
-        <CuboidCollider args={[75, 4, 1]} position={[0, 4, -70.5]} />
-        <CuboidCollider args={[75, 4, 1]} position={[0, 4, 70.5]} />
-        <CuboidCollider args={[1, 4, 75]} position={[-70.5, 4, 0]} />
-        <CuboidCollider args={[1, 4, 75]} position={[70.5, 4, 0]} />
+        {/* 4 Invisible World Perimeter Walls (Bounds: ±95m) */}
+        <CuboidCollider args={[100, 4, 1]} position={[0, 4, -95.5]} />
+        <CuboidCollider args={[100, 4, 1]} position={[0, 4, 95.5]} />
+        <CuboidCollider args={[1, 4, 100]} position={[-95.5, 4, 0]} />
+        <CuboidCollider args={[1, 4, 100]} position={[95.5, 4, 0]} />
       </RigidBody>
 
       {/* ══════════════════════════════════════════════════════════════════════
           2. CAMPUS ROAD NETWORK (Asphalt, Kerbs & Crossings)
       ══════════════════════════════════════════════════════════════════════ */}
       <group>
-        {/* A. Ceremonial Road (North-South Main Boulevard: from Main Gate Z:48 to Z:16) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 33]} receiveShadow>
-          <planeGeometry args={[9, 32]} />
+        {/* A. Ceremonial Road (North-South Main Boulevard: from Main Gate Z:58 to Z:28) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 43]} receiveShadow>
+          <planeGeometry args={[10, 32]} />
           <meshStandardMaterial color="#1e293b" roughness={0.8} />
         </mesh>
         {/* Yellow Central Dividing Strip */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 33]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 43]}>
           <planeGeometry args={[0.35, 30]} />
           <meshStandardMaterial color="#facc15" />
         </mesh>
 
-        {/* B. Central Plaza Ring Road (East-West Boulevard at Z: 20) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 20]} receiveShadow>
-          <planeGeometry args={[90, 7]} />
+        {/* B. Central Plaza Ring Road (East-West Boulevard at Z: 28) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 28]} receiveShadow>
+          <planeGeometry args={[120, 8]} />
           <meshStandardMaterial color="#1e293b" roughness={0.8} />
         </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 20]}>
-          <planeGeometry args={[88, 0.35]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 28]}>
+          <planeGeometry args={[118, 0.35]} />
           <meshStandardMaterial color="#facc15" />
         </mesh>
 
-        {/* C. Western Avenue (Past Sports Centre & Health Centre: X = -20 from Z: 20 to Z: -25) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-20, 0.01, -2.5]} receiveShadow>
-          <planeGeometry args={[7, 45]} />
+        {/* C. Western Avenue (Past Sports Centre & Health Centre: X = -28 from Z: 28 to Z: -36) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-28, 0.01, -4]} receiveShadow>
+          <planeGeometry args={[8, 64]} />
           <meshStandardMaterial color="#1e293b" roughness={0.8} />
         </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-20, 0.02, -2.5]}>
-          <planeGeometry args={[0.35, 43]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-28, 0.02, -4]}>
+          <planeGeometry args={[0.35, 62]} />
           <meshStandardMaterial color="#facc15" />
         </mesh>
 
-        {/* D. Eastern Avenue (Past Bank & Hostels: X = 24 from Z: 20 to Z: -25) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[24, 0.01, -2.5]} receiveShadow>
-          <planeGeometry args={[7, 45]} />
+        {/* D. Eastern Avenue (Past Bank & Hostels: X = 32 from Z: 28 to Z: -36) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[32, 0.01, -4]} receiveShadow>
+          <planeGeometry args={[8, 64]} />
           <meshStandardMaterial color="#1e293b" roughness={0.8} />
         </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[24, 0.02, -2.5]}>
-          <planeGeometry args={[0.35, 43]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[32, 0.02, -4]}>
+          <planeGeometry args={[0.35, 62]} />
           <meshStandardMaterial color="#facc15" />
         </mesh>
 
-        {/* E. Northern Academic Ring Road (East-West at Z: -25 connecting Faculties & Senate) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2, 0.01, -25]} receiveShadow>
-          <planeGeometry args={[55, 7]} />
+        {/* E. Northern Academic Ring Road (East-West at Z: -36 connecting Faculties & Senate) */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, -36]} receiveShadow>
+          <planeGeometry args={[80, 8]} />
           <meshStandardMaterial color="#1e293b" roughness={0.8} />
         </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2, 0.02, -25]}>
-          <planeGeometry args={[53, 0.35]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -36]}>
+          <planeGeometry args={[78, 0.35]} />
           <meshStandardMaterial color="#facc15" />
         </mesh>
 
         {/* Pedestrian Zebra Crossings */}
-        {[-20, 0, 24].map((x, i) => (
-          <group key={i} position={[x, 0.025, 20]}>
-            {[-2.4, -1.2, 0, 1.2, 2.4].map((offset, j) => (
+        {[-28, 0, 32].map((x, i) => (
+          <group key={i} position={[x, 0.025, 28]}>
+            {[-2.8, -1.4, 0, 1.4, 2.8].map((offset, j) => (
               <mesh key={j} rotation={[-Math.PI / 2, 0, 0]} position={[offset, 0, 0]}>
-                <planeGeometry args={[0.7, 3.5]} />
+                <planeGeometry args={[0.8, 4.0]} />
                 <meshStandardMaterial color="#f8fafc" roughness={0.5} />
               </mesh>
             ))}
@@ -126,43 +126,43 @@ export const CampusEnvironment: React.FC = () => {
 
         {/* ─── DESIGNATED LEGAL PAVED WALKWAYS & FOOTPATHS ─── */}
         {/* 1. Central Promenade: W-Plaza to Senate Quad */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, -2]} receiveShadow>
-          <planeGeometry args={[3.8, 38]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, -6]} receiveShadow>
+          <planeGeometry args={[4.5, 52]} />
           <meshStandardMaterial color="#94a3b8" roughness={0.7} />
         </mesh>
 
         {/* 2. Western Sidewalk: Car Park -> Food Court -> Health Centre -> COLFHEC */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-16, 0.015, -2.5]} receiveShadow>
-          <planeGeometry args={[2.5, 44]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-23, 0.015, -4]} receiveShadow>
+          <planeGeometry args={[3.0, 62]} />
           <meshStandardMaterial color="#94a3b8" roughness={0.7} />
         </mesh>
 
         {/* 3. Eastern Sidewalk: Bank -> Hostels -> Agromet */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[20, 0.015, -2.5]} receiveShadow>
-          <planeGeometry args={[2.5, 44]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[27, 0.015, -4]} receiveShadow>
+          <planeGeometry args={[3.0, 62]} />
           <meshStandardMaterial color="#94a3b8" roughness={0.7} />
         </mesh>
 
         {/* 4. Northern Academic Walkway connecting COLFHEC, Senate & Hostels */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, -21]} receiveShadow>
-          <planeGeometry args={[56, 2.8]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, -31]} receiveShadow>
+          <planeGeometry args={[78, 3.2]} />
           <meshStandardMaterial color="#94a3b8" roughness={0.7} />
         </mesh>
 
         {/* 5. Food Court to Sports Centre Pitch Footpath */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-25, 0.015, 5]} receiveShadow>
-          <planeGeometry args={[8, 3.2]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-36, 0.015, 6]} receiveShadow>
+          <planeGeometry args={[14, 3.6]} />
           <meshStandardMaterial color="#94a3b8" roughness={0.7} />
         </mesh>
 
         {/* ─── 3D "KEEP OFF THE LAWN" CAMPUS SIGNPOSTS ─── */}
         {[
-          { pos: [-6, 0, 14], rot: 0 },
-          { pos: [6, 0, 14], rot: 0 },
-          { pos: [-6, 0, -18], rot: Math.PI },
-          { pos: [6, 0, -18], rot: Math.PI },
-          { pos: [-16, 0, 10], rot: Math.PI / 2 },
-          { pos: [19, 0, 10], rot: -Math.PI / 2 },
+          { pos: [-8, 0, 20], rot: 0 },
+          { pos: [8, 0, 20], rot: 0 },
+          { pos: [-8, 0, -26], rot: Math.PI },
+          { pos: [8, 0, -26], rot: Math.PI },
+          { pos: [-22, 0, 14], rot: Math.PI / 2 },
+          { pos: [26, 0, 14], rot: -Math.PI / 2 },
         ].map((sign, idx) => (
           <group key={idx} position={[sign.pos[0], 0, sign.pos[2]]} rotation={[0, sign.rot, 0]}>
             {/* Wooden/Metal Post */}
@@ -179,7 +179,7 @@ export const CampusEnvironment: React.FC = () => {
               <boxGeometry args={[1.1, 0.5, 0.01]} />
               <meshStandardMaterial color="#ffffff" />
             </mesh>
-            <Html position={[0, 1.1, 0.05]} center distanceFactor={14} style={{ pointerEvents: 'none' }}>
+            <Html position={[0, 1.1, 0.05]} center distanceFactor={14} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
               <div className="text-[7px] font-black tracking-tight text-emerald-950 font-['Outfit'] text-center uppercase leading-tight select-none">
                 <div>🌿 FUNAAB LAWN</div>
                 <div className="text-red-600 font-extrabold">KEEP OFF GRASS</div>
@@ -192,9 +192,9 @@ export const CampusEnvironment: React.FC = () => {
 
       {/* ══════════════════════════════════════════════════════════════════════
           3. CEREMONIAL MAIN GATE (Hero Monument Inspired by Image B)
-          Position: [0, 0, 44]
+          Position: [0, 0, 58]
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[0, 0, 44]}>
+      <group position={[0, 0, 58]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
           <group position={[0, 0, 0]}>
@@ -320,9 +320,9 @@ export const CampusEnvironment: React.FC = () => {
 
       {/* ══════════════════════════════════════════════════════════════════════
           4. THE ICONIC W-LANDMARK / RESUMPTION PLAZA (Inspired by Image C)
-          Position: [0, 0, 18]
+          Position: [0, 0, 24]
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[0, 0, 18]}>
+      <group position={[0, 0, 24]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Paved Elevated Stone Plaza */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
@@ -398,9 +398,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          5. MAIN CAR PARK & KEKE TERMINAL (Position: [-22, 0, 20])
+          5. MAIN CAR PARK & KEKE TERMINAL (Position: [-30, 0, 26])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-22, 0, 20]}>
+      <group position={[-30, 0, 26]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Paved Parking Lot */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
@@ -447,9 +447,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          6. FUNAAB SPORTS CENTRE & FOOTBALL PITCH (Position: [-38, 0, 0])
+          6. FUNAAB SPORTS CENTRE & FOOTBALL PITCH (Position: [-50, 0, 0])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-38, 0, 0]}>
+      <group position={[-50, 0, 0]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Football Field Turf */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
@@ -542,9 +542,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          7. TANTALIZERS & CAMPUS BUKA (Position: [-20, 0, 5])
+          7. TANTALIZERS & CAMPUS BUKA (Position: [-28, 0, 6])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-20, 0, 5]}>
+      <group position={[-28, 0, 6]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Food Stall Kiosk */}
           <mesh position={[0, 1.8, 0]} castShadow>
@@ -598,9 +598,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          8. FUNAAB HEALTH CENTRE (Position: [-20, 0, -10])
+          8. FUNAAB HEALTH CENTRE (Position: [-28, 0, -16])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-20, 0, -10]}>
+      <group position={[-28, 0, -16]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main Clinic Hall (Width 12, Height 5, Depth 8) */}
           <mesh position={[0, 2.5, 0]} castShadow>
@@ -643,9 +643,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          9. SENATE BUILDING & 'NIMBE ADEDIPE LIBRARY (Position: [0, 0, -32])
+          9. SENATE BUILDING & 'NIMBE ADEDIPE LIBRARY (Position: [0, 0, -44])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[0, 0, -32]}>
+      <group position={[0, 0, -44]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main 3-tier Central Complex */}
           <mesh position={[0, 3.5, 0]} castShadow>
@@ -688,10 +688,10 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          10. COLFHEC ACADEMIC BUILDING (Position: [-28, 0, -32])
+          10. COLFHEC ACADEMIC BUILDING (Position: [-38, 0, -44])
           ENTERABLE: Wall colliders surround the perimeter with open doorway
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-28, 0, -32]}>
+      <group position={[-38, 0, -44]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main 2-story Hall (Width 20, Depth 14, Height 8) */}
           <mesh position={[0, 4, 0]} castShadow>
@@ -746,8 +746,8 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           11. COLENG & COLERM/COLPLANT FACULTY ZONES
       ══════════════════════════════════════════════════════════════════════ */}
-      {/* COLENG Engineering Complex (Position: [-14, 0, -44]) */}
-      <group position={[-14, 0, -44]}>
+      {/* COLENG Engineering Complex (Position: [-18, 0, -60]) */}
+      <group position={[-18, 0, -60]}>
         <RigidBody type="fixed" colliders={false}>
           <mesh position={[0, 3.0, 0]} castShadow>
             <boxGeometry args={[14, 6, 8]} />
@@ -766,8 +766,8 @@ export const CampusEnvironment: React.FC = () => {
         </Html>
       </group>
 
-      {/* COLERM & COLPLANT Plaza (Position: [18, 0, -32]) */}
-      <group position={[18, 0, -32]}>
+      {/* COLERM & COLPLANT Plaza (Position: [26, 0, -44]) */}
+      <group position={[26, 0, -44]}>
         <RigidBody type="fixed" colliders={false}>
           <mesh position={[0, 3.5, 0]} castShadow>
             <boxGeometry args={[14, 7, 10]} />
@@ -787,9 +787,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          12. BANK & ATM GALLERY (Position: [24, 0, 18])
+          12. BANK & ATM GALLERY (Position: [32, 0, 24])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[24, 0, 18]}>
+      <group position={[32, 0, 24]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main Bank Hall */}
           <mesh position={[0, 2.5, 0]} castShadow>
@@ -826,9 +826,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          13. AGROMET METEOROLOGICAL STATION (Position: [36, 0, 5])
+          13. AGROMET METEOROLOGICAL STATION (Position: [48, 0, 6])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[36, 0, 5]}>
+      <group position={[48, 0, 6]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Station Enclosure Ground */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
@@ -865,9 +865,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          14. IYALODE HOSTEL & PLAYSTATION GAME DEN (Position: [26, 0, -12])
+          14. IYALODE HOSTEL & PLAYSTATION GAME DEN (Position: [34, 0, -16])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[26, 0, -12]}>
+      <group position={[34, 0, -16]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Hostel Dormitory Block (Background) */}
           <mesh position={[0, 5, -8]} castShadow>
@@ -891,8 +891,8 @@ export const CampusEnvironment: React.FC = () => {
           </mesh>
           <CuboidCollider args={[2.0, 0.5, 1.0]} position={[-4, 0.5, 2]} />
 
-          {/* FUNAAB Game Den (PlayStation 5 Room at [28, 0, -6] relative to group: [+2, 0, +6]) */}
-          <group position={[2, 0, 6]}>
+          {/* FUNAAB Game Den (PlayStation 5 Room at [38, 0, -6] relative to group: [+4, 0, +10]) */}
+          <group position={[4, 0, 10]}>
             <mesh position={[0, 2.5, 0]} castShadow>
               <boxGeometry args={[8, 5, 6]} />
               <meshStandardMaterial color="#0f172a" roughness={0.3} />
@@ -916,7 +916,7 @@ export const CampusEnvironment: React.FC = () => {
           </div>
         </Html>
 
-        <Html position={[2, 4.4, 9.2]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
+        <Html position={[4, 4.4, 13.2]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-indigo-950/90 border border-indigo-400 text-indigo-300 text-xs font-extrabold font-['Outfit'] shadow-xl whitespace-nowrap">
             🎮 FUNAAB Game Den (PS5 Room)
           </div>
@@ -973,9 +973,9 @@ export const CampusEnvironment: React.FC = () => {
           16. CAMPUS SOLAR STREETLIGHTS (Glowing Lighting)
       ══════════════════════════════════════════════════════════════════════ */}
       {[
-        [-4.5, 0, 36], [4.5, 0, 36], [-4.5, 0, 26], [4.5, 0, 26],
-        [-10, 0, 20], [10, 0, 20], [-20, 0, 12], [-20, 0, -4],
-        [24, 0, 12], [24, 0, -4], [0, 0, -25], [-18, 0, -25]
+        [-5.5, 0, 48], [5.5, 0, 48], [-5.5, 0, 34], [5.5, 0, 34],
+        [-14, 0, 26], [14, 0, 26], [-28, 0, 16], [-28, 0, -6],
+        [32, 0, 16], [32, 0, -6], [0, 0, -34], [-24, 0, -34]
       ].map((pos, idx) => (
         <group key={idx} position={[pos[0], pos[1], pos[2]]}>
           {/* Pole */}
@@ -1001,9 +1001,9 @@ export const CampusEnvironment: React.FC = () => {
           17. CAMPUS JOB BOARDS (Physical Notice Boards across Campus)
       ══════════════════════════════════════════════════════════════════════ */}
       {[
-        { pos: [-22, 0, 16], rot: 0, title: 'Car Park Job Board' },
-        { pos: [-18, 0, 8], rot: -Math.PI / 4, title: "Mama's Delivery Board" },
-        { pos: [-26, 0, 2], rot: Math.PI / 3, title: 'Sports Assistant Board' },
+        { pos: [-30, 0, 22], rot: 0, title: 'Car Park Job Board' },
+        { pos: [-26, 0, 10], rot: -Math.PI / 4, title: "Mama's Delivery Board" },
+        { pos: [-36, 0, 2], rot: Math.PI / 3, title: 'Sports Assistant Board' },
       ].map((board, idx) => (
         <group key={idx} position={[board.pos[0], 0, board.pos[2]]} rotation={[0, board.rot, 0]}>
           <RigidBody type="fixed" colliders={false}>
@@ -1049,9 +1049,9 @@ export const CampusEnvironment: React.FC = () => {
         </group>
       ))}
       {/* ══════════════════════════════════════════════════════════════════════
-          18. FLORAL WORLD RESTAURANT AT COLFHEC (Position: [-24, 0, -22])
+          18. FLORAL WORLD RESTAURANT AT COLFHEC (Position: [-32, 0, -28])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-24, 0, -22]}>
+      <group position={[-32, 0, -28]}>
         <RigidBody type="fixed" colliders={false}>
           {/* Stone Paved Dining Terrace */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
@@ -1152,9 +1152,9 @@ export const CampusEnvironment: React.FC = () => {
           19. LECTURE HALL 3D ENTRANCES & TIMETABLE NOTICE BOARDS
       ══════════════════════════════════════════════════════════════════════ */}
       {[
-        { pos: [-28, 0, -20], rot: 0, title: 'COLFHEC Lecture Hall', course: 'FST 201 • Food Chemistry' },
-        { pos: [-6, 0, -32], rot: 0, title: 'Central Lecture Theatre (CLT)', course: 'MEE 203 • Thermodynamics' },
-        { pos: [20, 0, -22], rot: 0, title: 'COLBIOS Lecture Hall', course: 'BIO 205 • Principles of Genetics' },
+        { pos: [-38, 0, -28], rot: 0, title: 'COLFHEC Lecture Hall', course: 'FST 201 • Food Chemistry' },
+        { pos: [-8, 0, -44], rot: 0, title: 'Central Lecture Theatre (CLT)', course: 'MEE 203 • Thermodynamics' },
+        { pos: [28, 0, -28], rot: 0, title: 'COLBIOS Lecture Hall', course: 'BIO 205 • Principles of Genetics' },
       ].map((hall, idx) => (
         <group key={idx} position={[hall.pos[0], 0, hall.pos[2]]} rotation={[0, hall.rot, 0]}>
           <RigidBody type="fixed" colliders={false}>

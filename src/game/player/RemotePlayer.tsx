@@ -62,6 +62,7 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
     >
       <AvatarModel
+        userId={player.id}
         username={player.username || 'Student'}
         college={player.college || 'COLENG'}
         avatarConfig={player.avatarConfig}

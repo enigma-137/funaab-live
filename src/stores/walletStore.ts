@@ -32,11 +32,22 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
     if (isSupabaseConfigured) {
       try {
-        const { data: wallet } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', userId)
-          .single();
+        // Ensure wallet exists in Postgres via idempotent bootstrap RPC
+        let currentBalance = 5000;
+        const { data: bootstrapData } = await supabase.rpc('ensure_player_wallet', {
+          p_user_id: userId,
+        });
+
+        if (bootstrapData && bootstrapData.success) {
+          currentBalance = Number(bootstrapData.balance);
+        } else {
+          const { data: wallet } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (wallet) currentBalance = Number(wallet.balance);
+        }
 
         const { data: txs } = await supabase
           .from('wallet_transactions')
@@ -49,29 +60,27 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
           .select('*')
           .eq('user_id', userId);
 
-        if (wallet) {
-          set({
-            balance: Number(wallet.balance),
-            transactions: (txs || []).map((t: any) => ({
-              id: t.id,
-              userId: t.user_id,
-              type: t.type,
-              amount: Number(t.amount),
-              balanceAfter: Number(t.balance_after),
-              description: t.description,
-              createdAt: t.created_at,
-            })),
-            inventory: (inv || []).map((i: any) => ({
-              id: i.id,
-              itemId: i.item_id,
-              itemName: i.item_name,
-              itemType: i.item_type,
-              quantity: i.quantity,
-            })),
-            isLoading: false,
-          });
-          return;
-        }
+        set({
+          balance: currentBalance,
+          transactions: (txs || []).map((t: any) => ({
+            id: t.id,
+            userId: t.user_id,
+            type: t.type,
+            amount: Number(t.amount),
+            balanceAfter: Number(t.balance_after),
+            description: t.description,
+            createdAt: t.created_at,
+          })),
+          inventory: (inv || []).map((i: any) => ({
+            id: i.id,
+            itemId: i.item_id,
+            itemName: i.item_name,
+            itemType: i.item_type,
+            quantity: i.quantity,
+          })),
+          isLoading: false,
+        });
+        return;
       } catch (e) {
         console.warn('Supabase wallet fetch failed, fallback to local:', e);
       }

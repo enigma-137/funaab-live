@@ -88,15 +88,29 @@ interface LectureRoomState {
 }
 
 const KEKE_WAYPOINTS: Array<{ pos: [number, number, number]; stopName?: string; waitTime?: number }> = [
-  { pos: [-22, 0, 20], stopName: 'Main Keke Park', waitTime: 4000 },
-  { pos: [-22, 0, 8], stopName: 'Passing Eatery' },
-  { pos: [-22, 0, -8], stopName: 'Passing Health Centre' },
-  { pos: [-26, 0, -28], stopName: 'COLFHEC / Floral World Stop', waitTime: 4000 },
-  { pos: [-8, 0, -28], stopName: 'Passing Senate' },
-  { pos: [12, 0, -28], stopName: 'JAO / Library Stop', waitTime: 3500 },
-  { pos: [24, 0, -12], stopName: 'Iyalode Hostel Stop', waitTime: 3500 },
-  { pos: [24, 0, 16], stopName: 'Bank & ATM Stop', waitTime: 3000 },
-  { pos: [0, 0, 20], stopName: 'Passing Landmark Plaza' },
+  { pos: [-30, 0, 28], stopName: 'Main Keke Park', waitTime: 4000 },
+  { pos: [-28, 0, 28] },
+  { pos: [-28, 0, 16] },
+  { pos: [-28, 0, 6], stopName: 'Food Hub Stop', waitTime: 3500 },
+  { pos: [-28, 0, -8] },
+  { pos: [-28, 0, -16], stopName: 'Health Centre Stop', waitTime: 3500 },
+  { pos: [-28, 0, -32] },
+  { pos: [-32, 0, -36], stopName: 'COLFHEC / Floral World Stop', waitTime: 4000 },
+  { pos: [-24, 0, -36] },
+  { pos: [-12, 0, -36] },
+  { pos: [0, 0, -36], stopName: 'Senate & Library Stop', waitTime: 4000 },
+  { pos: [16, 0, -36] },
+  { pos: [32, 0, -36] },
+  { pos: [32, 0, -20] },
+  { pos: [32, 0, -16], stopName: 'Iyalode Hostel Stop', waitTime: 3500 },
+  { pos: [32, 0, -4] },
+  { pos: [32, 0, 14] },
+  { pos: [32, 0, 24], stopName: 'Bank & ATM Stop', waitTime: 3500 },
+  { pos: [32, 0, 28] },
+  { pos: [16, 0, 28] },
+  { pos: [0, 0, 28], stopName: 'W-Landmark Plaza Stop', waitTime: 3500 },
+  { pos: [-16, 0, 28] },
+  { pos: [-30, 0, 28] },
 ];
 
 function getZoneName(x: number, z: number, currentLectureId?: string): string {
@@ -106,17 +120,17 @@ function getZoneName(x: number, z: number, currentLectureId?: string): string {
     if (currentLectureId.includes('bio')) return 'In Class — Genetics';
     return 'In Class';
   }
-  if (x >= -28 && x <= -20 && z >= -24 && z <= -16) return 'Floral World';
-  if (x >= -52 && x <= -24 && z >= -14 && z <= 14) return 'Sports Centre';
-  if (x >= -32 && x <= -12 && z >= 12 && z <= 28) return 'Main Car Park';
-  if (x >= -24 && x <= -16 && z >= 0 && z <= 10) return 'Campus Eatery';
-  if (x >= -26 && x <= -14 && z >= -16 && z <= -4) return 'Health Centre';
-  if (x >= -36 && x <= -20 && z >= -40 && z <= -24) return 'COLFHEC';
-  if (x >= -16 && x <= 16 && z >= -38 && z <= -20) return 'Senate & Library';
-  if (x >= 18 && x <= 30 && z >= 12 && z <= 24) return 'Bank & ATM';
-  if (x >= 20 && x <= 34 && z >= -18 && z <= -4) return 'Iyalode Hostel';
-  if (x >= -12 && x <= 12 && z >= 12 && z <= 24) return 'W-Landmark Plaza';
-  if (x >= -6 && x <= 6 && z >= 26 && z <= 50) return 'Main Gate';
+  if (x >= -40 && x <= -24 && z >= -34 && z <= -22) return 'Floral World';
+  if (x >= -65 && x <= -35 && z >= -18 && z <= 18) return 'Sports Centre';
+  if (x >= -42 && x <= -18 && z >= 16 && z <= 36) return 'Main Car Park';
+  if (x >= -36 && x <= -20 && z >= 0 && z <= 12) return 'Campus Eatery';
+  if (x >= -36 && x <= -20 && z >= -24 && z <= -8) return 'Health Centre';
+  if (x >= -48 && x <= -28 && z >= -52 && z <= -34) return 'COLFHEC';
+  if (x >= -20 && x <= 20 && z >= -52 && z <= -34) return 'Senate & Library';
+  if (x >= 22 && x <= 42 && z >= 16 && z <= 32) return 'Bank & ATM';
+  if (x >= 24 && x <= 44 && z >= -24 && z <= -8) return 'Iyalode Hostel';
+  if (x >= -14 && x <= 14 && z >= 16 && z <= 32) return 'W-Landmark Plaza';
+  if (x >= -8 && x <= 8 && z >= 44 && z <= 68) return 'Main Gate';
   return 'Campus Grounds';
 }
 

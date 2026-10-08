@@ -61,6 +61,23 @@ interface SocialState {
   resetUnread: () => void;
 }
 
+const loadInitialDms = (): Record<string, ChatMessage[]> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = sessionStorage.getItem('funaab_session_dms');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+};
+
+const saveDmsToSession = (dms: Record<string, ChatMessage[]>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem('funaab_session_dms', JSON.stringify(dms));
+  } catch (e) {}
+};
+
 export const useSocialStore = create<SocialState>((set, get) => ({
   friends: [],
   mutedUserIds: [],
@@ -78,7 +95,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   ],
   unreadCount: 0,
 
-  directMessages: {},
+  directMessages: loadInitialDms(),
   unreadDmsByPartner: {},
   activeDmPartner: null,
   unreadDmCount: 0,
@@ -148,11 +165,14 @@ export const useSocialStore = create<SocialState>((set, get) => ({
 
       const totalUnread = Object.values(updatedUnreadByPartner).reduce((acc, c) => acc + c, 0);
 
+      const updatedDms = {
+        ...state.directMessages,
+        [key]: updatedList,
+      };
+      saveDmsToSession(updatedDms);
+
       return {
-        directMessages: {
-          ...state.directMessages,
-          [key]: updatedList,
-        },
+        directMessages: updatedDms,
         unreadDmsByPartner: updatedUnreadByPartner,
         unreadDmCount: totalUnread,
         lastIncomingDm: (!isCurrentlyViewing && !isFromSelf) ? msg : state.lastIncomingDm,
