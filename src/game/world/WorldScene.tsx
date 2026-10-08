@@ -9,7 +9,6 @@ import { KekeVehicle } from '../vehicles/KekeVehicle';
 import { SecurityOfficers } from '../npc/SecurityOfficers';
 import { TouchInputController } from '../controls/TouchInputController';
 import { TapRippleEffect } from '../controls/TapRippleEffect';
-import { InteractableHitboxes } from '../controls/InteractableHitboxes';
 import { useGameStore } from '../../stores/gameStore';
 
 export const WorldScene: React.FC = () => {
@@ -65,9 +64,6 @@ export const WorldScene: React.FC = () => {
 
             {/* Campus Security Officers (Patrol & Lawn Rule Enforcement) */}
             <SecurityOfficers />
-
-            {/* Mobile / Touch Interactable Hitboxes */}
-            <InteractableHitboxes />
 
             {/* Local Controlled Player (with Kinematic RigidBody) */}
             <LocalPlayer />

@@ -60,8 +60,8 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
   };
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
+    <div style={overlayStyle} onClick={(e) => { e.stopPropagation(); onClose(); }}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         {/* Header Board style */}
         <div style={boardHeaderStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

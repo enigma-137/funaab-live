@@ -162,3 +162,124 @@ begin
   );
 end;
 $$;
+
+-- 4. SERVER-AUTHORITATIVE WALLET PURCHASE & ITEM DEDUCTION RPC
+create or replace function public.process_wallet_purchase(
+  p_type text default 'food_purchase',
+  p_amount numeric default null,
+  p_description text default null,
+  p_item_id text default null,
+  p_item_name text default null,
+  p_user_id uuid default null
+) returns jsonb language plpgsql security definer as $$
+declare
+  v_user_id uuid;
+  v_item_id text;
+  v_item_name text;
+  v_item_type text := 'food';
+  v_amount numeric;
+  v_current_balance numeric;
+  v_new_balance numeric;
+  v_description text;
+begin
+  v_user_id := coalesce(auth.uid(), p_user_id);
+  if v_user_id is null then
+    return jsonb_build_object('success', false, 'error', 'Unauthorized: User not authenticated');
+  end if;
+
+  v_item_id := p_item_id;
+
+  -- 1. Server-authoritative catalog resolution if item_id is provided
+  if v_item_id = 'fw_jollof_chicken' then
+    v_item_name := 'Jollof Rice + Chicken';
+    v_amount := 1000.00;
+    v_item_type := 'food';
+  elsif v_item_id = 'fw_fried_chicken' then
+    v_item_name := 'Fried Rice + Chicken';
+    v_amount := 1000.00;
+    v_item_type := 'food';
+  elsif v_item_id = 'fw_rice_beef' then
+    v_item_name := 'Rice + Beef';
+    v_amount := 800.00;
+    v_item_type := 'food';
+  elsif v_item_id = 'fw_spaghetti' then
+    v_item_name := 'Spaghetti Special';
+    v_amount := 700.00;
+    v_item_type := 'food';
+  elsif v_item_id = 'fw_water' then
+    v_item_name := 'Chilled Bottled Water';
+    v_amount := 150.00;
+    v_item_type := 'drink';
+  elsif v_item_id = 'fw_malt' then
+    v_item_name := 'Chilled Malt Drink';
+    v_amount := 400.00;
+    v_item_type := 'drink';
+  else
+    -- Fallback for non-menu purchases (e.g. keke fares, lawn fines)
+    v_item_name := coalesce(p_item_name, 'Campus Item');
+    v_amount := p_amount;
+  end if;
+
+  if v_amount is null or v_amount <= 0 then
+    return jsonb_build_object('success', false, 'error', 'Invalid purchase amount');
+  end if;
+
+  v_description := coalesce(p_description, v_item_name);
+
+  -- 2. Lock and ensure player wallet exists (self-healing)
+  select balance into v_current_balance
+  from public.wallets
+  where user_id = v_user_id
+  for update;
+
+  if not found then
+    insert into public.wallets (user_id, balance, starter_balance_granted_at)
+    values (v_user_id, 5000.00, now())
+    returning balance into v_current_balance;
+
+    insert into public.wallet_transactions (user_id, type, amount, balance_after, description)
+    values (v_user_id, 'starter_bonus', 5000.00, 5000.00, 'FUNAAB Resumption Starter Allowance');
+  end if;
+
+  -- 3. Check sufficient balance
+  if v_current_balance < v_amount then
+    return jsonb_build_object(
+      'success', false, 
+      'error', 'Insufficient funds! You need ₦' || v_amount::text || ' (Balance: ₦' || v_current_balance::text || ')'
+    );
+  end if;
+
+  -- 4. Deduct balance atomically
+  v_new_balance := v_current_balance - v_amount;
+  update public.wallets set balance = v_new_balance, updated_at = now() where user_id = v_user_id;
+
+  -- 5. Insert transaction ledger
+  insert into public.wallet_transactions (user_id, type, amount, balance_after, description, metadata)
+  values (
+    v_user_id,
+    coalesce(p_type, 'food_purchase'),
+    -v_amount,
+    v_new_balance,
+    v_description,
+    jsonb_build_object('itemId', v_item_id, 'itemName', v_item_name, 'itemType', v_item_type)
+  );
+
+  -- 6. Insert/update inventory if an item was purchased
+  if v_item_id is not null then
+    insert into public.inventory (user_id, item_id, item_name, item_type, quantity)
+    values (v_user_id, v_item_id, v_item_name, v_item_type, 1)
+    on conflict (user_id, item_id) do update
+    set quantity = public.inventory.quantity + 1,
+        item_name = excluded.item_name;
+  end if;
+
+  return jsonb_build_object(
+    'success', true,
+    'balance', v_new_balance,
+    'item_id', v_item_id,
+    'item_name', v_item_name,
+    'amount', v_amount
+  );
+end;
+$$;
+

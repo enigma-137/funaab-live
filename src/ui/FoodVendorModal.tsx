@@ -15,15 +15,16 @@ export const FoodVendorModal: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleBuy = async (item: FoodItem) => {
-    if (!user) return;
+    if (!user || purchasingId) return;
     setPurchasingId(item.id);
+    setSuccessMessage(null);
 
-    const ok = await purchaseFood(user.id, item);
-    if (ok) {
+    const res = await purchaseFood(user.id, item);
+    if (res.success) {
       setSuccessMessage(`Bought ${item.name}! Added to your inventory.`);
       setTimeout(() => setSuccessMessage(null), 3500);
     } else {
-      setSuccessMessage('Insufficient funds in your campus wallet!');
+      setSuccessMessage(res.error || 'Purchase failed!');
       setTimeout(() => setSuccessMessage(null), 3500);
     }
     setPurchasingId(null);

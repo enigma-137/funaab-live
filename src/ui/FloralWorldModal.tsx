@@ -13,6 +13,7 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
   const [selectedItemId, setSelectedItemId] = useState<string>(ECONOMY_CONFIG.FLORAL_WORLD_MENU[0].id);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
 
   const { balance, purchaseFood } = useWalletStore();
   const { user } = useAuthStore();
@@ -23,40 +24,52 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
   const selectedItem = ECONOMY_CONFIG.FLORAL_WORLD_MENU.find((item) => item.id === selectedItemId);
 
   const handleOrder = async (action: 'takeaway' | 'sit_and_eat') => {
-    if (!selectedItem || !user) return;
+    if (!selectedItem || !user || isPurchasing) return;
+    setErrorMsg(null);
 
     if (balance < selectedItem.price) {
-      setErrorMsg(`Insufficient funds for ${selectedItem.name}! You need ₦${selectedItem.price.toLocaleString()}.`);
-      setTimeout(() => setErrorMsg(null), 3000);
+      setErrorMsg(`Insufficient funds for ${selectedItem.name}! You need ₦${selectedItem.price.toLocaleString()} (Current Balance: ₦${balance.toLocaleString()}).`);
       return;
     }
 
-    const success = await purchaseFood(user.id, selectedItem);
+    setIsPurchasing(true);
 
-    if (success) {
-      addMessage({
-        id: `msg-fw-${Date.now()}`,
-        senderId: 'system',
-        senderName: 'Floral World',
-        college: 'COLFHEC',
-        text: action === 'sit_and_eat'
-          ? `🍽️ @${user.username} is enjoying ${selectedItem.name} at Floral World Terrace.`
-          : `🥡 @${user.username} bought ${selectedItem.name} for Take Away.`,
-        timestamp: Date.now(),
-        isSystem: true
-      });
+    try {
+      const res = await purchaseFood(user.id, selectedItem);
 
-      setPurchaseSuccess(`Ordered ${selectedItem.name} (${action === 'takeaway' ? 'Take Away' : 'Dine In'})!`);
-      setTimeout(() => {
-        setPurchaseSuccess(null);
-        onClose();
-      }, 1200);
+      if (res.success) {
+        addMessage({
+          id: `msg-fw-${Date.now()}`,
+          senderId: 'system',
+          senderName: 'Floral World',
+          college: 'COLFHEC',
+          text: action === 'sit_and_eat'
+            ? `🍽️ @${user.username} is enjoying ${selectedItem.name} at Floral World Terrace.`
+            : `🥡 @${user.username} bought ${selectedItem.name} for Take Away.`,
+          timestamp: Date.now(),
+          isSystem: true
+        });
+
+        setPurchaseSuccess(`Ordered ${selectedItem.name} (${action === 'takeaway' ? 'Take Away' : 'Dine In'})!`);
+        setTimeout(() => {
+          setPurchaseSuccess(null);
+          setIsPurchasing(false);
+          onClose();
+        }, 1200);
+      } else {
+        setErrorMsg(res.error || 'Purchase failed. Please try again.');
+        setIsPurchasing(false);
+      }
+    } catch (err: any) {
+      console.error('Floral World order error:', err);
+      setErrorMsg(err?.message || 'Order failed to process.');
+      setIsPurchasing(false);
     }
   };
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -77,6 +90,12 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
 
         {/* Content */}
         <div style={{ padding: '20px' }}>
+          {errorMsg && (
+            <div style={{ padding: '10px 14px', marginBottom: '14px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', fontSize: '12px', fontWeight: 600 }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
           {purchaseSuccess ? (
             <div style={{ textAlign: 'center', padding: '30px 10px' }}>
               <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
@@ -101,11 +120,13 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
                     <div
                       key={item.id}
                       id={`menu-item-${item.id}`}
-                      onClick={() => setSelectedItemId(item.id)}
+                      onClick={() => !isPurchasing && setSelectedItemId(item.id)}
                       style={{
                         ...menuItemCardStyle,
                         borderColor: isSelected ? '#ecc94b' : '#334155',
-                        backgroundColor: isSelected ? '#1e293b' : '#0f172a'
+                        backgroundColor: isSelected ? '#1e293b' : '#0f172a',
+                        cursor: isPurchasing ? 'not-allowed' : 'pointer',
+                        opacity: isPurchasing ? 0.7 : 1,
                       }}
                     >
                       <span style={{ fontSize: '24px' }}>{item.icon}</span>
@@ -139,23 +160,33 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
                     <button
                       id="btn-take-away"
                       onClick={() => handleOrder('takeaway')}
-                      style={btnTakeAwayStyle}
+                      disabled={isPurchasing}
+                      style={{
+                        ...btnTakeAwayStyle,
+                        opacity: isPurchasing ? 0.6 : 1,
+                        cursor: isPurchasing ? 'not-allowed' : 'pointer',
+                      }}
                     >
-                      🥡 [ Take Away ]
+                      {isPurchasing ? 'Ordering...' : '🥡 [ Take Away ]'}
                     </button>
                     <button
                       id="btn-sit-and-eat"
                       onClick={() => handleOrder('sit_and_eat')}
-                      style={btnSitEatStyle}
+                      disabled={isPurchasing}
+                      style={{
+                        ...btnSitEatStyle,
+                        opacity: isPurchasing ? 0.6 : 1,
+                        cursor: isPurchasing ? 'not-allowed' : 'pointer',
+                      }}
                     >
-                      🍽️ [ Sit & Eat ]
+                      {isPurchasing ? 'Ordering...' : '🍽️ [ Sit & Eat ]'}
                     </button>
                   </div>
                 </div>
               )}
 
               <div style={{ marginTop: '14px', textAlign: 'right' }}>
-                <button onClick={onClose} style={btnCloseStyle}>
+                <button onClick={onClose} disabled={isPurchasing} style={btnCloseStyle}>
                   Close
                 </button>
               </div>

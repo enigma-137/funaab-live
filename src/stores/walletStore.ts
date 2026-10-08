@@ -12,7 +12,7 @@ interface WalletState {
   loadWallet: (userId: string) => Promise<void>;
   deductFare: (userId: string, amount: number, destination: string) => Promise<boolean>;
   applyLawnFine: (userId: string, amount?: number) => Promise<{ success: boolean; deducted: number }>;
-  purchaseFood: (userId: string, item: FoodItem) => Promise<boolean>;
+  purchaseFood: (userId: string, item: FoodItem) => Promise<{ success: boolean; balance?: number; error?: string }>;
   grantJobReward: (userId: string, amount: number, jobTitle: string) => Promise<boolean>;
   claimDailyReward: (userId: string) => Promise<{ success: boolean; amount: number; message: string }>;
   receiveTransfer: (senderUsername: string, amount: number) => void;
@@ -178,22 +178,28 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
   purchaseFood: async (userId: string, item: FoodItem) => {
     const currentBalance = get().balance;
-    if (currentBalance < item.price) return false;
+    if (currentBalance < item.price) {
+      const err = `Insufficient funds for ${item.name}! You need ₦${item.price.toLocaleString()}.`;
+      set({ error: err });
+      return { success: false, error: err };
+    }
 
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase.rpc('process_wallet_purchase', {
           p_type: 'food_purchase',
-          p_amount: item.price,
-          p_description: `Food: ${item.name}`,
           p_item_id: item.id,
           p_item_name: item.name,
+          p_amount: item.price,
+          p_description: `Food: ${item.name}`,
           p_user_id: userId,
         });
 
         if (error || (data && !data.success)) {
-          set({ error: error?.message || data?.error || 'Purchase failed' });
-          return false;
+          const errMsg = error?.message || data?.error || 'Purchase failed';
+          console.error('[PURCHASE] process_wallet_purchase error:', errMsg, { error, data });
+          set({ error: errMsg });
+          return { success: false, error: errMsg };
         }
 
         const newBalance = Number(data.balance);
@@ -225,11 +231,14 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
           balance: newBalance,
           transactions: [tx, ...get().transactions],
           inventory: currentInventory,
+          error: null,
         });
-        return true;
-      } catch (e) {
+        return { success: true, balance: newBalance };
+      } catch (e: any) {
         console.error('Supabase food purchase sync error:', e);
-        return false;
+        const errMsg = e?.message || 'Network error processing purchase';
+        set({ error: errMsg });
+        return { success: false, error: errMsg };
       }
     }
 
@@ -271,7 +280,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     local.inventory = currentInventory;
     localDB.saveWallet(userId, local);
 
-    return true;
+    return { success: true, balance: newBalance };
   },
 
   grantJobReward: async (userId: string, amount: number, jobTitle: string) => {

@@ -241,31 +241,7 @@ export const LocalPlayer: React.FC = () => {
       const arrivalRadius = targetInteraction ? Math.min(targetInteraction.radius * 0.85, 2.2) : 0.45;
 
       if (distToTarget <= arrivalRadius) {
-        // Reached destination!
-        if (targetInteraction) {
-          switch (targetInteraction.type) {
-            case 'atm':
-              setActiveModal('bank');
-              break;
-            case 'food':
-            case 'restaurant_dining':
-              setActiveModal('floral_world');
-              break;
-            case 'lecture_hall':
-              setSelectedHallLocationId(targetInteraction.targetId || targetInteraction.id || 'colfhec-lecture-hall');
-              setActiveModal('lecture_hall');
-              break;
-            case 'playstation':
-              setActiveModal('ps_match');
-              break;
-            case 'keke_stop':
-              setActiveModal('keke_destination');
-              break;
-            case 'job_board':
-              setActiveModal('campus_jobs');
-              break;
-          }
-        }
+        // Reached destination cleanly - do not auto-force open modals
         clearTargetDestination();
         moveDirection = null;
       } else {
