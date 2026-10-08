@@ -143,7 +143,7 @@ export const KekeVehicle: React.FC = () => {
         position={[0, 2.6, 0]}
         center
         distanceFactor={22}
-        zIndexRange={[80, 0]}
+        zIndexRange={[5, 0]}
         style={{ pointerEvents: 'none' }}
       >
         <div className="flex flex-col items-center gap-1 select-none">

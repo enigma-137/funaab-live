@@ -152,7 +152,7 @@ export const ClassroomScene: React.FC = () => {
         </mesh>
 
         {/* Dynamic Blackboard Content Display */}
-        <Html position={[0, 0, 0.08]} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 0, 0.08]} center distanceFactor={12} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
           <div className="w-[480px] p-4 bg-emerald-950/80 rounded-xl border border-emerald-500/40 text-emerald-100 font-mono text-[11px] leading-relaxed shadow-inner">
             <div className="text-amber-300 font-bold border-b border-emerald-500/40 pb-1 mb-2 font-['Outfit'] text-xs flex justify-between">
               <span>{currentLecture?.courseCode} — {currentLecture?.title}</span>
@@ -178,7 +178,7 @@ export const ClassroomScene: React.FC = () => {
         />
 
         {/* 3D Floating Speech Bubble for Subtitles */}
-        <Html position={[0, 2.5, 0]} center distanceFactor={14} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 2.5, 0]} center distanceFactor={14} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
           <div className="px-3.5 py-2 rounded-2xl bg-slate-950/95 border-2 border-emerald-400 text-white font-['Plus_Jakarta_Sans'] text-xs max-w-xs shadow-2xl backdrop-blur-md text-center">
             <div className="text-[10px] font-bold text-emerald-400 uppercase font-['Outfit'] mb-0.5">
               🎓 {currentLecture?.lecturerName} ({currentLecture?.lecturerTitle})
@@ -232,7 +232,7 @@ export const ClassroomScene: React.FC = () => {
             </mesh>
 
             {/* Seat Number Badge on Desk */}
-            <Html position={[0, 0.75, 0.2]} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
+            <Html position={[0, 0.75, 0.2]} center distanceFactor={16} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
               <div className="px-1.5 py-0.2 rounded bg-slate-900/80 text-[8px] font-mono text-slate-400 border border-slate-700 select-none">
                 #{seat.seatNumber}
               </div>
@@ -251,7 +251,7 @@ export const ClassroomScene: React.FC = () => {
 
                 {/* Raised Hand Visual Pill */}
                 {studentHandRaised && (
-                  <Html position={[0, 2.3, 0]} center distanceFactor={14} style={{ pointerEvents: 'none' }}>
+                  <Html position={[0, 2.3, 0]} center distanceFactor={14} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
                     <div className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] font-mono shadow-xl animate-bounce flex items-center gap-1">
                       <span>✋</span>
                       <span>Hand Raised</span>

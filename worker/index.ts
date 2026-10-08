@@ -635,33 +635,46 @@ export class WorldRoomDO {
             break;
           }
 
+          case 'private_chat':
           case 'private_chat_message': {
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
             if (!session) return;
 
             const recipientId = String(data.recipientId || '').trim();
+            const recipientUsername = String(data.recipientUsername || '').trim();
             const recipientConnId = String(data.recipientConnectionId || '').trim();
             const text = String(data.text || '').trim().slice(0, 500);
             if (!text) return;
 
-            const dmPayload = JSON.stringify({
-              type: 'private_chat_message',
+            const msgObj = {
               id: `dm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
               senderId: session.id, // Server-Authoritative sender UUID
               senderConnectionId: sessionConnId,
               senderName: session.username,
+              college: session.college || 'CAMPUS',
               recipientId,
+              recipientUsername,
               text,
+              transferData: data.transferData || null,
               timestamp: Date.now(),
+              isPrivate: true,
+            };
+
+            const dmPayload = JSON.stringify({
+              type: 'private_chat_message',
+              message: msgObj,
+              ...msgObj,
             });
 
-            // Route directly to recipient socket
+            // Route directly to recipient socket(s)
             let delivered = false;
             for (const [targetWs, targetSession] of this.sessions) {
+              if (targetWs === webSocket) continue; // Skip sender in target loop
               if (
                 (recipientConnId && targetSession.connectionId === recipientConnId) ||
-                (recipientId && targetSession.id === recipientId)
+                (recipientId && targetSession.id === recipientId) ||
+                (recipientUsername && targetSession.username.toLowerCase() === recipientUsername.toLowerCase())
               ) {
                 try {
                   targetWs.send(dmPayload);
@@ -670,8 +683,10 @@ export class WorldRoomDO {
               }
             }
 
-            // Echo back confirmation to sender
-            webSocket.send(dmPayload);
+            // Echo back confirmation to sender so sender's client displays the sent message in thread
+            try {
+              webSocket.send(dmPayload);
+            } catch (e) {}
             break;
           }
 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { ChatMessage } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
 import { useGameStore } from './gameStore';
+import { useAuthStore } from './authStore';
 
 export interface Friend {
   id: string;
@@ -114,19 +115,29 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       return;
     }
 
-    // Determine the partner key
-    const key = (msg.isPrivate && msg.recipientUsername && msg.senderName)
-      ? (msg.recipientUsername.toLowerCase() === activeDmPartner?.username.toLowerCase()
-          ? msg.recipientUsername.toLowerCase()
-          : msg.senderName.toLowerCase())
-      : (msg.senderName || 'dm').toLowerCase();
+    const currentUsername = useAuthStore.getState().user?.username?.toLowerCase();
+    const sender = (msg.senderName || '').toLowerCase();
+    const recipient = (msg.recipientUsername || '').toLowerCase();
+
+    // The DM conversation key is always the other party's username in lowercase
+    let key = sender;
+    if (currentUsername && sender === currentUsername && recipient) {
+      key = recipient;
+    } else if (!sender) {
+      key = 'dm';
+    }
 
     set((state) => {
       const existing = state.directMessages[key] || [];
+      // Prevent duplicate messages if already present
+      if (existing.some((m) => m.id === msg.id)) {
+        return state;
+      }
       const updatedList = [...existing, msg];
       const isCurrentlyViewing = activeDmPartner && activeDmPartner.username.toLowerCase() === key;
+      const isFromSelf = currentUsername && sender === currentUsername;
 
-      const newPartnerUnread = isCurrentlyViewing
+      const newPartnerUnread = (isCurrentlyViewing || isFromSelf)
         ? 0
         : (state.unreadDmsByPartner[key] || 0) + 1;
 
@@ -144,7 +155,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
         },
         unreadDmsByPartner: updatedUnreadByPartner,
         unreadDmCount: totalUnread,
-        lastIncomingDm: !isCurrentlyViewing ? msg : state.lastIncomingDm,
+        lastIncomingDm: (!isCurrentlyViewing && !isFromSelf) ? msg : state.lastIncomingDm,
       };
     });
   },

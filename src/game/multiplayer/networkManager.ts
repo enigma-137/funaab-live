@@ -218,8 +218,20 @@ class NetworkManager {
       }
 
       case 'private_chat_message': {
-        if (data.message) {
-          socialStore.addDirectMessage(data.message);
+        const msg = data.message || data;
+        if (msg && msg.text) {
+          socialStore.addDirectMessage({
+            id: msg.id || `dm-${Date.now()}`,
+            senderId: msg.senderId,
+            senderName: msg.senderName,
+            college: msg.college || 'CAMPUS',
+            recipientId: msg.recipientId,
+            recipientUsername: msg.recipientUsername,
+            text: msg.text,
+            timestamp: msg.timestamp || Date.now(),
+            transferData: msg.transferData,
+            isPrivate: true,
+          });
         }
         break;
       }

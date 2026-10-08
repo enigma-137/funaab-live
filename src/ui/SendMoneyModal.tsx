@@ -99,7 +99,7 @@ export const SendMoneyModal: React.FC<SendMoneyModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
       <div className="relative w-full max-w-sm rounded-3xl bg-slate-900 border-2 border-emerald-500/40 shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
@@ -149,16 +149,16 @@ export const SendMoneyModal: React.FC<SendMoneyModalProps> = ({
           </div>
 
           {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-2xl bg-red-950/80 border border-red-500/50 text-red-200 text-xs font-semibold animate-shake">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-red-950/90 border border-red-500 text-red-200 text-xs font-semibold animate-shake shadow-lg">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 break-words leading-relaxed">{errorMessage}</div>
             </div>
           )}
 
           {successMessage && (
-            <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-xs font-bold animate-pulse text-center justify-center">
+            <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-xs font-bold animate-pulse text-center justify-center shadow-lg">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{successMessage}</span>
+              <span className="break-words">{successMessage}</span>
             </div>
           )}
 

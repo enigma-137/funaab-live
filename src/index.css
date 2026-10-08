@@ -54,3 +54,15 @@ body {
 .animate-pulse-glow {
   animation: pulseGlow 2.5s infinite ease-in-out;
 }
+
+/* Stacking Context Hardening: Keep 3D Canvas HTML labels below UI Modals & HUDs */
+div[data-r3f-html],
+.r3f-html-container,
+div[style*="z-index"][style*="transform"]:has(> div) {
+  z-index: 10 !important;
+}
+
+/* Modal Stacking */
+.fixed.inset-0 {
+  z-index: 9999;
+}
