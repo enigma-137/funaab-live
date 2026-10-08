@@ -7,6 +7,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useInputStore } from '../../stores/inputStore';
 import { networkManager } from '../multiplayer/networkManager';
+import { useLectureStore } from '../../stores/lectureStore';
 import { AvatarModel } from './AvatarModel';
 import worldData from '../../worlds/funaab/world.json';
 import { InteractableZone } from '../../types/game';
@@ -405,6 +406,67 @@ export const LocalPlayer: React.FC = () => {
       }
     }
     setNearbyInteractable(closestInteractable);
+
+    // Auto-close proximity modals when walking outside interaction radius + hysteresis buffer
+    const activeModal = useGameStore.getState().activeModal;
+    if (activeModal) {
+      const PROXIMITY_MODAL_ZONES: Record<string, string[]> = {
+        bank: ['atm'],
+        food: ['food', 'restaurant_dining'],
+        floral_world: ['food', 'restaurant_dining'],
+        lecture_hall: ['lecture_hall'],
+        keke_destination: ['keke_stop'],
+        campus_jobs: ['job_board'],
+        jobs: ['job_board'],
+        ps_match: ['playstation'],
+      };
+
+      const targetZoneTypes = PROXIMITY_MODAL_ZONES[activeModal];
+      if (targetZoneTypes) {
+        const isInClassroom = useLectureStore.getState().isInClassroom;
+        const isRiding = isRidingKeke || useGameStore.getState().isRidingKeke;
+        const currentMatch = useGameStore.getState().currentMatch;
+        const isPlayingMatch = currentMatch && currentMatch.status === 'in_progress';
+
+        if (!isInClassroom && !isRiding && !isPlayingMatch) {
+          const HYSTERESIS_BUFFER = 2.0; // 2.0m tolerance buffer outside base radius to prevent boundary jitter
+          let isWithinRadius = false;
+
+          for (const zone of worldData.interactables as InteractableZone[]) {
+            if (targetZoneTypes.includes(zone.type)) {
+              if (activeModal === 'lecture_hall') {
+                const selectedHallId = useGameStore.getState().selectedHallLocationId;
+                if (selectedHallId && zone.targetId !== selectedHallId && zone.id !== selectedHallId) {
+                  continue;
+                }
+              }
+
+              const zonePos = new THREE.Vector3(...zone.position);
+              const dist = feetVec.distanceTo(zonePos);
+              if (dist <= zone.radius + HYSTERESIS_BUFFER) {
+                isWithinRadius = true;
+                break;
+              }
+            }
+          }
+
+          if (!isWithinRadius) {
+            setActiveModal(null);
+          }
+        }
+      } else if (activeModal === 'player_profile') {
+        const selPlayer = useGameStore.getState().selectedPlayer;
+        if (selPlayer) {
+          const pPos = new THREE.Vector3(...selPlayer.position);
+          const dist = feetVec.distanceTo(pPos);
+          if (dist > 5.5) {
+            setActiveModal(null);
+          }
+        } else {
+          setActiveModal(null);
+        }
+      }
+    }
 
     // Check Proximity to Other Real Players
     let closestPlayer: any = null;

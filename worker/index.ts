@@ -434,9 +434,11 @@ export class WorldRoomDO {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    const isWebSocket = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
 
-    if (request.headers.get('Upgrade') === 'websocket') {
+    if (isWebSocket) {
       const token = url.searchParams.get('token');
+      console.log('[WS] WebSocket upgrade received at path:', url.pathname, token ? '(token present)' : '(no token)');
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
@@ -1083,34 +1085,56 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Set CORS headers
-    const origin = request.headers.get('Origin') || '*';
-    const allowedOrigins = (env.ALLOWED_ORIGINS || '*').split(',').map((o) => o.trim());
-    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
-
-    const corsHeaders: Record<string, string> = {
-      'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Upgrade',
-      'Access-Control-Allow-Credentials': 'true',
-    };
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders });
+    // 1. Direct Health & Status probe endpoint
+    if (url.pathname === '/health' || url.pathname === '/status') {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          service: 'funaab-life-backend',
+          environment: env.ENVIRONMENT || 'production',
+          timestamp: Date.now(),
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      );
     }
 
-    // Support multiple room namespaces if needed
+    // 2. CORS Preflight
+    if (request.method === 'OPTIONS') {
+      const origin = request.headers.get('Origin') || '*';
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Upgrade',
+          'Access-Control-Allow-Credentials': 'true',
+        },
+      });
+    }
+
+    // 3. Durable Object Routing
     const roomId = url.searchParams.get('room') || 'world:funaab:main';
     const id = env.WORLD_ROOM.idFromName(roomId);
     const stub = env.WORLD_ROOM.get(id);
 
-    const response = await stub.fetch(request);
-    const newHeaders = new Headers(response.headers);
-    for (const [key, value] of Object.entries(corsHeaders)) {
-      if (!newHeaders.has(key)) {
-        newHeaders.set(key, value);
-      }
+    const isWebSocket = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
+
+    // CRITICAL: For WebSocket upgrades, return stub.fetch directly to preserve response.webSocket!
+    if (isWebSocket) {
+      return stub.fetch(request);
     }
+
+    // Standard HTTP request forwarding
+    const response = await stub.fetch(request);
+    const origin = request.headers.get('Origin') || '*';
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set('Access-Control-Allow-Origin', origin);
+    newHeaders.set('Access-Control-Allow-Credentials', 'true');
 
     return new Response(response.body, {
       status: response.status,
