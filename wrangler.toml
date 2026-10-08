@@ -10,7 +10,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["WorldRoomDO"]
+new_sqlite_classes = ["WorldRoomDO"]
 
 [vars]
 ENVIRONMENT = "production"
