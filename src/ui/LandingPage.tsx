@@ -41,58 +41,60 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* Top Navbar */}
-      <header className="relative z-10 w-full max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-xl shadow-lg shadow-emerald-600/30 border border-emerald-400/40">
+      <header className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-lg sm:text-xl shadow-lg shadow-emerald-600/30 border border-emerald-400/40 shrink-0">
             🎓
           </div>
-          <div>
-            <span className="font-['Outfit'] font-black text-xl tracking-tight text-white flex items-center gap-2">
+          <div className="flex items-center flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 min-w-0">
+            <span className="font-['Outfit'] font-black text-lg sm:text-xl tracking-tight text-white whitespace-nowrap">
               FUNAAB <span className="text-emerald-400">Life</span>
-              <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                V0 PLAYABLE
-              </span>
+            </span>
+            <span className="text-[9px] sm:text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap shrink-0">
+              V0 PLAYABLE
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <Users className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Campus is Online</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] sm:text-xs text-slate-300 whitespace-nowrap">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+            <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden xs:inline sm:inline">Campus is Online</span>
+            <span className="inline xs:hidden sm:hidden">Online</span>
           </div>
         </div>
       </header>
 
       {/* Main Hero & Login Box */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-12 gap-12 items-center my-auto">
+      <main className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 grid lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto">
         {/* Left Side: Product Intro */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-
+        <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold whitespace-nowrap">
             The Virtual Nigerian Campus Experience
           </div>
 
-          <h1 className="font-['Outfit'] font-extrabold text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-none">
+          <h1 className="font-['Outfit'] font-extrabold text-3xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-tight">
             Step onto campus. <br />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-green-300 to-teal-200">
               Meet real students.
             </span>
           </h1>
 
-          <p className="text-slate-300 text-base sm:text-lg max-w-xl leading-relaxed">
+          <p className="text-slate-300 text-sm sm:text-base lg:text-lg max-w-xl leading-relaxed">
             Walk past the Ceremonial Main Gate, catch a yellow Keke Napep to COLFHEC, grab hot Jollof at Mama Buka, or challenge your peers in the PlayStation Room.
           </p>
 
           {/* Campus Live Status Card */}
           <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                <span className="font-['Outfit'] font-extrabold text-sm text-white">FUNAAB LIFE • Campus is online</span>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                <span className="font-['Outfit'] font-extrabold text-xs sm:text-sm text-white whitespace-nowrap truncate">
+                  FUNAAB LIFE • Campus is online
+                </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold text-xs">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold text-[10px] sm:text-xs whitespace-nowrap shrink-0">
                 Active Session
               </span>
             </div>
@@ -100,22 +102,22 @@ export const LandingPage: React.FC = () => {
               Popular right now on campus:
             </div>
             <div className="flex flex-wrap gap-2 text-[11px]">
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 <span>Car Park</span>
                 <strong className="text-emerald-400 font-mono">· 8</strong>
               </div>
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                 <span>Sports Centre</span>
                 <strong className="text-indigo-300 font-mono">· 6</strong>
               </div>
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                 <span>COLBIOS</span>
                 <strong className="text-amber-300 font-mono">· 4</strong>
               </div>
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5">
+              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
                 <span>Senate Plaza</span>
                 <strong className="text-teal-300 font-mono">· 3</strong>
@@ -123,21 +125,21 @@ export const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-1">
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-2xl mb-1">🛺</div>
-              <div className="font-bold text-white text-xs">Live Keke Rides</div>
-              <div className="text-[11px] text-slate-400">Hop in & travel (₦50–₦150)</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-1">
+            <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
+              <div className="text-xl sm:text-2xl mb-1">🛺</div>
+              <div className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap truncate">Live Keke Rides</div>
+              <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap truncate">Hop in & travel</div>
             </div>
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-2xl mb-1">💼</div>
-              <div className="font-bold text-white text-xs">Campus Jobs</div>
-              <div className="text-[11px] text-slate-400">Deliver food & earn ₦300</div>
+            <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
+              <div className="text-xl sm:text-2xl mb-1">💼</div>
+              <div className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap truncate">Campus Jobs</div>
+              <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap truncate">Deliver food & earn</div>
             </div>
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-2xl mb-1">💸</div>
-              <div className="font-bold text-white text-xs">Send Money</div>
-              <div className="text-[11px] text-slate-400">P2P student transfers</div>
+            <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
+              <div className="text-xl sm:text-2xl mb-1">💸</div>
+              <div className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap truncate">Send Money</div>
+              <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap truncate">P2P transfers</div>
             </div>
           </div>
         </div>
