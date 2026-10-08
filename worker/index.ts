@@ -31,9 +31,12 @@ interface PlayerState {
   animation: string;
   kekeRiding?: boolean;
   kekeId?: string;
+  seatIndex?: number;
   currentZone?: string;
   currentLectureId?: string;
   seatNumber?: number;
+  handRaised?: boolean;
+  isDining?: boolean;
   lastUpdated: number;
 }
 
