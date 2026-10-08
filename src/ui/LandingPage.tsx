@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import worldData from '../worlds/funaab/world.json';
-import { Users, ArrowRight, ShieldCheck, MapPin, Play } from 'lucide-react';
+import { Users, ChevronDown, Check, Search, Sparkles, MapPin, Compass, MessageCircle, Building2, Play } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
   const { guestLogin, login, signup, isLoading, error } = useAuthStore();
@@ -9,9 +9,35 @@ export const LandingPage: React.FC = () => {
   const [college, setCollege] = useState('COLENG');
   const isGuestModeEnabled = import.meta.env.VITE_ENABLE_GUEST_MODE === 'true';
   const [isAuthMode, setIsAuthMode] = useState(!isGuestModeEnabled);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Custom College Dropdown State
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [collegeSearch, setCollegeSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside or pressing Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const handleQuickEnter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,182 +55,243 @@ export const LandingPage: React.FC = () => {
     }
   };
 
-  const selectedCollegeObj = worldData.colleges.find((c) => c.code === college);
+  const selectedCollegeObj = worldData.colleges.find((c) => c.code === college) || worldData.colleges[0];
+  const filteredColleges = worldData.colleges.filter(
+    (c) =>
+      c.code.toLowerCase().includes(collegeSearch.toLowerCase()) ||
+      c.name.toLowerCase().includes(collegeSearch.toLowerCase())
+  );
 
   return (
-    <div className="relative w-screen h-screen overflow-y-auto bg-[#070d08] text-slate-100 flex flex-col justify-between font-['Plus_Jakarta_Sans'] select-none">
-      {/* Background Gradients & Glow */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-emerald-600/15 blur-3xl" />
-        <div className="absolute top-1/2 -right-32 w-96 h-96 rounded-full bg-green-500/10 blur-3xl" />
-        <div className="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-amber-500/10 blur-3xl" />
+    <div className="relative min-h-screen w-full bg-[#F7F9F5] text-[#17211B] flex flex-col justify-between font-['Plus_Jakarta_Sans'] select-none">
+      {/* Subtle Background Accents */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#15B86A]/5 blur-3xl" />
+        <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] rounded-full bg-[#008751]/4 blur-3xl" />
+        <div className="absolute -bottom-40 left-1/4 w-[500px] h-[500px] rounded-full bg-[#15B86A]/4 blur-3xl" />
       </div>
 
       {/* Top Navbar */}
-      <header className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-lg sm:text-xl shadow-lg shadow-emerald-600/30 border border-emerald-400/40 shrink-0">
+      <header className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#008751] flex items-center justify-center text-white text-xl shadow-sm">
             🎓
           </div>
-          <div className="flex items-center flex-wrap sm:flex-nowrap gap-1.5 sm:gap-2 min-w-0">
-            <span className="font-['Outfit'] font-black text-lg sm:text-xl tracking-tight text-white whitespace-nowrap">
-              FUNAAB <span className="text-emerald-400">Life</span>
+          <div className="flex items-center gap-2">
+            <span className="font-['Outfit'] font-black text-xl sm:text-2xl tracking-tight text-[#17211B]">
+              FUNAAB <span className="text-[#008751]">Life</span>
             </span>
-            <span className="text-[9px] sm:text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap shrink-0">
-              V0 PLAYABLE
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#E8F5E9] text-[#008751] border border-[#C8E6C9] uppercase tracking-wider">
+              Public Beta
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[11px] sm:text-xs text-slate-300 whitespace-nowrap">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-            <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="hidden xs:inline sm:inline">Campus is Online</span>
-            <span className="inline xs:hidden sm:hidden">Online</span>
+        <div className="flex items-center gap-2">
+          {isGuestModeEnabled && (
+            <button
+              type="button"
+              onClick={() => setIsAuthMode(!isAuthMode)}
+              className="px-3.5 py-1.5 rounded-xl border border-[#E5EAE6] bg-white text-xs font-semibold text-[#17211B] hover:bg-[#F0F4F1] transition shadow-sm"
+            >
+              {isAuthMode ? 'Guest Mode' : 'Account Mode'}
+            </button>
+          )}
+
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E5EAE6] text-xs font-medium text-[#17211B] shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-[#15B86A] animate-pulse" />
+            <Users className="w-3.5 h-3.5 text-[#008751]" />
+            <span className="hidden xs:inline">Campus Live</span>
           </div>
         </div>
       </header>
 
-      {/* Main Hero & Login Box */}
-      <main className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 grid lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto">
-        {/* Left Side: Product Intro */}
-        <div className="lg:col-span-7 space-y-5 sm:space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold whitespace-nowrap">
-            The Virtual Nigerian Campus Experience
+      {/* Main Content: Hero & Auth Card */}
+      <main className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10 grid lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto">
+        {/* Left Column: Platform Intro & Features */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[#008751] text-xs font-bold tracking-wide">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Built for FUNAAB students</span>
           </div>
 
-          <h1 className="font-['Outfit'] font-extrabold text-3xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-tight">
+          {/* Hero Headline */}
+          <h1 className="font-['Outfit'] font-black text-3xl sm:text-5xl lg:text-6xl text-[#17211B] tracking-tight leading-[1.12]">
             Step onto campus. <br />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-green-300 to-teal-200">
-              Meet real students.
-            </span>
+            <span className="text-[#008751]">Meet real students.</span>
           </h1>
 
-          <p className="text-slate-300 text-sm sm:text-base lg:text-lg max-w-xl leading-relaxed">
-            Walk past the Ceremonial Main Gate, catch a yellow Keke Napep to COLFHEC, grab hot Jollof at Mama Buka, or challenge your peers in the PlayStation Room.
+          {/* Subtitle */}
+          <p className="text-[#66736B] text-sm sm:text-base lg:text-lg max-w-xl leading-relaxed">
+            Explore FUNAAB, meet students, take keke, attend lectures, hang out and discover the campus together.
           </p>
 
-          {/* Campus Live Status Card */}
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                <span className="font-['Outfit'] font-extrabold text-xs sm:text-sm text-white whitespace-nowrap truncate">
-                  FUNAAB LIFE • Campus is online
+          {/* Live Campus Status Card */}
+          <div className="p-4 rounded-2xl bg-white border border-[#E5EAE6] shadow-sm space-y-2.5 max-w-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#15B86A] animate-pulse" />
+                <span className="font-['Outfit'] font-extrabold text-sm text-[#17211B]">
+                  Campus is live
                 </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold text-[10px] sm:text-xs whitespace-nowrap shrink-0">
-                Active Session
+              <span className="text-xs font-semibold text-[#008751] bg-[#E8F5E9] px-2.5 py-0.5 rounded-full">
+                ● 24 students online
               </span>
             </div>
-            <div className="text-xs text-slate-300 mb-2">
-              Popular right now on campus:
-            </div>
-            <div className="flex flex-wrap gap-2 text-[11px]">
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Car Park</span>
-                <strong className="text-emerald-400 font-mono">· 8</strong>
-              </div>
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                <span>Sports Centre</span>
-                <strong className="text-indigo-300 font-mono">· 6</strong>
-              </div>
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span>COLBIOS</span>
-                <strong className="text-amber-300 font-mono">· 4</strong>
-              </div>
-              <div className="px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                <span>Senate Plaza</span>
-                <strong className="text-teal-300 font-mono">· 3</strong>
+
+            <div className="flex items-center gap-2 text-xs text-[#66736B]">
+              <span className="font-semibold text-[#17211B]">Popular:</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-lg bg-[#F7F9F5] border border-[#E5EAE6] text-[#17211B]">
+                  Car Park <strong className="text-[#008751]">· 8</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-[#F7F9F5] border border-[#E5EAE6] text-[#17211B]">
+                  COLFHEC <strong className="text-[#008751]">· 6</strong>
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-[#F7F9F5] border border-[#E5EAE6] text-[#17211B]">
+                  Sports Centre <strong className="text-[#008751]">· 5</strong>
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-1">
-            <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-xl sm:text-2xl mb-1">🛺</div>
-              <div className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap truncate">Live Keke Rides</div>
-              <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap truncate">Hop in & travel</div>
+          {/* 3 Simple Feature Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 max-w-lg lg:max-w-none">
+            <div className="p-4 rounded-2xl bg-white border border-[#E5EAE6] shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-[#E8F5E9] flex items-center justify-center text-lg mb-2">
+                🛺
+              </div>
+              <div className="font-['Outfit'] font-bold text-sm text-[#17211B]">Explore FUNAAB</div>
+              <div className="text-xs text-[#66736B] mt-0.5">Walk, ride and discover campus.</div>
             </div>
-            <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-xl sm:text-2xl mb-1">💼</div>
-              <div className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap truncate">Campus Jobs</div>
-              <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap truncate">Deliver food & earn</div>
+
+            <div className="p-4 rounded-2xl bg-white border border-[#E5EAE6] shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-[#E8F5E9] flex items-center justify-center text-lg mb-2">
+                💬
+              </div>
+              <div className="font-['Outfit'] font-bold text-sm text-[#17211B]">Meet students</div>
+              <div className="text-xs text-[#66736B] mt-0.5">Chat and interact with real students.</div>
             </div>
-            <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 backdrop-blur-sm">
-              <div className="text-xl sm:text-2xl mb-1">💸</div>
-              <div className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap truncate">Send Money</div>
-              <div className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap truncate">P2P transfers</div>
+
+            <div className="p-4 rounded-2xl bg-white border border-[#E5EAE6] shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-[#E8F5E9] flex items-center justify-center text-lg mb-2">
+                🏛️
+              </div>
+              <div className="font-['Outfit'] font-bold text-sm text-[#17211B]">Live campus</div>
+              <div className="text-xs text-[#66736B] mt-0.5">Lectures, food spots, jobs & activities.</div>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Instant Spawn Card */}
+        {/* Right Column: Clean White Auth Card */}
         <div className="lg:col-span-5">
-          <div className="relative p-6 sm:p-8 rounded-3xl bg-slate-900/90 border-2 border-emerald-500/30 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-['Outfit'] font-bold text-xl text-white">
-                {isAuthMode ? (isSignUp ? 'Create Account' : 'Sign In') : 'Instant Campus Entry'}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#E5EAE6] shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+            <div className="mb-6">
+              <h2 className="font-['Outfit'] font-black text-2xl text-[#17211B] tracking-tight">
+                {isAuthMode
+                  ? isSignUp
+                    ? 'Create your student profile'
+                    : 'Welcome back'
+                  : 'Instant Campus Entry'}
               </h2>
-              {isGuestModeEnabled && (
-                <button
-                  type="button"
-                  onClick={() => setIsAuthMode(!isAuthMode)}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-4"
-                >
-                  {isAuthMode ? 'Guest Mode' : 'Account Login'}
-                </button>
-              )}
+              <p className="text-xs sm:text-sm text-[#66736B] mt-1">
+                {isAuthMode
+                  ? isSignUp
+                    ? 'Join FUNAAB Life in a few seconds.'
+                    : 'Enter your credentials to step back onto campus.'
+                  : 'Hop directly into the campus as a guest.'}
+              </p>
             </div>
 
             {error && (
-              <div className="p-3 mb-4 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs">
+              <div className="p-3 mb-5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
                 {error}
               </div>
             )}
 
             {!isAuthMode ? (
-              /* Instant Quick Enter Form */
+              /* Instant Quick Enter Form (Guest Dev Mode) */
               <form onSubmit={handleQuickEnter} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Your Username / Nickname
+                  <label className="block text-xs font-bold text-[#17211B] mb-1.5">
+                    Username / Nickname
                   </label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="e.g. Emmanuel, Tobi, Blessing..."
+                    placeholder="e.g. Emmanuel"
                     maxLength={20}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm font-medium transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] placeholder-[#9EA8A1] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Select Your College
+                {/* College Selection */}
+                <div className="relative" ref={dropdownRef}>
+                  <label className="block text-xs font-bold text-[#17211B] mb-1.5">
+                    College
                   </label>
-                  <select
-                    value={college}
-                    onChange={(e) => setCollege(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-emerald-500 text-sm font-medium transition"
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition flex items-center justify-between"
                   >
-                    {worldData.colleges.map((col) => (
-                      <option key={col.code} value={col.code}>
-                        {col.code} - {col.name}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="truncate">
+                      <strong>{selectedCollegeObj.code}</strong> — {selectedCollegeObj.name}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-[#66736B] shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#E5EAE6] rounded-2xl shadow-xl z-50 overflow-hidden max-h-64 flex flex-col animate-in fade-in zoom-in-95 duration-150">
+                      <div className="p-2 border-b border-[#E5EAE6]">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F7F9F5] text-xs text-[#17211B]">
+                          <Search className="w-3.5 h-3.5 text-[#66736B] shrink-0" />
+                          <input
+                            type="text"
+                            value={collegeSearch}
+                            onChange={(e) => setCollegeSearch(e.target.value)}
+                            placeholder="Search colleges..."
+                            className="bg-transparent border-none outline-none w-full text-xs placeholder-[#9EA8A1]"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+
+                      <div className="overflow-y-auto p-1.5 space-y-1">
+                        {filteredColleges.map((col) => {
+                          const isSelected = col.code === college;
+                          return (
+                            <button
+                              key={col.code}
+                              type="button"
+                              onClick={() => {
+                                setCollege(col.code);
+                                setIsDropdownOpen(false);
+                                setCollegeSearch('');
+                              }}
+                              className={`w-full px-3 py-2 rounded-xl text-left text-xs transition flex items-center justify-between ${
+                                isSelected ? 'bg-[#E8F5E9] text-[#008751] font-bold' : 'hover:bg-[#F0F4F1] text-[#17211B]'
+                              }`}
+                            >
+                              <div>
+                                <span className="font-extrabold">{col.code}</span>
+                                <span className="text-[#66736B] block text-[11px]">{col.name}</span>
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-[#008751] shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Starting Balance:</span>
-                  <span className="font-extrabold text-emerald-400 font-['Outfit'] text-sm">
+                <div className="p-3 rounded-xl bg-[#F7F9F5] border border-[#E5EAE6] flex items-center justify-between text-xs">
+                  <span className="text-[#66736B]">Starting Balance:</span>
+                  <span className="font-extrabold text-[#008751] font-['Outfit'] text-sm">
                     ₦5,000.00
                   </span>
                 </div>
@@ -212,9 +299,9 @@ export const LandingPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-['Outfit'] font-black text-base shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 transition transform active:scale-95"
+                  className="w-full py-3.5 rounded-xl bg-[#008751] hover:bg-[#007345] text-white font-['Outfit'] font-black text-sm shadow-md flex items-center justify-center gap-2 transition transform active:scale-95"
                 >
-                  <Play className="w-5 h-5 fill-current" />
+                  <Play className="w-4 h-4 fill-current" />
                   <span>Enter FUNAAB Campus</span>
                 </button>
               </form>
@@ -224,73 +311,142 @@ export const LandingPage: React.FC = () => {
                 {isSignUp && (
                   <>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Username</label>
+                      <label className="block text-xs font-bold text-[#17211B] mb-1.5">
+                        Username
+                      </label>
                       <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         placeholder="e.g. Emmanuel"
                         required
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] placeholder-[#9EA8A1] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">College</label>
-                      <select
-                        value={college}
-                        onChange={(e) => setCollege(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm"
+
+                    {/* Custom College Dropdown */}
+                    <div className="relative" ref={dropdownRef}>
+                      <label className="block text-xs font-bold text-[#17211B] mb-1.5">
+                        College
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition flex items-center justify-between"
                       >
-                        {worldData.colleges.map((col) => (
-                          <option key={col.code} value={col.code}>
-                            {col.code} - {col.name}
-                          </option>
-                        ))}
-                      </select>
+                        <span className="truncate">
+                          <strong>{selectedCollegeObj.code}</strong> — {selectedCollegeObj.name}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-[#66736B] shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {isDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-[#E5EAE6] rounded-2xl shadow-xl z-50 overflow-hidden max-h-64 flex flex-col animate-in fade-in zoom-in-95 duration-150">
+                          <div className="p-2 border-b border-[#E5EAE6]">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#F7F9F5] text-xs text-[#17211B]">
+                              <Search className="w-3.5 h-3.5 text-[#66736B] shrink-0" />
+                              <input
+                                type="text"
+                                value={collegeSearch}
+                                onChange={(e) => setCollegeSearch(e.target.value)}
+                                placeholder="Search colleges..."
+                                className="bg-transparent border-none outline-none w-full text-xs placeholder-[#9EA8A1]"
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+
+                          <div className="overflow-y-auto p-1.5 space-y-1">
+                            {filteredColleges.map((col) => {
+                              const isSelected = col.code === college;
+                              return (
+                                <button
+                                  key={col.code}
+                                  type="button"
+                                  onClick={() => {
+                                    setCollege(col.code);
+                                    setIsDropdownOpen(false);
+                                    setCollegeSearch('');
+                                  }}
+                                  className={`w-full px-3 py-2 rounded-xl text-left text-xs transition flex items-center justify-between ${
+                                    isSelected ? 'bg-[#E8F5E9] text-[#008751] font-bold' : 'hover:bg-[#F0F4F1] text-[#17211B]'
+                                  }`}
+                                >
+                                  <div>
+                                    <span className="font-extrabold">{col.code}</span>
+                                    <span className="text-[#66736B] block text-[11px]">{col.name}</span>
+                                  </div>
+                                  {isSelected && <Check className="w-4 h-4 text-[#008751] shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+                  <label className="block text-xs font-bold text-[#17211B] mb-1.5">
+                    Email address
+                  </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="student@funaab.edu.ng"
                     required
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] placeholder-[#9EA8A1] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+                  <label className="block text-xs font-bold text-[#17211B] mb-1.5">
+                    Password
+                  </label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] placeholder-[#9EA8A1] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm shadow-lg transition"
+                  className="w-full py-3.5 rounded-xl bg-[#008751] hover:bg-[#007345] text-white font-['Outfit'] font-bold text-sm shadow-md transition transform active:scale-95 mt-2"
                 >
-                  {isLoading ? 'Processing...' : isSignUp ? 'Create & Enter' : 'Sign In & Enter'}
+                  {isLoading ? 'Processing...' : isSignUp ? 'Create profile' : 'Sign in'}
                 </button>
 
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-xs text-slate-400 hover:text-white"
-                  >
-                    {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-                  </button>
+                <div className="text-center pt-2 text-xs text-[#66736B]">
+                  {isSignUp ? (
+                    <>
+                      Already have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsSignUp(false)}
+                        className="text-[#008751] font-bold hover:underline ml-1"
+                      >
+                        Sign in
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      New to FUNAAB Life?{' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsSignUp(true)}
+                        className="text-[#008751] font-bold hover:underline ml-1"
+                      >
+                        Create account
+                      </button>
+                    </>
+                  )}
                 </div>
               </form>
             )}
@@ -299,9 +455,9 @@ export const LandingPage: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 w-full max-w-6xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 border-t border-slate-800/80">
-        <div>FUNAAB Life MVP • Built for Abeokuta Students</div>
-        <div className="flex items-center gap-4 mt-2 sm:mt-0">
+      <footer className="relative z-10 w-full max-w-6xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between text-xs text-[#66736B] border-t border-[#E5EAE6]">
+        <div>FUNAAB Life • Built for Abeokuta Students</div>
+        <div className="flex items-center gap-3 mt-2 sm:mt-0 font-medium">
           <span>WASD to Walk</span>
           <span>•</span>
           <span>Shift to Run</span>
