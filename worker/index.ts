@@ -117,13 +117,97 @@ function getZoneName(x: number, z: number, currentLectureId?: string): string {
   return 'Campus Grounds';
 }
 
+interface JwksKey {
+  kid: string;
+  kty: string;
+  crv?: string;
+  x?: string;
+  y?: string;
+  n?: string;
+  e?: string;
+  alg?: string;
+  use?: string;
+}
+
+interface CachedKey {
+  key: CryptoKey;
+  alg: string;
+}
+
+// In-memory key cache keyed by kid across Durable Object requests
+const keyCache = new Map<string, CachedKey>();
+let jwksLastFetched = 0;
+const JWKS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function base64UrlToUint8Array(b64Url: string): Uint8Array {
+  const b64 = b64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function fetchAndCacheJwks(supabaseUrl: string): Promise<void> {
+  try {
+    const cleanUrl = supabaseUrl.replace(/\/+$/, '');
+    const jwksUrl = `${cleanUrl}/auth/v1/.well-known/jwks.json`;
+    const res = await fetch(jwksUrl, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      console.warn(`[JWKS] Failed to fetch JWKS: ${res.status} ${res.statusText}`);
+      return;
+    }
+    const data = (await res.json()) as { keys?: JwksKey[] };
+    if (!data.keys || !Array.isArray(data.keys)) return;
+
+    for (const jwk of data.keys) {
+      if (!jwk.kid) continue;
+      try {
+        let cryptoKey: CryptoKey | null = null;
+        if (jwk.kty === 'EC' && (jwk.crv === 'P-256' || !jwk.crv)) {
+          cryptoKey = await crypto.subtle.importKey(
+            'jwk',
+            jwk,
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            false,
+            ['verify']
+          );
+        } else if (jwk.kty === 'RSA') {
+          cryptoKey = await crypto.subtle.importKey(
+            'jwk',
+            jwk,
+            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+            false,
+            ['verify']
+          );
+        }
+        if (cryptoKey) {
+          keyCache.set(jwk.kid, {
+            key: cryptoKey,
+            alg: jwk.alg || (jwk.kty === 'EC' ? 'ES256' : 'RS256'),
+          });
+        }
+      } catch (err) {
+        console.warn(`[JWKS] Could not import key ${jwk.kid}:`, err);
+      }
+    }
+    jwksLastFetched = Date.now();
+  } catch (err) {
+    console.error('[JWKS] Network error fetching JWKS:', err);
+  }
+}
+
 /**
- * Verifies Supabase JWT and extracts authoritative claims.
- * If jwtSecret is supplied, verifies cryptographic signature via WebCrypto HMAC SHA-256.
+ * Verifies Supabase JWT using Asymmetric JWKS (ES256 / P-256 or RS256).
+ * Derives authoritative user identity UUID from the verified `sub` claim.
  */
-async function verifySupabaseJwt(
+export async function verifySupabaseJwt(
   token: string,
-  jwtSecret?: string
+  env?: { SUPABASE_URL?: string; SUPABASE_JWT_SECRET?: string }
 ): Promise<{ sub: string; email?: string; role?: string } | null> {
   if (!token || typeof token !== 'string') return null;
 
@@ -132,20 +216,66 @@ async function verifySupabaseJwt(
     if (parts.length !== 3) return null;
 
     const [headerB64, payloadB64, signatureB64] = parts;
-    const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
-    const payload = JSON.parse(payloadJson);
+    const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
 
-    // Verify expiration timestamp
+    // 1. Verify expiration timestamp
     const nowSec = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < nowSec) {
       console.warn('[JWT] Token expired');
       return null;
     }
 
-    // Cryptographic signature check if secret is configured in Worker
-    if (jwtSecret) {
-      const encoder = new TextEncoder();
-      const keyData = encoder.encode(jwtSecret);
+    // 2. Resolve Supabase URL from environment or token issuer
+    const supabaseUrl =
+      env?.SUPABASE_URL ||
+      (payload.iss && typeof payload.iss === 'string' && payload.iss.startsWith('http')
+        ? payload.iss.replace(/\/auth\/v1\/?$/, '')
+        : undefined);
+
+    const kid = header.kid;
+    const alg = header.alg || 'ES256';
+    const dataToVerify = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    const signatureBytes = base64UrlToUint8Array(signatureB64);
+
+    let verified = false;
+
+    // 3. Asymmetric verification via JWKS (ES256 / RS256)
+    if (kid || alg.startsWith('ES') || alg.startsWith('RS')) {
+      if (kid && !keyCache.has(kid) && supabaseUrl) {
+        await fetchAndCacheJwks(supabaseUrl);
+      } else if (Date.now() - jwksLastFetched > JWKS_CACHE_TTL_MS && supabaseUrl) {
+        await fetchAndCacheJwks(supabaseUrl);
+      }
+
+      let cached = kid ? keyCache.get(kid) : undefined;
+      if (!cached && supabaseUrl && kid) {
+        await fetchAndCacheJwks(supabaseUrl);
+        cached = keyCache.get(kid);
+      }
+
+      if (cached) {
+        if (cached.alg.startsWith('ES') || cached.key.algorithm.name === 'ECDSA') {
+          verified = await crypto.subtle.verify(
+            { name: 'ECDSA', hash: 'SHA-256' },
+            cached.key,
+            signatureBytes,
+            dataToVerify
+          );
+        } else if (cached.alg.startsWith('RS') || cached.key.algorithm.name === 'RSASSA-PKCS1-v1_5') {
+          verified = await crypto.subtle.verify(
+            { name: 'RSASSA-PKCS1-v1_5' },
+            cached.key,
+            signatureBytes,
+            dataToVerify
+          );
+        }
+      }
+    }
+
+    // 4. Fallback to legacy HMAC SHA-256 only if alg === 'HS256' and secret is provided
+    if (!verified && alg === 'HS256' && env?.SUPABASE_JWT_SECRET) {
+      const keyData = new TextEncoder().encode(env.SUPABASE_JWT_SECRET);
       const cryptoKey = await crypto.subtle.importKey(
         'raw',
         keyData,
@@ -153,21 +283,18 @@ async function verifySupabaseJwt(
         false,
         ['verify']
       );
+      verified = await crypto.subtle.verify('HMAC', cryptoKey, signatureBytes, dataToVerify);
+    }
 
-      const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
-      const binarySig = Uint8Array.from(
-        atob(signatureB64.replace(/-/g, '+').replace(/_/g, '/')),
-        (c) => c.charCodeAt(0)
-      );
-
-      const isValid = await crypto.subtle.verify('HMAC', cryptoKey, binarySig, dataToVerify);
-      if (!isValid) {
-        console.warn('[JWT] Signature verification failed');
+    // If Supabase URL or secret is configured, require cryptographic verification
+    if (!verified) {
+      if (supabaseUrl || env?.SUPABASE_JWT_SECRET) {
+        console.warn('[JWT] Asymmetric / Symmetric signature verification failed');
         return null;
       }
     }
 
-    if (!payload.sub) return null;
+    if (!payload.sub || typeof payload.sub !== 'string') return null;
 
     return {
       sub: payload.sub,
@@ -343,7 +470,7 @@ export class WorldRoomDO {
 
     // Pre-verify token from URL handshake if present
     if (initialToken) {
-      const verified = await verifySupabaseJwt(initialToken, this.env.SUPABASE_JWT_SECRET);
+      const verified = await verifySupabaseJwt(initialToken, this.env);
       if (verified) {
         authenticatedUserId = verified.sub;
       }
@@ -378,7 +505,7 @@ export class WorldRoomDO {
 
             // Strict Authenticated User ID derivation
             if (effectiveToken) {
-              const verified = await verifySupabaseJwt(effectiveToken, this.env.SUPABASE_JWT_SECRET);
+              const verified = await verifySupabaseJwt(effectiveToken, this.env);
               if (verified) {
                 authenticatedUserId = verified.sub;
               }

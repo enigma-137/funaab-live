@@ -86,71 +86,162 @@ test('Migration 002 file exists and contains all required beta schema additions'
 });
 
 // -------------------------------------------------------------
-// 3. JWT PARSING & ANTI-SPOOFING TESTS
+// 3. ASYMMETRIC ES256 / P-256 JWT & JWKS AUTHENTICATION TESTS
 // -------------------------------------------------------------
-console.log('\n3. JWT AUTHENTICATION & ANTI-SPOOFING TESTS');
+console.log('\n3. ASYMMETRIC ES256 & JWKS AUTHENTICATION TESTS');
 
-function mockCreateJwt(payload) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
-  const body = Buffer.from(JSON.stringify(payload)).toString('base64');
-  const sig = Buffer.from('mock_signature_bytes').toString('base64');
-  return `${header}.${body}.${sig}`;
+const crypto = require('crypto');
+
+// Generate an active ES256 (P-256) key pair for testing
+const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
+  namedCurve: 'prime256v1',
+});
+
+const jwkPublic = publicKey.export({ format: 'jwk' });
+jwkPublic.kid = 'supabase-active-es256-key-001';
+jwkPublic.use = 'sig';
+jwkPublic.alg = 'ES256';
+
+function base64UrlEncode(buffer) {
+  return buffer.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-function verifyJwtTest(token) {
+function createAsymmetricEs256Jwt(payload, kid = 'supabase-active-es256-key-001') {
+  const header = {
+    alg: 'ES256',
+    typ: 'JWT',
+    kid,
+  };
+
+  const headerB64 = base64UrlEncode(Buffer.from(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(Buffer.from(JSON.stringify(payload)));
+  const dataToSign = `${headerB64}.${payloadB64}`;
+
+  const signer = crypto.createSign('SHA256');
+  signer.update(dataToSign);
+  const signatureDer = signer.sign(privateKey);
+
+  // Convert DER signature to IEEE P1363 raw (r || s, 64 bytes) for JWT ES256 standard
+  // or use crypto.sign with dsaEncoding 'ieee-p1363'
+  const rawSig = crypto.sign('SHA256', Buffer.from(dataToSign), {
+    key: privateKey,
+    dsaEncoding: 'ieee-p1363',
+  });
+
+  const signatureB64 = base64UrlEncode(rawSig);
+  return `${headerB64}.${payloadB64}.${signatureB64}`;
+}
+
+function verifyAsymmetricEs256Jwt(token, jwksKeys) {
   if (!token) return null;
   const parts = token.split('.');
   if (parts.length !== 3) return null;
-  const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+
+  const [headerB64, payloadB64, signatureB64] = parts;
+  const header = JSON.parse(Buffer.from(headerB64, 'base64').toString('utf8'));
+  const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf8'));
+
+  // Expiration check
   const nowSec = Math.floor(Date.now() / 1000);
   if (payload.exp && payload.exp < nowSec) return null;
-  if (!payload.sub) return null;
+
+  // Find matching key by kid
+  const matchingJwk = jwksKeys.find((k) => k.kid === header.kid);
+  if (!matchingJwk) return null;
+
+  // Verify signature
+  const verifierKey = crypto.createPublicKey({ key: matchingJwk, format: 'jwk' });
+  const dataToVerify = `${headerB64}.${payloadB64}`;
+  const sigBuffer = Buffer.from(signatureB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+
+  const isValid = crypto.verify('SHA256', Buffer.from(dataToVerify), {
+    key: verifierKey,
+    dsaEncoding: 'ieee-p1363',
+  }, sigBuffer);
+
+  if (!isValid) return null;
   return { sub: payload.sub, email: payload.email };
 }
 
-test('Valid Supabase JWT extracts authoritative user UUID', () => {
-  const token = mockCreateJwt({
-    sub: '8f7a9d3e-1111-4444-9999-abcdef123456',
-    email: 'student@funaab.edu.ng',
+test('Valid Supabase ES256 asymmetric JWT verifies with matching JWKS public key', () => {
+  const token = createAsymmetricEs256Jwt({
+    sub: '7e2b1c8a-3333-5555-7777-abcdef987654',
+    email: 'scholar@funaab.edu.ng',
     exp: Math.floor(Date.now() / 1000) + 3600,
   });
 
-  const verified = verifyJwtTest(token);
+  const jwks = [jwkPublic];
+  const verified = verifyAsymmetricEs256Jwt(token, jwks);
+
   assert.notStrictEqual(verified, null);
-  assert.strictEqual(verified.sub, '8f7a9d3e-1111-4444-9999-abcdef123456');
-  assert.strictEqual(verified.email, 'student@funaab.edu.ng');
+  assert.strictEqual(verified.sub, '7e2b1c8a-3333-5555-7777-abcdef987654');
+  assert.strictEqual(verified.email, 'scholar@funaab.edu.ng');
 });
 
-test('Expired JWT is strictly rejected', () => {
-  const expiredToken = mockCreateJwt({
-    sub: '8f7a9d3e-1111-4444-9999-abcdef123456',
-    email: 'student@funaab.edu.ng',
-    exp: Math.floor(Date.now() / 1000) - 300, // expired 5 mins ago
+test('Tampered ES256 JWT payload is strictly rejected by signature check', () => {
+  const token = createAsymmetricEs256Jwt({
+    sub: '7e2b1c8a-3333-5555-7777-abcdef987654',
+    email: 'scholar@funaab.edu.ng',
+    exp: Math.floor(Date.now() / 1000) + 3600,
   });
 
-  const verified = verifyJwtTest(expiredToken);
+  const parts = token.split('.');
+  // Attacker tries to alter payload to spoof another sub UUID
+  const tamperedPayload = base64UrlEncode(Buffer.from(JSON.stringify({
+    sub: 'attacker-stolen-id-000000000000',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  })));
+  const tamperedToken = `${parts[0]}.${tamperedPayload}.${parts[2]}`;
+
+  const verified = verifyAsymmetricEs256Jwt(tamperedToken, [jwkPublic]);
+  assert.strictEqual(verified, null, 'Tampered token must fail signature check');
+});
+
+test('Expired ES256 JWT is rejected even with valid signature', () => {
+  const expiredToken = createAsymmetricEs256Jwt({
+    sub: '7e2b1c8a-3333-5555-7777-abcdef987654',
+    exp: Math.floor(Date.now() / 1000) - 120, // expired 2 mins ago
+  });
+
+  const verified = verifyAsymmetricEs256Jwt(expiredToken, [jwkPublic]);
   assert.strictEqual(verified, null);
 });
 
-test('Anti-spoofing: Client cannot claim another user ID when token is present', () => {
-  const token = mockCreateJwt({
-    sub: 'authoritative-uuid-999',
+test('Key Rotation: Token with unknown kid is rejected until JWKS contains rotated key', () => {
+  const rotatedToken = createAsymmetricEs256Jwt({
+    sub: '7e2b1c8a-3333-5555-7777-abcdef987654',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  }, 'new-rotated-kid-2026');
+
+  // Stale JWKS without the new kid
+  const staleJwks = [{ ...jwkPublic, kid: 'old-expired-kid' }];
+  assert.strictEqual(verifyAsymmetricEs256Jwt(rotatedToken, staleJwks), null);
+
+  // Updated JWKS after refresh containing the new kid
+  const updatedJwks = [{ ...jwkPublic, kid: 'new-rotated-kid-2026' }];
+  const verified = verifyAsymmetricEs256Jwt(rotatedToken, updatedJwks);
+  assert.notStrictEqual(verified, null);
+  assert.strictEqual(verified.sub, '7e2b1c8a-3333-5555-7777-abcdef987654');
+});
+
+test('Anti-spoofing: Client-sent player.id cannot override verified ES256 token identity', () => {
+  const token = createAsymmetricEs256Jwt({
+    sub: 'verified-student-uuid-1111',
     exp: Math.floor(Date.now() / 1000) + 3600,
   });
 
-  const spoofedClientPayload = {
+  const spoofedPayload = {
     type: 'join',
     token,
     player: {
-      id: 'attacker-spoofed-uuid-000', // Spoofed ID
-      username: 'LegitimateStudent',
+      id: 'hacker-impersonated-uuid-9999',
     },
   };
 
-  const verified = verifyJwtTest(spoofedClientPayload.token);
-  const derivedAuthoritativeId = verified ? verified.sub : spoofedClientPayload.player.id;
+  const verified = verifyAsymmetricEs256Jwt(spoofedPayload.token, [jwkPublic]);
+  const finalAuthoritativeId = verified ? verified.sub : spoofedPayload.player.id;
 
-  assert.strictEqual(derivedAuthoritativeId, 'authoritative-uuid-999', 'Must use JWT sub, rejecting spoofed player.id');
+  assert.strictEqual(finalAuthoritativeId, 'verified-student-uuid-1111');
 });
 
 // -------------------------------------------------------------
