@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 import {
   PlayerState,
   KekeState,
@@ -266,18 +267,33 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }),
 
-  setMatches: (matches) => set({ activeMatches: matches }),
+  setMatches: (matches) =>
+    set((state) => {
+      const currentUser = useAuthStore.getState().user;
+      const candidate = Object.values(matches).find(
+        (match) =>
+          !!currentUser &&
+          (match.hostId === currentUser.id || match.guestId === currentUser.id) &&
+          match.status !== 'finished'
+      );
+      return {
+        activeMatches: matches,
+        currentMatch: candidate || state.currentMatch,
+      };
+    }),
 
   updateMatch: (match) =>
     set((state) => {
+      const currentUser = useAuthStore.getState().user;
       const current = state.currentMatch;
-      const isMyCurrent = current && current.id === match.id;
+      const isMyMatch = !!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id);
+      const isCurrentMatch = current && current.id === match.id;
       return {
         activeMatches: {
           ...state.activeMatches,
           [match.id]: match,
         },
-        currentMatch: isMyCurrent ? match : current,
+        currentMatch: isMyMatch || isCurrentMatch ? match : current,
       };
     }),
 

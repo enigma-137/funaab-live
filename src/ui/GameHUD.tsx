@@ -445,15 +445,15 @@ export const GameHUD: React.FC = () => {
       )}
 
       {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
-      <div className="flex flex-col items-center justify-center mt-auto mb-2 pointer-events-auto">
+      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[100vw] px-3 sm:px-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
         {(nearbyInteractable || selectedPlayer || isRidingKeke) && (
-          <div className="animate-bounce duration-1000">
+          <div className="pointer-events-auto animate-bounce duration-1000 flex justify-center">
             <button
               onClick={handleInteractButton}
-              className="flex items-center gap-3 px-5 py-3 sm:px-6 sm:py-3.5 rounded-3xl bg-slate-950/95 hover:bg-slate-900 text-white border-2 border-emerald-400 shadow-2xl backdrop-blur-2xl transition transform active:scale-95 min-h-[50px]"
+              className="flex w-full max-w-[420px] items-center gap-2.5 rounded-2xl bg-slate-950/95 hover:bg-slate-900 text-white border border-emerald-400/70 shadow-2xl backdrop-blur-2xl transition transform active:scale-95 min-h-[52px] px-3.5 py-2 sm:px-4 sm:py-2.5"
             >
               {isTouchDevice ? (
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white text-lg flex items-center justify-center shadow-lg shrink-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white text-sm sm:text-base flex items-center justify-center shadow-lg shrink-0">
                   {getInteractIcon()}
                 </div>
               ) : (
@@ -461,13 +461,13 @@ export const GameHUD: React.FC = () => {
                   E
                 </div>
               )}
-              <div className="text-left">
-                <div className="text-[10px] uppercase font-black text-emerald-400 tracking-wider">
+              <div className="min-w-0 flex-1 text-left">
+                <div className="text-[9px] sm:text-[10px] uppercase font-black text-emerald-400 tracking-wider truncate">
                   {isRidingKeke
                     ? 'In Transit'
                     : nearbyInteractable?.label || 'Student Interaction'}
                 </div>
-                <div className="text-sm font-extrabold text-white font-['Outfit']">
+                <div className="truncate text-xs sm:text-sm font-extrabold text-white font-['Outfit']">
                   {getInteractLabel()}
                 </div>
               </div>
