@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useEffect } from 'react';
-import { useFrame, Canvas } from '@react-three/fiber';
+import { useFrame, Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useLectureStore } from '../../stores/lectureStore';
@@ -65,7 +65,6 @@ export const ClassroomScene: React.FC = () => {
     return () => clearInterval(interval);
   }, [currentLecture]);
 
-  const currentSpeech = classroomState?.currentLecturerSpeech || currentLecture?.timeline[0]?.text || 'Welcome to class.';
   const currentBoard = classroomState?.currentBoardText || currentLecture?.timeline[0]?.boardTopic || `${currentLecture?.courseCode}: ${currentLecture?.title}`;
 
   return (
@@ -78,8 +77,8 @@ export const ClassroomScene: React.FC = () => {
         enablePan={false}
         minPolarAngle={Math.PI / 3.5}
         maxPolarAngle={Math.PI / 2.05}
-        minAzimuthAngle={-Math.PI / 2.4}
-        maxAzimuthAngle={Math.PI / 2.4}
+        minAzimuthAngle={-0.55}
+        maxAzimuthAngle={0.55}
       />
 
       {/* ─── 2. CLASSROOM ARCHITECTURE & ROOM ENCLOSURE ─── */}
@@ -153,12 +152,12 @@ export const ClassroomScene: React.FC = () => {
 
         {/* Dynamic Blackboard Content Display */}
         <Html position={[0, 0, 0.08]} center distanceFactor={12} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
-          <div className="w-[480px] p-4 bg-emerald-950/80 rounded-xl border border-emerald-500/40 text-emerald-100 font-mono text-[11px] leading-relaxed shadow-inner">
+          <div className="w-[300px] max-h-[190px] overflow-hidden p-3 bg-emerald-950/80 rounded-xl border border-emerald-500/40 text-emerald-100 font-mono text-[11px] leading-relaxed shadow-inner">
             <div className="text-amber-300 font-bold border-b border-emerald-500/40 pb-1 mb-2 font-['Outfit'] text-xs flex justify-between">
               <span>{currentLecture?.courseCode} — {currentLecture?.title}</span>
               <span className="text-emerald-400">FUNAAB</span>
             </div>
-            <pre className="whitespace-pre-wrap font-sans text-xs text-white leading-normal">
+            <pre className="whitespace-pre-wrap break-words font-sans text-xs text-white leading-normal line-clamp-4">
               {currentBoard}
             </pre>
           </div>
@@ -177,17 +176,6 @@ export const ClassroomScene: React.FC = () => {
           animation="idle"
         />
 
-        {/* 3D Floating Speech Bubble for Subtitles */}
-        <Html position={[0, 2.5, 0]} center distanceFactor={14} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
-          <div className="px-3.5 py-2 rounded-2xl bg-slate-950/95 border-2 border-emerald-400 text-white font-['Plus_Jakarta_Sans'] text-xs max-w-xs shadow-2xl backdrop-blur-md text-center">
-            <div className="text-[10px] font-bold text-emerald-400 uppercase font-['Outfit'] mb-0.5">
-              🎓 {currentLecture?.lecturerName} ({currentLecture?.lecturerTitle})
-            </div>
-            <div className="font-semibold text-slate-100 italic">
-              "{currentSpeech}"
-            </div>
-          </div>
-        </Html>
       </group>
 
       {/* ─── 5. 30 DESKS & CHAIRS (NO FAKE NPCS) ─── */}
@@ -287,6 +275,25 @@ export const ClassroomView: React.FC = () => {
 
   const mySeat = seatPositions.find((s) => s.seatNumber === (mySeatNumber || 1)) || seatPositions[0];
 
+  const ClassroomCameraFraming: React.FC = () => {
+    const { camera } = useThree();
+
+    useEffect(() => {
+      const updateFov = () => {
+        if (camera instanceof THREE.PerspectiveCamera) {
+          camera.fov = window.innerWidth < 640 ? 68 : 60;
+          camera.updateProjectionMatrix();
+        }
+      };
+
+      updateFov();
+      window.addEventListener('resize', updateFov);
+      return () => window.removeEventListener('resize', updateFov);
+    }, [camera]);
+
+    return null;
+  };
+
   return (
     <div className="w-full h-full relative">
       <Canvas
@@ -300,6 +307,7 @@ export const ClassroomView: React.FC = () => {
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         className="w-full h-full cursor-grab active:cursor-grabbing"
       >
+        <ClassroomCameraFraming />
         <color attach="background" args={['#0f172a']} />
         <ambientLight intensity={0.7} color="#f8fafc" />
         <directionalLight

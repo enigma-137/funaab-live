@@ -4,6 +4,7 @@ import { useWalletStore } from './walletStore';
 import { useAuthStore } from './authStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 import { useGameStore } from './gameStore';
+import { useInputStore } from './inputStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface LectureStoreState {
@@ -15,6 +16,7 @@ interface LectureStoreState {
   attendanceRewardClaimed: boolean;
   classroomState: ClassroomState | null;
   isTransitioning: boolean;
+  classroomReturnPosition: [number, number, number] | null;
 
   enterLecture: (lecture: LectureDefinition, seatNumber?: number) => void;
   leaveLecture: () => void;
@@ -33,9 +35,12 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   attendanceRewardClaimed: false,
   classroomState: null,
   isTransitioning: false,
+  classroomReturnPosition: null,
 
   enterLecture: (lecture: LectureDefinition, seatNumber = 1) => {
     set({ isTransitioning: true });
+    const returnPosition = [...useGameStore.getState().myPosition] as [number, number, number];
+    useInputStore.getState().clearTargetDestination();
 
     // Transition into classroom instance
     setTimeout(() => {
@@ -51,6 +56,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         attendanceStartedAt: now,
         attendanceRewardClaimed: false,
         isTransitioning: false,
+        classroomReturnPosition: returnPosition,
         classroomState: {
           lectureId: lecture.id,
           definition: lecture,
@@ -70,13 +76,14 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   },
 
   leaveLecture: () => {
-    set({ isTransitioning: true });
+    const state = get();
+    if (!state.currentLecture || state.isTransitioning) return;
 
-    const current = get().currentLecture;
-    const started = get().attendanceStartedAt;
+    const current = state.currentLecture;
+    const started = state.attendanceStartedAt;
 
     // Check attendance duration
-    if (current && started && !get().attendanceRewardClaimed) {
+    if (started && !state.attendanceRewardClaimed) {
       const durationSec = Math.floor((Date.now() - started) / 1000);
       // If attended for at least 30 seconds in game simulation, grant attendance allowance
       if (durationSec >= 30) {
@@ -84,21 +91,29 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
       }
     }
 
-    setTimeout(() => {
-      if (current) {
-        networkManager.leaveLectureRoom(current.id);
-      }
+    networkManager.leaveLectureRoom(current.id);
+    useGameStore.setState((game) => ({
+      myPosition: state.classroomReturnPosition || game.myPosition,
+      myAnimation: 'idle',
+      activeModal: null,
+      nearbyInteractable: null,
+      selectedPlayer: null,
+      selectedHallLocationId: null,
+    }));
+    useInputStore.getState().clearTargetDestination();
+    useInputStore.getState().setIsDraggingCamera(false);
 
-      set({
-        isInClassroom: false,
-        currentLecture: null,
-        mySeatNumber: null,
-        isHandRaised: false,
-        attendanceStartedAt: null,
-        classroomState: null,
-        isTransitioning: false,
-      });
-    }, 400);
+    set({
+      isInClassroom: false,
+      currentLecture: null,
+      mySeatNumber: null,
+      isHandRaised: false,
+      attendanceStartedAt: null,
+      attendanceRewardClaimed: false,
+      classroomState: null,
+      classroomReturnPosition: null,
+      isTransitioning: false,
+    });
   },
 
   toggleRaiseHand: () => {

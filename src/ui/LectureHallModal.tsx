@@ -7,7 +7,6 @@ import {
 } from '../config/lectureSchedule';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
-import { networkManager } from '../game/multiplayer/networkManager';
 import { formatCountdown } from '../utils/lagosTime';
 
 interface LectureHallModalProps {
@@ -55,7 +54,6 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
   const handleEnter = () => {
     if (!activeLecture || !user) return;
     enterLecture(activeLecture, 1);
-    networkManager.enterLectureRoom(activeLecture.id, 1);
     onClose();
   };
 

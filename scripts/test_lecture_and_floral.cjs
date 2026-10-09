@@ -39,6 +39,7 @@ async function runTests() {
             }
           })
         );
+        setTimeout(() => resolve({ ws, connId, messages, username, college }), 100);
       });
 
       ws.on('message', (raw) => {
@@ -50,10 +51,6 @@ async function runTests() {
 
       ws.on('error', (err) => reject(err));
 
-      // Wait 300ms for initial join handshake
-      setTimeout(() => {
-        resolve({ ws, connId, messages, username, college });
-      }, 400);
     });
   }
 
@@ -162,29 +159,11 @@ async function runTests() {
     assert(chatOnA && chatOnA.lectureId === 'funaab-fst-201', 'Chat message has lectureId room isolation metadata');
     assert(chatOnA && chatOnA.text.includes('Dr. Adeyemi'), 'Chat message text correctly received');
 
-    // 6. Faith leaves class
-    console.log('\n--- Test 6: Faith Leaves Classroom ---');
+    // 6. Enigma leaves while Faith remains in class
+    console.log('\n--- Test 6: Enigma Leaves Classroom ---');
     clientA.messages.length = 0;
     clientB.messages.length = 0;
 
-    clientB.ws.send(
-      JSON.stringify({
-        type: 'lecture_leave',
-        data: {
-          connectionId: clientB.connId,
-          lectureId: 'funaab-fst-201'
-        }
-      })
-    );
-
-    await new Promise((r) => setTimeout(r, 400));
-
-    const leftEventOnA = clientA.messages.find((m) => m.type === 'classroom_student_left');
-    assert(leftEventOnA !== undefined, 'Enigma received notification that Faith left classroom');
-    assert(leftEventOnA && leftEventOnA.connectionId === clientB.connId, 'Left event correctly references Faith connection');
-
-    // 7. Enigma leaves class
-    console.log('\n--- Test 7: Enigma Leaves Classroom ---');
     clientA.ws.send(
       JSON.stringify({
         type: 'lecture_leave',
@@ -195,6 +174,52 @@ async function runTests() {
       })
     );
 
+    await new Promise((r) => setTimeout(r, 400));
+
+    const leftEventOnB = clientB.messages.find((m) => m.type === 'classroom_student_left');
+    assert(leftEventOnB !== undefined, 'Faith received notification that Enigma left classroom');
+    assert(leftEventOnB && leftEventOnB.connectionId === clientA.connId, 'Left event correctly references Enigma connection');
+
+    // 7. Re-entering gets the released seat while the other student remains
+    console.log('\n--- Test 7: Released Seat Is Reassigned ---');
+    clientA.messages.length = 0;
+    clientB.messages.length = 0;
+    clientA.ws.send(
+      JSON.stringify({
+        type: 'lecture_enter',
+        data: {
+          connectionId: clientA.connId,
+          lectureId: 'funaab-fst-201'
+        }
+      })
+    );
+
+    await new Promise((r) => setTimeout(r, 400));
+    const rejoinedA = clientA.messages.find((m) => m.type === 'classroom_sync');
+    assert(rejoinedA && rejoinedA.assignedSeat === 1, 'Enigma can reclaim released Seat #1');
+    assert(clientB.messages.some((m) => m.type === 'classroom_student_joined' && m.student.connectionId === clientA.connId), 'Faith remains in class and sees Enigma rejoin');
+
+    clientA.ws.send(JSON.stringify({
+      type: 'lecture_leave',
+      data: { connectionId: clientA.connId, lectureId: 'funaab-fst-201' }
+    }));
+    await new Promise((r) => setTimeout(r, 200));
+    assert(clientB.messages.some((m) => m.type === 'classroom_student_left' && m.connectionId === clientA.connId), 'Faith remains in class after Enigma leaves again');
+
+    clientB.ws.close();
+    await new Promise((r) => setTimeout(r, 200));
+    clientA.messages.length = 0;
+    clientA.ws.send(JSON.stringify({
+      type: 'lecture_enter',
+      data: { connectionId: clientA.connId, lectureId: 'funaab-fst-201', seatNumber: 2 }
+    }));
+    await new Promise((r) => setTimeout(r, 400));
+    const seatAfterDisconnect = clientA.messages.find((m) => m.type === 'classroom_sync');
+    assert(seatAfterDisconnect && seatAfterDisconnect.assignedSeat === 2, 'A disconnecting classmate frees their requested seat for reuse');
+    clientA.ws.send(JSON.stringify({
+      type: 'lecture_leave',
+      data: { connectionId: clientA.connId, lectureId: 'funaab-fst-201' }
+    }));
     await new Promise((r) => setTimeout(r, 200));
 
     // 8. Floral World Restaurant & Economy Menu Verification
@@ -215,7 +240,6 @@ async function runTests() {
 
     // Cleanup WebSockets
     clientA.ws.close();
-    clientB.ws.close();
 
     console.log('\n==================================================');
     console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);

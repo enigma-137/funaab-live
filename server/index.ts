@@ -967,7 +967,25 @@ wss.on('connection', (ws: WebSocket, req) => {
   ws.on('close', () => {
     if (sessionConnId) {
       const exitingPlayer = players.get(sessionConnId);
+      const closingSession = sessions.get(ws);
+      const lectureId = exitingPlayer?.currentLectureId;
+      if (lectureId) {
+        const lectureRoomKey = `world:funaab:lecture:${lectureId}`;
+        const roomState = lectureRooms.get(lectureId);
+        roomState?.students.delete(sessionConnId);
+        if (roomState?.students.size === 0) lectureRooms.delete(lectureId);
+        if (closingSession) closingSession.room = 'world:funaab:main';
+        broadcastToRoom(lectureRoomKey, JSON.stringify({
+          type: 'classroom_student_left',
+          lectureId,
+          connectionId: sessionConnId,
+        }));
+      }
       players.delete(sessionConnId);
+      if (exitingPlayer) {
+        exitingPlayer.currentLectureId = undefined;
+        exitingPlayer.seatNumber = undefined;
+      }
       kekes.forEach((keke) => {
         keke.passengers = keke.passengers.filter((id: string) => id !== sessionConnId);
       });

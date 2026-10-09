@@ -11,6 +11,7 @@ import {
   Send,
   Clock,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 
 export const ClassroomHUD: React.FC = () => {
@@ -28,7 +29,9 @@ export const ClassroomHUD: React.FC = () => {
   const { messages } = useSocialStore();
 
   const [chatInput, setChatInput] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(() =>
+    typeof window === 'undefined' || !window.matchMedia('(max-width: 639px)').matches
+  );
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [attendanceDuration, setAttendanceDuration] = useState(0);
   const chatBottomRef = useRef<HTMLDivElement>(null);
@@ -53,6 +56,26 @@ export const ClassroomHUD: React.FC = () => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [classMessages]);
 
+  useEffect(() => {
+    if (!currentLecture) return;
+
+    const requestLeaveConfirmation = () => {
+      setShowLeaveConfirm(true);
+      window.history.pushState({ classroomHUD: true }, '', window.location.href);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowLeaveConfirm(true);
+    };
+
+    window.history.pushState({ classroomHUD: true }, '', window.location.href);
+    window.addEventListener('popstate', requestLeaveConfirmation);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('popstate', requestLeaveConfirmation);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentLecture]);
+
   const handleSendClassChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || !currentLecture) return;
@@ -63,7 +86,8 @@ export const ClassroomHUD: React.FC = () => {
   if (!currentLecture) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-40 flex flex-col justify-between p-4 sm:p-6 font-['Plus_Jakarta_Sans'] select-none">
+    <div className="fixed inset-0 pointer-events-none z-40 font-['Plus_Jakarta_Sans'] select-none">
+      <div className="hidden sm:flex absolute inset-0 flex-col justify-between p-4 sm:p-6">
       {/* ─── 1. TOP BAR: LECTURE DETAILS & ATTENDANCE ─── */}
       <div className="flex items-start justify-between w-full">
         {/* Course Info Card */}
@@ -206,6 +230,115 @@ export const ClassroomHUD: React.FC = () => {
           </button>
         </div>
       </div>
+      </div>
+
+      <div
+        className="fixed left-3 right-3 z-40 flex items-center justify-between gap-2 sm:hidden pointer-events-none"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 10px)' }}
+      >
+        <div className="min-w-0 max-w-[72%] rounded-lg border border-white/15 bg-slate-950/85 px-3 py-2 text-white shadow-lg backdrop-blur-md">
+          <div className="truncate text-xs font-bold">{currentLecture.courseCode} · {currentLecture.title}</div>
+          <div className="text-[11px] text-slate-300">{activeStudentsCount} students</div>
+        </div>
+        <div className="shrink-0 rounded-lg border border-white/15 bg-slate-950/85 px-3 py-2 text-xs font-semibold text-amber-200 shadow-lg backdrop-blur-md">
+          {Math.max(0, currentLecture.durationMinutes - Math.floor(attendanceDuration / 60))}m left
+        </div>
+      </div>
+
+      {!isChatOpen && (
+        <div
+          className="fixed left-4 right-4 z-40 mx-auto max-w-[calc(100vw-32px)] rounded-xl border border-emerald-300/35 bg-slate-950/90 px-3 py-2 text-white shadow-xl backdrop-blur-md sm:hidden pointer-events-none"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)', maxHeight: 120 }}
+        >
+          <div className="mb-0.5 text-xs font-bold text-emerald-300">{currentLecture.lecturerName}</div>
+          <div className="line-clamp-4 overflow-hidden text-sm leading-[1.4] text-slate-100">
+            {classroomState?.currentLecturerSpeech || currentLecture.timeline[0]?.text || 'Welcome to class.'}
+          </div>
+        </div>
+      )}
+
+      {isChatOpen && (
+        <div
+          className="fixed left-3 right-3 z-[55] overflow-hidden rounded-xl border border-slate-600 bg-slate-950/95 shadow-2xl backdrop-blur-md sm:hidden pointer-events-auto"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)', maxHeight: '45dvh' }}
+        >
+          <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+            <span className="flex items-center gap-2 text-xs font-bold text-emerald-300">
+              <MessageSquare className="h-4 w-4" /> Class chat
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsChatOpen(false)}
+              aria-label="Close class chat"
+              className="rounded p-1 text-slate-300 hover:bg-slate-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="max-h-[26dvh] space-y-2 overflow-y-auto p-3 text-xs">
+            {classMessages.length === 0 ? (
+              <div className="py-2 text-center text-slate-400">No messages yet</div>
+            ) : classMessages.map((msg) => (
+              <div key={msg.id} className="break-words leading-snug">
+                <span className="font-bold text-emerald-300">{msg.isSystem ? 'Class' : `@${msg.senderName}`} </span>
+                <span className="text-slate-100">{msg.text}</span>
+              </div>
+            ))}
+            <div ref={chatBottomRef} />
+          </div>
+          <form onSubmit={handleSendClassChat} className="flex gap-2 border-t border-slate-800 p-2">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              placeholder="Message classmates"
+              maxLength={150}
+              enterKeyHint="send"
+              className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-base text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none select-text"
+            />
+            <button
+              type="submit"
+              disabled={!chatInput.trim()}
+              aria-label="Send class message"
+              className="flex w-10 items-center justify-center rounded-lg bg-emerald-600 text-white disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div
+        className="fixed left-3 right-3 z-[60] flex items-center gap-2 sm:hidden pointer-events-auto"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+      >
+        <button
+          type="button"
+          onClick={toggleRaiseHand}
+          aria-label={isHandRaised ? 'Hand raised' : 'Raise hand'}
+          className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-bold shadow-lg ${isHandRaised ? 'border-amber-300 bg-amber-500 text-slate-950' : 'border-slate-600 bg-slate-900/95 text-white'}`}
+        >
+          <Hand className="h-4 w-4 shrink-0" />
+          <span>{isHandRaised ? 'Raised' : 'Raise'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsChatOpen((open) => !open)}
+          aria-label={isChatOpen ? 'Close class chat' : 'Open class chat'}
+          className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-bold shadow-lg ${isChatOpen ? 'border-emerald-400 bg-emerald-800 text-white' : 'border-slate-600 bg-slate-900/95 text-white'}`}
+        >
+          <MessageSquare className="h-4 w-4 shrink-0" />
+          <span>Chat</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowLeaveConfirm(true)}
+          className="flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-400/70 bg-red-900 text-xs font-bold text-white shadow-lg"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span>Leave</span>
+        </button>
+      </div>
 
       {/* ─── 3. LEAVE CLASS CONFIRMATION MODAL ─── */}
       {showLeaveConfirm && (
@@ -214,7 +347,7 @@ export const ClassroomHUD: React.FC = () => {
             <div className="text-3xl">🚪</div>
             <div>
               <h3 className="text-lg font-bold text-white font-['Outfit']">
-                Leave {currentLecture.courseCode}?
+                Leave {currentLecture.title}?
               </h3>
               <p className="text-xs text-slate-400 mt-1">
                 You will step outside {currentLecture.locationName} back onto the campus grounds.
@@ -226,7 +359,7 @@ export const ClassroomHUD: React.FC = () => {
                 onClick={() => setShowLeaveConfirm(false)}
                 className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition"
               >
-                Stay in Class
+                Stay
               </button>
               <button
                 onClick={() => {
