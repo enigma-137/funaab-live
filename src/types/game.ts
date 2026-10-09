@@ -70,8 +70,10 @@ export interface PSMatchState {
   id: string;
   stationId: string;
   hostId: string;
+  hostConnectionId?: string;
   hostName: string;
   guestId?: string;
+  guestConnectionId?: string;
   guestName?: string;
   status: 'waiting' | 'in_progress' | 'round_resolved' | 'finished';
   currentRound: number;
@@ -249,4 +251,3 @@ export interface ClassroomState {
   currentLecturerSpeech: string;
   activeStudents: Record<string, { connectionId: string; username: string; college: string; seatNumber: number; handRaised?: boolean }>;
 }
-

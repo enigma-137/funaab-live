@@ -372,11 +372,27 @@ export const LocalPlayer: React.FC = () => {
     const feetVec = new THREE.Vector3(...feetPosition);
     let closestInteractable: InteractableZone | null = null;
     let minDistance = 999;
+    const interactionPriority: Record<InteractableZone['type'], number> = {
+      keke_stop: 0,
+      food: 1,
+      restaurant_dining: 1,
+      lecture_hall: 2,
+      playstation: 3,
+      atm: 4,
+      job_board: 5,
+      player: 6,
+      bench: 7,
+    };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
       const zonePos = new THREE.Vector3(...zone.position);
       const dist = feetVec.distanceTo(zonePos);
-      if (dist <= zone.radius && dist < minDistance) {
+      const isCloser = dist < minDistance - 0.01;
+      const isPriorityTie =
+        Math.abs(dist - minDistance) <= 0.01 &&
+        closestInteractable !== null &&
+        interactionPriority[zone.type] < interactionPriority[closestInteractable.type];
+      if (dist <= zone.radius && (isCloser || isPriorityTie)) {
         minDistance = dist;
         closestInteractable = zone;
       }

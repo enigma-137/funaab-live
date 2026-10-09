@@ -1,19 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { useInputStore } from '../stores/inputStore';
 import { ActivityFeedItem } from '../types/game';
 import { Bell, X } from 'lucide-react';
 
 export const ActivityFeed: React.FC = () => {
-  const { activityEvents } = useGameStore();
+  const { activityEvents, isRidingKeke } = useGameStore();
+  const { isTouchDevice } = useInputStore();
   const [visibleEvents, setVisibleEvents] = useState<ActivityFeedItem[]>([]);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [showMobileToast, setShowMobileToast] = useState(true);
 
   useEffect(() => {
     if (!activityEvents || activityEvents.length === 0) return;
     setVisibleEvents(activityEvents.slice(-4));
   }, [activityEvents]);
 
-  if (visibleEvents.length === 0 || isMinimized) return null;
+  useEffect(() => {
+    if (!isTouchDevice || visibleEvents.length === 0) return;
+    setShowMobileToast(true);
+    const timeout = window.setTimeout(() => setShowMobileToast(false), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [activityEvents, isTouchDevice, visibleEvents.length]);
+
+  if (
+    visibleEvents.length === 0 ||
+    isMinimized ||
+    (isTouchDevice && (!showMobileToast || isRidingKeke))
+  ) return null;
+
+  if (isTouchDevice) {
+    const event = visibleEvents[visibleEvents.length - 1];
+    return (
+      <div className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+8px)] z-40 max-w-[calc(100vw-32px)] -translate-x-1/2 animate-in fade-in duration-300">
+        <div className="flex items-center gap-2 truncate rounded-full border border-slate-700/80 bg-slate-950/90 px-3 py-2 text-[11px] font-semibold text-slate-100 shadow-lg backdrop-blur-md">
+          <span className="shrink-0">
+            {event.type === 'delivery'
+              ? '🛵'
+              : event.type === 'transfer'
+                ? '💸'
+                : event.type === 'fine'
+                  ? '🚨'
+                  : event.type === 'ps_win'
+                    ? '🏆'
+                    : '🎓'}
+          </span>
+          <span className="truncate">{event.text}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed top-20 right-4 z-40 pointer-events-auto max-w-xs w-full space-y-1.5 animate-in slide-in-from-right-4 duration-300 font-['Plus_Jakarta_Sans']">

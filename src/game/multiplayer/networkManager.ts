@@ -290,6 +290,13 @@ class NetworkManager {
         break;
       }
 
+      case 'ps_match_started': {
+        if (data.match) {
+          gameStore.startPSMatch(data.match);
+        }
+        break;
+      }
+
       case 'classroom_sync': {
         // Room-specific sync of active students in the lecture
         if (data.lectureId && data.classroomState) {

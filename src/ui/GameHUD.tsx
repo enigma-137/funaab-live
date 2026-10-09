@@ -26,6 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedule';
+import worldData from '../worlds/funaab/world.json';
 
 export const GameHUD: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -35,6 +36,7 @@ export const GameHUD: React.FC = () => {
     selectedPlayer,
     isRidingKeke,
     currentKekeId,
+    targetKekeDestinationId,
     isOnRestrictedLawn,
     currentTerrainType,
     kekes,
@@ -43,6 +45,7 @@ export const GameHUD: React.FC = () => {
     setRidingKeke,
     connectionStatus,
     playerRef,
+    activeModal,
   } = useGameStore();
 
   const { balance } = useWalletStore();
@@ -56,6 +59,9 @@ export const GameHUD: React.FC = () => {
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const activeKeke = Object.values(kekes)[0];
+  const destinationName = targetKekeDestinationId
+    ? worldData.kekeDestinations.find((destination) => destination.id === targetKekeDestinationId)?.name
+    : undefined;
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -177,6 +183,27 @@ export const GameHUD: React.FC = () => {
     return 'Interact';
   };
 
+  const getTouchInteractLabel = () => {
+    if (isRidingKeke) return 'Exit Keke';
+    switch (nearbyInteractable?.type) {
+      case 'keke_stop':
+        return 'Keke';
+      case 'lecture_hall':
+        return 'Class';
+      case 'food':
+      case 'restaurant_dining':
+        return 'Food';
+      case 'atm':
+        return 'Bank';
+      case 'job_board':
+        return 'Jobs';
+      case 'playstation':
+        return 'Play';
+      default:
+        return selectedPlayer ? 'Talk' : 'Interact';
+    }
+  };
+
   return (
     <div
       className="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-3 sm:p-6 font-['Plus_Jakarta_Sans'] select-none"
@@ -288,20 +315,6 @@ export const GameHUD: React.FC = () => {
         </div>
 
         {/* Top Center: Keke Transit Active Indicator */}
-        {isRidingKeke && (
-          <div className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-amber-950/90 border border-amber-400 text-amber-200 text-xs shadow-2xl backdrop-blur-md animate-pulse">
-            <span className="text-base">🛺</span>
-            <div>
-              <div className="font-black text-white font-['Outfit'] text-[11px] sm:text-xs">
-                Riding Campus Keke
-              </div>
-              <div className="text-[9px] sm:text-[10px] text-amber-300">
-                Next: <strong className="text-white">{activeKeke?.currentStopName || 'Campus Route'}</strong>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Top Right: Actions & Stats */}
         <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
           {/* Online Counter */}
@@ -436,6 +449,24 @@ export const GameHUD: React.FC = () => {
         </div>
       )}
 
+      {isRidingKeke && (
+        <div className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-32px))] -translate-x-1/2 rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-4 sm:top-24 sm:translate-x-0">
+          <div className="flex items-center gap-2">
+            <span className="text-base leading-none">🛺</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-black leading-tight text-white">Campus Keke</div>
+              <div className="truncate text-xs leading-tight text-amber-200">
+                To: {destinationName || 'Campus route'}
+              </div>
+              <div className="truncate text-[11px] leading-tight text-amber-300">
+                Next: {activeKeke?.currentStopName || 'Campus stop'}
+                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length} aboard` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {jobNotice && (
         <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-bounce">
           <div className="p-2.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold text-center shadow-2xl backdrop-blur-md">
@@ -445,15 +476,24 @@ export const GameHUD: React.FC = () => {
       )}
 
       {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
-      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-0 w-full max-w-[100vw] px-3 sm:px-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
-        {(nearbyInteractable || selectedPlayer || isRidingKeke) && (
-          <div className="pointer-events-auto animate-bounce duration-1000 flex justify-center">
+      <div
+        className={isTouchDevice
+          ? 'pointer-events-none fixed right-4 z-[60]'
+          : 'pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-0 z-30 w-full max-w-[100vw] px-3 sm:px-4'}
+        style={isTouchDevice ? { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' } : undefined}
+      >
+        {!activeModal && (nearbyInteractable || selectedPlayer || isRidingKeke) && (
+          <div className="pointer-events-auto flex justify-center">
             <button
               onClick={handleInteractButton}
-              className="flex w-full max-w-[420px] items-center gap-2.5 rounded-2xl bg-slate-950/95 hover:bg-slate-900 text-white border border-emerald-400/70 shadow-2xl backdrop-blur-2xl transition transform active:scale-95 min-h-[52px] px-3.5 py-2 sm:px-4 sm:py-2.5"
+              aria-label={isTouchDevice ? getTouchInteractLabel() : getInteractLabel()}
+              title={isTouchDevice ? getTouchInteractLabel() : getInteractLabel()}
+              className={isTouchDevice
+                ? 'flex min-h-[52px] max-w-[260px] items-center gap-2 rounded-2xl border border-emerald-400/80 bg-slate-950/95 px-3 py-2 text-white shadow-xl backdrop-blur-xl transition active:scale-95 max-[430px]:max-w-[160px] max-[360px]:min-h-12 max-[360px]:w-12 max-[360px]:justify-center max-[360px]:px-1'
+                : 'flex min-h-[50px] items-center gap-3 rounded-3xl border-2 border-emerald-400 bg-slate-950/95 px-5 py-3 text-white shadow-2xl backdrop-blur-2xl transition transform active:scale-95 sm:px-6 sm:py-3.5'}
             >
               {isTouchDevice ? (
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white text-sm sm:text-base flex items-center justify-center shadow-lg shrink-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-sm text-white shadow-lg sm:h-9 sm:w-9">
                   {getInteractIcon()}
                 </div>
               ) : (
@@ -461,14 +501,16 @@ export const GameHUD: React.FC = () => {
                   E
                 </div>
               )}
-              <div className="min-w-0 flex-1 text-left">
-                <div className="text-[9px] sm:text-[10px] uppercase font-black text-emerald-400 tracking-wider truncate">
+              <div className="min-w-0 flex-1 text-left max-[360px]:hidden">
+                {!isTouchDevice && (
+                  <div className="truncate text-[9px] font-black uppercase tracking-wider text-emerald-400 sm:text-[10px]">
                   {isRidingKeke
                     ? 'In Transit'
                     : nearbyInteractable?.label || 'Student Interaction'}
-                </div>
-                <div className="truncate text-xs sm:text-sm font-extrabold text-white font-['Outfit']">
-                  {getInteractLabel()}
+                  </div>
+                )}
+                <div className="truncate font-['Outfit'] text-xs font-extrabold text-white sm:text-sm">
+                  {isTouchDevice ? getTouchInteractLabel() : getInteractLabel()}
                 </div>
               </div>
             </button>

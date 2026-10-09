@@ -20,6 +20,8 @@ interface GameState {
   kekes: Record<string, KekeState>;
   activeMatches: Record<string, PSMatchState>;
   currentMatch: PSMatchState | null;
+  activeChallengeId: string | null;
+  psViewState: 'lobby' | 'waiting' | 'active' | 'result';
 
   // Development & Diagnostics
   debugPhysics: boolean;
@@ -82,6 +84,7 @@ interface GameState {
   addActivityEvent: (event: ActivityFeedItem) => void;
   setSendMoneyRecipient: (recipient: { username: string; college?: string } | string | null) => void;
   setCurrentMatch: (match: PSMatchState | null) => void;
+  startPSMatch: (match: PSMatchState) => void;
   setPlayerRef: (ref: React.RefObject<any> | null) => void;
 
   setMyPosition: (pos: [number, number, number]) => void;
@@ -125,7 +128,7 @@ interface GameState {
 
 const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 const initialDebugPhysics = urlParams?.get('debugPhysics') === 'true';
-const initialDebugNet = urlParams?.get('debugNet') === 'true';
+const initialDebugNet = urlParams?.get('debugNet') === 'true' || urlParams?.get('debug') === 'true';
 
 export const useGameStore = create<GameState>((set, get) => ({
   isConnected: false,
@@ -137,6 +140,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   kekes: {},
   activeMatches: {},
   currentMatch: null,
+  activeChallengeId: null,
+  psViewState: 'lobby',
 
   debugPhysics: initialDebugPhysics,
   debugNet: initialDebugNet,
@@ -270,15 +275,35 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMatches: (matches) =>
     set((state) => {
       const currentUser = useAuthStore.getState().user;
-      const candidate = Object.values(matches).find(
-        (match) =>
-          !!currentUser &&
-          (match.hostId === currentUser.id || match.guestId === currentUser.id) &&
-          match.status !== 'finished'
-      );
+      const candidate = Object.values(matches)
+        .filter(
+          (match) =>
+            (!!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id)) ||
+            match.hostId === state.myConnectionId ||
+            match.guestId === state.myConnectionId ||
+            match.hostConnectionId === state.myConnectionId ||
+            match.guestConnectionId === state.myConnectionId
+        )
+        .sort((a, b) => {
+          const statusPriority = { in_progress: 0, round_resolved: 0, waiting: 1, finished: 2 };
+          return statusPriority[a.status] - statusPriority[b.status] || b.updatedAt - a.updatedAt;
+        })[0];
+      const currentMatch = candidate || state.currentMatch;
       return {
         activeMatches: matches,
-        currentMatch: candidate || state.currentMatch,
+        currentMatch,
+        activeChallengeId: currentMatch?.id || null,
+        activeModal:
+          candidate && candidate.status !== 'finished'
+            ? 'ps_match'
+            : state.activeModal,
+        psViewState: currentMatch
+          ? currentMatch.status === 'waiting'
+            ? 'waiting'
+            : currentMatch.status === 'finished'
+              ? 'result'
+              : 'active'
+          : 'lobby',
       };
     }),
 
@@ -286,18 +311,61 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => {
       const currentUser = useAuthStore.getState().user;
       const current = state.currentMatch;
-      const isMyMatch = !!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id);
+      const isMyMatch =
+        (!!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id)) ||
+        match.hostId === state.myConnectionId ||
+        match.guestId === state.myConnectionId ||
+        match.hostConnectionId === state.myConnectionId ||
+        match.guestConnectionId === state.myConnectionId;
       const isCurrentMatch = current && current.id === match.id;
+      const currentMatch = isMyMatch || isCurrentMatch ? match : current;
       return {
         activeMatches: {
           ...state.activeMatches,
           [match.id]: match,
         },
-        currentMatch: isMyMatch || isCurrentMatch ? match : current,
+        currentMatch,
+        activeChallengeId: currentMatch?.id || null,
+        psViewState: currentMatch
+          ? currentMatch.status === 'waiting'
+            ? 'waiting'
+            : currentMatch.status === 'finished'
+              ? 'result'
+              : 'active'
+          : 'lobby',
       };
     }),
 
-  setCurrentMatch: (match) => set({ currentMatch: match }),
+  setCurrentMatch: (match) =>
+    set({
+      currentMatch: match,
+      activeChallengeId: match?.id || null,
+      psViewState: match
+        ? match.status === 'waiting'
+          ? 'waiting'
+          : match.status === 'finished'
+            ? 'result'
+            : 'active'
+        : 'lobby',
+    }),
+  startPSMatch: (match) =>
+    set((state) => {
+      const currentUser = useAuthStore.getState().user;
+      const isParticipant =
+        (!!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id)) ||
+        match.hostId === state.myConnectionId ||
+        match.guestId === state.myConnectionId ||
+        match.hostConnectionId === state.myConnectionId ||
+        match.guestConnectionId === state.myConnectionId;
+      if (!isParticipant) return state;
+      return {
+        activeMatches: { ...state.activeMatches, [match.id]: match },
+        currentMatch: match,
+        activeChallengeId: match.id,
+        psViewState: match.status === 'finished' ? 'result' : 'active',
+        activeModal: 'ps_match',
+      };
+    }),
   setPlayerRef: (playerRef) => set({ playerRef }),
 
   setMyPosition: (myPosition) => set({ myPosition }),

@@ -7,16 +7,30 @@ import { X, Play, Trophy, Shield, ArrowLeft, ArrowUp, ArrowRight } from 'lucide-
 
 export const PSPenaltyGame: React.FC = () => {
   const { user } = useAuthStore();
-  const { activeMatches, currentMatch, setActiveModal, setCurrentMatch } = useGameStore();
+  const { activeMatches, currentMatch, psViewState, setActiveModal, setCurrentMatch } = useGameStore();
   const [selectedDirection, setSelectedDirection] = useState<'left' | 'center' | 'right' | null>(null);
+  const connectionId = useGameStore((state) => state.myConnectionId);
 
   const availableMatches = Object.values(activeMatches).filter(
-    (m) => m.status === 'waiting' && m.hostId !== user?.id
+    (m) =>
+      m.status === 'waiting' &&
+      m.hostId !== user?.id &&
+      m.hostId !== connectionId &&
+      m.hostConnectionId !== connectionId
   );
 
-  const myActiveMatch = currentMatch || Object.values(activeMatches).find(
-    (m) => (m.hostId === user?.id || m.guestId === user?.id) && m.status !== 'finished'
-  );
+  const myActiveMatch =
+    currentMatch ||
+    Object.values(activeMatches).find(
+      (m) =>
+        (m.hostId === user?.id ||
+          m.guestId === user?.id ||
+          m.hostId === connectionId ||
+          m.guestId === connectionId ||
+          m.hostConnectionId === connectionId ||
+          m.guestConnectionId === connectionId) &&
+        m.status !== 'finished'
+    );
 
   const handleCreate = () => {
     networkManager.createPSChallenge('ps5-station-1');
@@ -36,8 +50,14 @@ export const PSPenaltyGame: React.FC = () => {
     }
   };
 
-  const isHost = myActiveMatch?.hostId === user?.id;
-  const isGuest = myActiveMatch?.guestId === user?.id;
+  const isHost =
+    myActiveMatch?.hostId === user?.id ||
+    myActiveMatch?.hostId === connectionId ||
+    myActiveMatch?.hostConnectionId === connectionId;
+  const isGuest =
+    myActiveMatch?.guestId === user?.id ||
+    myActiveMatch?.guestId === connectionId ||
+    myActiveMatch?.guestConnectionId === connectionId;
   const isShooter = myActiveMatch
     ? (myActiveMatch.currentRound % 2 === 1 && isHost) || (myActiveMatch.currentRound % 2 === 0 && isGuest)
     : false;
@@ -57,10 +77,7 @@ export const PSPenaltyGame: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => {
-              setCurrentMatch(null);
-              setActiveModal(null);
-            }}
+            onClick={() => setActiveModal(null)}
             className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
           >
             <X className="w-5 h-5" />
@@ -69,7 +86,7 @@ export const PSPenaltyGame: React.FC = () => {
 
         {/* Content */}
         <div className="p-6">
-          {!myActiveMatch ? (
+          {psViewState === 'lobby' || !myActiveMatch ? (
             <div className="space-y-5">
               <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-center">
                 <div className="text-3xl mb-2">⚽ 🎮</div>
@@ -117,12 +134,12 @@ export const PSPenaltyGame: React.FC = () => {
                 Create New Challenge
               </button>
             </div>
-          ) : myActiveMatch.status === 'waiting' ? (
+          ) : psViewState === 'waiting' ? (
             <div className="text-center py-8 space-y-4">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin mx-auto" />
               <div className="font-bold text-white text-base">Waiting for Challenger...</div>
               <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                Tell another player on campus to press [E] at the PS5 console to join your match!
+                Your challenge is open in the Game Den. Another player can join it from the challenge list.
               </p>
             </div>
           ) : (

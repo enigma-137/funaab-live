@@ -5,6 +5,7 @@ export interface Env {
   SUPABASE_JWT_SECRET?: string;
   ALLOWED_ORIGINS?: string;
   ENABLE_GUEST_MODE?: string;
+  ENVIRONMENT?: string;
 }
 
 interface SessionData {
@@ -56,8 +57,10 @@ interface PSMatchState {
   id: string;
   stationId: string;
   hostId: string;
+  hostConnectionId: string;
   hostName: string;
   guestId?: string;
+  guestConnectionId?: string;
   guestName?: string;
   status: 'waiting' | 'in_progress' | 'finished';
   currentRound: number;
@@ -542,6 +545,12 @@ export class WorldRoomDO {
                 return;
               }
             }
+            const verifiedUserId = authenticatedUserId;
+            if (!verifiedUserId) {
+              webSocket.send(JSON.stringify({ type: 'error', message: 'Unauthorized session. Please sign in.' }));
+              webSocket.close(4001, 'Unauthorized');
+              return;
+            }
 
             sessionRoom = room;
             const assignedConnId: string =
@@ -550,7 +559,7 @@ export class WorldRoomDO {
 
             const sessionData: SessionData = {
               connectionId: assignedConnId,
-              id: authenticatedUserId,
+              id: verifiedUserId,
               username: String(player.username || 'Student').slice(0, 24),
               college: String(player.college || 'COLENG').slice(0, 16),
               avatarConfig: player.avatarConfig || {},
@@ -562,7 +571,7 @@ export class WorldRoomDO {
             this.sessions.set(webSocket, sessionData);
 
             const playerState: PlayerState = {
-              id: authenticatedUserId,
+              id: verifiedUserId,
               connectionId: assignedConnId,
               username: sessionData.username,
               college: sessionData.college,
@@ -786,11 +795,13 @@ export class WorldRoomDO {
           case 'ps_challenge_create': {
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
+            if (!session) return;
             const matchId = `match-${Date.now()}`;
             const match: PSMatchState = {
               id: matchId,
               stationId: data.stationId || 'ps5-station-1',
-              hostId: sessionConnId,
+              hostId: session.id,
+              hostConnectionId: sessionConnId,
               hostName: session?.username || 'Player 1',
               status: 'waiting',
               currentRound: 1,
@@ -807,12 +818,18 @@ export class WorldRoomDO {
           case 'ps_challenge_join': {
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
+            if (!session) return;
             const match = this.psMatches.get(data.matchId);
-            if (match && match.status === 'waiting' && match.hostId !== sessionConnId) {
-              match.guestId = sessionConnId;
+            if (match && match.status === 'waiting' && match.hostId !== session.id) {
+              match.guestId = session.id;
+              match.guestConnectionId = sessionConnId;
               match.guestName = session?.username || 'Player 2';
               match.status = 'in_progress';
               match.updatedAt = Date.now();
+              this.sendToConnections(
+                [match.hostConnectionId, match.guestConnectionId],
+                JSON.stringify({ type: 'ps_match_started', match })
+              );
               this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
             }
             break;
@@ -823,10 +840,12 @@ export class WorldRoomDO {
             const match = this.psMatches.get(data.matchId);
             if (!match || match.status !== 'in_progress') return;
 
-            if (sessionConnId === match.hostId) {
+            if (sessionConnId === match.hostConnectionId) {
               match.hostChoice = data.choice;
-            } else if (sessionConnId === match.guestId) {
+            } else if (sessionConnId === match.guestConnectionId) {
               match.guestChoice = data.choice;
+            } else {
+              return;
             }
 
             if (match.hostChoice && match.guestChoice) {
@@ -1102,6 +1121,17 @@ export class WorldRoomDO {
   private broadcastToRoom(room: string, message: string, skipSocket?: WebSocket) {
     for (const [ws, session] of this.sessions) {
       if (session.room === room && ws !== skipSocket && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(message);
+        } catch (e) {}
+      }
+    }
+  }
+
+  private sendToConnections(connectionIds: string[], message: string) {
+    const targetConnections = new Set(connectionIds);
+    for (const [ws, session] of this.sessions) {
+      if (targetConnections.has(session.connectionId) && ws.readyState === WebSocket.OPEN) {
         try {
           ws.send(message);
         } catch (e) {}

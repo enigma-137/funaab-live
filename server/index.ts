@@ -493,6 +493,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             match.guestName = player?.username || 'Player 2';
             match.status = 'in_progress';
             match.updatedAt = Date.now();
+            broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_started', match }));
             broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
           }
           break;

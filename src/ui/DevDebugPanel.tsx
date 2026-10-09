@@ -19,6 +19,14 @@ export const DevDebugPanel: React.FC = () => {
     toggleDebugNet,
   } = useGameStore();
 
+  const debugHudEnabled =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_DEBUG_HUD === 'true' ||
+    (typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('debug') === 'true');
+
+  if (!debugHudEnabled) return null;
+
   if (!debugNet && !debugPhysics) {
     return (
       <div className="fixed bottom-4 right-4 z-40 pointer-events-auto flex items-center gap-2">
