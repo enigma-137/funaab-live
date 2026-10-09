@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { ActivityFeedItem } from '../types/game';
-import { Bell, Sparkles, X } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 
 export const ActivityFeed: React.FC = () => {
   const { activityEvents } = useGameStore();
@@ -40,12 +40,12 @@ export const ActivityFeed: React.FC = () => {
             {evt.type === 'delivery'
               ? '🛵'
               : evt.type === 'transfer'
-              ? '💸'
-              : evt.type === 'fine'
-              ? '🚨'
-              : evt.type === 'ps_win'
-              ? '🏆'
-              : '🎓'}
+                ? '💸'
+                : evt.type === 'fine'
+                  ? '🚨'
+                  : evt.type === 'ps_win'
+                    ? '🏆'
+                    : '🎓'}
           </span>
           <div className="text-[11px] text-slate-200 font-medium">{evt.text}</div>
         </div>

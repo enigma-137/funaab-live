@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import worldData from '../worlds/funaab/world.json';
-import { Users, ChevronDown, Check, Search, Sparkles, MapPin, Compass, MessageCircle, Building2, Play } from 'lucide-react';
+import { Users, ChevronDown, Check, Search, MapPin, Compass, MessageCircle, Building2, Play } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
   const { guestLogin, login, signup, isLoading, error } = useAuthStore();
@@ -112,7 +112,6 @@ export const LandingPage: React.FC = () => {
         <div className="lg:col-span-7 space-y-6">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[#008751] text-xs font-bold tracking-wide">
-            <Sparkles className="w-3.5 h-3.5" />
             <span>Built for FUNAAB students</span>
           </div>
 
@@ -272,9 +271,8 @@ export const LandingPage: React.FC = () => {
                                 setIsDropdownOpen(false);
                                 setCollegeSearch('');
                               }}
-                              className={`w-full px-3 py-2 rounded-xl text-left text-xs transition flex items-center justify-between ${
-                                isSelected ? 'bg-[#E8F5E9] text-[#008751] font-bold' : 'hover:bg-[#F0F4F1] text-[#17211B]'
-                              }`}
+                              className={`w-full px-3 py-2 rounded-xl text-left text-xs transition flex items-center justify-between ${isSelected ? 'bg-[#E8F5E9] text-[#008751] font-bold' : 'hover:bg-[#F0F4F1] text-[#17211B]'
+                                }`}
                             >
                               <div>
                                 <span className="font-extrabold">{col.code}</span>
@@ -368,9 +366,8 @@ export const LandingPage: React.FC = () => {
                                     setIsDropdownOpen(false);
                                     setCollegeSearch('');
                                   }}
-                                  className={`w-full px-3 py-2 rounded-xl text-left text-xs transition flex items-center justify-between ${
-                                    isSelected ? 'bg-[#E8F5E9] text-[#008751] font-bold' : 'hover:bg-[#F0F4F1] text-[#17211B]'
-                                  }`}
+                                  className={`w-full px-3 py-2 rounded-xl text-left text-xs transition flex items-center justify-between ${isSelected ? 'bg-[#E8F5E9] text-[#008751] font-bold' : 'hover:bg-[#F0F4F1] text-[#17211B]'
+                                    }`}
                                 >
                                   <div>
                                     <span className="font-extrabold">{col.code}</span>

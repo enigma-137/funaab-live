@@ -1,6 +1,6 @@
 import React from 'react';
 import { useInputStore } from '../stores/inputStore';
-import { Footprints, Eye, Compass, Sparkles } from 'lucide-react';
+import { Footprints, Eye, Compass } from 'lucide-react';
 
 export const MobileTutorialOverlay: React.FC = () => {
   const { isTouchDevice, mobileTutorialDismissed, setMobileTutorialDismissed, triggerHaptic } = useInputStore();
@@ -18,7 +18,6 @@ export const MobileTutorialOverlay: React.FC = () => {
         {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 shadow-lg">
-            <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-base font-black font-['Outfit'] text-white">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useJobStore } from '../stores/jobStore';
-import { X, Briefcase, MapPin, CheckCircle2, Navigation, AlertCircle, Sparkles } from 'lucide-react';
+import { X, Briefcase, MapPin, CheckCircle2, Navigation, AlertCircle } from 'lucide-react';
 
 export const CampusJobsModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -68,7 +68,6 @@ export const CampusJobsModal: React.FC = () => {
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {notification && (
             <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold animate-bounce">
-              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{notification}</span>
             </div>
           )}
@@ -138,11 +137,10 @@ export const CampusJobsModal: React.FC = () => {
               return (
                 <div
                   key={job.id}
-                  className={`p-4 rounded-2xl border transition flex flex-col justify-between ${
-                    isThisJobActive
-                      ? 'bg-emerald-950/30 border-emerald-400 shadow-md ring-1 ring-emerald-400/50'
-                      : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700/60'
-                  }`}
+                  className={`p-4 rounded-2xl border transition flex flex-col justify-between ${isThisJobActive
+                    ? 'bg-emerald-950/30 border-emerald-400 shadow-md ring-1 ring-emerald-400/50'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700/60'
+                    }`}
                 >
                   <div className="space-y-1.5 mb-3">
                     <div className="flex items-start justify-between gap-2">

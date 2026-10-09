@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
 import { networkManager } from '../game/multiplayer/networkManager';
-import { X, Gift, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Gift, CheckCircle2 } from 'lucide-react';
 
 export const DailyRewardModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -67,7 +67,6 @@ export const DailyRewardModal: React.FC = () => {
               onClick={handleClaim}
               className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs font-['Outfit'] tracking-wider uppercase shadow-xl transition transform active:scale-95 flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4" />
               <span>Collect ₦200 Allowance</span>
             </button>
           ) : (

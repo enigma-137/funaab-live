@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   XCircle,
   GraduationCap,
-  Sparkles,
+
   ChevronUp,
   ChevronDown,
   X,
@@ -203,9 +203,8 @@ export const GameHUD: React.FC = () => {
               </div>
               <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-slate-400">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                  }`}
+                  className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                    }`}
                 />
                 <span className="hidden sm:inline">{connectionStatus === 'connected' ? 'Live on Campus' : 'Connecting...'}</span>
               </div>
@@ -268,9 +267,8 @@ export const GameHUD: React.FC = () => {
               <button
                 id="btn-hud-lecture-timetable"
                 onClick={() => setActiveModal('lecture_hall')}
-                className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${
-                  liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
-                } shadow-xl text-xs transition group`}
+                className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
+                  } shadow-xl text-xs transition group`}
                 title={liveLecture ? `Live Class: ${liveLecture.courseCode}` : 'Lecture Timetable'}
               >
                 <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${liveLecture ? 'bg-emerald-500/30 border border-emerald-400/60 text-emerald-300' : 'bg-slate-700/40 text-slate-300'} flex items-center justify-center group-hover:scale-110 transition`}>
