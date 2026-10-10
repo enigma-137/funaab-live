@@ -66,17 +66,7 @@ export interface ChatMessage {
   };
 }
 
-export interface KekeState {
-  id: string;
-  routeId: string;
-  position: [number, number, number];
-  rotation: number;
-  speed: number;
-  currentWaypointIndex: number;
-  passengers: string[]; // player IDs
-  currentStopName: string;
-  isStopped: boolean;
-}
+export type KekeState = import('../config/kekeSimulation').TransitState;
 
 export interface PSMatchState {
   id: string;
@@ -109,7 +99,7 @@ export interface WorldLocation {
 
 export interface InteractableZone {
   id: string;
-  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining';
+  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library';
   label: string;
   actionText: string;
   position: [number, number, number];

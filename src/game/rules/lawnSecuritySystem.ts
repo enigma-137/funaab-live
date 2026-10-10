@@ -1,4 +1,4 @@
-import worldData from '../../worlds/funaab/world.json';
+import worldData from '../../config/campusWorld';
 import { TerrainZone, SecurityRoute } from '../../types/game';
 
 const terrainZones = worldData.terrainZones as TerrainZone[];

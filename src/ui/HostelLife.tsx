@@ -1,3 +1,5 @@
+import { CAMPUS_SPAWN } from '../config/campusLocations';
+import { ArrowLeft, Home, ShoppingBag, Backpack, Users } from 'lucide-react';
 import { HostelThumbnail } from "./HostelThumbnail";
 import { RoomControls } from "./RoomControls";
 import React, { useEffect, useRef, useState } from "react";
@@ -19,7 +21,7 @@ export function HostelLife() {
     user = useAuthStore((x) => x.user),
     modal = useGameStore((x) => x.activeModal);
   const nearGate = useGameStore(
-      (x) => Math.hypot(x.myPosition[0], x.myPosition[2] - 48) < 8,
+      (x) => Math.hypot(x.myPosition[0]-CAMPUS_SPAWN[0], x.myPosition[2]-CAMPUS_SPAWN[2]) < 8,
     ),
     nearSecurity = useGameStore(
       (x) => Math.hypot(x.myPosition[0] - 8, x.myPosition[2] - 7) < 3,
@@ -131,6 +133,8 @@ export function HostelLife() {
   return (
     <>
       <RoomControls />
+      {away && !s.preview && !s.pose && <button className="hostel-campus-return" aria-label="Return to campus" title="Return to campus" onClick={()=>s.travel('campus')}><ArrowLeft size={17}/><span>Campus</span></button>}
+
       {(s.transition || securityHold) && (
         <div className="hostel-fade" role="status">
           {securityHold
@@ -142,21 +146,19 @@ export function HostelLife() {
         <div className="hostel-dock">
           <strong>
             {s.owner
-              ? `${s.snapshot?.owner_name || "Student"}’s room`
-              : "Off-campus courtyard"}
+              ? `${s.snapshot?.owner_name || "Student"}’s Room`
+              : "HOSTEL"}
           </strong>
-          <button onClick={() => openHostel()}>Room</button>
-          <button onClick={() => openHostel("shop")}>Shop</button>
-          <button onClick={() => openHostel("decorate")}>Items</button>
-          <button onClick={() => openHostel("invites")}>Invite</button>
-          <button onClick={() => s.travel(s.owner ? "hostel" : "campus")}>
-            {s.owner ? "Leave room" : "Go Campus"}
-          </button>
+          <button onClick={() => openHostel()}><Home size={16}/>Room</button>
+          <button onClick={() => openHostel("shop")}><ShoppingBag size={16}/>Shop</button>
+          <button onClick={() => openHostel("decorate")}><Backpack size={16}/>Items</button>
+          <button onClick={() => openHostel("invites")}><Users size={16}/>Invite</button>
+          {s.owner && <button onClick={() => s.travel('hostel')}>Leave room</button>}
         </div>
       )}
       {!away && nearGate && modal === null && (
         <button className="hostel-gate" onClick={() => openHostel()}>
-          Go Hostel
+          Hostel
         </button>
       )}
       {incoming.length > 0 && modal === null && (
@@ -201,7 +203,7 @@ export function HostelLife() {
         >
           <header>
             <div>
-              <small>OFF-CAMPUS LIFE · GAME CURRENCY</small>
+              <small>HOSTEL · GAME CURRENCY</small>
               <h1>
                 {s.panel === "shop"
                   ? "Iya Ibeji Shop"
@@ -211,7 +213,7 @@ export function HostelLife() {
                       ? "Make room for you."
                       : s.panel === "invites"
                         ? "Come my place."
-                        : "Your room is ready."}
+                        : s.owner ? `${s.snapshot?.owner_name || "Student"}’s Room` : "HOSTEL"}
               </h1>
             </div>
             <button
@@ -256,14 +258,14 @@ export function HostelLife() {
                   A mattress, a bucket, a light. The rest is your student story.
                 </p>
                 <div className="hostel-actions">
-                  <button onClick={() => s.travel("hostel")}>Go Hostel</button>
-                  <button onClick={() => s.travel("room")}>My Room</button>
+                  <button onClick={() => s.travel("hostel")}>Visit courtyard</button>
+                  <button onClick={() => s.travel("room")}>Enter room</button>
                   <button
                     onClick={() => useHostelStore.setState({ panel: "shop" })}
                   >
                     Visit Iya Ibeji
                   </button>
-                  <button onClick={() => s.travel("campus")}>Go Campus</button>
+                  <button onClick={() => s.travel("campus")}>Return to campus</button>
                 </div>
                 {s.owner && (
                   <>
@@ -391,9 +393,9 @@ export function HostelLife() {
               <>
                 {!mine && (
                   <p>
-                    Enter My Room to place furniture. Guests can inspect, but
-                    cannot edit the owner’s room.{" "}
-                    <button onClick={() => s.travel("room")}>My Room</button>
+                    Enter Hostel to place furniture. Guests can inspect, but
+                    cannot edit the owner’s Room.{" "}
+                    <button onClick={() => s.travel("room")}>Hostel</button>
                   </p>
                 )}
                 <div className="hostel-items">

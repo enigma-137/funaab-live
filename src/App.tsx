@@ -140,7 +140,8 @@ export const App: React.FC = () => {
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}
       {activeModal === 'help' && <HelpModal />}
-      {activeModal === 'keke_destination' && <KekeDestinationModal />}
+      {activeModal === 'library' && <div className="keke-backdrop"><section className="keke-sheet" role="dialog" aria-label="Library"><header><h2>📚 Library</h2><button aria-label="Close library" onClick={()=>useGameStore.getState().setActiveModal(null)}>×</button></header><p>Welcome to the Library. The covered lobby ahead is open for meeting friends and taking a study break.</p><footer><button className="keke-confirm" onClick={()=>useGameStore.getState().setActiveModal(null)}>Visit lobby</button></footer></section></div>}
+      {activeModal === 'keke_destination'  && <KekeDestinationModal />}
       {activeModal === 'campus_jobs' && <CampusJobsModal />}
       {activeModal === 'send_money' && <SendMoneyModal />}
       {activeModal === 'daily_reward' && <DailyRewardModal />}

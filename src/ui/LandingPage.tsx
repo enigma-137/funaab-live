@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import worldData from '../worlds/funaab/world.json';
+import worldData from '../config/campusWorld';
 import { Users, ChevronDown, Check, Search, MapPin, Compass, MessageCircle, Building2, Play } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {

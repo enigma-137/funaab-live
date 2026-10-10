@@ -20,7 +20,11 @@
     "test:hostel:worker": "tsx scripts/test-hostel-worker.ts",
     "test:hostel:browser": "node scripts/test-hostel-browser.cjs",
     "test:hostel": "tsx scripts/test-hostel-contracts.ts",
-    "test:room": "tsx scripts/test-room-placement.ts"
+    "test:room": "tsx scripts/test-room-placement.ts",
+    "test:campus": "tsx scripts/test-campus-transit.ts",
+    "test:keke:worker": "tsx scripts/test-keke-worker.ts",
+    "test:keke:db": "node scripts/test-keke-db.cjs",
+    "test:campus:browser": "node scripts/test-campus-browser.cjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

@@ -1,3 +1,4 @@
+import { CAMPUS_SPAWN } from '../config/campusLocations';
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "./authStore";
@@ -276,7 +277,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
     useGameStore.setState({
       myPosition:
         target === "campus"
-          ? [0, 0, 48]
+          ? CAMPUS_SPAWN
           : target === "room"
             ? [0, 0, 2]
             : [0, 0, 8],

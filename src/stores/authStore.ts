@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { PlayerProfile, AvatarConfig } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
 import { normalizeAvatar } from '../config/avatar';
-import worldData from '../worlds/funaab/world.json';
+import worldData from '../config/campusWorld';
 
 interface AuthState {
   user: PlayerProfile | null;

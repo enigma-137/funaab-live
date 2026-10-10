@@ -57,7 +57,7 @@ await join(world,'guest4');await join(world,'guest5');
   const mainWorld:any=new WorldRoomDO(state,env),student=await join(mainWorld,owner,'world:funaab:main','world:funaab:main');
   await student.packet({type:'move',position:[-18,0,-53],rotation:0,animation:'walk'});
   await student.packet({type:'job_action',requestId:'test',action:'accept',jobId:'job-food-delivery',position:[-18,0,-53],reward:999999});
-  const rpc=calls.find(c=>c.url.endsWith('job_action_trusted'));assert(rpc);assert.equal(rpc.body.p_user,owner);assert.equal(rpc.body.p_x,0);assert.equal(rpc.body.p_z,48);assert(!('reward' in rpc.body));
+  const rpc=calls.find(c=>c.url.endsWith('job_action_trusted'));assert(rpc);assert.equal(rpc.body.p_user,owner);assert.equal(rpc.body.p_x,7);assert.equal(rpc.body.p_z,78);assert(!('reward' in rpc.body));
   const opponent=await join(mainWorld,guest,'world:funaab:main','world:funaab:main');
   await student.packet({type:'ps_challenge_create'});
   const match:any=[...mainWorld.psMatches.values()][0];

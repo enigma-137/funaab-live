@@ -1,7 +1,6 @@
-import world from '../worlds/funaab/world.json';
+import { collegeCatalogue } from './campusLocations';
 
 // The campus catalogue is themed for play, not official admissions guidance.
-export const colleges = world.colleges;
 export const courses = [
   ['AGE', 'Agricultural Engineering', 'COLENG', 60],
   ['CVE', 'Civil Engineering', 'COLENG', 65],
@@ -29,3 +28,5 @@ export const courses = [
   gameCutoffRange: [Number(cutoff), Number(cutoff) + 5] as [number, number],
 }));
 export const courseById = (id?: string | null) => courses.find((c) => c.id === id);
+// Keep the existing admission choices until courses for new physical colleges are added.
+export const colleges = collegeCatalogue.filter(c=>courses.some(course=>course.college===c.code));

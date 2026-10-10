@@ -1,179 +1,26 @@
-import React, { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React,{useRef} from 'react';
+import {useFrame} from '@react-three/fiber';
+import {Html} from '@react-three/drei';
 import * as THREE from 'three';
-import { Html } from '@react-three/drei';
-import worldData from '../../worlds/funaab/world.json';
-import { useGameStore } from '../../stores/gameStore';
-import { networkManager } from '../multiplayer/networkManager';
-import { KekeDestination } from '../../types/game';
-
-export const KekeVehicle: React.FC = () => {
-  const kekeRef = useRef<THREE.Group>(null);
-  const frontWheelRef = useRef<THREE.Mesh>(null);
-  const rearLeftWheelRef = useRef<THREE.Mesh>(null);
-  const rearRightWheelRef = useRef<THREE.Mesh>(null);
-
-  const {
-    updateKeke,
-    isRidingKeke,
-    currentKekeId,
-    targetKekeDestinationId,
-    setRidingKeke,
-    players,
-    myConnectionId,
-  } = useGameStore();
-
-  const destinations = (worldData.kekeDestinations || []) as KekeDestination[];
-
-  // Load waypoints and stops from world data
-  const route = worldData.kekeRoutes[0];
-  const waypoints = useMemo(() => {
-    return route.waypoints.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
-  }, [route]);
-
-  const progressRef = useRef<{
-    currentIndex: number;
-    t: number;
-    stopTimer: number;
-    currentStopName: string;
-    currentStopId: string;
-    isStopped: boolean;
-  }>({
-    currentIndex: 0,
-    t: 0,
-    stopTimer: 0,
-    currentStopName: 'Main Keke Park',
-    currentStopId: 'stop-carpark',
-    isStopped: false,
-  });
-
-  useFrame((_, delta) => {
-    if (!kekeRef.current || waypoints.length < 2) return;
-
-    const state = progressRef.current;
-
-    // If currently stopped at a bus stop
-    if (state.isStopped) {
-      state.stopTimer -= delta;
-      if (state.stopTimer <= 0) {
-        state.isStopped = false;
-      }
-      return;
-    }
-
-    const currentWP = waypoints[state.currentIndex];
-    const nextIndex = (state.currentIndex + 1) % waypoints.length;
-    const nextWP = waypoints[nextIndex];
-
-    const segmentDistance = currentWP.distanceTo(nextWP);
-    const speed = 5.2; // units per second (smooth road cruising)
-    const step = (speed * delta) / Math.max(0.1, segmentDistance);
-
-    state.t += step;
-
-    if (state.t >= 1) {
-      state.t = 0;
-      state.currentIndex = nextIndex;
-
-      // Check if this waypoint matches a designated Stop
-      const matchedStop = route.stops.find((s) => {
-        const stopPos = new THREE.Vector3(...s.position);
-        return stopPos.distanceTo(nextWP) < 2.5;
-      });
-
-      if (matchedStop) {
-        state.isStopped = true;
-        state.stopTimer = matchedStop.duration || 3.5;
-        state.currentStopName = matchedStop.name;
-        state.currentStopId = matchedStop.id;
-
-        // Check if local player is riding and has selected this destination
-        if (isRidingKeke && currentKekeId) {
-          const matchingDest = destinations.find((d) => d.id === targetKekeDestinationId);
-          const isAtDestination =
-            matchingDest &&
-            (matchingDest.name.toLowerCase().includes(matchedStop.name.toLowerCase()) ||
-              matchedStop.name.toLowerCase().includes(matchingDest.name.toLowerCase()) ||
-              new THREE.Vector3(...matchingDest.position).distanceTo(new THREE.Vector3(...matchedStop.position)) < 8.0);
-
-          if (isAtDestination) {
-            // Drop passenger safely at roadside
-            networkManager.exitKeke(currentKekeId);
-            setRidingKeke(false, null, null);
-          }
-        }
-      }
-    }
-
-    // Interpolate position
-    const interpolatedPos = new THREE.Vector3().lerpVectors(
-      waypoints[state.currentIndex],
-      waypoints[nextIndex],
-      state.t
-    );
-
-    // Compute heading rotation
-    const direction = new THREE.Vector3().subVectors(nextWP, currentWP).normalize();
-    const targetAngle = Math.atan2(direction.x, direction.z);
-
-    kekeRef.current.position.copy(interpolatedPos);
-    kekeRef.current.rotation.y = targetAngle;
-
-    // Wheel rotation animation
-    const wheelRot = delta * 14;
-    if (frontWheelRef.current) frontWheelRef.current.rotation.x += wheelRot;
-    if (rearLeftWheelRef.current) rearLeftWheelRef.current.rotation.x += wheelRot;
-    if (rearRightWheelRef.current) rearRightWheelRef.current.rotation.x += wheelRot;
-
-    // Sync to store
-    updateKeke('keke-1', {
-      position: [interpolatedPos.x, interpolatedPos.y, interpolatedPos.z],
-      rotation: targetAngle,
-      currentStopName: state.currentStopName,
-      isStopped: state.isStopped,
-    });
-  });
-
-  const activeTargetDest = destinations.find((d) => d.id === targetKekeDestinationId);
-
-  return (
-    <group ref={kekeRef} position={[-22, 0, 20]}>
-      {/* Floating Keke Status & Stop Banner */}
-      <Html
-        position={[0, 2.6, 0]}
-        center
-        distanceFactor={22}
-        zIndexRange={[5, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div className="flex flex-col items-center gap-1 select-none">
-          {isRidingKeke && activeTargetDest ? (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/95 backdrop-blur-md border border-amber-400 shadow-2xl animate-pulse">
-              <span className="text-sm">🛺</span>
-              <span className="font-bold text-xs text-amber-300 font-['Outfit']">
-                Going to {activeTargetDest.name}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/90 backdrop-blur-md border border-amber-500/60 shadow-xl">
-              <span className="text-sm">🛺</span>
-              <span className="font-bold text-xs text-amber-300 font-['Outfit'] tracking-wide">
-                CAMPUS KEKE
-              </span>
-              <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500 text-black">
-                TRANSIT
-              </span>
-            </div>
-          )}
-
-          {progressRef.current.isStopped && (
-            <div className="px-2.5 py-0.5 rounded-lg bg-emerald-600/95 text-white font-extrabold text-[10px] animate-bounce shadow-lg border border-emerald-400">
-              🚏 Stop: {progressRef.current.currentStopName}
-            </div>
-          )}
-        </div>
-      </Html>
-
+import {useGameStore} from '../../stores/gameStore';
+import {locationById,CAR_PARK_BAY} from '../../config/campusLocations';
+import {renderedKekes} from './kekePresentation';
+export function KekeVehicle({id}:{id:string}){
+ const initial=useRef(id==='keke-1'?locationById('sports-centre').kekeStop:CAR_PARK_BAY);
+ const k=useGameStore(s=>s.kekes[id]);
+ const kekeRef=useRef<THREE.Group>(null),frontWheelRef=useRef<THREE.Mesh>(null),rearLeftWheelRef=useRef<THREE.Mesh>(null),rearRightWheelRef=useRef<THREE.Mesh>(null);
+ useFrame((_,dt)=>{
+   const latest=useGameStore.getState().kekes[id];if(!latest||!kekeRef.current)return;
+   const group=kekeRef.current,target=new THREE.Vector3(...latest.position);
+   if(group.position.distanceTo(target)>8)group.position.copy(target);else group.position.lerp(target,1-Math.exp(-18*dt));
+   let diff=latest.rotation-group.rotation.y;diff=Math.atan2(Math.sin(diff),Math.cos(diff));group.rotation.y+=diff*(1-Math.exp(-20*dt));
+   renderedKekes[id]={...latest,position:group.position.toArray() as [number,number,number],rotation:group.rotation.y};
+   if(!latest.isStopped)for(const ref of [frontWheelRef,rearLeftWheelRef,rearRightWheelRef])if(ref.current)ref.current.rotation.x+=dt*14;
+ },-2);
+ if(!k||k.phase==='RETURNING')return null;
+ const book=()=>{const store=useGameStore.getState();if(Math.hypot(store.myPosition[0]-k.position[0],store.myPosition[2]-k.position[2])>8)return;store.setNearbyInteractable({id,type:'keke_stop',targetId:id,label:'Campus Keke',actionText:'Book Ride',position:k.position,radius:8});store.setActiveModal('keke_destination');};
+ return <group ref={kekeRef} position={initial.current} onClick={e=>{e.stopPropagation();book();}}>
+   <Html position={[0,2.5,0]} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div style={{whiteSpace:'nowrap',background:'#243c30',color:'#fff6d6',borderRadius:6,padding:'4px 7px',fontSize:10}}>{id==='keke-1'?'Route Keke':k.phase==='IDLE'?'Car Park Keke · Book ride':`${k.currentStopName} · ${3-k.passengers.length} seats`}</div></Html>
       {/* KEKE 3D GEOMETRY */}
       {/* Chassis Base (Yellow) */}
       <mesh position={[0, 0.45, 0]} castShadow>
@@ -194,7 +41,7 @@ export const KekeVehicle: React.FC = () => {
       </mesh>
 
       {/* Black Canopy Roof */}
-      <mesh position={[0, 1.65, -0.1]} castShadow>
+      <mesh position={[0, 2.25, -0.1]} castShadow>
         <boxGeometry args={[1.45, 0.08, 2.2]} />
         <meshStandardMaterial color="#0f172a" roughness={0.8} />
       </mesh>
@@ -202,12 +49,12 @@ export const KekeVehicle: React.FC = () => {
       {/* Roof Metal Support Pillars */}
       {[-0.65, 0.65].map((x, i) => (
         <React.Fragment key={i}>
-          <mesh position={[x, 1.05, 0.8]}>
-            <cylinderGeometry args={[0.025, 0.025, 1.2, 8]} />
+          <mesh position={[x, 1.35, 0.8]}>
+            <cylinderGeometry args={[0.025, 0.025, 1.8, 8]} />
             <meshStandardMaterial color="#334155" metalness={0.8} />
           </mesh>
-          <mesh position={[x, 1.05, -0.9]}>
-            <cylinderGeometry args={[0.025, 0.025, 1.2, 8]} />
+          <mesh position={[x, 1.35, -0.9]}>
+            <cylinderGeometry args={[0.025, 0.025, 1.8, 8]} />
             <meshStandardMaterial color="#334155" metalness={0.8} />
           </mesh>
         </React.Fragment>
@@ -239,7 +86,7 @@ export const KekeVehicle: React.FC = () => {
         <sphereGeometry args={[0.1, 12, 12]} />
         <meshStandardMaterial color="#fef08a" emissive="#facc15" emissiveIntensity={1.5} />
       </mesh>
-      <pointLight position={[0, 0.6, 1.8]} color="#fde047" intensity={0.8} distance={8} />
+      
 
       {/* Front Wheel */}
       <mesh ref={frontWheelRef} position={[0, 0.25, 1.2]} rotation={[0, 0, Math.PI / 2]}>
@@ -258,6 +105,5 @@ export const KekeVehicle: React.FC = () => {
         <cylinderGeometry args={[0.25, 0.25, 0.16, 16]} />
         <meshStandardMaterial color="#020617" roughness={0.9} />
       </mesh>
-    </group>
-  );
-};
+    </group>;
+}

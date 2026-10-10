@@ -99,7 +99,7 @@ export const TouchInputController: React.FC = () => {
         onPointerUp={handlePointerUp}
         visible={false}
       >
-        <planeGeometry args={[200, 200]} />
+        <planeGeometry args={[310, 310]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
     </group>

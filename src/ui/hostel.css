@@ -383,3 +383,5 @@
     font-size: 12px;
   }
 }
+
+.hostel-campus-return{position:fixed;top:calc(env(safe-area-inset-top,0px) + 65px);left:12px;z-index:55;display:flex;align-items:center;gap:5px;padding:9px 11px;border:1px solid #b6c9b7;border-radius:12px;background:#f3f6eb;color:#244c39;font-size:12px;box-shadow:0 3px 12px #102a1820}.hostel-dock button{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 10px;min-height:38px}.hostel-dock strong{font-size:11px}@media(max-width:600px){.hostel-dock{gap:4px;padding:7px;max-width:calc(100vw - 24px)}.hostel-dock button{font-size:11px;padding:7px}.hostel-dock strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}

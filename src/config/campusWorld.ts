@@ -1,0 +1,22 @@
+import base from '../worlds/funaab/world.json';
+import { campusLocations, collegeCatalogue, locationById, CAMPUS_BOUNDS, CAMPUS_SPAWN, type Point } from './campusLocations';
+import { roadBounds, kekeDestinations, publicRoute, routeStops, ROUTE_FARE } from './kekeRoutes';
+const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
+export const pedestrianPaths=campusLocations.flatMap(l=>{
+  const a=l.kekeStop,b=l.entrance,w=l.footprint[0]/2,d=l.footprint[1]/2;
+  const wrap=w>0&&a[2]<l.position[2]-d&&b[2]>l.position[2]+d;
+  const side=l.position[0]+w+4;
+  const points:Point[]=wrap?[a,[side,0,a[2]],[side,0,b[2]],b]:[a,[a[0],0,b[2]],b];
+  return points.slice(1).map((p,i)=>({id:`walk-${l.id}-${i}`,name:`${l.shortName} walkway`,type:'path',restricted:false,bounds:corridor(points[i],p)}));
+});
+const interactableLocations:Record<string,string>={'atm-terminal-1':'bank-atm','food-stall-1':'food-court','floral-world-counter':'floral-world','floral-world-dining':'floral-world','lecture-hall-colfhec':'colfhec-lecture-hall','lecture-hall-central':'central-lecture-hall','lecture-hall-colbios':'colbios-lecture-hall','ps5-station-1':'ps-room','keke-stop-1':'car-park','job-board-carpark':'car-park','job-board-food':'food-court','job-board-sports':'sports-centre'};
+const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
+  interactables:[...base.interactables.map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),{id:'library-visit',type:'library',label:'Library',actionText:'Visit Library lobby',position:locationById('library').entrance,radius:5,targetId:'library'}],
+  terrainZones:[...roadBounds.map((bounds,i)=>({id:`road-${i}`,name:'Campus road',type:'road',restricted:false,bounds})),...pedestrianPaths,
+    ...campusLocations.map(l=>({id:`forecourt-${l.id}`,name:l.shortName,type:l.id==='sports-centre'?'sports':'plaza',restricted:false,bounds:corridor(l.entrance,l.entrance,7)})),
+    {id:'sports-turf',name:'Sports Centre',type:'sports',restricted:false,bounds:{minX:-118,maxX:-80,minZ:-18,maxZ:18}},
+    {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],
+  kekeDestinations,kekeRoutes:[{id:'route-alpha',name:'Public campus route',fare:ROUTE_FARE,waypoints:publicRoute,stops:routeStops.map(id=>({id,name:locationById(id).shortName,position:locationById(id).kekeStop,duration:4}))}],
+  securityRoutes:base.securityRoutes.map(r=>({...r,points:r.points.map(p=>[p[0]*1.6,p[1],p[2]*1.6])})),
+};
+export default world;

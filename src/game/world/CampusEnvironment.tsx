@@ -1,3 +1,5 @@
+import { locationPosition, locationById } from '../../config/campusLocations';
+import { CampusRoads, CampusExpansion, KekeRouteDebug } from './CampusExpansion';
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
@@ -7,24 +9,7 @@ export const CampusEnvironment: React.FC = () => {
   // Memoized palm and neem trees placed along campus avenues and green belts
   const trees = useMemo(() => {
     const list: { pos: [number, number, number]; scale: number; type: 'neem' | 'palm' }[] = [];
-    const seedPoints: [number, number][] = [
-      // Perimeter foliage
-      [-55, -55], [-55, -30], [-55, 0], [-55, 30], [-55, 55],
-      [55, -55], [55, -30], [55, 0], [55, 30], [55, 55],
-      [-30, -55], [0, -55], [30, -55],
-      [-30, 55], [30, 55],
-      // Ceremonial Road Avenue green belts
-      [-6, 38], [6, 38], [-6, 30], [6, 30], [-6, 24], [6, 24],
-      // W-Plaza & Car Park surrounds
-      [-12, 14], [12, 14], [-32, 18], [-12, 28],
-      // Sports Centre perimeter
-      [-50, -10], [-50, 10], [-26, -2],
-      // Academic Core & Library gardens
-      [-10, -22], [10, -22], [-14, -36], [14, -36], [0, -44],
-      // Hostel & Bank groves
-      [36, 24], [36, 14], [36, -2], [36, -22], [16, -18]
-    ];
-
+    const seedPoints: [number, number][] = [[-130,-120],[-130,-60],[-130,0],[-130,85],[130,-120],[130,-60],[130,0],[130,85],[-20,10],[40,10],[-35,85],[40,95],[-15,-120],[65,-120]];
     seedPoints.forEach(([x, z], i) => {
       list.push({
         pos: [x, 0, z],
@@ -37,164 +22,14 @@ export const CampusEnvironment: React.FC = () => {
 
   return (
     <group>
-      {/* ══════════════════════════════════════════════════════════════════════
-          1. TERRAIN & WORLD PERIMETER BOUNDARIES (Spacious 200m x 200m footprint)
-      ══════════════════════════════════════════════════════════════════════ */}
       <RigidBody type="fixed" colliders={false}>
-        {/* FUNAAB Campus Grass Lawn */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-          <planeGeometry args={[220, 220]} />
-          <meshStandardMaterial color="#2d5526" roughness={0.9} />
-        </mesh>
-
-        {/* Physical Ground Plane Collider */}
-        <CuboidCollider args={[110, 0.5, 110]} position={[0, -0.5, 0]} />
-
-        {/* 4 Invisible World Perimeter Walls (Bounds: ±95m) */}
-        <CuboidCollider args={[100, 4, 1]} position={[0, 4, -95.5]} />
-        <CuboidCollider args={[100, 4, 1]} position={[0, 4, 95.5]} />
-        <CuboidCollider args={[1, 4, 100]} position={[-95.5, 4, 0]} />
-        <CuboidCollider args={[1, 4, 100]} position={[95.5, 4, 0]} />
+        <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.01,-17.5]} receiveShadow><planeGeometry args={[300,270]}/><meshStandardMaterial color="#587748"/></mesh>
+        <CuboidCollider args={[150,.5,135]} position={[0,-.5,-17.5]}/>
+        <CuboidCollider args={[146,4,1]} position={[0,4,-146]}/><CuboidCollider args={[146,4,1]} position={[0,4,111]}/>
+        <CuboidCollider args={[1,4,130]} position={[-146,4,-17]}/><CuboidCollider args={[1,4,130]} position={[146,4,-17]}/>
       </RigidBody>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          2. CAMPUS ROAD NETWORK (Asphalt, Kerbs & Crossings)
-      ══════════════════════════════════════════════════════════════════════ */}
-      <group>
-        {/* A. Ceremonial Road (North-South Main Boulevard: from Main Gate Z:58 to Z:28) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 43]} receiveShadow>
-          <planeGeometry args={[10, 32]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.8} />
-        </mesh>
-        {/* Yellow Central Dividing Strip */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 43]}>
-          <planeGeometry args={[0.35, 30]} />
-          <meshStandardMaterial color="#facc15" />
-        </mesh>
-
-        {/* B. Central Plaza Ring Road (East-West Boulevard at Z: 28) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 28]} receiveShadow>
-          <planeGeometry args={[120, 8]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.8} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 28]}>
-          <planeGeometry args={[118, 0.35]} />
-          <meshStandardMaterial color="#facc15" />
-        </mesh>
-
-        {/* C. Western Avenue (Past Sports Centre & Health Centre: X = -28 from Z: 28 to Z: -36) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-28, 0.01, -4]} receiveShadow>
-          <planeGeometry args={[8, 64]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.8} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-28, 0.02, -4]}>
-          <planeGeometry args={[0.35, 62]} />
-          <meshStandardMaterial color="#facc15" />
-        </mesh>
-
-        {/* D. Eastern Avenue (Past Bank & Hostels: X = 32 from Z: 28 to Z: -36) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[32, 0.01, -4]} receiveShadow>
-          <planeGeometry args={[8, 64]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.8} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[32, 0.02, -4]}>
-          <planeGeometry args={[0.35, 62]} />
-          <meshStandardMaterial color="#facc15" />
-        </mesh>
-
-        {/* E. Northern Academic Ring Road (East-West at Z: -36 connecting Faculties & Senate) */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, -36]} receiveShadow>
-          <planeGeometry args={[80, 8]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.8} />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -36]}>
-          <planeGeometry args={[78, 0.35]} />
-          <meshStandardMaterial color="#facc15" />
-        </mesh>
-
-        {/* Pedestrian Zebra Crossings */}
-        {[-28, 0, 32].map((x, i) => (
-          <group key={i} position={[x, 0.025, 28]}>
-            {[-2.8, -1.4, 0, 1.4, 2.8].map((offset, j) => (
-              <mesh key={j} rotation={[-Math.PI / 2, 0, 0]} position={[offset, 0, 0]}>
-                <planeGeometry args={[0.8, 4.0]} />
-                <meshStandardMaterial color="#f8fafc" roughness={0.5} />
-              </mesh>
-            ))}
-          </group>
-        ))}
-
-        {/* ─── DESIGNATED LEGAL PAVED WALKWAYS & FOOTPATHS ─── */}
-        {/* 1. Central Promenade: W-Plaza to Senate Quad */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, -6]} receiveShadow>
-          <planeGeometry args={[4.5, 52]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.7} />
-        </mesh>
-
-        {/* 2. Western Sidewalk: Car Park -> Food Court -> Health Centre -> COLFHEC */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-23, 0.015, -4]} receiveShadow>
-          <planeGeometry args={[3.0, 62]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.7} />
-        </mesh>
-
-        {/* 3. Eastern Sidewalk: Bank -> Hostels -> Agromet */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[27, 0.015, -4]} receiveShadow>
-          <planeGeometry args={[3.0, 62]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.7} />
-        </mesh>
-
-        {/* 4. Northern Academic Walkway connecting COLFHEC, Senate & Hostels */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, -31]} receiveShadow>
-          <planeGeometry args={[78, 3.2]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.7} />
-        </mesh>
-
-        {/* 5. Food Court to Sports Centre Pitch Footpath */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-36, 0.015, 6]} receiveShadow>
-          <planeGeometry args={[14, 3.6]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.7} />
-        </mesh>
-
-        {/* ─── 3D "KEEP OFF THE LAWN" CAMPUS SIGNPOSTS ─── */}
-        {[
-          { pos: [-8, 0, 20], rot: 0 },
-          { pos: [8, 0, 20], rot: 0 },
-          { pos: [-8, 0, -26], rot: Math.PI },
-          { pos: [8, 0, -26], rot: Math.PI },
-          { pos: [-22, 0, 14], rot: Math.PI / 2 },
-          { pos: [26, 0, 14], rot: -Math.PI / 2 },
-        ].map((sign, idx) => (
-          <group key={idx} position={[sign.pos[0], 0, sign.pos[2]]} rotation={[0, sign.rot, 0]}>
-            {/* Wooden/Metal Post */}
-            <mesh position={[0, 0.6, 0]}>
-              <cylinderGeometry args={[0.04, 0.04, 1.2, 8]} />
-              <meshStandardMaterial color="#475569" />
-            </mesh>
-            {/* Signboard Panel */}
-            <mesh position={[0, 1.1, 0]}>
-              <boxGeometry args={[1.2, 0.6, 0.06]} />
-              <meshStandardMaterial color="#166534" />
-            </mesh>
-            <mesh position={[0, 1.1, 0.035]}>
-              <boxGeometry args={[1.1, 0.5, 0.01]} />
-              <meshStandardMaterial color="#ffffff" />
-            </mesh>
-            <Html position={[0, 1.1, 0.05]} center distanceFactor={14} zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
-              <div className="text-[7px] font-black tracking-tight text-emerald-950 font-['Outfit'] text-center uppercase leading-tight select-none">
-                <div>🌿 FUNAAB LAWN</div>
-                <div className="text-red-600 font-extrabold">KEEP OFF GRASS</div>
-                <div className="text-[6px] text-slate-700">₦500 FINE</div>
-              </div>
-            </Html>
-          </group>
-        ))}
-      </group>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          3. CEREMONIAL MAIN GATE (Hero Monument Inspired by Image B)
-          Position: [0, 0, 58]
-      ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[0, 0, 58]}>
+      <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
+      <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
           <group position={[0, 0, 0]}>
@@ -208,7 +43,7 @@ export const CampusEnvironment: React.FC = () => {
               <boxGeometry args={[2.8, 1.2, 0.1]} />
               <meshStandardMaterial color="#1e293b" />
             </mesh>
-            <Html position={[0, 2.8, 1.9]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
+            <Html position={[0, 2.8, 1.9]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
               <div className="font-['Outfit'] font-black tracking-widest text-emerald-400 text-sm drop-shadow-md">
                 FUNAAB
               </div>
@@ -306,7 +141,7 @@ export const CampusEnvironment: React.FC = () => {
         </RigidBody>
 
         {/* 3D Wayfinding Sign */}
-        <Html position={[0, 7.2, 0]} center distanceFactor={28} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 7.2, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-4 py-1.5 rounded-xl bg-emerald-950/95 border-2 border-emerald-400 text-center shadow-2xl backdrop-blur-md whitespace-nowrap">
             <div className="text-[11px] font-black tracking-widest text-emerald-300 font-['Outfit'] uppercase">
               FEDERAL UNIVERSITY OF AGRICULTURE, ABEOKUTA
@@ -322,7 +157,7 @@ export const CampusEnvironment: React.FC = () => {
           4. THE ICONIC W-LANDMARK / RESUMPTION PLAZA (Inspired by Image C)
           Position: [0, 0, 24]
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[0, 0, 24]}>
+      <group position={locationPosition('w-landmark')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Paved Elevated Stone Plaza */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
@@ -385,7 +220,7 @@ export const CampusEnvironment: React.FC = () => {
         </RigidBody>
 
         {/* 3D Wayfinding Sign */}
-        <Html position={[0, 6.8, 0]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 6.8, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded-xl bg-slate-900/90 border border-emerald-400 text-center shadow-xl backdrop-blur-md whitespace-nowrap">
             <div className="text-[10px] font-extrabold text-emerald-300 font-['Outfit']">
               🏛️ FUNAAB W-Landmark Plaza
@@ -400,7 +235,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           5. MAIN CAR PARK & KEKE TERMINAL (Position: [-30, 0, 26])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-30, 0, 26]}>
+      <group position={locationPosition('car-park')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Paved Parking Lot */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
@@ -438,7 +273,7 @@ export const CampusEnvironment: React.FC = () => {
           <CuboidCollider args={[6.0, 1.0, 0.5]} position={[0, 1.0, -5.2]} />
         </RigidBody>
 
-        <Html position={[0, 3.4, -5.2]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 3.4, -5.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3.5 py-1 rounded-xl bg-amber-950/95 border border-amber-400 text-amber-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap flex items-center gap-1.5">
             <span>🛺</span>
             <span>Campus Keke Terminal • Main Park</span>
@@ -449,7 +284,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           6. FUNAAB SPORTS CENTRE & FOOTBALL PITCH (Position: [-50, 0, 0])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-50, 0, 0]}>
+      <group position={locationPosition('sports-centre')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Football Field Turf */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
@@ -534,7 +369,7 @@ export const CampusEnvironment: React.FC = () => {
           ))}
         </RigidBody>
 
-        <Html position={[0, 4.2, 0]} center distanceFactor={24} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 4.2, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded-xl bg-emerald-950/95 border border-emerald-400 text-emerald-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
             ⚽ FUNAAB Sports Centre & Athletic Field
           </div>
@@ -544,7 +379,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           7. TANTALIZERS & CAMPUS BUKA (Position: [-28, 0, 6])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-28, 0, 6]}>
+      <group position={locationPosition('food-court')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Food Stall Kiosk */}
           <mesh position={[0, 1.8, 0]} castShadow>
@@ -590,7 +425,7 @@ export const CampusEnvironment: React.FC = () => {
           <CuboidCollider args={[0.6, 0.6, 0.4]} position={[-2.5, 0.6, 2.5]} />
         </RigidBody>
 
-        <Html position={[0, 4.2, 0]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 4.2, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-orange-950/90 border border-orange-400 text-orange-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
             🍗 Tantalizers & Campus Buka (Food Hub)
           </div>
@@ -600,7 +435,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           8. FUNAAB HEALTH CENTRE (Position: [-28, 0, -16])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-28, 0, -16]}>
+      <group position={locationPosition('health-centre')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main Clinic Hall (Width 12, Height 5, Depth 8) */}
           <mesh position={[0, 2.5, 0]} castShadow>
@@ -635,7 +470,7 @@ export const CampusEnvironment: React.FC = () => {
           <CuboidCollider args={[6.0, 2.5, 4.0]} position={[0, 2.5, 0]} />
         </RigidBody>
 
-        <Html position={[0, 4.4, 4.2]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 4.4, 4.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-emerald-950/95 border border-emerald-400 text-emerald-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
             🏥 FUNAAB Health Centre (Clinic & Pharmacy)
           </div>
@@ -645,7 +480,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           9. SENATE BUILDING & 'NIMBE ADEDIPE LIBRARY (Position: [0, 0, -44])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[0, 0, -44]}>
+      <group position={locationPosition('senate-library')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main 3-tier Central Complex */}
           <mesh position={[0, 3.5, 0]} castShadow>
@@ -675,10 +510,10 @@ export const CampusEnvironment: React.FC = () => {
           <CuboidCollider args={[9.0, 3.5, 5.0]} position={[0, 3.5, 0]} />
         </RigidBody>
 
-        <Html position={[0, 7.2, 5.3]} center distanceFactor={26} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 7.2, 5.3]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3.5 py-1.5 rounded-xl bg-slate-950/95 border-2 border-emerald-400 text-center shadow-2xl backdrop-blur-md whitespace-nowrap">
             <div className="text-[11px] font-black text-emerald-300 font-['Outfit'] uppercase">
-              🏛️ Senate & 'Nimbe Adedipe Library
+              🏛️ Senate / Administration
             </div>
             <div className="text-[9px] font-bold text-white uppercase">
               Central University Administrative & Academic Core
@@ -691,7 +526,7 @@ export const CampusEnvironment: React.FC = () => {
           10. COLFHEC ACADEMIC BUILDING (Position: [-38, 0, -44])
           ENTERABLE: Wall colliders surround the perimeter with open doorway
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-38, 0, -44]}>
+      <group position={locationPosition('colfhec')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main 2-story Hall (Width 20, Depth 14, Height 8) */}
           <mesh position={[0, 4, 0]} castShadow>
@@ -736,7 +571,7 @@ export const CampusEnvironment: React.FC = () => {
           <CylinderCollider args={[3.5, 0.3]} position={[7, 3.5, 7.3]} />
         </RigidBody>
 
-        <Html position={[0, 7.5, 7.2]} center distanceFactor={24} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 7.5, 7.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-xs font-extrabold font-['Outfit'] shadow-xl whitespace-nowrap">
             🎓 COLFHEC (Food Science & Human Ecology)
           </div>
@@ -747,7 +582,7 @@ export const CampusEnvironment: React.FC = () => {
           11. COLENG & COLERM/COLPLANT FACULTY ZONES
       ══════════════════════════════════════════════════════════════════════ */}
       {/* COLENG Engineering Complex (Position: [-18, 0, -60]) */}
-      <group position={[-18, 0, -60]}>
+      <group position={locationPosition('coleng')}>
         <RigidBody type="fixed" colliders={false}>
           <mesh position={[0, 3.0, 0]} castShadow>
             <boxGeometry args={[14, 6, 8]} />
@@ -759,7 +594,7 @@ export const CampusEnvironment: React.FC = () => {
           </mesh>
           <CuboidCollider args={[7.0, 3.0, 4.0]} position={[0, 3.0, 0]} />
         </RigidBody>
-        <Html position={[0, 5.0, 4.2]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 5.0, 4.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-2.5 py-1 rounded bg-blue-950/90 border border-blue-400 text-blue-300 text-xs font-bold font-['Outfit'] shadow-lg whitespace-nowrap">
             ⚙️ COLENG (College of Engineering)
           </div>
@@ -767,7 +602,7 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* COLERM & COLPLANT Plaza (Position: [26, 0, -44]) */}
-      <group position={[26, 0, -44]}>
+      <group position={locationPosition('colerm-colplant')}>
         <RigidBody type="fixed" colliders={false}>
           <mesh position={[0, 3.5, 0]} castShadow>
             <boxGeometry args={[14, 7, 10]} />
@@ -779,9 +614,9 @@ export const CampusEnvironment: React.FC = () => {
           </mesh>
           <CuboidCollider args={[7.0, 3.5, 5.0]} position={[0, 3.5, 0]} />
         </RigidBody>
-        <Html position={[0, 5.5, 5.2]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 5.5, 5.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-2.5 py-1 rounded bg-amber-950/90 border border-amber-400 text-amber-300 text-xs font-bold font-['Outfit'] shadow-lg whitespace-nowrap">
-            🌾 COLERM & COLPLANT (Agric & Env Sciences)
+            COLERM
           </div>
         </Html>
       </group>
@@ -789,7 +624,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           12. BANK & ATM GALLERY (Position: [32, 0, 24])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[32, 0, 24]}>
+      <group position={locationPosition('bank-atm')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Main Bank Hall */}
           <mesh position={[0, 2.5, 0]} castShadow>
@@ -818,7 +653,7 @@ export const CampusEnvironment: React.FC = () => {
           ))}
         </RigidBody>
 
-        <Html position={[0, 4.2, 4.3]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 4.2, 4.3]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-blue-950/90 border border-blue-400 text-blue-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
             🏦 FUNAAB Microfinance Bank & ATM
           </div>
@@ -828,7 +663,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           13. AGROMET METEOROLOGICAL STATION (Position: [48, 0, 6])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[48, 0, 6]}>
+      <group position={locationPosition('agromet')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Station Enclosure Ground */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
@@ -857,7 +692,7 @@ export const CampusEnvironment: React.FC = () => {
           <CuboidCollider args={[6.0, 1.5, 6.0]} position={[0, 1.5, 0]} />
         </RigidBody>
 
-        <Html position={[0, 4.2, 0]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 4.2, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-2.5 py-1 rounded bg-teal-950/90 border border-teal-400 text-teal-300 text-xs font-bold font-['Outfit'] shadow-lg whitespace-nowrap">
             🌤️ Agromet Meteorological Research Station
           </div>
@@ -865,9 +700,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          14. IYALODE HOSTEL & PLAYSTATION GAME DEN (Position: [34, 0, -16])
+          14. HOSTEL & PLAYSTATION GAME DEN (Position: [34, 0, -16])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[34, 0, -16]}>
+      <group position={locationPosition('hostel-social')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Hostel Dormitory Block (Background) */}
           <mesh position={[0, 5, -8]} castShadow>
@@ -910,13 +745,13 @@ export const CampusEnvironment: React.FC = () => {
           </group>
         </RigidBody>
 
-        <Html position={[-4, 3.8, 2]} center distanceFactor={22} style={{ pointerEvents: 'none' }}>
+        <Html position={[-4, 3.8, 2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-purple-950/90 border border-purple-400 text-purple-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
             🌴 Iyalode Hostel & Social Square
           </div>
         </Html>
 
-        <Html position={[4, 4.4, 13.2]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
+        <Html position={[4, 4.4, 13.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3 py-1 rounded bg-indigo-950/90 border border-indigo-400 text-indigo-300 text-xs font-extrabold font-['Outfit'] shadow-xl whitespace-nowrap">
             🎮 FUNAAB Game Den (PS5 Room)
           </div>
@@ -973,9 +808,7 @@ export const CampusEnvironment: React.FC = () => {
           16. CAMPUS SOLAR STREETLIGHTS (Glowing Lighting)
       ══════════════════════════════════════════════════════════════════════ */}
       {[
-        [-5.5, 0, 48], [5.5, 0, 48], [-5.5, 0, 34], [5.5, 0, 34],
-        [-14, 0, 26], [14, 0, 26], [-28, 0, 16], [-28, 0, -6],
-        [32, 0, 16], [32, 0, -6], [0, 0, -34], [-24, 0, -34]
+        [-7,0,70],[7,0,55],[-62,0,40],[-62,0,-35],[62,0,40],[62,0,-35],[40,0,-92]
       ].map((pos, idx) => (
         <group key={idx} position={[pos[0], pos[1], pos[2]]}>
           {/* Pole */}
@@ -993,7 +826,7 @@ export const CampusEnvironment: React.FC = () => {
             <sphereGeometry args={[0.18, 8, 8]} />
             <meshStandardMaterial color="#fef08a" emissive="#facc15" emissiveIntensity={2.0} />
           </mesh>
-          <pointLight position={[0.3, 4.2, 0]} color="#fde047" intensity={0.45} distance={14} />
+          
         </group>
       ))}
 
@@ -1001,9 +834,9 @@ export const CampusEnvironment: React.FC = () => {
           17. CAMPUS JOB BOARDS (Physical Notice Boards across Campus)
       ══════════════════════════════════════════════════════════════════════ */}
       {[
-        { pos: [-30, 0, 22], rot: 0, title: 'Car Park Job Board' },
-        { pos: [-26, 0, 10], rot: -Math.PI / 4, title: "Mama's Delivery Board" },
-        { pos: [-36, 0, 2], rot: Math.PI / 3, title: 'Sports Assistant Board' },
+        { pos: locationById('car-park').entrance, rot: 0, title: 'Car Park Job Board' },
+        { pos: locationById('food-court').entrance, rot: -Math.PI / 4, title: "Mama's Delivery Board" },
+        { pos: locationById('sports-centre').entrance, rot: Math.PI / 3, title: 'Sports Assistant Board' },
       ].map((board, idx) => (
         <group key={idx} position={[board.pos[0], 0, board.pos[2]]} rotation={[0, board.rot, 0]}>
           <RigidBody type="fixed" colliders={false}>
@@ -1040,7 +873,7 @@ export const CampusEnvironment: React.FC = () => {
           </RigidBody>
 
           {/* 3D Floating Tag */}
-          <Html position={[0, 2.6, 0]} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
+          <Html position={[0, 2.6, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
             <div className="px-2.5 py-1 rounded-xl bg-indigo-950/95 border border-indigo-400 text-indigo-200 text-[10px] font-bold font-['Outfit'] shadow-xl whitespace-nowrap flex items-center gap-1">
               <span>💼</span>
               <span>{board.title}</span>
@@ -1051,7 +884,7 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           18. FLORAL WORLD RESTAURANT AT COLFHEC (Position: [-32, 0, -28])
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={[-32, 0, -28]}>
+      <group position={locationPosition('floral-world')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Stone Paved Dining Terrace */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow>
@@ -1136,7 +969,7 @@ export const CampusEnvironment: React.FC = () => {
         </RigidBody>
 
         {/* 3D Restaurant Sign */}
-        <Html position={[0, 4.8, -1.2]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
+        <Html position={[0, 4.8, -1.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
           <div className="px-3.5 py-1.5 rounded-xl bg-amber-950/95 border-2 border-amber-400 text-center shadow-2xl backdrop-blur-md whitespace-nowrap">
             <div className="text-[11px] font-black tracking-wider text-amber-300 font-['Outfit'] uppercase flex items-center justify-center gap-1">
               <span>🌺</span> FLORAL WORLD RESTAURANT <span>🌺</span>
@@ -1152,9 +985,9 @@ export const CampusEnvironment: React.FC = () => {
           19. LECTURE HALL 3D ENTRANCES & TIMETABLE NOTICE BOARDS
       ══════════════════════════════════════════════════════════════════════ */}
       {[
-        { pos: [-38, 0, -28], rot: 0, title: 'COLFHEC Lecture Hall', course: 'FST 201 • Food Chemistry' },
-        { pos: [-8, 0, -44], rot: 0, title: 'Central Lecture Theatre (CLT)', course: 'MEE 203 • Thermodynamics' },
-        { pos: [28, 0, -28], rot: 0, title: 'COLBIOS Lecture Hall', course: 'BIO 205 • Principles of Genetics' },
+        { pos: locationPosition('colfhec-lecture-hall'), rot: 0, title: 'COLFHEC Lecture Hall', course: 'FST 201 • Food Chemistry' },
+        { pos: locationPosition('central-lecture-hall'), rot: 0, title: 'Central Lecture Theatre (CLT)', course: 'MEE 203 • Thermodynamics' },
+        { pos: locationPosition('colbios-lecture-hall'), rot: 0, title: 'COLBIOS Lecture Hall', course: 'BIO 205 • Principles of Genetics' },
       ].map((hall, idx) => (
         <group key={idx} position={[hall.pos[0], 0, hall.pos[2]]} rotation={[0, hall.rot, 0]}>
           <RigidBody type="fixed" colliders={false}>
@@ -1188,7 +1021,7 @@ export const CampusEnvironment: React.FC = () => {
           </RigidBody>
 
           {/* 3D Entrance Wayfinding Sign */}
-          <Html position={[0, 4.7, 0]} center distanceFactor={18} style={{ pointerEvents: 'none' }}>
+          <Html position={[0, 4.7, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
             <div className="px-3 py-1 rounded-xl bg-emerald-950/95 border-2 border-emerald-400 text-center shadow-xl backdrop-blur-md whitespace-nowrap">
               <div className="text-[10.5px] font-black text-emerald-300 font-['Outfit'] uppercase flex items-center justify-center gap-1">
                 <span>🎓</span> {hall.title}

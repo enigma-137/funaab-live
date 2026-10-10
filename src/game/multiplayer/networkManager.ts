@@ -1,3 +1,6 @@
+import { CAMPUS_SPAWN } from '../../config/campusLocations';
+import { useHostelStore } from '../../stores/hostelStore';
+import { useInputStore } from '../../stores/inputStore';
 import { normalizeAvatar } from '../../config/avatar';
 import { PlayerProfile, PlayerState } from '../../types/game';
 import { useGameStore } from '../../stores/gameStore';
@@ -66,6 +69,15 @@ class NetworkManager {
       const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Job request timed out. Reload jobs to check saved progress.'));},15000);
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
       this.send({type:'job_action',requestId,action,jobId,runId});
+    });
+  }
+  public bookKeke(kekeId:string,destinationId:string):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN)return Promise.reject(new Error('Reconnect before booking'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Booking timed out. Check your ride before retrying.'));},20000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);if(typeof v.balance==='number')useWalletStore.setState({balance:v.balance});resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'keke_book',requestId,kekeId,destinationId});
     });
   }
   public roomChanged() { this.send({type:'room_changed'}); }
@@ -138,6 +150,11 @@ class NetworkManager {
       };
 
       this.ws.onclose = (event) => {
+        if(useGameStore.getState().isRidingKeke){
+          useGameStore.getState().setRidingKeke(false,null,null);
+          useGameStore.getState().setMyPosition(CAMPUS_SPAWN);useHostelStore.setState({teleport:CAMPUS_SPAWN});
+        }
+
         if(event.code===1008) { window.dispatchEvent(new CustomEvent('hostel-access-ended',{detail:event.reason})); this.stopHeartbeat(); return; }
         useGameStore.getState().setConnectionStatus('disconnected');
         this.stopHeartbeat();
@@ -192,8 +209,10 @@ class NetworkManager {
 
         gameStore.setPlayers(otherPlayers);
         if (data.kekes) gameStore.setKekes(data.kekes);
+        gameStore.setRidingKeke(false,null,null);
         if (data.activeMatches) gameStore.setMatches(data.activeMatches);
 
+        const account=useAuthStore.getState().user;if(account)void useWalletStore.getState().loadWallet(account.id);
         console.log(`[WS] joined world:funaab:main`);
         console.log(`[WS] players online: ${Object.keys(otherPlayers).length + 1}`);
         break;
@@ -241,7 +260,18 @@ class NetworkManager {
         break;
       }
 
+      case 'keke_dropoff': {
+        gameStore.setRidingKeke(false,null,null);useInputStore.getState().clearTargetDestination();
+        useHostelStore.setState({teleport:data.position});gameStore.setMyPosition(data.position);return;
+      }
       case 'players_batch': {
+        if(data.kekes){
+          gameStore.setKekes(data.kekes);
+          const riding=Object.values(data.kekes).find((k:any)=>k.passengers?.includes(this.connectionId)) as any;
+          if(riding)gameStore.setRidingKeke(true,riding.id,riding.targets?.[this.connectionId]||riding.destinationId||null);
+          else if(gameStore.isRidingKeke)gameStore.setRidingKeke(false,null,null);
+        }
+
         // High frequency batch updates
         for (const [id, update] of Object.entries(data.updates || {})) {
           if (id !== this.connectionId) {
@@ -637,7 +667,7 @@ class NetworkManager {
   }
 
   public disconnect() {
-    for(const p of this.pending.values()) p.reject(new Error("Connection changed; reload jobs to restore progress"));
+    for(const p of this.pending.values()) p.reject(new Error("Connection changed; reconnect and check your ride or saved job"));
     this.pending.clear();
     this.currentUser = null;
     this.connectGeneration++;

@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
-import worldData from '../../worlds/funaab/world.json';
+import worldData from '../../config/campusWorld';
 
 export interface DebugColliderShape {
   type: 'cuboid' | 'cylinder' | 'capsule';

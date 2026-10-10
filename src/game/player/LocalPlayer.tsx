@@ -1,3 +1,5 @@
+import { renderedKekes } from '../vehicles/kekePresentation';
+import { seatPosition } from '../../config/kekeSimulation';
 import { useHostelStore } from '../../stores/hostelStore';
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -10,7 +12,7 @@ import { useInputStore } from '../../stores/inputStore';
 import { networkManager } from '../multiplayer/networkManager';
 import { useLectureStore } from '../../stores/lectureStore';
 import { AvatarModel } from './AvatarModel';
-import worldData from '../../worlds/funaab/world.json';
+import worldData from '../../config/campusWorld';
 import { InteractableZone } from '../../types/game';
 
 import { classifyTerrain, lawnEnforcement } from '../rules/lawnSecuritySystem';
@@ -134,7 +136,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
     if (isRidingKeke && currentKekeId) {
       networkManager.exitKeke(currentKekeId);
-      setRidingKeke(false, null, null);
+
       currentAnimation.current = 'idle';
       return;
     }
@@ -154,6 +156,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           break;
         case 'playstation':
           setActiveModal('ps_match');
+          break;
+        case 'library':
+          setActiveModal('library');
           break;
         case 'keke_stop':
           setActiveModal('keke_destination');
@@ -175,13 +180,14 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
     // 1. IF RIDING KEKE
     if (isRidingKeke && currentKekeId) {
-      const activeKeke = kekes[currentKekeId];
+      const activeKeke = renderedKekes[currentKekeId] || kekes[currentKekeId];
       if (activeKeke) {
-        const nextY = activeKeke.position[1] + PLAYER_CENTER_OFFSET;
+        const seat=seatPosition(activeKeke,useGameStore.getState().myConnectionId || '');
+        const nextY = seat[1] + PLAYER_CENTER_OFFSET;
         body.setNextKinematicTranslation({
-          x: activeKeke.position[0],
+          x: seat[0],
           y: nextY,
-          z: activeKeke.position[2],
+          z: seat[2],
         });
 
         if (avatarVisualRef.current) {
@@ -190,10 +196,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
         currentAnimation.current = 'sit';
         setMyAnimation('sit');
-        setMyPosition([activeKeke.position[0], activeKeke.position[1], activeKeke.position[2]]);
+        setMyPosition(seat);
         setMyRotation(activeKeke.rotation);
 
-        const totalYaw = activeKeke.rotation + cameraYaw;
+        // Preserve the walking orbit on boarding and through road turns.
+        const totalYaw = cameraYaw;
         const camDist = 7.5;
         const camHeight = 4.2;
         const cx = activeKeke.position[0] + Math.sin(totalYaw) * Math.cos(cameraPitch) * camDist;
@@ -315,7 +322,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
     if(offCampus) { const bound=useHostelStore.getState().owner?3.5:14;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
-    if(offCampus&&roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
+    if(roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
     // Update Rapier Kinematic Position
     body.setNextKinematicTranslation({ x: nextX, y: nextY, z: nextZ });
 
@@ -395,6 +402,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     let closestInteractable: InteractableZone | null = null;
     let minDistance = 999;
     const interactionPriority: Record<InteractableZone['type'], number> = {
+      library: 1,
       keke_stop: 0,
       food: 1,
       restaurant_dining: 1,
@@ -419,7 +427,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         closestInteractable = zone;
       }
     }
-    setNearbyInteractable(closestInteractable);
+    for(const k of Object.values(kekes)){
+      const dist=Math.hypot(feetPosition[0]-k.position[0],feetPosition[2]-k.position[2]);
+      if(k.isStopped&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
+    }
+    if(useGameStore.getState().activeModal!=='keke_destination')setNearbyInteractable(closestInteractable);
 
     // Auto-close proximity modals when walking outside interaction radius + hysteresis buffer
     const activeModal = useGameStore.getState().activeModal;
@@ -429,7 +441,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         food: ['food', 'restaurant_dining'],
         floral_world: ['food', 'restaurant_dining'],
         lecture_hall: ['lecture_hall'],
-        keke_destination: ['keke_stop'],
+
         campus_jobs: ['job_board'],
         jobs: ['job_board'],
         ps_match: ['playstation'],

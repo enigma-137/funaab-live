@@ -1,3 +1,6 @@
+import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
+import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
+import { createKeke, bookRide, tickKeke, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
 import { summarizeCampus } from '../src/config/campusSummary';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
@@ -51,17 +54,7 @@ interface PlayerState {
   lastUpdated: number;
 }
 
-interface KekeState {
-  id: string;
-  routeId: string;
-  position: [number, number, number];
-  rotation: number;
-  speed: number;
-  currentWaypointIndex: number;
-  passengers: string[];
-  currentStopName: string;
-  isStopped: boolean;
-}
+type KekeState = TransitState;
 
 interface PSMatchState {
   id: string;
@@ -101,31 +94,7 @@ interface LectureRoomState {
   startedAt: number;
 }
 
-const KEKE_WAYPOINTS: Array<{ pos: [number, number, number]; stopName?: string; waitTime?: number }> = [
-  { pos: [-30, 0, 28], stopName: 'Main Keke Park', waitTime: 4000 },
-  { pos: [-28, 0, 28] },
-  { pos: [-28, 0, 16] },
-  { pos: [-28, 0, 6], stopName: 'Food Hub Stop', waitTime: 3500 },
-  { pos: [-28, 0, -8] },
-  { pos: [-28, 0, -16], stopName: 'Health Centre Stop', waitTime: 3500 },
-  { pos: [-28, 0, -32] },
-  { pos: [-32, 0, -36], stopName: 'COLFHEC / Floral World Stop', waitTime: 4000 },
-  { pos: [-24, 0, -36] },
-  { pos: [-12, 0, -36] },
-  { pos: [0, 0, -36], stopName: 'Senate & Library Stop', waitTime: 4000 },
-  { pos: [16, 0, -36] },
-  { pos: [32, 0, -36] },
-  { pos: [32, 0, -20] },
-  { pos: [32, 0, -16], stopName: 'Iyalode Hostel Stop', waitTime: 3500 },
-  { pos: [32, 0, -4] },
-  { pos: [32, 0, 14] },
-  { pos: [32, 0, 24], stopName: 'Bank & ATM Stop', waitTime: 3500 },
-  { pos: [32, 0, 28] },
-  { pos: [16, 0, 28] },
-  { pos: [0, 0, 28], stopName: 'W-Landmark Plaza Stop', waitTime: 3500 },
-  { pos: [-16, 0, 28] },
-  { pos: [-30, 0, 28] },
-];
+
 
 function getZoneName(x: number, z: number, currentLectureId?: string): string {
   if (currentLectureId) {
@@ -134,18 +103,7 @@ function getZoneName(x: number, z: number, currentLectureId?: string): string {
     if (currentLectureId.includes('bio')) return 'In Class — Genetics';
     return 'In Class';
   }
-  if (x >= -40 && x <= -24 && z >= -34 && z <= -22) return 'Floral World';
-  if (x >= -65 && x <= -35 && z >= -18 && z <= 18) return 'Sports Centre';
-  if (x >= -42 && x <= -18 && z >= 16 && z <= 36) return 'Main Car Park';
-  if (x >= -36 && x <= -20 && z >= 0 && z <= 12) return 'Campus Eatery';
-  if (x >= -36 && x <= -20 && z >= -24 && z <= -8) return 'Health Centre';
-  if (x >= -48 && x <= -28 && z >= -52 && z <= -34) return 'COLFHEC';
-  if (x >= -20 && x <= 20 && z >= -52 && z <= -34) return 'Senate & Library';
-  if (x >= 22 && x <= 42 && z >= 16 && z <= 32) return 'Bank & ATM';
-  if (x >= 24 && x <= 44 && z >= -24 && z <= -8) return 'Iyalode Hostel';
-  if (x >= -14 && x <= 14 && z >= 16 && z <= 32) return 'W-Landmark Plaza';
-  if (x >= -8 && x <= 8 && z >= 44 && z <= 68) return 'Main Gate';
-  return 'Campus Grounds';
+  return campusZoneName(x,z);
 }
 
 interface JwksKey {
@@ -358,18 +316,8 @@ export class WorldRoomDO {
     this.psMatches = new Map();
     this.lectureRooms = new Map();
 
-    // Initialize campus Keke vehicle
-    this.kekes.set('keke-1', {
-      id: 'keke-1',
-      routeId: 'route-alpha',
-      position: [-22, 0, 20],
-      rotation: 0,
-      speed: 4.8,
-      currentWaypointIndex: 0,
-      passengers: [],
-      currentStopName: 'Main Keke Park',
-      isStopped: false,
-    });
+    this.kekes.set('keke-1',createKeke(false));
+    this.kekes.set(PARKED_KEKE_ID,createKeke(true));
 
     this.startSimulationLoop();
   }
@@ -385,41 +333,67 @@ export class WorldRoomDO {
     }, 100);
   }
 
+  private transitBusy=false;
   private tickKekeSimulation() {
-    const keke = this.kekes.get('keke-1');
-    if (!keke) return;
-
-    const currentWP = KEKE_WAYPOINTS[keke.currentWaypointIndex];
-    if (!currentWP) return;
-
-    if (keke.isStopped) {
-      if (Date.now() > this.kekeWaypointTimer) {
-        keke.isStopped = false;
-        keke.currentWaypointIndex = (keke.currentWaypointIndex + 1) % KEKE_WAYPOINTS.length;
+    if(this.transitBusy)return;
+    for(const k of this.kekes.values()) {
+      const arrived=tickKeke(k,Date.now(),.1);
+      for(const id of [...k.passengers]){
+        const p=this.players.get(id);if(!p)continue;
+        p.position=seatPosition(k,id);p.rotation=k.rotation;p.animation='sit';
+        for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.trustedAt=Date.now();}
+        if(arrived && (k.id===PARKED_KEKE_ID || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
-      return;
+      if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');
     }
-
-    const [tx, , tz] = currentWP.pos;
-    const [cx, cy, cz] = keke.position;
-    const dx = tx - cx;
-    const dz = tz - cz;
-    const dist = Math.hypot(dx, dz);
-
-    if (dist < 0.8) {
-      if (currentWP.stopName && currentWP.waitTime) {
-        keke.isStopped = true;
-        keke.currentStopName = currentWP.stopName;
-        this.kekeWaypointTimer = Date.now() + currentWP.waitTime;
-      } else {
-        keke.currentWaypointIndex = (keke.currentWaypointIndex + 1) % KEKE_WAYPOINTS.length;
+  }
+  private async settleTicket(ticket:string,action:'complete'|'refund') {
+    const key='keke-settle:'+ticket,body={p_ticket:ticket,p_action:action};
+    await this.state.storage.put(key,{body,due:Date.now()});
+    await this.state.storage.setAlarm(Date.now()+60000);
+    try{await this.dbRpc('keke_settle_trusted',body);await this.state.storage.delete(key);}catch{/* Durable alarm retries idempotently. */}
+  }
+  private async dropPassenger(k:TransitState,id:string,action:'complete'|'refund') {
+    const ticket=k.paid[id];delete k.paid[id];delete k.targets[id];
+    k.passengers=k.passengers.filter(p=>p!==id);
+    const p=this.players.get(id),position=exitPosition(k);
+    if(p){p.kekeRiding=false;p.kekeId=undefined;p.position=position;p.animation='idle';}
+    for(const [socket,session] of this.sessions)if(session.connectionId===id){
+      session.trustedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
+      socket.send(JSON.stringify({type:'keke_dropoff',position,reason:action==='complete'?'Arrived':'Ride ended'}));
+    }
+    if(action==='refund'&&k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'&&k.passengers.length===0)Object.assign(k,createKeke(true));
+    if(ticket)await this.settleTicket(ticket,action);
+    this.sendToConnections([id],JSON.stringify({type:'wallet_refresh'}));
+  }
+  private async boardKeke(socket:WebSocket,session:SessionData,data:any) {
+    if(this.transitBusy)throw new Error('Another student is boarding. Try again.');
+    if(session.room!=='world:funaab:main')throw new Error('Return to campus to ride');
+    const k=this.kekes.get(data.kekeId),p=this.players.get(session.connectionId);
+    if(!k||!p)throw new Error('Keke unavailable');
+    if(p.kekeRiding)return {kekeId:p.kekeId};
+    if(!session.trustedPosition||Date.now()-(session.trustedAt||0)>5000||Math.hypot(session.trustedPosition[0]-k.position[0],session.trustedPosition[2]-k.position[2])>8)throw new Error('Walk closer to the Keke');
+    if(k.passengers.length>=3)throw new Error('This Keke is full');
+    if(!['IDLE','BOARDING'].includes(k.phase))throw new Error('Wait for the Keke to stop');
+    const destinationId=k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'?k.destinationId:data.destinationId;
+    if(!kekeDestinations.some(d=>d.id===destinationId)||destinationId==='car-park')throw new Error('Choose a campus destination');
+    const fare=k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
+    const ticket=String(data.requestId||'');if(!/^[0-9a-f-]{36}$/i.test(ticket))throw new Error('Invalid ride request');
+    this.transitBusy=true;
+    try{
+      // Write recovery intent before charging. A Worker restart refunds interrupted rides.
+      await this.state.storage.put('keke-settle:'+ticket,{body:{p_ticket:ticket,p_action:'refund'},due:Date.now()+600000});
+      await this.state.storage.setAlarm(Date.now()+60000);
+      const receipt=await this.dbRpc('keke_reserve_trusted',{p_ticket:ticket,p_user:session.id,p_destination:destinationId,p_fare:fare});
+      if(socket.readyState!==WebSocket.OPEN||!this.players.has(session.connectionId)){
+        await this.settleTicket(ticket,'refund');throw new Error('Ride cancelled after disconnect');
       }
-    } else {
-      const step = 0.45;
-      const angle = Math.atan2(dx, dz);
-      keke.position = [cx + Math.sin(angle) * step, cy, cz + Math.cos(angle) * step];
-      keke.rotation = angle;
-    }
+      if(k.phase==='IDLE')bookRide(k,destinationId,Date.now(),crypto.randomUUID());
+      k.passengers.push(session.connectionId);k.paid[session.connectionId]=ticket;k.targets[session.connectionId]=destinationId;
+      p.kekeRiding=true;p.kekeId=k.id;p.animation='sit';p.position=seatPosition(k,session.connectionId);
+      this.broadcastBatchPlayers();
+      return {kekeId:k.id,destinationId,fare,balance:receipt.balance};
+    }finally{this.transitBusy=false;}
   }
 
   private broadcastBatchPlayers() {
@@ -474,6 +448,13 @@ export class WorldRoomDO {
     return this.dbRpc('hostel_can_enter',{p_owner:room.split(':')[3],p_guest:user});
   }
   async alarm() {
+    const settlements=await this.state.storage.list<any>({prefix:'keke-settle:',limit:100});
+    for(const [key,entry] of settlements){
+      if(entry.due>Date.now())continue;
+      try{await this.dbRpc('keke_settle_trusted',entry.body);await this.state.storage.delete(key);this.broadcastToRoom('world:funaab:main',JSON.stringify({type:'wallet_refresh'}));}catch{}
+    }
+    if((await this.state.storage.list({prefix:'keke-settle:',limit:1})).size)await this.state.storage.setAlarm(Date.now()+60000);
+
     const pending = await this.state.storage.list<object>({prefix:'ps-reward:',limit:50});
     for (const [key,body] of pending) {
       try { await this.dbRpc('ps_reward_trusted',body); await this.state.storage.delete(key); }
@@ -619,7 +600,7 @@ export class WorldRoomDO {
               lastPacketTime: Date.now(),
               packetCount: 1,
               token: effectiveToken, accessCheckedAt: Date.now(),
-              trustedPosition: [0,0,48], trustedAt: Date.now(),
+              trustedPosition: sessionRoom==='world:funaab:main'?CAMPUS_SPAWN:[0,0,2], trustedAt: Date.now(),
             };
 
             this.sessions.set(webSocket, sessionData);
@@ -706,9 +687,10 @@ export class WorldRoomDO {
             if (!sessionConnId) return;
             const player = this.players.get(sessionConnId);
             if (player) {
+              if(player.kekeRiding)return;
               if (!Array.isArray(data.position) || data.position.length!==3 || !data.position.every((n: unknown)=>typeof n==='number' && Number.isFinite(n) && Math.abs(n)<200)) return;
               const current=this.sessions.get(webSocket)!;
-              const previous=current.trustedPosition || [0,0,48];
+              const previous=current.trustedPosition || CAMPUS_SPAWN;
               const clock=Date.now();
               const elapsed=Math.max(0,(clock-(current.movementClock || clock))/1000);
               const budget=Math.min(8,(current.movementBudget ?? 4)+elapsed*35);
@@ -720,8 +702,7 @@ export class WorldRoomDO {
               player.position = data.position;
               player.rotation = data.rotation;
               player.animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
-              player.kekeRiding = data.kekeRiding;
-              player.kekeId = data.kekeId;
+
               player.lastUpdated = Date.now();
             }
             break;
@@ -839,55 +820,17 @@ export class WorldRoomDO {
             break;
           }
 
-          case 'keke_enter': {
-            if (!sessionConnId) return;
-            const keke = this.kekes.get(data.kekeId || 'keke-1');
-            if (keke && keke.passengers.length < 3 && !keke.passengers.includes(sessionConnId)) {
-              keke.passengers.push(sessionConnId);
-              const player = this.players.get(sessionConnId);
-              if (player) {
-                player.kekeRiding = true;
-                player.kekeId = keke.id;
-              }
-
-              this.broadcastToRoom(
-                'world:funaab:main',
-                JSON.stringify({
-                  type: 'keke_sync',
-                  kekeId: keke.id,
-                  position: keke.position,
-                  rotation: keke.rotation,
-                  passengers: keke.passengers,
-                  currentStopName: keke.currentStopName,
-                })
-              );
-            }
+          case 'keke_enter':
+          case 'keke_book': {
+            const current=this.sessions.get(webSocket);if(!current)return;
+            try{const result=await this.boardKeke(webSocket,current,data);webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,result}));}
+            catch(e){webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:(e as Error).message}));}
             break;
           }
-
           case 'keke_exit': {
-            if (!sessionConnId) return;
-            const keke = this.kekes.get(data.kekeId || 'keke-1');
-            if (keke) {
-              keke.passengers = keke.passengers.filter((id) => id !== sessionConnId);
-              const player = this.players.get(sessionConnId);
-              if (player) {
-                player.kekeRiding = false;
-                player.kekeId = undefined;
-              }
-
-              this.broadcastToRoom(
-                'world:funaab:main',
-                JSON.stringify({
-                  type: 'keke_sync',
-                  kekeId: keke.id,
-                  position: keke.position,
-                  rotation: keke.rotation,
-                  passengers: keke.passengers,
-                  currentStopName: keke.currentStopName,
-                })
-              );
-            }
+            if(!sessionConnId)return;
+            const k=[...this.kekes.values()].find(k=>k.passengers.includes(sessionConnId!));
+            if(k && k.isStopped)await this.dropPassenger(k,sessionConnId,k.phase==='BOARDING'&&k.id===PARKED_KEKE_ID?'refund':'complete');
             break;
           }
 
@@ -1217,7 +1160,7 @@ export class WorldRoomDO {
 
         // Remove from keke passengers
         this.kekes.forEach((keke) => {
-          keke.passengers = keke.passengers.filter((id) => id !== sessionConnId);
+          if(keke.passengers.includes(sessionConnId!))void this.dropPassenger(keke,sessionConnId!,'refund');
         });
 
         this.players.delete(sessionConnId);

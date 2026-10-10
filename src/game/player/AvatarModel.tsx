@@ -25,6 +25,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   isLocal = false,
 }) => {
   const { unreadDmsByPartner, openDm } = useSocialStore();
+  const riding=useGameStore(s=>s.isRidingKeke);
   const inRoom=useHostelStore(s=>!!s.owner);
   const isModalOpen = useGameStore((s) => s.activeModal !== null);
   const unreadCount = unreadDmsByPartner[username.toLowerCase()] || 0;
@@ -35,7 +36,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   return (
     <group>
       {/* Floating Username & College Badge & Unread DM Alert (Hidden when any modal is open) */}
-      {!isModalOpen && !(isLocal&&inRoom) && (
+      {!isModalOpen && !(isLocal&&(inRoom||riding)) && (
         <Html
           position={[0, hasUnreadDm ? 2.45 : 2.25, 0]}
           center

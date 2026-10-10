@@ -1,3 +1,5 @@
+import { renderedKekes } from '../vehicles/kekePresentation';
+import { seatPosition } from '../../config/kekeSimulation';
 import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -35,6 +37,8 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
     const p = safePos(player.position);
     targetPos.current.set(p[0], p[1], p[2]);
 
+    const k=player.kekeId&&renderedKekes[player.kekeId];
+    if(player.kekeRiding&&k){const seat=seatPosition(k,player.connectionId||player.id);groupRef.current.position.set(...seat);groupRef.current.rotation.y=k.rotation;currentPos.current.copy(groupRef.current.position);return;}
     // Smooth LERP movement to prevent jitter
     currentPos.current.lerp(targetPos.current, Math.min(1, delta * 12));
     groupRef.current.position.copy(currentPos.current);

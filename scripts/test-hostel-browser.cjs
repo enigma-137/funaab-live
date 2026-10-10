@@ -258,13 +258,13 @@ let lastPage;
       .click();
     await page.getByRole("button", { name: "Open campus phone" }).click();
     await page
-      .getByRole("button", { name: "Home / Hostel", exact: true })
+      .getByRole("button", { name: "Hostel", exact: true })
       .click();
-    await page.getByRole("button", { name: "Go Hostel", exact: true }).click();
-    await page.getByText("Off-campus courtyard", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Visit courtyard", exact: true }).click();
+    await page.locator(".hostel-dock strong").waitFor();
     await page.getByRole("button", { name: "Room", exact: true }).click();
-    await page.getByRole("button", { name: "My Room", exact: true }).click();
-    await page.getByText("CampusTester’s room", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Enter room", exact: true }).click();
+    await page.getByText("CampusTester’s Room", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Room", exact: true }).click();
     await page.getByRole("button", { name: "shop", exact: true }).click();
     await page
@@ -327,7 +327,7 @@ let lastPage;
     await page
       .getByRole("button", { name: "Enter Campus", exact: true })
       .click();
-    await page.getByText("CampusTester’s room", { exact: true }).waitFor();
+    await page.getByText("CampusTester’s Room", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Items", exact: true }).click();
     await page
       .getByText("Owned 1 · Placed 1 · Available 0", { exact: true })

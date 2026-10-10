@@ -65,7 +65,7 @@ export const WorldScene: React.FC = () => {
             {hostel ? <HostelEnvironment /> : <><CampusEnvironment /><JobMarkers /></>}
 
             {/* Autonomous Keke Route */}
-            {!hostel && <KekeVehicle />}
+            {!hostel && <><KekeVehicle id="keke-1"/><KekeVehicle id="keke-carpark"/></>}
 
             {/* Campus Security Officers (Patrol & Lawn Rule Enforcement) */}
             {!hostel && <SecurityOfficers />}

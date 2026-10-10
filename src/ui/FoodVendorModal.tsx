@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
-import worldData from '../worlds/funaab/world.json';
+import worldData from '../config/campusWorld';
 import { FoodItem } from '../types/game';
 import { X, UtensilsCrossed, CheckCircle2, ShoppingBag } from 'lucide-react';
 

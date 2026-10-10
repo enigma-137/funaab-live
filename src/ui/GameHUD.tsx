@@ -27,7 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedule';
-import worldData from '../worlds/funaab/world.json';
+import worldData from '../config/campusWorld';
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner);
@@ -60,7 +60,7 @@ export const GameHUD: React.FC = () => {
   const [jobNotice, setJobNotice] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const activeKeke = Object.values(kekes)[0];
+  const activeKeke = currentKekeId ? kekes[currentKekeId] : undefined;
   const destinationName = targetKekeDestinationId
     ? worldData.kekeDestinations.find((destination) => destination.id === targetKekeDestinationId)?.name
     : undefined;
@@ -82,7 +82,7 @@ export const GameHUD: React.FC = () => {
 
     if (isRidingKeke && currentKekeId) {
       networkManager.exitKeke(currentKekeId);
-      setRidingKeke(false, null, null);
+
       return;
     }
 
@@ -101,6 +101,9 @@ export const GameHUD: React.FC = () => {
           break;
         case 'playstation':
           setActiveModal('ps_match');
+          break;
+        case 'library':
+          setActiveModal('library');
           break;
         case 'keke_stop':
           setActiveModal('keke_destination');
@@ -140,6 +143,7 @@ export const GameHUD: React.FC = () => {
     if (isRidingKeke) return '🛺';
     if (!nearbyInteractable) return '💬';
     switch (nearbyInteractable.type) {
+      case 'library': return '📚';
       case 'keke_stop':
         return '🛺';
       case 'lecture_hall':
@@ -159,11 +163,11 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (isRidingKeke) return 'Exit Campus Keke';
+    if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
         case 'keke_stop':
-          return 'Enter Keke (from ₦50)';
+          return nearbyInteractable.actionText;
         case 'lecture_hall':
           return 'View Lecture Schedule';
         case 'food':
@@ -186,8 +190,9 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (isRidingKeke) return 'Exit Keke';
+    if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
     switch (nearbyInteractable?.type) {
+      case 'library': return 'Library';
       case 'keke_stop':
         return 'Keke';
       case 'lecture_hall':
@@ -453,7 +458,7 @@ export const GameHUD: React.FC = () => {
       )}
 
       {isRidingKeke && (
-        <div className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-32px))] -translate-x-1/2 rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-4 sm:top-24 sm:translate-x-0">
+        <div className="pointer-events-none fixed left-3 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-130px))] rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-4 sm:top-36 sm:translate-x-0">
           <div className="flex items-center gap-2">
             <span className="text-base leading-none">🛺</span>
             <div className="min-w-0 flex-1">
@@ -463,7 +468,7 @@ export const GameHUD: React.FC = () => {
               </div>
               <div className="truncate text-[11px] leading-tight text-amber-300">
                 Next: {activeKeke?.currentStopName || 'Campus stop'}
-                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length} aboard` : ''}
+                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length}/3 passengers` : ''}
               </div>
             </div>
           </div>

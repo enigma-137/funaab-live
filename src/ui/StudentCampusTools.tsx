@@ -11,31 +11,20 @@ import { useLectureStore } from '../stores/lectureStore';
 import { courseById } from '../config/academics';
 import { orientationTasks } from '../config/studentJourney';
 import { normalizeAvatar } from '../config/avatar';
-import world from '../worlds/funaab/world.json';
+import world from '../config/campusWorld';
 import './student.css';
 
 const AvatarEditor = lazy(() => import('./AvatarEditor'));
 const AvatarPreview = lazy(() =>
   import('./AvatarEditor').then((m) => ({ default: m.AvatarPreview })),
 );
-const collegePoint = (college: string) =>
-  world.locations.find(
-    (l) =>
-      l.id ===
-      (
-        {
-          COLENG: 'coleng',
-          COLFHEC: 'colfhec',
-          COLPLANT: 'colerm-colplant',
-          COLBIOS: 'colbios-lecture-hall',
-        } as Record<string, string>
-      )[college],
-  ) || world.locations.find((l) => l.id === 'central-lecture-hall')!;
+const collegePoint = (college: string) => world.locations.find(l=>l.id===college.toLowerCase()) || world.locations.find(l=>l.id==='central-lecture-hall')!;
 const near = (p: number[], target: number[], distance: number) =>
   Math.hypot(p[0] - target[0], p[2] - target[2]) < distance;
 
 export function StudentCampusTools() {
   const user = useAuthStore((s) => s.user)!;
+  const riding=useGameStore(s=>s.isRidingKeke);
   const offCampus=useHostelStore(s=>s.roomId!=='world:funaab:main');
   const modal = useGameStore((s) => s.activeModal);
   const setModal = useGameStore((s) => s.setActiveModal);
@@ -131,7 +120,7 @@ export function StudentCampusTools() {
           <span>Phone</span>
         </button>
       )}
-      {!offCampus && !modal && journey && !journey.orientation_completed && (
+      {!riding && !offCampus && !modal && journey && !journey.orientation_completed && (
         <aside className="student-orientation">
           <button onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed}>
             Welcome to campus · {journey.orientation_steps.length}/5 {collapsed ? '+' : '−'}
@@ -198,7 +187,7 @@ export function StudentCampusTools() {
                     >
                       Profile & Avatar
                     </button>
-                    <button onClick={() => openHostel()}>Home / Hostel</button>
+                    <button onClick={() => openHostel()}>Hostel</button>
                     <button onClick={() => setModal('friends')}>Friends</button>
                     <button
                       onClick={() => {
@@ -237,7 +226,7 @@ export function StudentCampusTools() {
                       <ul className="student-friends">
                         {world.locations
                           .filter((l) =>
-                            ['college', 'food', 'transport', 'restaurant', 'gaming'].includes(
+                            ['college', 'food', 'transport', 'restaurant', 'gaming', 'academic', 'sports', 'service', 'lecture_hall', 'landmark'].includes(
                               l.type,
                             ),
                           )

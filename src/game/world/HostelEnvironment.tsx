@@ -1,5 +1,5 @@
 import React from "react";
-import { Text } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { useAuthStore } from "../../stores/authStore";
 import { useInputStore } from "../../stores/inputStore";
@@ -49,12 +49,12 @@ export function HostelEnvironment() {
         </RigidBody>
         <Box pos={[-7, 4.1, -4]} size={[10, 0.3, 7]} color="#597065" />
         <Box pos={[7, 3.1, -4]} size={[7, 0.25, 6]} color="#a56342" />
-        <Text position={[-7, 3.2, -0.95]} fontSize={0.44} color="#244d3a">
-          STUDENT HOSTEL
-        </Text>
-        <Text position={[7, 2.5, -1.45]} fontSize={0.42} color="#fff4d5">
+        <Html position={[-7, 3.2, -0.95]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
+          HOSTEL
+        </span></Html>
+        <Html position={[7, 2.5, -1.45]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
           IYA IBEJI SHOP
-        </Text>
+        </span></Html>
         <mesh
           position={[-7, 1.2, -0.9]}
           onClick={(e) => {
@@ -75,33 +75,17 @@ export function HostelEnvironment() {
           <boxGeometry args={[2, 2, 0.2]} />
           <meshStandardMaterial color="#dbbe71" />
         </mesh>
-        <Text position={[-7, 1.5, 0.3]} fontSize={0.3} color="#173e2a">
-          My Room →
-        </Text>
-        <Text position={[7, 1.5, -0.5]} fontSize={0.3} color="#173e2a">
+
+        <Html position={[7, 1.5, -0.5]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
           Visit Iya Ibeji
-        </Text>
+        </span></Html>
         <Box pos={[8, 0.35, 7]} size={[3, 0.7, 2]} color="#8a8069" />
-        <Text position={[8, 1.5, 7]} fontSize={0.3} color="#294b3b">
+        <Html position={[8, 1.5, 7]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
           SECURITY POST
-        </Text>
+        </span></Html>
         <Box pos={[0, 0.015, 8]} size={[3, 0.03, 12]} color="#aaa58f" />
-        <Text
-          position={[0, 1, 12]}
-          fontSize={0.35}
-          color="#224331"
-          onClick={() => travel("campus")}
-        >
-          ← Go Campus
-        </Text>
-        <Text
-          position={[0, 0.1, 1]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.45}
-          color="#43634d"
-        >
-          COURTYARD
-        </Text>
+
+
       </group>
     );
   const valid = preview

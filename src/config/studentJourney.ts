@@ -1,3 +1,4 @@
+import { CAMPUS_SPAWN } from './campusLocations';
 import { courseById, courses } from './academics';
 
 export type JourneyStage =
@@ -68,7 +69,7 @@ export const eligibleCourses = (aggregate: number) =>
   courses.filter((c) => aggregate >= c.gameCutoffRange[0]);
 export const playerEntry = (completed?: boolean, beta?: boolean) =>
   completed ? 'returning' : beta ? 'beta' : 'new';
-export const CAMPUS_ENTRY_POSITION: [number, number, number] = [0, 0, 48];
+export const CAMPUS_ENTRY_POSITION: [number, number, number] = CAMPUS_SPAWN;
 export const orientationTasks = [
   ['car-park', 'Visit Car Park'],
   ['keke', 'Take a Keke'],
