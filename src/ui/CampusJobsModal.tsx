@@ -7,15 +7,15 @@ import { X, Briefcase, MapPin, CheckCircle2, Navigation, AlertCircle } from 'luc
 export const CampusJobsModal: React.FC = () => {
   const { user } = useAuthStore();
   const { setActiveModal, myPosition } = useGameStore();
-  const { availableJobs, activeJob, acceptJob, cancelJob, completeActiveJob, checkJobProximity } =
+  const { availableJobs, activeJob, error, busy, load, acceptJob, cancelJob, completeActiveJob, checkJobProximity } =
     useJobStore();
 
   const [notification, setNotification] = useState<string | null>(null);
 
   const proximity = checkJobProximity(myPosition);
 
-  const handleAccept = (jobId: string) => {
-    const success = acceptJob(jobId);
+  const handleAccept = async (jobId: string) => {
+    const success = await acceptJob(jobId);
     if (success) {
       setNotification('Job Accepted! Check the HUD indicator for your pickup / destination point.');
       setTimeout(() => {
@@ -66,6 +66,8 @@ export const CampusJobsModal: React.FC = () => {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
+          {error && <p role="alert" className="text-amber-200">{error} <button onClick={load}>Reload saved job</button></p>}
+          {busy && <p role="status">Saving job progress…</p>}
           {notification && (
             <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold animate-bounce">
               <span>{notification}</span>

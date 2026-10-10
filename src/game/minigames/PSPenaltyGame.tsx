@@ -73,7 +73,7 @@ export const PSPenaltyGame: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white font-['Outfit']">FUNAAB Game Den: 1v1 Showdown</h2>
-              <p className="text-xs text-indigo-300">PlayStation Penalty Shootout Mini-Challenge</p>
+              <p className="text-xs text-indigo-300">No wagers · Campus: winner ₦120 / loser ₦40 / draw ₦80 · 2-minute cooldown, 6 rewarded matches per day · Home games: social only</p>
             </div>
           </div>
           <button

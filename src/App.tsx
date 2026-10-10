@@ -7,6 +7,9 @@ import { networkManager } from './game/multiplayer/networkManager';
 import { LandingPage } from './ui/LandingPage';
 const WorldScene = lazy(() => import('./game/world/WorldScene').then(m => ({ default: m.WorldScene })));
 const StudentEntry = lazy(() => import('./ui/StudentEntry'));
+import { HostelLife } from './ui/HostelLife';
+import { useHostelStore } from './stores/hostelStore';
+import { useJobStore } from './stores/jobStore';
 import { StudentCampusTools } from './ui/StudentCampusTools';
 import { CAMPUS_ENTRY_POSITION } from './config/studentJourney';
 import { GameHUD } from './ui/GameHUD';
@@ -53,6 +56,7 @@ export const App: React.FC = () => {
       networkManager.connect(user);
       // Load user's persistent balance & social data
       loadWallet(user.id);
+      useJobStore.getState().load();
       loadSocialData(user.id);
     } else {
       networkManager.disconnect();
@@ -64,7 +68,7 @@ export const App: React.FC = () => {
   }, [isAuthenticated, user?.id, campusUserId, user?.onboardingCompleted]);
 
   useEffect(() => { if (user && campusUserId === user.id) networkManager.updateAvatar(user); }, [user?.avatarConfig]);
-  useEffect(() => { if (!isAuthenticated) setCampusUserId(null); }, [isAuthenticated]);
+  useEffect(() => { if (!isAuthenticated) { setCampusUserId(null); networkManager.room='world:funaab:main'; useHostelStore.setState({roomId:'world:funaab:main',owner:null,snapshot:null,invites:[],debts:[]}); useJobStore.setState({run:null,activeJob:null}); } }, [isAuthenticated]);
   useEffect(() => { if (user) loadSocialData(user.id); }, [user?.id]);
 
   if (isInitializingAuth) {
@@ -115,6 +119,7 @@ export const App: React.FC = () => {
       )}
 
       <StudentCampusTools />
+      <HostelLife />
 
       {/* Live Campus Activity Feed */}
       <ActivityFeed />

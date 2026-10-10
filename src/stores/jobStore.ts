@@ -1,122 +1,60 @@
 import { create } from 'zustand';
-import { CampusJob } from '../types/game';
-import { ECONOMY_CONFIG } from '../config/economy';
-import { useWalletStore } from './walletStore';
+import type { CampusJob } from '../types/game';
+import { CAMPUS_JOBS } from '../config/campusJobs';
 import { networkManager } from '../game/multiplayer/networkManager';
-
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from './authStore';
+import { useWalletStore } from './walletStore';
+interface Run {id:string;job_id:string;status:string;reward_claimed:boolean}
 interface JobState {
-  activeJob: CampusJob | null;
-  availableJobs: CampusJob[];
-  lastCompletedJobAt: number | null;
-
-  acceptJob: (jobId: string) => boolean;
-  cancelJob: () => void;
-  pickupDeliveryPackage: () => void;
-  completeActiveJob: (userId: string) => Promise<{ success: boolean; reward: number }>;
-  checkJobProximity: (playerPos: [number, number, number]) => {
-    canPickup: boolean;
-    canDeliver: boolean;
-    targetName: string;
-    distance: number;
-  };
+ activeJob:CampusJob|null; run:Run|null; availableJobs:CampusJob[]; busy:boolean; error:string|null;
+ lastCompletedJobAt:number|null;
+ load:()=>Promise<void>; acceptJob:(id:string)=>Promise<boolean>; cancelJob:()=>Promise<void>;
+ pickupDeliveryPackage:()=>Promise<boolean>; completeActiveJob:(id:string)=>Promise<{success:boolean;reward:number}>;
+ checkJobProximity:(pos:[number,number,number])=>{canPickup:boolean;canDeliver:boolean;targetName:string;distance:number};
 }
-
-const initialJobs: CampusJob[] = [
-  { ...ECONOMY_CONFIG.JOBS.FOOD_DELIVERY, status: 'available' },
-  { ...ECONOMY_CONFIG.JOBS.CAMPUS_ERRAND, status: 'available' },
-  { ...ECONOMY_CONFIG.JOBS.SPORTS_ASSISTANT, status: 'available' },
-  { ...ECONOMY_CONFIG.JOBS.GROUNDS_CLEANUP, status: 'available' },
-];
-
-export const useJobStore = create<JobState>((set, get) => ({
-  activeJob: null,
-  availableJobs: initialJobs,
-  lastCompletedJobAt: null,
-
-  acceptJob: (jobId: string) => {
-    const job = get().availableJobs.find((j) => j.id === jobId);
-    if (!job) return false;
-
-    // For food delivery & errand, starts at 'accepted' (needs pickup)
-    // For sports & grounds, source is start location, so status is 'picked_up' directly
-    const initialStatus = (job.type === 'delivery' || job.type === 'errand') ? 'accepted' : 'picked_up';
-
-    set({
-      activeJob: {
-        ...job,
-        status: initialStatus,
-        progress: 0,
-      },
-    });
-
-    return true;
-  },
-
-  cancelJob: () => {
-    set({ activeJob: null });
-  },
-
-  pickupDeliveryPackage: () => {
-    const current = get().activeJob;
-    if (!current) return;
-    set({
-      activeJob: {
-        ...current,
-        status: 'picked_up',
-      },
-    });
-  },
-
-  completeActiveJob: async (userId: string) => {
-    const current = get().activeJob;
-    if (!current || current.status !== 'picked_up') {
-      return { success: false, reward: 0 };
-    }
-
-    const reward = current.reward;
-
-    // Grant reward in wallet store
-    await useWalletStore.getState().grantJobReward(userId, reward, current.title);
-
-    // Send network job event to broadcast activity
-    networkManager.sendJobCompleted(current.title, reward);
-
-    set({
-      activeJob: null,
-      lastCompletedJobAt: Date.now(),
-    });
-
-    return { success: true, reward };
-  },
-
-  checkJobProximity: (playerPos: [number, number, number]) => {
-    const job = get().activeJob;
-    if (!job) return { canPickup: false, canDeliver: false, targetName: '', distance: 999 };
-
-    const [px, , pz] = playerPos;
-
-    if (job.status === 'accepted') {
-      const [sx, , sz] = job.sourcePos;
-      const dist = Math.hypot(px - sx, pz - sz);
-      return {
-        canPickup: dist <= 4.5,
-        canDeliver: false,
-        targetName: job.source,
-        distance: Math.round(dist),
-      };
-    }
-
-    if (job.status === 'picked_up') {
-      const [dx, , dz] = job.destinationPos;
-      const dist = Math.hypot(px - dx, pz - dz);
-      return {
-        canPickup: false,
-        canDeliver: dist <= 4.5,
-        targetName: job.destination,
-        distance: Math.round(dist),
-      };
-    }
-
-    return { canPickup: false, canDeliver: false, targetName: '', distance: 999 };
-  },
-}));
+const active = (run:Run|null):CampusJob|null => {
+ const job=CAMPUS_JOBS.find(j=>j.id===run?.job_id);
+ return job && run && ['accepted','picked_up'].includes(run.status)? {...job,status:run.status as CampusJob['status']}:null;
+};
+export const useJobStore=create<JobState>((set,get)=>{
+ const action=async (name:string,job?:string)=>{
+   if(get().busy) return null;
+   const owner=useAuthStore.getState().user?.id;
+   set({busy:true,error:null});
+   try {
+     const run:Run=await networkManager.action(name,job,get().run?.id);
+     if(useAuthStore.getState().user?.id!==owner)return null;
+     set({run,activeJob:active(run)});return run;
+   } catch(e) {set({error:(e as Error).message});return null;}
+   finally {set({busy:false});}
+ };
+ return {
+ activeJob:null,run:null,availableJobs:CAMPUS_JOBS,busy:false,error:null,lastCompletedJobAt:null,
+ load:async()=>{
+   const id=useAuthStore.getState().user?.id; if(!id) return;
+   const {data,error}=await supabase.from('job_runs').select('*').eq('user_id',id).in('status',['accepted','picked_up']).maybeSingle();
+   if(useAuthStore.getState().user?.id!==id)return;
+   if(error) {set({error:'Jobs unavailable. Please retry after setup.'});return;}
+   set({run:data,activeJob:active(data),error:null});
+ },
+ acceptJob:async id=>!!(await action('accept',id)),
+ cancelJob:async()=>{await action('cancel');},
+ pickupDeliveryPackage:async()=>!!(await action('pickup')),
+ completeActiveJob:async userId=>{
+   const reward=get().activeJob?.reward || 0;
+   const run=await action('deliver');
+   if(!run?.reward_claimed)return {success:false,reward:0};
+   await useWalletStore.getState().loadWallet(userId);
+   set({lastCompletedJobAt:Date.now()});
+   return {success:true,reward};
+ },
+ checkJobProximity:pos=>{
+   const job=get().activeJob;
+   if(!job || networkManager.room!=='world:funaab:main')return {canPickup:false,canDeliver:false,targetName:'Return to campus',distance:999};
+   const pickup=job.status==='accepted',target=pickup?job.sourcePos:job.destinationPos;
+   const distance=Math.hypot(pos[0]-target[0],pos[2]-target[2]);
+   return {canPickup:pickup&&distance<=4.5,canDeliver:!pickup&&distance<=4.5,targetName:pickup?job.source:job.destination,distance:Math.round(distance)};
+ }
+ };
+});

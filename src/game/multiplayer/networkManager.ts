@@ -7,6 +7,8 @@ import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
 
 class NetworkManager {
+  public room = 'world:funaab:main';
+  private pending = new Map<string,{resolve:(v:any)=>void,reject:(e:Error)=>void}>();
   private connectGeneration = 0;
   private ws: WebSocket | null = null;
   private reconnectTimeout: any = null;
@@ -57,6 +59,21 @@ class NetworkManager {
     }
   }
 
+  public async action(action: string, jobId?: string, runId?: string): Promise<any> {
+    if(this.ws?.readyState!==WebSocket.OPEN) throw new Error('Reconnect to campus before starting work');
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Job request timed out. Reload jobs to check saved progress.'));},15000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'job_action',requestId,action,jobId,runId});
+    });
+  }
+  public roomChanged() { this.send({type:'room_changed'}); }
+  public switchRoom(room: string, user: PlayerProfile) {
+    this.disconnect(); this.room=room;
+    useGameStore.setState({players:{},kekes:{},activeMatches:{},currentMatch:null,nearbyInteractable:null,isRidingKeke:false});
+    return this.connect(user);
+  }
   public async connect(user: PlayerProfile) {
     this.currentUser = user;
     const generation = ++this.connectGeneration;
@@ -80,6 +97,7 @@ class NetworkManager {
         wsUrl = `${wsUrl}${separator}token=${encodeURIComponent(token)}`;
       }
 
+      wsUrl += `${wsUrl.includes('?')?'&':'?'}room=${encodeURIComponent(this.room)}`;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -92,7 +110,7 @@ class NetworkManager {
         // Send join packet with connectionId, profile, and auth token
         this.send({
           type: 'join',
-          room: 'world:funaab:main',
+          room: this.room,
           token: token || undefined,
           player: {
             id: user.id,
@@ -119,7 +137,8 @@ class NetworkManager {
         }
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event) => {
+        if(event.code===1008) { window.dispatchEvent(new CustomEvent('hostel-access-ended',{detail:event.reason})); this.stopHeartbeat(); return; }
         useGameStore.getState().setConnectionStatus('disconnected');
         this.stopHeartbeat();
         this.scheduleReconnect();
@@ -141,8 +160,20 @@ class NetworkManager {
     const socialStore = useSocialStore.getState();
 
     switch (data.type) {
+      case 'action_result': {
+        const pending=this.pending.get(data.requestId); this.pending.delete(data.requestId);
+        if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result); return;
+      }
+      case 'room_changed': window.dispatchEvent(new Event('hostel-room-changed')); return;
+      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
+      case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
+
       case 'init':
       case 'snapshot': {
+        if (data.yourConnectionId) {
+          this.connectionId=data.yourConnectionId;
+          gameStore.setMyConnectionId(this.connectionId);
+        }
         const otherPlayers: Record<string, PlayerState> = {};
         const incoming = Array.isArray(data.players)
           ? data.players
@@ -606,12 +637,15 @@ class NetworkManager {
   }
 
   public disconnect() {
+    for(const p of this.pending.values()) p.reject(new Error("Connection changed; reload jobs to restore progress"));
+    this.pending.clear();
     this.currentUser = null;
     this.connectGeneration++;
     this.stopHeartbeat();
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     if (this.ws) {
       this.ws.onclose = null;
+      this.ws.onmessage = null;
       this.ws.onopen = null;
       this.ws.close();
       this.ws = null;

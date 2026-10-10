@@ -53,6 +53,7 @@ interface GameState {
   activeModal:
     | 'student_profile'
     | 'student_phone'
+    | 'hostel'
     | 'bank'
     | 'food'
     | 'ps_match'
@@ -108,6 +109,7 @@ interface GameState {
     modal:
       | 'student_profile'
       | 'student_phone'
+    | 'hostel'
       | 'bank'
       | 'food'
       | 'ps_match'

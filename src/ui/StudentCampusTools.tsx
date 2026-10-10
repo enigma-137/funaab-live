@@ -1,3 +1,5 @@
+import { openHostel } from './HostelLife';
+import { useHostelStore } from '../stores/hostelStore';
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Smartphone, X, Check } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
@@ -50,6 +52,10 @@ export function StudentCampusTools() {
     const interval = window.setInterval(async () => {
       const game = useGameStore.getState(),
         student = useStudentStore.getState();
+      if (useHostelStore.getState().roomId !== 'world:funaab:main') {
+        setStatus(useHostelStore.getState().owner ? 'In a student room' : 'At the hostel courtyard');
+        return;
+      }
       const nearest = world.locations.find((l) => near(game.myPosition, l.position, 12));
       setStatus(
         useLectureStore.getState().isInClassroom
@@ -191,6 +197,7 @@ export function StudentCampusTools() {
                     >
                       Profile & Avatar
                     </button>
+                    <button onClick={() => openHostel()}>Home / Hostel</button>
                     <button onClick={() => setModal('friends')}>Friends</button>
                     <button
                       onClick={() => {

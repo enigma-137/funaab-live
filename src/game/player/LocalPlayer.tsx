@@ -1,3 +1,4 @@
+import { useHostelStore } from '../../stores/hostelStore';
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -21,7 +22,9 @@ const CAPSULE_HALF_HEIGHT = 0.5;
 const CAPSULE_RADIUS = 0.35;
 const PLAYER_CENTER_OFFSET = CAPSULE_HALF_HEIGHT + CAPSULE_RADIUS; // 0.85m
 
-export const LocalPlayer: React.FC = () => {
+export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) => {
+  const sitting=useRef(false);
+  useEffect(()=>{const sit=(e:Event)=>{sitting.current=!!(e as CustomEvent).detail;};window.addEventListener("hostel-sit",sit);return()=>window.removeEventListener("hostel-sit",sit);},[]);
   const { user } = useAuthStore();
   const {
     myPosition,
@@ -62,7 +65,7 @@ export const LocalPlayer: React.FC = () => {
   const stuckTimerRef = useRef<number>(0);
 
   const { world, rapier } = useRapier();
-  const { camera } = useThree();
+  const { camera, size } = useThree();
 
   // Initialize Kinematic Character Controller in Rapier world
   useEffect(() => {
@@ -250,6 +253,8 @@ export const LocalPlayer: React.FC = () => {
       }
     }
 
+    if(offCampus && sitting.current) moveDirection=null;
+    if(useGameStore.getState().activeModal) moveDirection=null;
     if (moveDirection && controller) {
       const targetAngle = Math.atan2(moveDirection.x, moveDirection.z);
 
@@ -308,6 +313,7 @@ export const LocalPlayer: React.FC = () => {
     nextX = Math.max(worldData.bounds.minX + 0.5, Math.min(worldData.bounds.maxX - 0.5, nextX));
     nextZ = Math.max(worldData.bounds.minZ + 0.5, Math.min(worldData.bounds.maxZ - 0.5, nextZ));
 
+    if(offCampus) { const bound=useHostelStore.getState().owner?3.5:14;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     // Update Rapier Kinematic Position
     body.setNextKinematicTranslation({ x: nextX, y: nextY, z: nextZ });
 
@@ -321,6 +327,7 @@ export const LocalPlayer: React.FC = () => {
 
     setMyPosition(feetPosition);
     setMyRotation(currentRotation.current);
+    if(offCampus && sitting.current) currentAnimation.current='sit';
     setMyAnimation(currentAnimation.current);
 
     networkManager.sendMove(
@@ -337,9 +344,21 @@ export const LocalPlayer: React.FC = () => {
     const cy = nextY + camHeight + Math.sin(cameraPitch) * camDist * 0.6;
     const cz = nextZ + Math.cos(cameraYaw) * Math.cos(cameraPitch) * camDist;
 
-    camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
-    camera.lookAt(nextX, nextY + 0.8, nextZ);
+    const hostelState=useHostelStore.getState();
+    const decorating=offCampus && hostelState.owner && hostelState.panel==='decorate' && useGameStore.getState().activeModal==='hostel';
+    const lens=camera as THREE.PerspectiveCamera;
+    if(decorating){
+      const mobile=size.width<650;
+      camera.position.lerp(new THREE.Vector3(0,mobile?18:10,mobile?12:8),.16);
+      camera.lookAt(0,0,0);
+      lens.setViewOffset(size.width,size.height,mobile?0:size.width*.16,mobile?size.height*.29:0,size.width,size.height);
+    } else {
+      if(lens.view?.enabled)lens.clearViewOffset();
+      camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
+      camera.lookAt(nextX, nextY + 0.8, nextZ);
+    }
 
+    if(offCampus) { setIsOnRestrictedLawn(false); setNearbyInteractable(null); return; }
     // Terrain Classification & FUNAAB Lawn Rule Enforcement
     const terrain = classifyTerrain(feetPosition[0], feetPosition[2]);
     setIsOnRestrictedLawn(terrain.restricted);

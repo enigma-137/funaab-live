@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { HOSTEL_SHOP, ROOM_ANCHORS } from '../src/config/hostelShop';
+import { CAMPUS_JOBS } from '../src/config/campusJobs';
+const sql=fs.readFileSync('supabase/migrations/007_hostel_life.sql','utf8');
+assert.equal(new Set(HOSTEL_SHOP.map(i=>i.id)).size,HOSTEL_SHOP.length);
+for(const i of HOSTEL_SHOP)assert(sql.includes(`('${i.id}','${i.name}','${i.category}',${i.price},'${i.placementType}',${i.credit},${i.consumable})`),i.id+' must match trusted catalogue');
+for(const j of CAMPUS_JOBS)assert(sql.includes(`('${j.id}','${j.title}',${j.reward},${j.sourcePos[0]},${j.sourcePos[2]},${j.destinationPos[0]},${j.destinationPos[2]})`),j.id+' must match trusted job config');
+for(const a of ROOM_ANCHORS)assert(sql.includes(`'${a.id}'`));
+assert(!fs.readFileSync('src/stores/jobStore.ts','utf8').includes('grantJobReward'));
+assert(fs.readFileSync('src/ui/GameHUD.tsx','utf8').includes('const playerPos = useGameStore.getState().myPosition'));
+assert(!fs.readFileSync('src/stores/hostelStore.ts','utf8').includes('localStorage'));
+console.log('HOSTEL CONTRACTS PASSED: catalogue prices, job routes/rewards, anchor IDs, live HUD position and persistent source of truth.');

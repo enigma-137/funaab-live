@@ -50,7 +50,7 @@ export const GameHUD: React.FC = () => {
 
   const { balance } = useWalletStore();
   const { messages } = useSocialStore();
-  const { activeJob, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
+  const { activeJob, error: jobError, busy: jobBusy, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
   const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore();
 
   const [chatInput, setChatInput] = useState('');
@@ -112,9 +112,9 @@ export const GameHUD: React.FC = () => {
     }
   };
 
-  const handlePickup = () => {
+  const handlePickup = async () => {
     triggerHaptic(20);
-    pickupDeliveryPackage();
+    if (!(await pickupDeliveryPackage())) return;
     setJobNotice('📦 Package/Document picked up! Head to destination.');
     setTimeout(() => setJobNotice(null), 3500);
   };
@@ -131,7 +131,7 @@ export const GameHUD: React.FC = () => {
 
   if (!user) return null;
 
-  const playerPos = playerRef?.current?.position || [0, 0, 0];
+  const playerPos = useGameStore.getState().myPosition;
   const jobProx = checkJobProximity(playerPos);
 
   const getInteractIcon = () => {
@@ -399,6 +399,7 @@ export const GameHUD: React.FC = () => {
       </div>
 
       {/* ACTIVE JOB BANNER & NOTICES */}
+      {jobError && <div role="alert" className="hostel-notice">{jobError}</div>}
       {activeJob && (
         <div className="mx-auto my-1 pointer-events-auto max-w-md w-full animate-in slide-in-from-top-4">
           <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border-2 border-indigo-500/60 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2 sm:gap-3">
@@ -423,7 +424,7 @@ export const GameHUD: React.FC = () => {
             <div className="flex items-center gap-1.5 shrink-0">
               {jobProx.canPickup && (
                 <button
-                  onClick={handlePickup}
+                  disabled={jobBusy} onClick={handlePickup}
                   className="px-2.5 py-1.5 sm:px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg animate-pulse flex items-center gap-1"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" /> Pick Up
@@ -431,7 +432,7 @@ export const GameHUD: React.FC = () => {
               )}
               {jobProx.canDeliver && (
                 <button
-                  onClick={handleDeliver}
+                  disabled={jobBusy} onClick={handleDeliver}
                   className="px-2.5 py-1.5 sm:px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg animate-pulse flex items-center gap-1"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" /> Deliver (+₦{activeJob.reward})

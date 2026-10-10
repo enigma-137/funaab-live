@@ -3,6 +3,8 @@ import { summarizeCampus } from '../src/config/campusSummary';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
+  SUPABASE_URL?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   WORLD_ROOM: DurableObjectNamespace;
   SUPABASE_JWT_SECRET?: string;
   ALLOWED_ORIGINS?: string;
@@ -21,6 +23,12 @@ interface SessionData {
   seatNumber?: number;
   lastPacketTime: number;
   packetCount: number;
+  token?: string;
+  accessCheckedAt?: number;
+  trustedPosition?: [number,number,number];
+  trustedAt?: number;
+  movementBudget?: number;
+  movementClock?: number;
 }
 
 interface PlayerState {
@@ -74,6 +82,7 @@ interface PSMatchState {
   roundResult?: string;
   winnerName?: string;
   updatedAt: number;
+  startedAt?: number;
 }
 
 interface LectureRoomState {
@@ -442,7 +451,7 @@ export class WorldRoomDO {
     });
 
     for (const [ws, session] of this.sessions) {
-      if (ws.readyState === WebSocket.OPEN && session.room === 'world:funaab:main') {
+      if (ws.readyState === WebSocket.OPEN) {
         try {
           ws.send(payload);
         } catch (e) {}
@@ -450,6 +459,28 @@ export class WorldRoomDO {
     }
   }
 
+  private async dbRpc(name: string, body: object, token?: string): Promise<any> {
+    const key = this.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!key) throw new Error('Hostel/jobs backend setup is not ready');
+    const res = await fetch(`${this.env.SUPABASE_URL || 'https://gtaobbqkwcigsnbovbjo.supabase.co'}/rest/v1/rpc/${name}`, {
+      method:'POST', signal:AbortSignal.timeout(10000), headers:{apikey:key,Authorization:`Bearer ${token || key}`,'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    const result: any = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Student service unavailable');
+    return result;
+  }
+  private async checkRoom(room: string, user: string) {
+    if (!room.startsWith('world:funaab:hostel-room:')) return true;
+    return this.dbRpc('hostel_can_enter',{p_owner:room.split(':')[3],p_guest:user});
+  }
+  async alarm() {
+    const pending = await this.state.storage.list<object>({prefix:'ps-reward:',limit:50});
+    for (const [key,body] of pending) {
+      try { await this.dbRpc('ps_reward_trusted',body); await this.state.storage.delete(key); }
+      catch { /* A later alarm safely retries the same idempotent match receipt. */ }
+    }
+    if ((await this.state.storage.list({prefix:'ps-reward:',limit:1})).size) await this.state.storage.setAlarm(Date.now()+60000);
+  }
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === '/campus-summary') {
@@ -463,7 +494,7 @@ export class WorldRoomDO {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
-      await this.handleSession(server, token);
+      await this.handleSession(server, token, url.searchParams.get('room') || 'world:funaab:main');
 
       return new Response(null, {
         status: 101,
@@ -487,10 +518,11 @@ export class WorldRoomDO {
     return new Response('FUNAAB Life Realtime World Engine Ready', { status: 200 });
   }
 
-  private async handleSession(webSocket: WebSocket, initialToken: string | null) {
+  private async handleSession(webSocket: WebSocket, initialToken: string | null, boundRoom: string) {
     webSocket.accept();
 
     let sessionConnId: string | null = null;
+    let joining = false;
     let authenticatedUserId: string | null = null;
     let sessionRoom: string = 'world:funaab:main';
 
@@ -524,9 +556,16 @@ export class WorldRoomDO {
           }
         }
 
+        if (session && session.room.startsWith('world:funaab:hostel-room:') && now - (session.accessCheckedAt || 0) > 5000) {
+          session.accessCheckedAt = now;
+          if (!(await this.checkRoom(session.room,session.id))) { webSocket.close(1008,'Room access ended'); return; }
+        }
         switch (data.type) {
           case 'join': {
+            if (sessionConnId || joining) return;
+            joining = true;
             const { player, room = 'world:funaab:main', token } = data;
+            if (room !== boundRoom) { webSocket.close(1008, 'Room mismatch'); return; }
             const effectiveToken = token || initialToken;
 
             // Strict Authenticated User ID derivation
@@ -556,9 +595,18 @@ export class WorldRoomDO {
               return;
             }
 
+            if (!(await this.checkRoom(room, verifiedUserId))) { webSocket.close(1008,'Room is private or invite expired'); return; }
+            if (room.startsWith('world:funaab:hostel-room:')) {
+              const owner = room.split(':')[3];
+              const guests = [...this.sessions.values()].filter(s => s.id !== owner).length;
+              if (this.sessions.size >= 5 || (verifiedUserId !== owner && guests >= 4)) { webSocket.close(1008,'Room full: owner + 4 guests'); return; }
+            }
             sessionRoom = room;
-            const assignedConnId: string =
-              player.connectionId || `conn_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            // Preserve existing clients' connection IDs, but never let a second
+            // socket overwrite a live player by choosing the same ID.
+            const assignedConnId: string = typeof player.connectionId==='string'
+              && /^[a-zA-Z0-9_-]{1,100}$/.test(player.connectionId)
+              && !this.players.has(player.connectionId) ? player.connectionId : crypto.randomUUID();
             sessionConnId = assignedConnId;
 
             const sessionData: SessionData = {
@@ -570,6 +618,8 @@ export class WorldRoomDO {
               room: sessionRoom,
               lastPacketTime: Date.now(),
               packetCount: 1,
+              token: effectiveToken, accessCheckedAt: Date.now(),
+              trustedPosition: [0,0,48], trustedAt: Date.now(),
             };
 
             this.sessions.set(webSocket, sessionData);
@@ -618,6 +668,27 @@ export class WorldRoomDO {
             break;
           }
 
+          case 'job_action': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            if (current.room !== 'world:funaab:main') { webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:'Return to campus to work this job.'})); return; }
+            try {
+              const pos=current.trustedPosition;
+              if (!pos || Date.now()-(current.trustedAt || 0)>3000) throw new Error('Walk to the objective and reconnect if needed');
+              const result=await this.dbRpc('job_action_trusted',{p_user:current.id,p_action:data.action,p_job:data.jobId || null,p_run:data.runId || null,p_x:pos[0],p_z:pos[2]});
+              webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,result}));
+            } catch(e) { webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:(e as Error).message})); }
+            break;
+          }
+          case 'room_changed': {
+            if (!session || !session.room.startsWith('world:funaab:hostel-room:') || session.room.split(':')[3]!==session.id) return;
+            // Never trust client furniture; peers refetch the RLS-protected snapshot.
+            for (const [socket, peer] of this.sessions) {
+              if (!(await this.checkRoom(peer.room,peer.id))) socket.close(1008,'Room access ended');
+              else socket.send(JSON.stringify({type:'room_changed'}));
+            }
+            break;
+          }
           case 'avatar_update': {
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
@@ -634,6 +705,17 @@ export class WorldRoomDO {
             if (!sessionConnId) return;
             const player = this.players.get(sessionConnId);
             if (player) {
+              if (!Array.isArray(data.position) || data.position.length!==3 || !data.position.every((n: unknown)=>typeof n==='number' && Number.isFinite(n) && Math.abs(n)<200)) return;
+              const current=this.sessions.get(webSocket)!;
+              const previous=current.trustedPosition || [0,0,48];
+              const clock=Date.now();
+              const elapsed=Math.max(0,(clock-(current.movementClock || clock))/1000);
+              const budget=Math.min(8,(current.movementBudget ?? 4)+elapsed*35);
+              const distance=Math.hypot(data.position[0]-previous[0],data.position[2]-previous[2]);
+              current.movementClock=clock;current.movementBudget=budget;
+              if (distance <= budget) {
+                current.trustedPosition=data.position;current.trustedAt=clock;current.movementBudget=budget-distance;
+              }
               player.position = data.position;
               player.rotation = data.rotation;
               player.animation = data.animation;
@@ -812,7 +894,13 @@ export class WorldRoomDO {
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
             if (!session) return;
-            const matchId = `match-${Date.now()}`;
+            if (sessionRoom.startsWith('world:funaab:hostel-room:')) {
+              const snap=await this.dbRpc('hostel_snapshot',{p_owner:sessionRoom.split(':')[3]},session.token);
+              const ids=snap.placements.map((p: any)=>p.item_id);
+              if (!ids.includes('hostel_tv_basic') || !ids.includes('hostel_ps_console')) return;
+            }
+            if ([...this.psMatches.values()].some(m=>m.status!=='finished' && (m.hostId===session.id || m.guestId===session.id))) return;
+            const matchId = crypto.randomUUID();
             const match: PSMatchState = {
               id: matchId,
               stationId: data.stationId || 'ps5-station-1',
@@ -827,7 +915,7 @@ export class WorldRoomDO {
               updatedAt: Date.now(),
             };
             this.psMatches.set(matchId, match);
-            this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
+            this.broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
             break;
           }
 
@@ -841,12 +929,13 @@ export class WorldRoomDO {
               match.guestConnectionId = sessionConnId;
               match.guestName = session?.username || 'Player 2';
               match.status = 'in_progress';
+              match.startedAt=Date.now();
               match.updatedAt = Date.now();
               this.sendToConnections(
                 [match.hostConnectionId, match.guestConnectionId],
                 JSON.stringify({ type: 'ps_match_started', match })
               );
-              this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
+              this.broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
             }
             break;
           }
@@ -854,11 +943,13 @@ export class WorldRoomDO {
           case 'ps_action': {
             if (!sessionConnId) return;
             const match = this.psMatches.get(data.matchId);
-            if (!match || match.status !== 'in_progress') return;
+            if (!match || match.status !== 'in_progress' || !['left','center','right'].includes(data.choice)) return;
 
             if (sessionConnId === match.hostConnectionId) {
+              if (match.hostChoice) return;
               match.hostChoice = data.choice;
             } else if (sessionConnId === match.guestConnectionId) {
+              if (match.guestChoice) return;
               match.guestChoice = data.choice;
             } else {
               return;
@@ -883,13 +974,25 @@ export class WorldRoomDO {
                 if (match.hostScore > match.guestScore) match.winnerName = match.hostName;
                 else if (match.guestScore > match.hostScore) match.winnerName = match.guestName;
                 else match.winnerName = 'Tie Game!';
+                // Fixed campus rewards only; home matches never mint passive income.
+                if (sessionRoom==='world:funaab:main') {
+                  const rewardBody={p_match:match.id,p_host:match.hostId,p_guest:match.guestId,
+                    p_winner:match.hostScore===match.guestScore?null:match.hostScore>match.guestScore?match.hostId:match.guestId};
+                  await this.state.storage.put('ps-reward:'+match.id,rewardBody);
+                  await this.state.storage.setAlarm(Date.now()+60000);
+                  try {
+                    await this.dbRpc('ps_reward_trusted',rewardBody);
+                    await this.state.storage.delete('ps-reward:'+match.id);
+                    this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'wallet_refresh'}));
+                  } catch(e) { this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'reward_error',message:'Match finished. Your reward is queued for a safe retry; reopen your wallet shortly.'})); }
+                }
               } else {
                 match.currentRound++;
                 match.hostChoice = undefined;
                 match.guestChoice = undefined;
               }
               match.updatedAt = Date.now();
-              this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'ps_match_update', match }));
+              this.broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
             }
             break;
           }
@@ -1088,6 +1191,7 @@ export class WorldRoomDO {
         }
       } catch (err) {
         console.error('[DO] Message processing error:', err);
+        if(!sessionConnId) webSocket.close(1008,'Room service unavailable or access denied');
       }
     });
 
@@ -1119,7 +1223,7 @@ export class WorldRoomDO {
 
         // Broadcast player_left to main world
         this.broadcastToRoom(
-          'world:funaab:main',
+          sessionRoom,
           JSON.stringify({
             type: 'player_left',
             connectionId: sessionConnId,
@@ -1194,6 +1298,7 @@ export default {
 
     // 3. Durable Object Routing
     const roomId = url.searchParams.get('room') || 'world:funaab:main';
+    if (!/^world:funaab:(main|hostel|hostel-room:[0-9a-f-]{36})$/.test(roomId)) return new Response('Unknown world',{status:400});
     const id = env.WORLD_ROOM.idFromName(roomId);
     const stub = env.WORLD_ROOM.get(id);
 

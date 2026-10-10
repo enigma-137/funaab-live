@@ -1,0 +1,327 @@
+// Display catalogue. Migration 007 holds the trusted purchase prices; tests enforce parity.
+export const HOSTEL_SHOP = [
+  {
+    "id": "hostel_chair",
+    "name": "Plastic Chair",
+    "category": "Room",
+    "price": 150,
+    "placementType": "floor",
+    "modelKey": "hostel_chair",
+    "description": "Plastic Chair for student life. Virtual game item.",
+    "interactive": true,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_table",
+    "name": "Small Table",
+    "category": "Room",
+    "price": 250,
+    "placementType": "floor",
+    "modelKey": "hostel_table",
+    "description": "Small Table for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_bedsheet",
+    "name": "Bedsheet",
+    "category": "Room",
+    "price": 200,
+    "placementType": "bed",
+    "modelKey": "hostel_bedsheet",
+    "description": "Bedsheet for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_pillow",
+    "name": "Pillow",
+    "category": "Room",
+    "price": 100,
+    "placementType": "bed",
+    "modelKey": "hostel_pillow",
+    "description": "Pillow for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_curtain",
+    "name": "Curtain",
+    "category": "Room",
+    "price": 200,
+    "placementType": "wall",
+    "modelKey": "hostel_curtain",
+    "description": "Curtain for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_fan_basic",
+    "name": "Standing Fan",
+    "category": "Room",
+    "price": 350,
+    "placementType": "floor",
+    "modelKey": "hostel_fan_basic",
+    "description": "Standing Fan for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_poster",
+    "name": "Wall Poster",
+    "category": "Room",
+    "price": 100,
+    "placementType": "wall",
+    "modelKey": "hostel_poster",
+    "description": "Wall Poster for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_rug",
+    "name": "Small Rug",
+    "category": "Room",
+    "price": 250,
+    "placementType": "floor",
+    "modelKey": "hostel_rug",
+    "description": "Small Rug for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_tv_basic",
+    "name": "TV",
+    "category": "Entertainment",
+    "price": 500,
+    "placementType": "floor",
+    "modelKey": "hostel_tv_basic",
+    "description": "TV for student life. Virtual game item.",
+    "interactive": true,
+    "consumable": false,
+    "credit": true
+  },
+  {
+    "id": "hostel_speaker",
+    "name": "Small Speaker",
+    "category": "Entertainment",
+    "price": 300,
+    "placementType": "desk",
+    "modelKey": "hostel_speaker",
+    "description": "Small Speaker for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": true
+  },
+  {
+    "id": "hostel_ps_console",
+    "name": "PS Console",
+    "category": "Entertainment",
+    "price": 800,
+    "placementType": "desk",
+    "modelKey": "hostel_ps_console",
+    "description": "PS Console for student life. Virtual game item.",
+    "interactive": true,
+    "consumable": false,
+    "credit": true
+  },
+  {
+    "id": "hostel_game_pad",
+    "name": "Game Pad",
+    "category": "Entertainment",
+    "price": 200,
+    "placementType": "desk",
+    "modelKey": "hostel_game_pad",
+    "description": "Game Pad for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": true
+  },
+  {
+    "id": "hostel_lamp",
+    "name": "Rechargeable Lamp",
+    "category": "Power",
+    "price": 250,
+    "placementType": "desk",
+    "modelKey": "hostel_lamp",
+    "description": "Rechargeable Lamp for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_generator_small",
+    "name": "Generator",
+    "category": "Power",
+    "price": 700,
+    "placementType": "floor",
+    "modelKey": "hostel_generator_small",
+    "description": "Generator for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": true
+  },
+  {
+    "id": "hostel_fuel_can",
+    "name": "Fuel Can",
+    "category": "Power",
+    "price": 150,
+    "placementType": "none",
+    "modelKey": "hostel_fuel_can",
+    "description": "Fuel Can for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_garri",
+    "name": "Garri",
+    "category": "Foodstuff",
+    "price": 100,
+    "placementType": "none",
+    "modelKey": "hostel_food_garri",
+    "description": "Garri for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_indomie",
+    "name": "Indomie",
+    "category": "Foodstuff",
+    "price": 80,
+    "placementType": "none",
+    "modelKey": "hostel_food_indomie",
+    "description": "Indomie for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_bread",
+    "name": "Bread",
+    "category": "Foodstuff",
+    "price": 100,
+    "placementType": "none",
+    "modelKey": "hostel_food_bread",
+    "description": "Bread for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_eggs",
+    "name": "Eggs",
+    "category": "Foodstuff",
+    "price": 120,
+    "placementType": "none",
+    "modelKey": "hostel_food_eggs",
+    "description": "Eggs for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_rice",
+    "name": "Rice",
+    "category": "Foodstuff",
+    "price": 200,
+    "placementType": "none",
+    "modelKey": "hostel_food_rice",
+    "description": "Rice for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_spaghetti",
+    "name": "Spaghetti",
+    "category": "Foodstuff",
+    "price": 150,
+    "placementType": "none",
+    "modelKey": "hostel_food_spaghetti",
+    "description": "Spaghetti for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_food_water",
+    "name": "Water",
+    "category": "Foodstuff",
+    "price": 50,
+    "placementType": "none",
+    "modelKey": "hostel_food_water",
+    "description": "Water for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": true,
+    "credit": false
+  },
+  {
+    "id": "hostel_gas_small_cylinder",
+    "name": "Small Gas Cylinder",
+    "category": "Basics",
+    "price": 500,
+    "placementType": "floor",
+    "modelKey": "hostel_gas_small_cylinder",
+    "description": "Small Gas Cylinder for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_gas_refill",
+    "name": "Gas Refill",
+    "category": "Basics",
+    "price": 150,
+    "placementType": "none",
+    "modelKey": "hostel_gas_refill",
+    "description": "Gas Refill for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_pot",
+    "name": "Pot",
+    "category": "Basics",
+    "price": 150,
+    "placementType": "desk",
+    "modelKey": "hostel_pot",
+    "description": "Pot for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  },
+  {
+    "id": "hostel_plate",
+    "name": "Plate",
+    "category": "Basics",
+    "price": 50,
+    "placementType": "desk",
+    "modelKey": "hostel_plate",
+    "description": "Plate for student life. Virtual game item.",
+    "interactive": false,
+    "consumable": false,
+    "credit": false
+  }
+] as const;
+export type HostelItem = typeof HOSTEL_SHOP[number];
+export const hostelItem = (id: string) => HOSTEL_SHOP.find(i => i.id === id);
+export const ROOM_ANCHORS = [
+ {id:'floor-a',type:'floor',position:[-2,0,0]}, {id:'floor-b',type:'floor',position:[2,0,-2]},
+ {id:'floor-c',type:'floor',position:[2,0,1]}, {id:'floor-d',type:'floor',position:[-2,0,2]},
+ {id:'wall-a',type:'wall',position:[0,1.8,-3.8]}, {id:'wall-b',type:'wall',position:[2.3,1.8,-3.8]},
+ {id:'desk-a',type:'desk',position:[1.7,0.8,-2]}, {id:'desk-b',type:'desk',position:[2.3,0.8,-2]},
+ {id:'bed-a',type:'bed',position:[-2.6,0.3,-2.7]}, {id:'bed-b',type:'bed',position:[-2.6,0.4,-3.3]}
+] as const;
+export const CREDIT_LIMIT = 1500;
+export const CREDIT_DUE_HOURS = 48;
+export const CREDIT_GRACE_HOURS = 24;

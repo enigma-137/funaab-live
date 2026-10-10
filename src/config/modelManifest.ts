@@ -17,3 +17,5 @@ export const modelManifest: {
   buildings: Record<string, ModelAsset>;
   vehicles: Record<string, ModelAsset>;
 } = { avatars: {}, buildings: {}, vehicles: {} };
+// HostelItemModel is the procedural fallback until these assets are supplied.
+export const hostelModelPath = (modelKey: string) => `/models/hostel/${modelKey}.glb`;

@@ -15,7 +15,11 @@
     "test:student:browser": "node scripts/test-student-browser.cjs",
     "test:student:auth": "node scripts/test-student-auth.cjs",
     "test:avatar": "node scripts/test-avatar-presence.cjs",
-    "worker:typecheck": "tsc -p worker/tsconfig.json"
+    "worker:typecheck": "tsc -p worker/tsconfig.json",
+    "test:hostel:db": "node scripts/test-hostel-db.cjs",
+    "test:hostel:worker": "tsx scripts/test-hostel-worker.ts",
+    "test:hostel:browser": "node scripts/test-hostel-browser.cjs",
+    "test:hostel": "tsx scripts/test-hostel-contracts.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

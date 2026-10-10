@@ -1,3 +1,6 @@
+import { HostelEnvironment } from './HostelEnvironment';
+import { JobMarkers } from './JobMarkers';
+import { useHostelStore } from '../../stores/hostelStore';
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky } from '@react-three/drei';
@@ -12,6 +15,8 @@ import { TapRippleEffect } from '../controls/TapRippleEffect';
 import { useGameStore } from '../../stores/gameStore';
 
 export const WorldScene: React.FC = () => {
+  const roomId=useHostelStore(s=>s.roomId);
+  const hostel=roomId!=='world:funaab:main';
   const { players, myConnectionId, debugPhysics } = useGameStore();
 
   return (
@@ -55,18 +60,18 @@ export const WorldScene: React.FC = () => {
         />
 
         <Suspense fallback={null}>
-          <Physics debug={debugPhysics} gravity={[0, -9.81, 0]}>
+          <Physics key={roomId} debug={debugPhysics} gravity={[0, -9.81, 0]}>
             {/* Static Campus Geometry with Colliders */}
-            <CampusEnvironment />
+            {hostel ? <HostelEnvironment /> : <><CampusEnvironment /><JobMarkers /></>}
 
             {/* Autonomous Keke Route */}
-            <KekeVehicle />
+            {!hostel && <KekeVehicle />}
 
             {/* Campus Security Officers (Patrol & Lawn Rule Enforcement) */}
-            <SecurityOfficers />
+            {!hostel && <SecurityOfficers />}
 
             {/* Local Controlled Player (with Kinematic RigidBody) */}
-            <LocalPlayer />
+            <LocalPlayer offCampus={hostel} />
 
             {/* Remote Multiplayer Players */}
             {Object.entries(players).map(([key, playerState]) => {

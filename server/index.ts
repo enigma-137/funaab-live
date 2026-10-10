@@ -175,6 +175,7 @@ wss.on('connection', (ws: WebSocket, req) => {
       switch (data.type) {
         case 'join': {
           const { player, room = 'world:funaab:main', token } = data;
+          if (room !== 'world:funaab:main') { ws.close(1008,'Use npm run worker:dev for authenticated hostel rooms'); return; }
           const effectiveToken = token || handshakeToken;
           let authoritativeUserId = player.id;
 
@@ -276,6 +277,7 @@ wss.on('connection', (ws: WebSocket, req) => {
           broadcastToRoom(session.room, JSON.stringify({ type: 'avatar_updated', connectionId: session.connectionId, avatarConfig: player.avatarConfig }));
           break;
         }
+        case 'job_action': { ws.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:'Persistent jobs require npm run worker:dev; this is the campus mock server.'})); break; }
         case 'move': {
           const connId = data.connectionId || sessionConnId;
           if (!connId) return;

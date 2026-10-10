@@ -1,3 +1,4 @@
+import { openHostel } from './HostelLife';
 import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
@@ -43,7 +44,7 @@ export const BankModal: React.FC = () => {
               <Landmark className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white font-['Outfit']">FUNAAB Microfinance ATM</h2>
+              <button onClick={() => openHostel('debts')}>Iya Ibeji Debts</button><h2 className="text-base font-bold text-white font-['Outfit']">FUNAAB Microfinance ATM</h2>
               <p className="text-[11px] text-blue-300">Virtual Campus Banking & Cash Ledger</p>
             </div>
           </div>

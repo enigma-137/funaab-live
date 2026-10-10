@@ -1,3 +1,5 @@
+import { useHostelStore } from '../stores/hostelStore';
+import { openHostel } from './HostelLife';
 import React, { useState } from 'react';
 import { PublicStudentIdentity } from './PublicStudentIdentity';
 import { useAuthStore } from '../stores/authStore';
@@ -162,6 +164,7 @@ export const PlayerInteractionModal: React.FC = () => {
                 </button>
               </div>
 
+              {isAlreadyFriend && <button className="w-full py-3 text-emerald-300" onClick={async () => { openHostel('invites'); await useHostelStore.getState().command('invite',{guest:selectedPlayer.id}); }}>Invite to Hostel</button>}
               <button
                 onClick={() => setIsReporting(true)}
                 className="w-full py-2 text-center text-xs text-slate-500 hover:text-red-400 font-semibold transition flex items-center justify-center gap-1 mt-1"
