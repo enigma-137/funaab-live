@@ -1,4 +1,13 @@
 export interface AvatarConfig {
+  bodyType?: 'masculine' | 'feminine';
+  skinTone?: string;
+  hairstyle?: string;
+  topStyle?: string;
+  topColor?: string;
+  bottomStyle?: string;
+  bottomColor?: string;
+  shoeStyle?: string;
+  shoeColor?: string;
   shirtColor: string;
   skinColor: string;
   hairColor?: string;
@@ -7,6 +16,9 @@ export interface AvatarConfig {
 }
 
 export interface PlayerProfile {
+  onboardingCompleted?: boolean;
+  courseId?: string | null;
+  gameMatricNumber?: string | null;
   id: string;
   connectionId?: string;
   username: string;

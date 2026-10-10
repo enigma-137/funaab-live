@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { PlayerProfile, AvatarConfig } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
+import { normalizeAvatar } from '../config/avatar';
 import worldData from '../worlds/funaab/world.json';
 
 interface AuthState {
@@ -14,7 +15,7 @@ interface AuthState {
   login: (email: string, password?: string) => Promise<boolean>;
   signup: (username: string, college: string, email: string, password?: string) => Promise<boolean>;
   guestLogin: (username: string, college: string, avatar?: Partial<AvatarConfig>) => boolean;
-  updateAvatar: (avatar: Partial<AvatarConfig>) => void;
+  updateAvatar: (avatar: Partial<AvatarConfig>) => Promise<boolean>;
   logout: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
 }
@@ -27,6 +28,9 @@ const DEFAULT_AVATAR: AvatarConfig = {
   gender: 'male',
 };
 
+let initializing = false;
+let authSubscription: { unsubscribe: () => void } | undefined;
+let authEventGeneration = 0;
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -37,6 +41,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initialize: async () => {
+    if (initializing) return;
+    initializing = true;
     if (!isSupabaseConfigured) {
       // If Supabase not configured in local dev, check if guest mode is permitted
       const isGuestAllowed = import.meta.env.VITE_ENABLE_GUEST_MODE === 'true';
@@ -56,7 +62,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       // 1. Check existing Supabase session from localStorage
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
 
       if (session?.user) {
@@ -67,18 +76,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           .eq('id', userId)
           .maybeSingle();
 
+        if (profileError) throw profileError;
         if (profile) {
           const userProfile: PlayerProfile = {
             id: profile.id,
             username: profile.username,
             college: profile.college,
-            avatarConfig: profile.avatar_config || DEFAULT_AVATAR,
+            avatarConfig: normalizeAvatar(profile.avatar_config || DEFAULT_AVATAR),
+            onboardingCompleted: profile.onboarding_completed === true,
+            courseId: profile.course_id,
+            gameMatricNumber: profile.game_matric_number,
             lastWorld: profile.last_world || 'funaab',
           };
           set({ user: userProfile, isAuthenticated: true, isInitializingAuth: false });
         } else {
           // Profile record missing, recover safely from user metadata
-          const metaUsername = session.user.user_metadata?.username || `Student_${session.user.id.substring(0, 5)}`;
+          const metaUsername =
+            session.user.user_metadata?.username || `Student_${session.user.id.substring(0, 5)}`;
           const metaCollege = session.user.user_metadata?.college || 'COLENG';
           const newProfile = {
             id: userId,
@@ -88,8 +102,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             last_world: 'funaab',
           };
 
-          await supabase.from('profiles').upsert([newProfile]);
-          await supabase.from('wallets').upsert([{ user_id: userId, balance: 5000 }]);
+          const { error: saveError } = await supabase
+            .from('profiles')
+            .upsert([newProfile], { onConflict: 'id', ignoreDuplicates: true });
+          if (saveError) throw saveError;
+          // Wallet bootstrap is owned by the idempotent ensure_player_wallet RPC in walletStore.
 
           const userProfile: PlayerProfile = {
             id: userId,
@@ -105,31 +122,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // 2. Subscribe to auth lifecycle events (sign-in, token refresh, sign-out)
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-
-            if (profile) {
-              const userProfile: PlayerProfile = {
-                id: profile.id,
-                username: profile.username,
-                college: profile.college,
-                avatarConfig: profile.avatar_config || DEFAULT_AVATAR,
-                lastWorld: profile.last_world || 'funaab',
-              };
-              set({ user: userProfile, isAuthenticated: true, isInitializingAuth: false });
-            }
-          }
-        } else if (event === 'SIGNED_OUT') {
+      authSubscription?.unsubscribe();
+      authSubscription = supabase.auth.onAuthStateChange((event, session) => {
+        const generation = ++authEventGeneration;
+        if (event === 'SIGNED_OUT') {
           set({ user: null, isAuthenticated: false, isInitializingAuth: false });
+          return;
         }
-      });
+        window.setTimeout(async () => {
+          try {
+            if (event === 'TOKEN_REFRESHED' && session?.user.id === get().user?.id) return;
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              if (session?.user) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .maybeSingle();
+
+                if (generation !== authEventGeneration) return;
+                if (profile) {
+                  const userProfile: PlayerProfile = {
+                    id: profile.id,
+                    username: profile.username,
+                    college: profile.college,
+                    avatarConfig: normalizeAvatar(profile.avatar_config || DEFAULT_AVATAR),
+                    onboardingCompleted: profile.onboarding_completed === true,
+                    courseId: profile.course_id,
+                    gameMatricNumber: profile.game_matric_number,
+                    lastWorld: profile.last_world || 'funaab',
+                  };
+                  set({ user: userProfile, isAuthenticated: true, isInitializingAuth: false });
+                }
+              }
+            }
+          } catch (error) {
+            console.warn('Session profile refresh failed', error);
+          }
+        }, 0);
+      }).data.subscription;
     } catch (err: any) {
+      initializing = false;
       console.warn('Auth initialization error:', err);
       set({ user: null, isAuthenticated: false, isInitializingAuth: false });
     }
@@ -138,7 +171,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email: string, password?: string) => {
     set({ isLoading: true, error: null });
 
-    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanEmail = String(email || '')
+      .trim()
+      .toLowerCase();
     if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
       set({ error: 'Please enter a valid student email address.', isLoading: false });
       return false;
@@ -201,7 +236,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             id: profile.id,
             username: profile.username,
             college: profile.college,
-            avatarConfig: profile.avatar_config || DEFAULT_AVATAR,
+            avatarConfig: normalizeAvatar(profile.avatar_config || DEFAULT_AVATAR),
+            onboardingCompleted: profile.onboarding_completed === true,
+            courseId: profile.course_id,
+            gameMatricNumber: profile.game_matric_number,
             lastWorld: profile.last_world || 'funaab',
           };
           set({ user: userProfile, isAuthenticated: true, isLoading: false });
@@ -212,7 +250,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
       return true;
     } catch (err: any) {
-      set({ error: err.message || 'Login failed. Please check your credentials.', isLoading: false });
+      set({
+        error: err.message || 'Login failed. Please check your credentials.',
+        isLoading: false,
+      });
       return false;
     }
   },
@@ -221,7 +262,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     const cleanUsername = String(username || '').trim();
-    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanEmail = String(email || '')
+      .trim()
+      .toLowerCase();
 
     // 1. Validation
     if (!cleanUsername || cleanUsername.length < 3 || cleanUsername.length > 20) {
@@ -230,7 +273,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
-      set({ error: 'Username can only contain letters, numbers, and underscores.', isLoading: false });
+      set({
+        error: 'Username can only contain letters, numbers, and underscores.',
+        isLoading: false,
+      });
       return false;
     }
 
@@ -284,7 +330,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .maybeSingle();
 
       if (existingUser) {
-        set({ error: `The username @${cleanUsername} is already taken. Please choose another.`, isLoading: false });
+        set({
+          error: `The username @${cleanUsername} is already taken. Please choose another.`,
+          isLoading: false,
+        });
         return false;
       }
 
@@ -301,12 +350,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       if (error) {
-        if (error.message.includes('already registered') || error.message.includes('unique constraint')) {
+        if (
+          error.message.includes('already registered') ||
+          error.message.includes('unique constraint')
+        ) {
           throw new Error('An account with this email already exists. Please sign in instead.');
         }
         throw error;
       }
 
+      if (!data.session) {
+        set({ isLoading: false, error: 'Check your email to confirm your account, then sign in.' });
+        return false;
+      }
       if (data.user) {
         const newProfile = {
           id: data.user.id,
@@ -316,16 +372,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           last_world: 'funaab',
         };
 
-        // Insert profile and starter wallet
-        await supabase.from('profiles').upsert([newProfile]);
-        await supabase.from('wallets').upsert([{ user_id: data.user.id, balance: 5000 }]);
-        await supabase.from('wallet_transactions').insert([{
-          user_id: data.user.id,
-          type: 'starter',
-          amount: 5000,
-          balance_after: 5000,
-          description: 'FUNAAB Resumption Allowance (Welcome Bonus)',
-        }]);
+        // Insert only when missing; never reset an existing beta profile.
+        const { error: saveError } = await supabase
+          .from('profiles')
+          .upsert([newProfile], { onConflict: 'id', ignoreDuplicates: true });
+        if (saveError) throw saveError;
+        // walletStore loads/bootstraps the existing wallet without overwriting it.
 
         const userProfile: PlayerProfile = {
           id: data.user.id,
@@ -351,7 +403,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Check if guest mode is permitted
     const isGuestAllowed = import.meta.env.VITE_ENABLE_GUEST_MODE === 'true';
     if (!isGuestAllowed) {
-      set({ error: 'Guest entry is disabled for public beta. Please create an account or sign in.' });
+      set({
+        error: 'Guest entry is disabled for public beta. Please create an account or sign in.',
+      });
       return false;
     }
 
@@ -379,19 +433,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return true;
   },
 
-  updateAvatar: (avatarUpdates: Partial<AvatarConfig>) => {
+  updateAvatar: async (avatarUpdates: Partial<AvatarConfig>) => {
     const current = get().user;
-    if (!current) return;
+    if (!current) return false;
     const updated: PlayerProfile = {
       ...current,
-      avatarConfig: { ...current.avatarConfig, ...avatarUpdates },
+      avatarConfig: normalizeAvatar({ ...current.avatarConfig, ...avatarUpdates }),
     };
 
     if (isSupabaseConfigured) {
-      supabase.from('profiles').update({ avatar_config: updated.avatarConfig }).eq('id', current.id);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_config: updated.avatarConfig })
+        .eq('id', current.id);
+      if (error) {
+        set({ error: error.message });
+        return false;
+      }
     }
     localDB.saveProfile(updated);
     set({ user: updated });
+    return true;
   },
 
   logout: async () => {
@@ -409,7 +471,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   getAccessToken: async () => {
     if (!isSupabaseConfigured) return null;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       return session?.access_token || null;
     } catch {
       return null;

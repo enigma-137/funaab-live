@@ -1,3 +1,5 @@
+import { normalizeAvatar } from '../src/config/avatar';
+import { summarizeCampus } from '../src/config/campusSummary';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -421,7 +423,6 @@ export class WorldRoomDO {
         connectionId: connId,
         username: player.username,
         college: player.college,
-        avatarConfig: player.avatarConfig,
         position: player.position,
         rotation: player.rotation,
         animation: player.animation,
@@ -451,6 +452,9 @@ export class WorldRoomDO {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === '/campus-summary') {
+      return Response.json(summarizeCampus(this.players.values(), getZoneName));
+    }
     const isWebSocket = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
 
     if (isWebSocket) {
@@ -562,7 +566,7 @@ export class WorldRoomDO {
               id: verifiedUserId,
               username: String(player.username || 'Student').slice(0, 24),
               college: String(player.college || 'COLENG').slice(0, 16),
-              avatarConfig: player.avatarConfig || {},
+              avatarConfig: normalizeAvatar(player.avatarConfig),
               room: sessionRoom,
               lastPacketTime: Date.now(),
               packetCount: 1,
@@ -611,6 +615,18 @@ export class WorldRoomDO {
               }),
               webSocket
             );
+            break;
+          }
+
+          case 'avatar_update': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            const player = this.players.get(sessionConnId);
+            if (!session || !player) return;
+            const avatarConfig = normalizeAvatar(data.avatarConfig);
+            session.avatarConfig = avatarConfig;
+            player.avatarConfig = avatarConfig;
+            this.broadcastToRoom(session.room, JSON.stringify({ type: 'avatar_updated', connectionId: sessionConnId, avatarConfig }));
             break;
           }
 

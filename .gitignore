@@ -31,3 +31,6 @@ dist-ssr
 # Cloudflare & Build Artifacts
 .wrangler
 .system_generated
+
+# Local browser verification artifacts
+test-results/

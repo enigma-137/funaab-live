@@ -1,0 +1,92 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { courses, colleges } from '../src/config/academics';
+import { normalizeAvatar, avatarOptions } from '../src/config/avatar';
+import {
+  simulateUtme,
+  screenResult,
+  eligibleCourses,
+  playerEntry,
+} from '../src/config/studentJourney';
+import { summarizeCampus } from '../src/config/campusSummary';
+
+assert.equal(playerEntry(false, false), 'new');
+assert.equal(playerEntry(false, true), 'beta');
+assert.equal(playerEntry(true, true), 'returning');
+assert.equal(playerEntry(true, false), 'returning');
+assert.equal(new Set(courses.map((c) => c.id)).size, courses.length);
+for (const c of colleges) assert(courses.some((course) => course.college === c.code));
+for (const seed of [0, 0.2, 0.5, 0.999]) {
+  const utme = simulateUtme('FST', () => seed);
+  assert.equal(utme.subjects.length, 4);
+  assert.equal(
+    utme.utme,
+    utme.subjects.reduce((n, s) => n + s.score, 0),
+  );
+  assert(utme.subjects.every((s) => s.score >= 0 && s.score <= 100));
+  const failed = screenResult(utme, [1, 0, 0]);
+  assert.equal(failed.screening, 0);
+  assert(eligibleCourses(failed.aggregate!).length > 0, 'Every result offers an entry route');
+  const passed = screenResult(utme, [0, 1, 2]);
+  assert.equal(passed.screening, 100);
+  assert(passed.aggregate! > failed.aggregate!);
+}
+assert(simulateUtme('CVE').subjects.some((s) => s.name === 'Physics'));
+const legacy = normalizeAvatar({
+  shirtColor: '#254321',
+  skinColor: '#8d5524',
+  gender: 'female',
+  hairStyle: 'afro',
+});
+assert.equal(legacy.topColor, '#254321');
+assert.equal(legacy.bodyType, 'feminine');
+assert.equal(legacy.hairstyle, 'short-afro');
+assert.deepEqual(
+  normalizeAvatar(JSON.parse(JSON.stringify(legacy))),
+  legacy,
+  'Saved avatar round-trips',
+);
+for (const hairstyle of avatarOptions.hairstyle)
+  assert.equal(normalizeAvatar({ hairstyle }).hairstyle, hairstyle);
+const hostile = normalizeAvatar({
+  hairstyle: '<script>',
+  hairColor: 'url(evil)',
+  topColor: 'x'.repeat(5000),
+  huge: 'x'.repeat(20000),
+} as any);
+assert.equal(hostile.hairstyle, 'low-cut');
+assert(!JSON.stringify(hostile).includes('evil'));
+assert(JSON.stringify(hostile).length < 512);
+assert.deepEqual(
+  summarizeCampus(
+    [
+      { id: 'a', position: [1, 0, 0] },
+      { id: 'a', position: [1, 0, 0] },
+      { id: 'b', position: [2, 0, 0] },
+    ],
+    () => 'Car Park',
+  ),
+  { studentsOnline: 2, popular: [{ name: 'Car Park', count: 2 }] },
+);
+const migration = readFileSync('supabase/migrations/006_student_journey.sql', 'utf8');
+assert(
+  migration.includes('select id, true from public.profiles'),
+  'Beta membership backfilled exactly once',
+);
+assert(migration.includes('game_matric_number text unique'));
+assert(migration.includes("nextval('public.game_matric_sequence')"));
+assert(migration.includes('for update'), 'Completion serializes competing requests');
+assert(migration.includes('coalesce(orientation_badge_claimed_at, now())'));
+assert(!/update public\.(wallets|friends|inventory)|delete from public\./i.test(migration));
+const worker = readFileSync('worker/index.ts', 'utf8');
+const batch = worker.slice(
+  worker.indexOf('private broadcastBatchPlayers()'),
+  worker.indexOf('async fetch(request: Request)'),
+);
+assert(!batch.includes('avatarConfig'), 'Avatar absent from movement batch');
+assert(worker.includes("case 'avatar_update'"));
+const auth = readFileSync('src/stores/authStore.ts', 'utf8');
+assert(!auth.includes("from('wallets').upsert"), 'Auth cannot reset an existing wallet');
+console.log(
+  'Student journey: state routing, admission, guaranteed alternatives, legacy avatar conversion, persistence, payload bounds, summary and migration contracts passed.',
+);

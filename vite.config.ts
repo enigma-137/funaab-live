@@ -14,6 +14,10 @@ export default defineConfig({
     port: 5173,
     host: true,
     proxy: {
+      '/campus-summary': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+      },
       '/api/ws': {
         target: 'ws://localhost:8787',
         ws: true,

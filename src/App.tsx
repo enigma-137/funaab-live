@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { useGameStore } from './stores/gameStore';
 import { useWalletStore } from './stores/walletStore';
 import { useSocialStore } from './stores/socialStore';
 import { networkManager } from './game/multiplayer/networkManager';
 import { LandingPage } from './ui/LandingPage';
-import { WorldScene } from './game/world/WorldScene';
+const WorldScene = lazy(() => import('./game/world/WorldScene').then(m => ({ default: m.WorldScene })));
+const StudentEntry = lazy(() => import('./ui/StudentEntry'));
+import { StudentCampusTools } from './ui/StudentCampusTools';
+import { CAMPUS_ENTRY_POSITION } from './config/studentJourney';
 import { GameHUD } from './ui/GameHUD';
 import { BankModal } from './ui/BankModal';
 import { FoodVendorModal } from './ui/FoodVendorModal';
@@ -33,6 +36,7 @@ import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
 import { useLectureStore } from './stores/lectureStore';
 
 export const App: React.FC = () => {
+  const [campusUserId, setCampusUserId] = useState<string | null>(null);
   const { user, isAuthenticated, isInitializingAuth, initialize } = useAuthStore();
   const { activeModal, setActiveModal, selectedHallLocationId } = useGameStore();
   const { loadWallet } = useWalletStore();
@@ -44,7 +48,7 @@ export const App: React.FC = () => {
   }, [initialize]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && campusUserId === user.id && user.onboardingCompleted) {
       // Connect to Multiplayer network
       networkManager.connect(user);
       // Load user's persistent balance & social data
@@ -57,7 +61,11 @@ export const App: React.FC = () => {
     return () => {
       networkManager.disconnect();
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.id, campusUserId, user?.onboardingCompleted]);
+
+  useEffect(() => { if (user && campusUserId === user.id) networkManager.updateAvatar(user); }, [user?.avatarConfig]);
+  useEffect(() => { if (!isAuthenticated) setCampusUserId(null); }, [isAuthenticated]);
+  useEffect(() => { if (user) loadSocialData(user.id); }, [user?.id]);
 
   if (isInitializingAuth) {
     return (
@@ -84,6 +92,13 @@ export const App: React.FC = () => {
     return <LandingPage />;
   }
 
+  if (campusUserId !== user.id || !user.onboardingCompleted) {
+    return <Suspense fallback={<div className="p-8 bg-[#f8faf7] text-green-950 h-screen">Opening your campus story…</div>}><StudentEntry key={user.id} onEnter={() => {
+      useGameStore.getState().setMyPosition(CAMPUS_ENTRY_POSITION);
+      setCampusUserId(user.id);
+    }} /></Suspense>;
+  }
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#070d08]">
       {/* 3D World / Classroom View */}
@@ -94,10 +109,12 @@ export const App: React.FC = () => {
         </>
       ) : (
         <>
-          <WorldScene />
+          <Suspense fallback={<div className="p-8">Opening campus…</div>}><WorldScene /></Suspense>
           <GameHUD />
         </>
       )}
+
+      <StudentCampusTools />
 
       {/* Live Campus Activity Feed */}
       <ActivityFeed />

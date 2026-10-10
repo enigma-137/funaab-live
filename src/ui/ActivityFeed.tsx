@@ -52,7 +52,7 @@ export const ActivityFeed: React.FC = () => {
   }
 
   return (
-    <div className="fixed top-20 right-4 z-40 pointer-events-auto max-w-xs w-full space-y-1.5 animate-in slide-in-from-right-4 duration-300 font-['Plus_Jakarta_Sans']">
+    <div className="fixed top-[132px] right-4 z-40 pointer-events-auto max-w-xs w-full space-y-1.5 animate-in slide-in-from-right-4 duration-300 font-['Plus_Jakarta_Sans']">
       <div className="flex items-center justify-between px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 backdrop-blur-md">
         <div className="flex items-center gap-1.5 font-bold text-slate-300">
           <Bell className="w-3 h-3 text-emerald-400" />

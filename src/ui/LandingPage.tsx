@@ -63,7 +63,7 @@ export const LandingPage: React.FC = () => {
   );
 
   return (
-    <div className="relative min-h-screen w-full bg-[#F7F9F5] text-[#17211B] flex flex-col justify-between font-['Plus_Jakarta_Sans'] select-none">
+    <div className="fixed inset-0 overflow-y-auto w-full bg-[#F7F9F5] text-[#17211B] flex flex-col justify-between font-['Plus_Jakarta_Sans'] select-none">
       {/* Subtle Background Accents */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#15B86A]/5 blur-3xl" />

@@ -232,7 +232,7 @@ export const ClassroomScene: React.FC = () => {
                 <AvatarModel
                   username={effectiveStudent.username}
                   college={effectiveStudent.college || 'COLENG'}
-                  avatarConfig={isMySeat ? (user?.avatarConfig as any) : ((effectiveStudent as any).avatarConfig || { shirtColor: '#15803d', skinColor: '#8d5524' })}
+                  avatarConfig={isMySeat ? (user?.avatarConfig as any) : (Object.values(useGameStore.getState().players).find(p => p.username === effectiveStudent.username)?.avatarConfig || (effectiveStudent as any).avatarConfig || { shirtColor: '#15803d', skinColor: '#8d5524' })}
                   animation="sit"
                   isLocal={isMySeat}
                 />

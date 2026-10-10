@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PublicStudentIdentity } from './PublicStudentIdentity';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
@@ -67,7 +68,7 @@ export const PlayerInteractionModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-sm bg-slate-900 border-2 border-emerald-500/40 rounded-3xl shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
+      <div className="relative w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-slate-900 border-2 border-emerald-500/40 rounded-3xl shadow-2xl font-['Plus_Jakarta_Sans']">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
           <h2 className="text-sm font-bold text-slate-300 font-['Outfit'] uppercase tracking-wider">
@@ -94,6 +95,7 @@ export const PlayerInteractionModal: React.FC = () => {
             {selectedPlayer.college}
           </div>
 
+          {!isReporting && <PublicStudentIdentity player={selectedPlayer} />}
           {!isReporting ? (
             /* Action Buttons */
             <div className="mt-6 space-y-2.5">

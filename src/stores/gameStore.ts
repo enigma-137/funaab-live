@@ -51,6 +51,8 @@ interface GameState {
   selectedPlayer: PlayerState | null;
   selectedHallLocationId: string | null;
   activeModal:
+    | 'student_profile'
+    | 'student_phone'
     | 'bank'
     | 'food'
     | 'ps_match'
@@ -104,6 +106,8 @@ interface GameState {
   setSelectedHallLocationId: (id: string | null) => void;
   setActiveModal: (
     modal:
+      | 'student_profile'
+      | 'student_phone'
       | 'bank'
       | 'food'
       | 'ps_match'

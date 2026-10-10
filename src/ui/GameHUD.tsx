@@ -258,7 +258,7 @@ export const GameHUD: React.FC = () => {
           {/* Campus Jobs Board Quick Button */}
           <button
             onClick={() => setActiveModal('campus_jobs')}
-            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-indigo-950/80 hover:border-indigo-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
+            className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-indigo-950/80 hover:border-indigo-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
             title="Campus Jobs Board"
           >
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition">
@@ -273,7 +273,7 @@ export const GameHUD: React.FC = () => {
           {/* Daily Reward Quick Button */}
           <button
             onClick={() => setActiveModal('daily_reward')}
-            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-amber-950/80 hover:border-amber-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
+            className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-amber-950/80 hover:border-amber-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
             title="Claim Daily Allowance"
           >
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-600/30 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-110 transition">
@@ -294,7 +294,7 @@ export const GameHUD: React.FC = () => {
               <button
                 id="btn-hud-lecture-timetable"
                 onClick={() => setActiveModal('lecture_hall')}
-                className={`flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
+                className={`hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
                   } shadow-xl text-xs transition group`}
                 title={liveLecture ? `Live Class: ${liveLecture.courseCode}` : 'Lecture Timetable'}
               >
@@ -316,7 +316,7 @@ export const GameHUD: React.FC = () => {
 
         {/* Top Center: Keke Transit Active Indicator */}
         {/* Top Right: Actions & Stats */}
-        <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
+        <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
           {/* Online Counter */}
           <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-800 text-xs text-slate-300 shadow-lg">
             <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />

@@ -9,7 +9,13 @@
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "worker:dev": "wrangler dev",
-    "worker:deploy": "wrangler deploy"
+    "worker:deploy": "wrangler deploy",
+    "test:student": "tsx scripts/test-student-journey.ts",
+    "test:student:db": "node scripts/test-student-db.cjs",
+    "test:student:browser": "node scripts/test-student-browser.cjs",
+    "test:student:auth": "node scripts/test-student-auth.cjs",
+    "test:avatar": "node scripts/test-avatar-presence.cjs",
+    "worker:typecheck": "tsc -p worker/tsconfig.json"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

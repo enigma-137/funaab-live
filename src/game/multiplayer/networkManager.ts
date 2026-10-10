@@ -1,3 +1,4 @@
+import { normalizeAvatar } from '../../config/avatar';
 import { PlayerProfile, PlayerState } from '../../types/game';
 import { useGameStore } from '../../stores/gameStore';
 import { useSocialStore } from '../../stores/socialStore';
@@ -6,6 +7,7 @@ import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
 
 class NetworkManager {
+  private connectGeneration = 0;
   private ws: WebSocket | null = null;
   private reconnectTimeout: any = null;
   private pingInterval: any = null;
@@ -22,6 +24,16 @@ class NetworkManager {
 
   private generateConnectionId(): string {
     return `conn_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
+  }
+
+  public async campusSummary(signal?: AbortSignal) {
+    const url = new URL(this.targetWsUrl, window.location.href);
+    url.protocol = ['wss:', 'https:'].includes(url.protocol) ? 'https:' : 'http:';
+    url.pathname = '/campus-summary';
+    url.search = '';
+    const response = await fetch(url, { signal });
+    if (!response.ok) throw new Error('Campus activity unavailable');
+    return response.json() as Promise<import('../../config/campusSummary').CampusSummary>;
   }
 
   private resolveTargetUrl() {
@@ -47,6 +59,7 @@ class NetworkManager {
 
   public async connect(user: PlayerProfile) {
     this.currentUser = user;
+    const generation = ++this.connectGeneration;
     if (!this.connectionId) {
       this.connectionId = this.generateConnectionId();
     }
@@ -60,6 +73,7 @@ class NetworkManager {
 
     try {
       const token = await useAuthStore.getState().getAccessToken();
+      if (generation !== this.connectGeneration || !this.currentUser) return;
       let wsUrl = this.targetWsUrl;
       if (token) {
         const separator = wsUrl.includes('?') ? '&' : '?';
@@ -69,6 +83,8 @@ class NetworkManager {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
+        const user = this.currentUser;
+        if (!user) return;
         useGameStore.getState().setConnectionStatus('connected');
         console.log('[WS] connected to', this.targetWsUrl);
 
@@ -83,7 +99,7 @@ class NetworkManager {
             connectionId: this.connectionId,
             username: user.username,
             college: user.college,
-            avatarConfig: user.avatarConfig,
+            avatarConfig: normalizeAvatar(user.avatarConfig),
             position: store.myPosition,
             rotation: store.myRotation,
             animation: store.myAnimation,
@@ -201,6 +217,11 @@ class NetworkManager {
             gameStore.updatePlayer(id, update as any);
           }
         }
+        break;
+      }
+
+      case 'avatar_updated': {
+        if (data.connectionId !== this.connectionId) gameStore.updatePlayer(data.connectionId, { avatarConfig: normalizeAvatar(data.avatarConfig) });
         break;
       }
 
@@ -579,10 +600,19 @@ class NetworkManager {
     }, 2500);
   }
 
+  public updateAvatar(user: PlayerProfile) {
+    this.currentUser = user;
+    this.send({ type: 'avatar_update', avatarConfig: normalizeAvatar(user.avatarConfig) });
+  }
+
   public disconnect() {
+    this.currentUser = null;
+    this.connectGeneration++;
     this.stopHeartbeat();
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     if (this.ws) {
+      this.ws.onclose = null;
+      this.ws.onopen = null;
       this.ws.close();
       this.ws = null;
     }

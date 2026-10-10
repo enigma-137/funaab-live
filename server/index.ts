@@ -1,3 +1,5 @@
+import { normalizeAvatar } from '../src/config/avatar';
+import { summarizeCampus } from '../src/config/campusSummary';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 
@@ -17,6 +19,11 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.url === '/campus-summary') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(summarizeCampus(players.values(), getZoneName)));
+    return;
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -104,7 +111,6 @@ setInterval(() => {
       connectionId: connId,
       username: player.username,
       college: player.college,
-      avatarConfig: player.avatarConfig,
       position: player.position,
       rotation: player.rotation,
       animation: player.animation,
@@ -188,7 +194,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             id: authoritativeUserId,
             username: String(player.username || 'Student').slice(0, 24),
             college: String(player.college || 'COLENG').slice(0, 16),
-            avatarConfig: player.avatarConfig || {},
+            avatarConfig: normalizeAvatar(player.avatarConfig),
             room: sessionRoom,
           };
           sessions.set(ws, session);
@@ -260,6 +266,16 @@ wss.on('connection', (ws: WebSocket, req) => {
           break;
         }
 
+        case 'avatar_update': {
+          const session = sessions.get(ws);
+          if (!session) return;
+          const player = players.get(session.connectionId);
+          if (!player) return;
+          player.avatarConfig = normalizeAvatar(data.avatarConfig);
+          session.avatarConfig = player.avatarConfig;
+          broadcastToRoom(session.room, JSON.stringify({ type: 'avatar_updated', connectionId: session.connectionId, avatarConfig: player.avatarConfig }));
+          break;
+        }
         case 'move': {
           const connId = data.connectionId || sessionConnId;
           if (!connId) return;
