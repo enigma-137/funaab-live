@@ -1,3 +1,4 @@
+import {useHostelStore} from '../stores/hostelStore';
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
@@ -29,6 +30,7 @@ import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedu
 import worldData from '../worlds/funaab/world.json';
 
 export const GameHUD: React.FC = () => {
+  const inRoom=useHostelStore(s=>!!s.owner);
   const { user, logout } = useAuthStore();
   const {
     onlineCount,
@@ -255,7 +257,7 @@ export const GameHUD: React.FC = () => {
             </div>
           </button>
 
-          {/* Campus Jobs Board Quick Button */}
+          {!inRoom&&<>{/* Campus Jobs Board Quick Button */}
           <button
             onClick={() => setActiveModal('campus_jobs')}
             className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-indigo-950/80 hover:border-indigo-500/50 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition group"
@@ -311,7 +313,7 @@ export const GameHUD: React.FC = () => {
                 </div>
               </button>
             );
-          })()}
+          })()}</>}
         </div>
 
         {/* Top Center: Keke Transit Active Indicator */}
@@ -399,8 +401,8 @@ export const GameHUD: React.FC = () => {
       </div>
 
       {/* ACTIVE JOB BANNER & NOTICES */}
-      {jobError && <div role="alert" className="hostel-notice">{jobError}</div>}
-      {activeJob && (
+      {!inRoom && jobError && <div role="alert" className="hostel-notice">{jobError}</div>}
+      {!inRoom && activeJob && (
         <div className="mx-auto my-1 pointer-events-auto max-w-md w-full animate-in slide-in-from-top-4">
           <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 border-2 border-indigo-500/60 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
@@ -468,7 +470,7 @@ export const GameHUD: React.FC = () => {
         </div>
       )}
 
-      {jobNotice && (
+      {!inRoom && jobNotice && (
         <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-bounce">
           <div className="p-2.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold text-center shadow-2xl backdrop-blur-md">
             {jobNotice}

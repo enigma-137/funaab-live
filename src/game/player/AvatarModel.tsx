@@ -1,4 +1,5 @@
 import React from 'react';
+import {useHostelStore} from '../../stores/hostelStore';
 import { AvatarBody } from './AvatarBody';
 import { Html } from '@react-three/drei';
 import { AvatarConfig } from '../../types/game';
@@ -11,7 +12,7 @@ interface AvatarModelProps {
   username: string;
   college: string;
   avatarConfig: AvatarConfig;
-  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'wave' | 'cheer';
+  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
   isLocal?: boolean;
 }
 
@@ -24,6 +25,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   isLocal = false,
 }) => {
   const { unreadDmsByPartner, openDm } = useSocialStore();
+  const inRoom=useHostelStore(s=>!!s.owner);
   const isModalOpen = useGameStore((s) => s.activeModal !== null);
   const unreadCount = unreadDmsByPartner[username.toLowerCase()] || 0;
   const hasUnreadDm = unreadCount > 0;
@@ -33,11 +35,11 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   return (
     <group>
       {/* Floating Username & College Badge & Unread DM Alert (Hidden when any modal is open) */}
-      {!isModalOpen && (
+      {!isModalOpen && !(isLocal&&inRoom) && (
         <Html
           position={[0, hasUnreadDm ? 2.45 : 2.25, 0]}
           center
-          distanceFactor={14}
+          distanceFactor={inRoom?4:14}
           zIndexRange={[5, 0]}
           style={{ pointerEvents: hasUnreadDm ? 'auto' : 'none' }}
         >

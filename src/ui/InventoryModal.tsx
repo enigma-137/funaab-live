@@ -1,3 +1,5 @@
+import {openHostel} from './HostelLife';
+import {hostelItem} from '../config/hostelItems';
 import React from 'react';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
@@ -55,7 +57,7 @@ export const InventoryModal: React.FC = () => {
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white leading-tight">{item.itemName}</h4>
+                    <h4 className="text-xs font-bold text-white leading-tight">{item.itemName}</h4>{hostelItem(item.itemId)&&<button className="mt-2 min-h-11 rounded-lg bg-emerald-700 px-3 text-xs text-white" onClick={()=>openHostel('decorate')}>Room items</button>}
                     <span className="text-[10px] text-slate-400 uppercase font-semibold">
                       {item.itemType}
                     </span>

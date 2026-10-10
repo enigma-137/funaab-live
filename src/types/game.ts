@@ -35,7 +35,7 @@ export interface PlayerState {
   avatarConfig: AvatarConfig;
   position: [number, number, number];
   rotation: number;
-  animation: 'idle' | 'walk' | 'run' | 'sit' | 'wave' | 'cheer';
+  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
   kekeRiding?: boolean;
   kekeId?: string;
   seatIndex?: number;

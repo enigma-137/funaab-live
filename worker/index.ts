@@ -684,6 +684,7 @@ export class WorldRoomDO {
             if (!session || !session.room.startsWith('world:funaab:hostel-room:') || session.room.split(':')[3]!==session.id) return;
             // Never trust client furniture; peers refetch the RLS-protected snapshot.
             for (const [socket, peer] of this.sessions) {
+              if(peer.room!==session.room)continue;
               if (!(await this.checkRoom(peer.room,peer.id))) socket.close(1008,'Room access ended');
               else socket.send(JSON.stringify({type:'room_changed'}));
             }
@@ -718,7 +719,7 @@ export class WorldRoomDO {
               }
               player.position = data.position;
               player.rotation = data.rotation;
-              player.animation = data.animation;
+              player.animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
               player.kekeRiding = data.kekeRiding;
               player.kekeId = data.kekeId;
               player.lastUpdated = Date.now();

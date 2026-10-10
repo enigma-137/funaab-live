@@ -30,7 +30,7 @@ interface GameState {
   // Local player state
   myPosition: [number, number, number];
   myRotation: number;
-  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'wave' | 'cheer';
+  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
   isRidingKeke: boolean;
   currentKekeId: string | null;
   targetKekeDestinationId: string | null;
@@ -92,7 +92,7 @@ interface GameState {
 
   setMyPosition: (pos: [number, number, number]) => void;
   setMyRotation: (rot: number) => void;
-  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'wave' | 'cheer') => void;
+  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer') => void;
   setRidingKeke: (isRiding: boolean, kekeId?: string | null, targetDestinationId?: string | null) => void;
   setTargetKekeDestinationId: (id: string | null) => void;
 

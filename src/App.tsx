@@ -45,6 +45,7 @@ export const App: React.FC = () => {
   const { loadWallet } = useWalletStore();
   const { loadSocialData } = useSocialStore();
   const { isInClassroom } = useLectureStore();
+  const hostelRoomId=useHostelStore(s=>s.roomId);
 
   useEffect(() => {
     initialize();
@@ -54,6 +55,7 @@ export const App: React.FC = () => {
     if (isAuthenticated && user && campusUserId === user.id && user.onboardingCompleted) {
       // Connect to Multiplayer network
       networkManager.connect(user);
+      try{const owner=sessionStorage.getItem('funaab-room:'+user.id);if(owner&&useHostelStore.getState().roomId==='world:funaab:main')void useHostelStore.getState().travel('room',owner);}catch{/* Room restoration is optional when browser storage is disabled. */}
       // Load user's persistent balance & social data
       loadWallet(user.id);
       useJobStore.getState().load();
@@ -122,7 +124,7 @@ export const App: React.FC = () => {
       <HostelLife />
 
       {/* Live Campus Activity Feed */}
-      <ActivityFeed />
+      {hostelRoomId==='world:funaab:main'&&<ActivityFeed />}
 
       {/* Incoming Private DM Notification Toast */}
       <DmNotificationToast />

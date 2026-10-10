@@ -36,6 +36,7 @@ const near = (p: number[], target: number[], distance: number) =>
 
 export function StudentCampusTools() {
   const user = useAuthStore((s) => s.user)!;
+  const offCampus=useHostelStore(s=>s.roomId!=='world:funaab:main');
   const modal = useGameStore((s) => s.activeModal);
   const setModal = useGameStore((s) => s.setActiveModal);
   const { journey, saving, error } = useStudentStore();
@@ -130,7 +131,7 @@ export function StudentCampusTools() {
           <span>Phone</span>
         </button>
       )}
-      {!modal && journey && !journey.orientation_completed && (
+      {!offCampus && !modal && journey && !journey.orientation_completed && (
         <aside className="student-orientation">
           <button onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed}>
             Welcome to campus · {journey.orientation_steps.length}/5 {collapsed ? '+' : '−'}

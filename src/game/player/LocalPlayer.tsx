@@ -23,8 +23,7 @@ const CAPSULE_RADIUS = 0.35;
 const PLAYER_CENTER_OFFSET = CAPSULE_HALF_HEIGHT + CAPSULE_RADIUS; // 0.85m
 
 export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) => {
-  const sitting=useRef(false);
-  useEffect(()=>{const sit=(e:Event)=>{sitting.current=!!(e as CustomEvent).detail;};window.addEventListener("hostel-sit",sit);return()=>window.removeEventListener("hostel-sit",sit);},[]);
+
   const { user } = useAuthStore();
   const {
     myPosition,
@@ -61,7 +60,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const characterControllerRef = useRef<any>(null);
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const currentRotation = useRef<number>(0);
-  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit'>('idle');
+  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep'>('idle');
   const stuckTimerRef = useRef<number>(0);
 
   const { world, rapier } = useRapier();
@@ -253,7 +252,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       }
     }
 
-    if(offCampus && sitting.current) moveDirection=null;
+    const roomState=useHostelStore.getState();
+    if(offCampus && (roomState.pose||roomState.preview)) moveDirection=null;
     if(useGameStore.getState().activeModal) moveDirection=null;
     if (moveDirection && controller) {
       const targetAngle = Math.atan2(moveDirection.x, moveDirection.z);
@@ -314,6 +314,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     nextZ = Math.max(worldData.bounds.minZ + 0.5, Math.min(worldData.bounds.maxZ - 0.5, nextZ));
 
     if(offCampus) { const bound=useHostelStore.getState().owner?3.5:14;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
+    if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
+    if(offCampus&&roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
     // Update Rapier Kinematic Position
     body.setNextKinematicTranslation({ x: nextX, y: nextY, z: nextZ });
 
@@ -327,7 +329,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
     setMyPosition(feetPosition);
     setMyRotation(currentRotation.current);
-    if(offCampus && sitting.current) currentAnimation.current='sit';
+    if(offCampus && roomState.pose) currentAnimation.current=roomState.pose.animation;
     setMyAnimation(currentAnimation.current);
 
     networkManager.sendMove(
@@ -345,18 +347,19 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     const cz = nextZ + Math.cos(cameraYaw) * Math.cos(cameraPitch) * camDist;
 
     const hostelState=useHostelStore.getState();
-    const decorating=offCampus && hostelState.owner && hostelState.panel==='decorate' && useGameStore.getState().activeModal==='hostel';
+    const decorating=offCampus && hostelState.owner && !!hostelState.preview;
     const lens=camera as THREE.PerspectiveCamera;
+    if(lens.view?.enabled)lens.clearViewOffset();
+    const fov=hostelState.owner?(size.width<650&&!decorating?65:55):50;if(lens.fov!==fov){lens.fov=fov;lens.updateProjectionMatrix();}
     if(decorating){
-      const mobile=size.width<650;
-      camera.position.lerp(new THREE.Vector3(0,mobile?18:10,mobile?12:8),.16);
-      camera.lookAt(0,0,0);
-      lens.setViewOffset(size.width,size.height,mobile?0:size.width*.16,mobile?size.height*.29:0,size.width,size.height);
-    } else {
-      if(lens.view?.enabled)lens.clearViewOffset();
-      camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
-      camera.lookAt(nextX, nextY + 0.8, nextZ);
-    }
+      const height=size.width<650?12:9;
+      camera.position.lerp(new THREE.Vector3(0,height,7),.16);camera.lookAt(0,0,-.3);
+    }else if(offCampus&&hostelState.owner){
+      // Clamp the orbit eye inside the room walls; no camera can pass through masonry.
+      const clamp=(n:number)=>Math.max(-3.65,Math.min(3.65,n));
+      camera.position.lerp(new THREE.Vector3(clamp(nextX*.25+Math.sin(cameraYaw)*3.2),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),.16);
+      camera.lookAt(nextX*.25,.65,nextZ*.25-.8);
+    }else{camera.position.lerp(new THREE.Vector3(cx,cy,cz),.14);camera.lookAt(nextX,nextY+.8,nextZ);}
 
     if(offCampus) { setIsOnRestrictedLawn(false); setNearbyInteractable(null); return; }
     // Terrain Classification & FUNAAB Lawn Rule Enforcement

@@ -41,7 +41,12 @@ async function main(){
   await b.packet({type:'chat',text:'Come my place'});assert(a.messages.some(m=>m.type==='chat_message'&&m.text==='Come my place'));
   await b.packet({type:'room_changed',placements:[{item_id:'cheat'}]});assert(!a.messages.some(m=>m.type==='room_changed'));
   await a.packet({type:'room_changed'});assert(b.messages.some(m=>m.type==='room_changed'));
-  await join(world,'guest3');await join(world,'guest4');await join(world,'guest5');
+  await a.packet({type:'move',position:[-2.6,.34,-1.9],rotation:0,animation:'sleep'});
+  const lateSleeper=await join(world,'guest3');
+  assert(Object.values(lateSleeper.messages.find(m=>m.type==='snapshot').players).some((p:any)=>p.id===owner&&p.animation==='sleep'),'Late visitor sees sleeping owner');
+  await a.packet({type:'move',position:[1,0,0],rotation:0,animation:'sit'});world.broadcastBatchPlayers();
+  assert([...world.players.values()].some((p:any)=>p.id===owner&&p.animation==='sit'));
+await join(world,'guest4');await join(world,'guest5');
   const sixth=await join(world,'guest6');assert.equal(sixth.readyState,3);assert.match(sixth.reason,/full/);
   world.broadcastBatchPlayers();assert(b.messages.some(m=>m.type==='players_batch'));
   b.close(1000,'Leaving');assert(a.messages.some(m=>m.type==='player_left'));assert.equal(a.readyState,1);

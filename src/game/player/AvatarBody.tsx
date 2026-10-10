@@ -38,9 +38,10 @@ export const AvatarBody = memo(
         rightArm.current.rotation.x = sitting ? -0.4 : swing * 0.7;
         rightArm.current.rotation.z = animation === 'wave' ? -2.4 + Math.sin(t * 5) * 0.2 : -0.08;
       }
+      if(body.current){body.current.rotation.x=animation==='sleep'?-Math.PI/2:0;body.current.scale.setScalar(animation==='sleep'?.9:1);}
       if (body.current)
         body.current.position.y = sitting
-          ? -0.28
+          ? -0.39
           : moving
             ? Math.abs(swing) * 0.045
             : Math.sin(t * 2) * 0.012;

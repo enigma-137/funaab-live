@@ -1,3 +1,4 @@
+import {useHostelStore} from '../../stores/hostelStore';
 import React, { useRef } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -28,7 +29,7 @@ export const TouchInputController: React.FC = () => {
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     // If a modal is open or user is typing in chat/inputs, ignore 3D canvas touch gestures
-    if (activeModal || isInputFocused) return;
+    if (activeModal || isInputFocused || useHostelStore.getState().preview || useHostelStore.getState().pose) return;
 
     // Only handle primary button / touch
     if (e.nativeEvent.button !== undefined && e.nativeEvent.button !== 0) return;
@@ -67,6 +68,7 @@ export const TouchInputController: React.FC = () => {
   };
 
   const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
+    if(useHostelStore.getState().preview||useHostelStore.getState().pose){pointerDownState.current=null;return;}
     const state = pointerDownState.current;
     if (!state || state.pointerId !== e.nativeEvent.pointerId) return;
 
