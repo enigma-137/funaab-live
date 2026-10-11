@@ -392,7 +392,7 @@ export const LandingPage: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="student@funaab.edu.ng"
+                    placeholder="youremail@gmail.com"
                     required
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] placeholder-[#9EA8A1] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition"
                   />

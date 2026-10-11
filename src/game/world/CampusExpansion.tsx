@@ -1,8 +1,9 @@
+import { CampusRoadFinish } from './CampusLandscape';
 import { CampusArchitecture } from './CampusArchitecture';
 import { CampusSign } from './CampusSign';
 import { campusMaterials } from './campusVisualGeometry';
 import React, { useRef } from 'react';
-import { Html, Line, Text } from '@react-three/drei';
+import { Html, Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -23,7 +24,7 @@ export function NearbyLabel({position,children}:{position:Point;children:React.R
   useFrame(({camera})=>{if(ref.current)ref.current.style.visibility=camera.position.distanceToSquared(point)<40*40?'visible':'hidden';});
   return <Html position={position} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div ref={ref} style={{whiteSpace:'nowrap',background:'#eaf0df',color:'#1f4735',border:'1px solid #a8bda1',borderRadius:4,padding:'3px 6px',fontSize:11,fontWeight:700}}>{children}</div></Html>;
 }
-export function CampusRoads(){return <group>
+export function CampusRoads(){return <group><CampusRoadFinish/>
   {roadEdges.map(([a,b],i)=>{const p=roadNodes[a],q=roadNodes[b],vertical=p[0]===q[0],length=Math.hypot(p[0]-q[0],p[2]-q[2]);return <group key={i} position={[(p[0]+q[0])/2,0,(p[2]+q[2])/2]}>
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,.012,0]}><planeGeometry args={vertical?[13,length+2]:[length+2,13]}/><primitive object={campusMaterials.paving} attach="material"/></mesh>
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,.022,0]}><planeGeometry args={vertical?[8,length+1]:[length+1,8]}/><primitive object={campusMaterials.road} attach="material"/></mesh>
@@ -43,7 +44,6 @@ export function CampusExpansion(){return <group>
         </>:<>
           <Block p={[0,h/2,0]} s={[w,h,d]}/>
           <Block p={[0,h+.3,0]} s={[w+1,.6,d+1]} m="roof"/>
-          {id==='colvet'&&<><Block p={[-w/2+3,h/2,3]} s={[6,h,d+5]}/><Block p={[w/2-3,h/2,3]} s={[6,h,d+5]}/></>}
           {id==='colanim'&&<mesh position={[0,h+1,0]} rotation={[0,Math.PI/4,0]}><coneGeometry args={[w*.58,3,4]}/><meshStandardMaterial color="#95694f"/></mesh>}
           {id==='colplant'&&<Block p={[0,h/2,0]} s={[5,h+2,d+1]} m="glass"/>}
           {id==='colcoms'&&<Block p={[-5,h/2+1,1]} s={[6,h+2,d+1]} m="glass"/>}
