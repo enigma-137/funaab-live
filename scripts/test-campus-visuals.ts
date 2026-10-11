@@ -1,3 +1,5 @@
+import { classifyTerrain } from "../src/game/rules/lawnSecuritySystem";
+import { forecourtPaving } from "../src/game/world/CampusLandscape";
 import assert from "node:assert/strict";
 import { buildLandmark } from "../src/game/world/CampusArchitecture";
 import {
@@ -59,4 +61,17 @@ for (const m of Object.values(campusMaterials)) {
 }
 console.log(
   "CAMPUS VISUALS PASSED: coordinates, finite geometry, bounded detail, small textures and clear planting.",
+);
+
+for (const id of ["colerm", "colfhec", "colvet", "library"])
+  for (const b of forecourtPaving(id)) {
+    for (const x of [b.minX + 0.001, (b.minX + b.maxX) / 2, b.maxX - 0.001])
+      for (const z of [b.minZ + 0.001, (b.minZ + b.maxZ) / 2, b.maxZ - 0.001])
+        assert(
+          !classifyTerrain(x, z).restricted,
+          "New paving must not hide a restricted lawn",
+        );
+  }
+console.log(
+  "PAVING SAFETY PASSED: decorative paving stays on existing permitted terrain.",
 );

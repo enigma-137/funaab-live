@@ -82,7 +82,8 @@ class NetworkManager {
   }
   public roomChanged() { this.send({type:'room_changed'}); }
   public switchRoom(room: string, user: PlayerProfile) {
-    this.disconnect(); this.room=room;
+    this.disconnect(); this.room=room; this.connectionId=this.generateConnectionId();
+    useSocialStore.setState({messages: [], unreadCount: 0});
     useGameStore.setState({players:{},kekes:{},activeMatches:{},currentMatch:null,nearbyInteractable:null,isRidingKeke:false});
     return this.connect(user);
   }
@@ -155,7 +156,7 @@ class NetworkManager {
           useGameStore.getState().setMyPosition(CAMPUS_SPAWN);useHostelStore.setState({teleport:CAMPUS_SPAWN});
         }
 
-        if(event.code===1008) { window.dispatchEvent(new CustomEvent('hostel-access-ended',{detail:event.reason})); this.stopHeartbeat(); return; }
+        if(event.code===1008) { window.dispatchEvent(new CustomEvent(this.room === 'world:funaab:library' ? 'library-access-ended' : 'hostel-access-ended',{detail:event.reason})); this.stopHeartbeat(); return; }
         useGameStore.getState().setConnectionStatus('disconnected');
         this.stopHeartbeat();
         this.scheduleReconnect();
@@ -213,7 +214,7 @@ class NetworkManager {
         if (data.activeMatches) gameStore.setMatches(data.activeMatches);
 
         const account=useAuthStore.getState().user;if(account)void useWalletStore.getState().loadWallet(account.id);
-        console.log(`[WS] joined world:funaab:main`);
+        console.log(`[WS] joined ${this.room}`);
         console.log(`[WS] players online: ${Object.keys(otherPlayers).length + 1}`);
         break;
       }
@@ -229,7 +230,7 @@ class NetworkManager {
               senderId: 'system',
               senderName: 'Campus Security',
               college: player.college,
-              text: `@${player.username} (${player.college}) just stepped into campus!`,
+              text: `@${player.username} (${player.college}) joined ${this.room === 'world:funaab:library' ? 'the library' : 'the room'}!`,
               timestamp: Date.now(),
               isSystem: true,
             });

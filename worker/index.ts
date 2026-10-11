@@ -1,3 +1,4 @@
+import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
@@ -328,6 +329,7 @@ export class WorldRoomDO {
 
     // Run 10Hz tick for batch updates & Keke simulation
     setInterval(() => {
+      for (const [socket, session] of this.sessions) { if (session.room === LIBRARY_ROOM && !isLibraryOpen()) socket.close(1008, 'The library is closed. Open Monday–Friday, 8am–5pm Lagos time.'); }
       this.tickKekeSimulation();
       this.broadcastBatchPlayers();
     }, 100);
@@ -547,6 +549,7 @@ export class WorldRoomDO {
             joining = true;
             const { player, room = 'world:funaab:main', token } = data;
             if (room !== boundRoom) { webSocket.close(1008, 'Room mismatch'); return; }
+            if (room === LIBRARY_ROOM && !isLibraryOpen()) { webSocket.close(1008, 'The library is closed. Open Monday–Friday, 8am–5pm Lagos time.'); return; }
             const effectiveToken = token || initialToken;
 
             // Strict Authenticated User ID derivation
@@ -943,6 +946,7 @@ export class WorldRoomDO {
 
           // LECTURE & CLASSROOM SYSTEM
           case 'lecture_enter': {
+              if (sessionRoom === LIBRARY_ROOM) return;
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
             if (!session) return;
@@ -1242,7 +1246,7 @@ export default {
 
     // 3. Durable Object Routing
     const roomId = url.searchParams.get('room') || 'world:funaab:main';
-    if (!/^world:funaab:(main|hostel|hostel-room:[0-9a-f-]{36})$/.test(roomId)) return new Response('Unknown world',{status:400});
+    if (!/^world:funaab:(main|library|hostel|hostel-room:[0-9a-f-]{36})$/.test(roomId)) return new Response('Unknown world',{status:400});
     const id = env.WORLD_ROOM.idFromName(roomId);
     const stub = env.WORLD_ROOM.get(id);
 

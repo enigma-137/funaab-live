@@ -1,3 +1,4 @@
+import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, seatPosition, exitPosition } from '../src/config/kekeSimulation';
@@ -6,7 +7,7 @@ import { summarizeCampus } from '../src/config/campusSummary';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 
-const PORT = 8787;
+const PORT = Number(process.env.PORT) || 8787;
 
 interface SessionData {
   connectionId: string;
@@ -120,18 +121,23 @@ setInterval(() => {
     };
   }
 
-  const batchPayload = JSON.stringify({
-    type: 'players_batch',
-    kekes:Object.fromEntries(kekes),
-    updates,
-  });
-
-  for (const [ws] of sessions) {
-    if (ws.readyState === WebSocket.OPEN) {
-      try {
-        ws.send(batchPayload);
-      } catch (e) {}
+  // Build each room payload once, even when many students share it.
+  const rooms = new Map<string, Record<string, any>>();
+  for (const session of sessions.values()) {
+    const peers = rooms.get(session.room) || {};
+    if (updates[session.connectionId]) peers[session.connectionId] = updates[session.connectionId];
+    rooms.set(session.room, peers);
+  }
+  const payloads = new Map([...rooms].map(([room, peers]) => [room, JSON.stringify({
+    type: 'players_batch', updates: peers,
+    kekes: room === 'world:funaab:main' ? Object.fromEntries(kekes) : {},
+  })]));
+  const libraryOpen = isLibraryOpen();
+  for (const [ws, session] of sessions) {
+    if (session.room === LIBRARY_ROOM && !libraryOpen) {
+      ws.close(1008, 'The library is closed. Open Monday–Friday, 8am–5pm Lagos time.'); continue;
     }
+    if (ws.readyState === WebSocket.OPEN) ws.send(payloads.get(session.room)!);
   }
 }, 100);
 
@@ -173,7 +179,8 @@ wss.on('connection', (ws: WebSocket, req) => {
       switch (data.type) {
         case 'join': {
           const { player, room = 'world:funaab:main', token } = data;
-          if (room !== 'world:funaab:main') { ws.close(1008,'Use npm run worker:dev for authenticated hostel rooms'); return; }
+          if (room !== 'world:funaab:main' && room !== LIBRARY_ROOM) { ws.close(1008,'Use npm run worker:dev for authenticated hostel rooms'); return; }
+          if (room === LIBRARY_ROOM && !isLibraryOpen()) { ws.close(1008, 'The library is closed. Open Monday–Friday, 8am–5pm Lagos time.'); return; }
           const effectiveToken = token || handshakeToken;
           let authoritativeUserId = player.id;
 
@@ -239,7 +246,7 @@ wss.on('connection', (ws: WebSocket, req) => {
           // 1. Send immediate snapshot of all current players to the newcomer
           const roomPlayers: Record<string, any> = {};
           for (const [cId, p] of players) {
-            roomPlayers[cId] = p;
+            if ([...sessions.values()].some(peer => peer.connectionId === cId && peer.room === sessionRoom)) roomPlayers[cId] = p;
           }
 
           ws.send(
@@ -703,6 +710,7 @@ wss.on('connection', (ws: WebSocket, req) => {
         }
 
         case 'lecture_enter': {
+              if (sessionRoom === LIBRARY_ROOM) return;
           const connId = data.connectionId || data.data?.connectionId || sessionConnId;
           if (!connId) return;
           const player = players.get(connId);

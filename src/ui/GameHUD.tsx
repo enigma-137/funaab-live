@@ -35,7 +35,7 @@ import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedu
 import worldData from '../config/campusWorld';
 
 export const GameHUD: React.FC = () => {
-  const inRoom=useHostelStore(s=>!!s.owner);
+  const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
   const { user, logout } = useAuthStore();
   const {
     onlineCount,

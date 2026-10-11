@@ -336,7 +336,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     nextX = Math.max(worldData.bounds.minX + 0.5, Math.min(worldData.bounds.maxX - 0.5, nextX));
     nextZ = Math.max(worldData.bounds.minZ + 0.5, Math.min(worldData.bounds.maxZ - 0.5, nextZ));
 
-    if(offCampus) { const bound=useHostelStore.getState().owner?3.5:14;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
+    if(offCampus) { const bound=roomState.roomId === 'world:funaab:library'?11.4:useHostelStore.getState().owner?3.5:14;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
     if(roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
     // Update Rapier Kinematic Position
@@ -363,7 +363,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     );
 
     // Third-person Orbit Camera Rig (supports drag-to-look around player)
-    const camDist = 8.2;
+    const camDist = roomState.roomId === 'world:funaab:library' ? 6 : 8.2;
     const camHeight = 3.6;
     const cx = nextX + Math.sin(cameraYaw) * Math.cos(cameraPitch) * camDist;
     const cy = nextY + camHeight + Math.sin(cameraPitch) * camDist * 0.6;

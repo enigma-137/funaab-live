@@ -43,7 +43,7 @@ export function StudentCampusTools() {
       const game = useGameStore.getState(),
         student = useStudentStore.getState();
       if (useHostelStore.getState().roomId !== 'world:funaab:main') {
-        setStatus(useHostelStore.getState().owner ? 'In a student room' : 'At the hostel courtyard');
+        setStatus(useHostelStore.getState().roomId === 'world:funaab:library' ? 'In the library' : useHostelStore.getState().owner ? 'In a student room' : 'At the hostel courtyard');
         return;
       }
       const nearest = world.locations.find((l) => near(game.myPosition, l.position, 12));

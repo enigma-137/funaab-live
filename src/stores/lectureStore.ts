@@ -38,6 +38,10 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   classroomReturnPosition: null,
 
   enterLecture: (lecture: LectureDefinition, seatNumber = 1) => {
+    if (networkManager.room === 'world:funaab:library') {
+      window.dispatchEvent(new CustomEvent('library-access-ended', {detail: 'You have returned to campus. Open your timetable to join the lecture.'}));
+      return;
+    }
     set({ isTransitioning: true });
     const returnPosition = [...useGameStore.getState().myPosition] as [number, number, number];
     useInputStore.getState().clearTargetDestination();

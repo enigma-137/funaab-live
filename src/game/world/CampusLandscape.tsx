@@ -192,13 +192,76 @@ export function CampusTrees() {
     </group>
   );
 }
+// Partition the intended paving against existing permitted terrain. Visuals must not
+// invite players onto a lawn that still incurs a security fine.
+export function forecourtPaving(id: string) {
+  const l = locationById(id),
+    [w, d] = l.footprint;
+  const wanted = {
+    minX: l.position[0] - w / 2 - 0.5,
+    maxX: l.position[0] + w / 2 + 0.5,
+    minZ: l.position[2] + d / 2,
+    maxZ: l.position[2] + d / 2 + 3.8,
+  };
+  const zones = [
+    ...roadBounds,
+    ...pedestrianPaths.map((p) => p.bounds),
+    ...campusLocations.map((l) => ({
+      minX: l.entrance[0] - 3.5,
+      maxX: l.entrance[0] + 3.5,
+      minZ: l.entrance[2] - 3.5,
+      maxZ: l.entrance[2] + 3.5,
+    })),
+  ];
+  const clipped = zones
+    .map((z) => ({
+      minX: Math.max(z.minX, wanted.minX),
+      maxX: Math.min(z.maxX, wanted.maxX),
+      minZ: Math.max(z.minZ, wanted.minZ),
+      maxZ: Math.min(z.maxZ, wanted.maxZ),
+    }))
+    .filter((z) => z.minX < z.maxX && z.minZ < z.maxZ);
+  const xs = [...new Set(clipped.flatMap((z) => [z.minX, z.maxX]))].sort(
+      (a, b) => a - b,
+    ),
+    zs = [...new Set(clipped.flatMap((z) => [z.minZ, z.maxZ]))].sort(
+      (a, b) => a - b,
+    ),
+    result = [];
+  for (let i = 1; i < xs.length; i++)
+    for (let j = 1; j < zs.length; j++) {
+      const x = (xs[i - 1] + xs[i]) / 2,
+        z = (zs[j - 1] + zs[j]) / 2;
+      if (
+        clipped.some(
+          (b) => x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ,
+        )
+      )
+        result.push({
+          minX: xs[i - 1],
+          maxX: xs[i],
+          minZ: zs[j - 1],
+          maxZ: zs[j],
+        });
+    }
+  return result;
+}
 export function buildForecourt(id: string): Batch[] {
   const l = locationById(id),
     [w, d] = l.footprint,
     b = new VisualBuilder(),
     front = d / 2;
   // Ground-level overlays do not create steps or change the walkable floor.
-  b.box([0, 0.028, front + 1.9], [w + 1, 0.045, 3.8], "paving");
+  for (const p of forecourtPaving(id))
+    b.box(
+      [
+        (p.minX + p.maxX) / 2 - l.position[0],
+        0.028,
+        (p.minZ + p.maxZ) / 2 - l.position[2],
+      ],
+      [p.maxX - p.minX, 0.045, p.maxZ - p.minZ],
+      "paving",
+    );
   for (const side of [-1, 1]) {
     const x = side * (w / 2 - 0.7);
     b.box([x, 0.07, front + 1.7], [1.25, 0.08, 2.7], "gravel");
