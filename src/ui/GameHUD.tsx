@@ -21,11 +21,15 @@ import {
   CheckCircle2,
   XCircle,
   GraduationCap,
-
+  Wallet,
+  Plus,
+  ChevronRight,
+  Landmark,
   ChevronUp,
   ChevronDown,
   X,
 } from 'lucide-react';
+import { AvatarHeadPortrait } from './AvatarHeadPortrait';
 import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedule';
 import worldData from '../config/campusWorld';
 
@@ -220,47 +224,79 @@ export const GameHUD: React.FC = () => {
       <div className="flex items-start justify-between w-full gap-2">
         {/* Top Left: Profile & Wallet Pill & Job Shortcut */}
         <div className="flex items-center gap-1.5 sm:gap-3 pointer-events-auto flex-wrap">
-          {/* Student ID Badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-slate-900/90 backdrop-blur-md border border-slate-700/60 shadow-xl">
-            <div
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-md shrink-0"
-              style={{ backgroundColor: user.avatarConfig.shirtColor || '#15803d' }}
-            >
-              {user.username[0].toUpperCase()}
-            </div>
-            <div>
-              <div className="text-[11px] sm:text-xs font-bold text-white leading-tight font-['Outfit'] flex items-center gap-1.5">
-                <span>@{user.username}</span>
-                <span className="text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-slate-800 text-emerald-400 border border-slate-700">
-                  {user.college}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-[9px] sm:text-[10px] text-slate-400">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                    }`}
-                />
-                <span className="hidden sm:inline">{connectionStatus === 'connected' ? 'Live on Campus' : 'Connecting...'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick ATM / Wallet Badge */}
+          {/* Redesigned Student Profile Badge */}
           <button
+            id="btn-hud-profile-badge"
+            onClick={() => setActiveModal('student_profile')}
+            className="flex items-center gap-2.5 sm:gap-3.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-[24px] bg-[#0c1414]/90 hover:bg-[#111f1e]/95 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-left transition transform active:scale-[0.98] group pointer-events-auto"
+            title="View Student Profile & Wardrobe"
+          >
+            {/* Character Head Portrait with Ring & Status Indicator */}
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full ring-2 ring-emerald-400/90 shadow-[0_0_12px_rgba(16,185,129,0.35)] overflow-hidden bg-[#111c19]">
+                <AvatarHeadPortrait
+                  config={user.avatarConfig}
+                  username={user.username}
+                  className="w-full h-full"
+                />
+              </div>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#0c1414] ${
+                  connectionStatus === 'connected'
+                    ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]'
+                    : 'bg-amber-400 shadow-[0_0_8px_#f59e0b]'
+                }`}
+              />
+            </div>
+
+            {/* Username & College Pill Badge */}
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="text-[13px] sm:text-[15px] font-black text-white leading-tight font-['Outfit'] tracking-wide">
+                @{user.username}
+              </span>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 font-bold text-[9px] sm:text-[10px] tracking-wider uppercase">
+                <Landmark className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400 shrink-0" />
+                <span>{user.college}</span>
+              </div>
+            </div>
+
+            {/* Chevron Right */}
+            <ChevronRight className="w-4 h-4 text-emerald-100/50 group-hover:text-white group-hover:translate-x-0.5 transition ml-1 sm:ml-2 shrink-0" />
+          </button>
+
+          {/* Redesigned Quick ATM / Wallet Badge */}
+          <div
             onClick={() => setActiveModal('bank')}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/60 shadow-xl text-xs transition transform active:scale-95 group"
+            className="flex items-center gap-2.5 sm:gap-3 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-[24px] bg-[#0c221b]/90 hover:bg-[#0f2a22]/95 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-left transition group pointer-events-auto cursor-pointer"
             title="Open ATM & Bank"
           >
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-xs group-hover:scale-110 transition">
-              ₦
+            {/* Wallet Icon Box */}
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shadow-inner group-hover:scale-105 transition shrink-0">
+              <Wallet className="w-5 h-5 text-emerald-400 stroke-[2.2]" />
             </div>
-            <div className="text-left">
-              <div className="text-[8px] sm:text-[9px] text-slate-400 font-semibold uppercase">Wallet</div>
-              <div className="font-extrabold text-emerald-300 font-mono text-[11px] sm:text-xs">
+
+            {/* Wallet Balance Text */}
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-[10px] sm:text-[11px] text-emerald-200/70 font-semibold tracking-wider uppercase mb-1">
+                Wallet
+              </span>
+              <span className="text-base sm:text-lg font-black text-emerald-300 font-['Outfit'] tracking-tight flex items-center">
                 ₦{balance.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-              </div>
+              </span>
             </div>
-          </button>
+
+            {/* Plus Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveModal('bank');
+              }}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-800/40 hover:bg-emerald-700/60 active:scale-90 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition ml-1 shrink-0"
+              title="Deposit / Withdraw / ATM"
+            >
+              <Plus className="w-4 h-4 text-emerald-300 stroke-[2.5]" />
+            </button>
+          </div>
 
           {!inRoom&&<>{/* Campus Jobs Board Quick Button */}
           <button

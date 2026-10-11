@@ -47,7 +47,7 @@ export const CampusJobsModal: React.FC = () => {
             <div>
               <h2 className="text-base font-black text-white font-['Outfit'] tracking-wide uppercase flex items-center gap-2">
                 CAMPUS JOB BOARD
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-black uppercase">
+                <span className="text-[7px] font-bold px-1 py-0.5 rounded-sm bg-emerald-500 text-black uppercase">
                   Earn Cash
                 </span>
               </h2>

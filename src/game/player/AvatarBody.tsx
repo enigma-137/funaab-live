@@ -106,6 +106,10 @@ export const AvatarBody = memo(
           {ball([-0.078, 0.02, 0.213], 0.023, materials.eye)}
           {ball([0.078, 0.02, 0.213], 0.023, materials.eye)}
           {ball([0, -0.035, 0.23], 0.034, materials.skin)}
+          <mesh position={[0, -0.082, 0.222]} rotation={[0, 0, Math.PI]}>
+            <torusGeometry args={[0.042, 0.007, 4, 12, Math.PI]} />
+            <meshBasicMaterial color="#211b18" />
+          </mesh>
         </group>
         {([-1, 1] as const).map((side) => (
           <group
