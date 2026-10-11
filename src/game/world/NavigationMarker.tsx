@@ -5,7 +5,19 @@ import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
 
 export const NavigationMarker: React.FC = () => {
-  const { navigationDestination, myPosition, clearNavigationDestination } = useGameStore();
+  const navigationDestination = useGameStore((s) => s.navigationDestination);
+  const clearNavigationDestination = useGameStore((s) => s.clearNavigationDestination);
+  // Whole-metre distance: re-renders only when the label changes, not on every player frame.
+  const dist = useGameStore((s) =>
+    s.navigationDestination
+      ? Math.round(
+          Math.hypot(
+            s.myPosition[0] - s.navigationDestination.position[0],
+            s.myPosition[2] - s.navigationDestination.position[2]
+          )
+        )
+      : 0
+  );
 
   const ringRef = useRef<THREE.Mesh>(null);
   const beaconRef = useRef<THREE.Mesh>(null);
@@ -13,14 +25,15 @@ export const NavigationMarker: React.FC = () => {
   // Check arrival proximity: if within 5m, auto-clear
   useEffect(() => {
     if (!navigationDestination) return;
-    const dist = Math.hypot(
+    const myPosition = useGameStore.getState().myPosition;
+    const exactDist = Math.hypot(
       myPosition[0] - navigationDestination.position[0],
       myPosition[2] - navigationDestination.position[2]
     );
-    if (dist <= 5.0) {
+    if (exactDist <= 5.0) {
       clearNavigationDestination();
     }
-  }, [myPosition, navigationDestination, clearNavigationDestination]);
+  }, [dist, navigationDestination, clearNavigationDestination]);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
@@ -40,9 +53,6 @@ export const NavigationMarker: React.FC = () => {
   if (!navigationDestination) return null;
 
   const pos = navigationDestination.position;
-  const dist = Math.round(
-    Math.hypot(myPosition[0] - pos[0], myPosition[2] - pos[2])
-  );
 
   return (
     <group position={[pos[0], 0.05, pos[2]]}>

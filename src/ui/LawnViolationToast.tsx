@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { AlertOctagon, ShieldAlert, X } from 'lucide-react';
 
 export const LawnViolationToast: React.FC = () => {
-  const { lawnViolationNotice, setLawnViolationNotice } = useGameStore();
+  const { lawnViolationNotice, setLawnViolationNotice } = useGameStore(useShallow((s) => ({ lawnViolationNotice: s.lawnViolationNotice, setLawnViolationNotice: s.setLawnViolationNotice })));
 
   useEffect(() => {
     if (!lawnViolationNotice) return;

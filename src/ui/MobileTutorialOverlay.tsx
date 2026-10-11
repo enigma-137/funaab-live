@@ -1,9 +1,10 @@
 import React from 'react';
 import { useInputStore } from '../stores/inputStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Footprints, Eye, Compass } from 'lucide-react';
 
 export const MobileTutorialOverlay: React.FC = () => {
-  const { isTouchDevice, mobileTutorialDismissed, setMobileTutorialDismissed, triggerHaptic } = useInputStore();
+  const { isTouchDevice, mobileTutorialDismissed, setMobileTutorialDismissed, triggerHaptic } = useInputStore(useShallow((s) => ({ isTouchDevice: s.isTouchDevice, mobileTutorialDismissed: s.mobileTutorialDismissed, setMobileTutorialDismissed: s.setMobileTutorialDismissed, triggerHaptic: s.triggerHaptic })));
 
   if (!isTouchDevice || mobileTutorialDismissed) return null;
 

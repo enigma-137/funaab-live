@@ -2,9 +2,10 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useInputStore } from '../../stores/inputStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export const TapRippleEffect: React.FC = () => {
-  const { tapRipple, clearTapRipple } = useInputStore();
+  const { tapRipple, clearTapRipple } = useInputStore(useShallow((s) => ({ tapRipple: s.tapRipple, clearTapRipple: s.clearTapRipple })));
   const ringRef = useRef<THREE.Mesh>(null);
   const diskRef = useRef<THREE.Mesh>(null);
   const startTimeRef = useRef<number>(0);

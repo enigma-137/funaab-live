@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { clampPitch } from '../game/camera/cameraMath';
 
 export interface TapRipple {
   id: number;
@@ -99,9 +100,10 @@ export const useInputStore = create<InputState>((set) => ({
 
   rotateCamera: (deltaYaw, deltaPitch) =>
     set((state) => {
+      if (!Number.isFinite(deltaYaw) || !Number.isFinite(deltaPitch)) return state;
       const newYaw = state.cameraYaw + deltaYaw;
       // Clamp pitch between -0.2 (looking slightly upward) and 0.65 (top-down tilt)
-      const newPitch = Math.max(-0.2, Math.min(0.65, state.cameraPitch + deltaPitch));
+      const newPitch = clampPitch(state.cameraPitch + deltaPitch);
       return { cameraYaw: newYaw, cameraPitch: newPitch };
     }),
 

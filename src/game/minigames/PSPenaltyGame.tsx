@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuthStore } from '../../stores/authStore';
 import { useGameStore } from '../../stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { networkManager } from '../multiplayer/networkManager';
 import { X, Play, Trophy, Shield, ArrowLeft, ArrowUp, ArrowRight } from 'lucide-react';
 
 export const PSPenaltyGame: React.FC = () => {
   const { user } = useAuthStore();
-  const { activeMatches, currentMatch, psViewState, setActiveModal, setCurrentMatch } = useGameStore();
+  const { activeMatches, currentMatch, psViewState, setActiveModal, setCurrentMatch } = useGameStore(useShallow((s) => ({ activeMatches: s.activeMatches, currentMatch: s.currentMatch, psViewState: s.psViewState, setActiveModal: s.setActiveModal, setCurrentMatch: s.setCurrentMatch })));
   const [selectedDirection, setSelectedDirection] = useState<'left' | 'center' | 'right' | null>(null);
   const connectionId = useGameStore((state) => state.myConnectionId);
 

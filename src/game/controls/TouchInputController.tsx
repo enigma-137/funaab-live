@@ -1,107 +1,117 @@
-import {useHostelStore} from '../../stores/hostelStore';
-import React, { useRef } from 'react';
-import { useThree, ThreeEvent } from '@react-three/fiber';
+import { useHostelStore } from '../../stores/hostelStore';
+import React, { useEffect } from 'react';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useInputStore } from '../../stores/inputStore';
 import { useGameStore } from '../../stores/gameStore';
+import { swipeToRotation } from '../camera/cameraMath';
+import { CameraGestureTracker } from './cameraGesture';
 
-export const TouchInputController: React.FC = () => {
-  const {
-    rotateCamera,
-    setTargetDestination,
-    setTapRipple,
-    triggerHaptic,
-    isInputFocused,
-  } = useInputStore();
-  const { activeModal } = useGameStore();
+// Tap-to-move resolves against the ground plane (same extent as the old invisible 310m raycast mesh).
+const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.01);
+const GROUND_HALF_EXTENT = 155;
+const _ndc = new THREE.Vector2();
+const _hit = new THREE.Vector3();
+const _raycaster = new THREE.Raycaster();
 
-  const pointerDownState = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    lastX: number;
-    lastY: number;
-    startTime: number;
-    isDragging: boolean;
-  } | null>(null);
-
-  const { camera } = useThree();
-
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
-    // If a modal is open or user is typing in chat/inputs, ignore 3D canvas touch gestures
-    if (activeModal || isInputFocused || useHostelStore.getState().preview || useHostelStore.getState().pose) return;
-
-    // Only handle primary button / touch
-    if (e.nativeEvent.button !== undefined && e.nativeEvent.button !== 0) return;
-
-    pointerDownState.current = {
-      pointerId: e.nativeEvent.pointerId,
-      startX: e.nativeEvent.clientX,
-      startY: e.nativeEvent.clientY,
-      lastX: e.nativeEvent.clientX,
-      lastY: e.nativeEvent.clientY,
-      startTime: performance.now(),
-      isDragging: false,
-    };
-  };
-
-  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
-    const state = pointerDownState.current;
-    if (!state || state.pointerId !== e.nativeEvent.pointerId) return;
-
-    const currentX = e.nativeEvent.clientX;
-    const currentY = e.nativeEvent.clientY;
-    const dx = currentX - state.lastX;
-    const dy = currentY - state.lastY;
-    const totalDist = Math.hypot(currentX - state.startX, currentY - state.startY);
-
-    if (totalDist > 8 || state.isDragging) {
-      state.isDragging = true;
-      // Drag to rotate / orbit camera
-      const yawSensitivity = 0.0055;
-      const pitchSensitivity = 0.0035;
-      rotateCamera(-dx * yawSensitivity, dy * pitchSensitivity);
-    }
-
-    state.lastX = currentX;
-    state.lastY = currentY;
-  };
-
-  const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
-    if(useHostelStore.getState().preview||useHostelStore.getState().pose){pointerDownState.current=null;return;}
-    const state = pointerDownState.current;
-    if (!state || state.pointerId !== e.nativeEvent.pointerId) return;
-
-    const totalDist = Math.hypot(e.nativeEvent.clientX - state.startX, e.nativeEvent.clientY - state.startY);
-    const duration = performance.now() - state.startTime;
-
-    pointerDownState.current = null;
-
-    // If it was a quick tap without significant drag, perform tap-to-move
-    if (totalDist < 10 && duration < 400) {
-      if (e.point) {
-        const dest: [number, number, number] = [e.point.x, 0, e.point.z];
-        triggerHaptic(18);
-        setTapRipple(dest);
-        setTargetDestination(dest);
-      }
-    }
-  };
-
+const gameplayInputBlocked = (): boolean => {
+  const hostel = useHostelStore.getState();
   return (
-    <group>
-      {/* Invisible ground plane overlay for raycasting taps across the entire campus area */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.01, 0]}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        visible={false}
-      >
-        <planeGeometry args={[310, 310]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-    </group>
+    Boolean(useGameStore.getState().activeModal) ||
+    useInputStore.getState().isInputFocused ||
+    Boolean(hostel.preview) ||
+    Boolean(hostel.pose)
   );
+};
+
+/**
+ * Canvas gesture controller: one-finger swipe (or mouse drag) orbits the camera,
+ * a quick tap walks to the tapped ground point. Listens on the canvas element
+ * directly so swipes over the sky or buildings rotate just as well as over ground.
+ */
+export const TouchInputController: React.FC = () => {
+  const gl = useThree((s) => s.gl);
+  const camera = useThree((s) => s.camera);
+
+  useEffect(() => {
+    const el = gl.domElement;
+    const tracker = new CameraGestureTracker();
+    const input = useInputStore.getState();
+
+    const endDrag = () => {
+      tracker.reset();
+      if (useInputStore.getState().isDraggingCamera) input.setIsDraggingCamera(false);
+    };
+
+    const sample = (e: PointerEvent) => ({ pointerId: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now() });
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (gameplayInputBlocked()) return;
+      tracker.down(sample(e));
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!tracker.active) return;
+      if (gameplayInputBlocked()) {
+        endDrag();
+        return;
+      }
+      const result = tracker.move(sample(e));
+      if (result.kind !== 'rotate') return;
+      const [dYaw, dPitch] = swipeToRotation(result.dx, result.dy, el.clientWidth, el.clientHeight, e.pointerType);
+      const store = useInputStore.getState();
+      if (!store.isDraggingCamera) store.setIsDraggingCamera(true);
+      store.rotateCamera(dYaw, dPitch);
+    };
+
+    const onUp = (e: PointerEvent) => {
+      const result = tracker.up(sample(e));
+      if (!tracker.active && useInputStore.getState().isDraggingCamera) input.setIsDraggingCamera(false);
+      if (result.kind !== 'tap' || gameplayInputBlocked()) return;
+
+      const rect = el.getBoundingClientRect();
+      _ndc.set(((result.x - rect.left) / rect.width) * 2 - 1, -((result.y - rect.top) / rect.height) * 2 + 1);
+      _raycaster.setFromCamera(_ndc, camera);
+      if (!_raycaster.ray.intersectPlane(GROUND_PLANE, _hit)) return;
+      if (Math.abs(_hit.x) > GROUND_HALF_EXTENT || Math.abs(_hit.z) > GROUND_HALF_EXTENT) return;
+
+      const dest: [number, number, number] = [_hit.x, 0, _hit.z];
+      const store = useInputStore.getState();
+      store.triggerHaptic(18);
+      store.setTapRipple(dest);
+      store.setTargetDestination(dest);
+    };
+
+    const onCancel = (e: PointerEvent) => {
+      tracker.cancel(e.pointerId);
+      if (!tracker.active && useInputStore.getState().isDraggingCamera) input.setIsDraggingCamera(false);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') endDrag();
+    };
+
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onCancel);
+    window.addEventListener('blur', endDrag);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('blur', endDrag);
+      document.removeEventListener('visibilitychange', onVisibility);
+      endDrag();
+    };
+  }, [gl, camera]);
+
+  return null;
 };
