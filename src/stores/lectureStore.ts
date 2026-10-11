@@ -6,11 +6,18 @@ import { networkManager } from '../game/multiplayer/networkManager';
 import { useGameStore } from './gameStore';
 import { useInputStore } from './inputStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { getHallScheduleState, normalizeHallLocationId } from '../config/lectureSchedule';
+import { getLectureHall } from '../config/lectureHalls';
+
+// 'scheduled' joins the timetabled class (allowance-eligible); 'practice' replays it off-schedule.
+export type AttendanceMode = 'scheduled' | 'practice';
 
 interface LectureStoreState {
   isInClassroom: boolean;
+  currentHallId: string | null;
   currentLecture: LectureDefinition | null;
-  mySeatNumber: number | null;
+  mySeatNumber: number | null; // null while standing
+  attendanceMode: AttendanceMode | null; // null while not attending
   isHandRaised: boolean;
   attendanceStartedAt: number | null;
   attendanceRewardClaimed: boolean;
@@ -18,7 +25,11 @@ interface LectureStoreState {
   isTransitioning: boolean;
   classroomReturnPosition: [number, number, number] | null;
 
-  enterLecture: (lecture: LectureDefinition, seatNumber?: number) => void;
+  enterHall: (hallId: string) => void;
+  sitDown: (seatNumber: number) => void;
+  standUp: () => void;
+  startAttendance: () => void;
+  endAttendance: () => void;
   leaveLecture: () => void;
   toggleRaiseHand: () => void;
   syncClassroomState: (state: ClassroomState) => void;
@@ -28,8 +39,10 @@ interface LectureStoreState {
 
 export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   isInClassroom: false,
+  currentHallId: null,
   currentLecture: null,
   mySeatNumber: null,
+  attendanceMode: null,
   isHandRaised: false,
   attendanceStartedAt: null,
   attendanceRewardClaimed: false,
@@ -37,65 +50,100 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   isTransitioning: false,
   classroomReturnPosition: null,
 
-  enterLecture: (lecture: LectureDefinition, seatNumber = 1) => {
+  // Walk into a hall (standing at the back door). Works at any time of day; attendance only
+  // counts toward the allowance while the hall's timetabled class is in session.
+  enterHall: (hallInput: string) => {
     if (networkManager.room === 'world:funaab:library') {
       window.dispatchEvent(new CustomEvent('library-access-ended', {detail: 'You have returned to campus. Open your timetable to join the lecture.'}));
       return;
     }
+    if (get().isInClassroom || get().isTransitioning) return;
+    const hall = getLectureHall(normalizeHallLocationId(hallInput));
+    const lecture = getHallScheduleState(hall.id).lecture;
     set({ isTransitioning: true });
-    const returnPosition = [...useGameStore.getState().myPosition] as [number, number, number];
     useInputStore.getState().clearTargetDestination();
 
-    // Transition into classroom instance
     setTimeout(() => {
-      const now = Date.now();
-      const initialSpeech = lecture.timeline[0]?.text || 'Welcome to class. Please take your seats.';
-      const initialBoard = lecture.timeline[0]?.boardTopic || `${lecture.courseCode}: ${lecture.title}`;
-
       set({
         isInClassroom: true,
+        currentHallId: hall.id,
         currentLecture: lecture,
-        mySeatNumber: seatNumber,
+        mySeatNumber: null,
+        attendanceMode: null,
         isHandRaised: false,
-        attendanceStartedAt: now,
+        attendanceStartedAt: null,
         attendanceRewardClaimed: false,
         isTransitioning: false,
-        classroomReturnPosition: returnPosition,
+        // Always come back out in front of this hall's arch, clear of its pillars.
+        classroomReturnPosition: hall.exit,
         classroomState: {
           lectureId: lecture.id,
           definition: lecture,
-          startedAt: now,
+          startedAt: Date.now(),
           elapsedSeconds: 0,
           status: 'in_progress',
-          currentBoardText: initialBoard,
-          currentLecturerSpeech: initialSpeech,
+          currentBoardText: lecture.timeline[0]?.boardTopic || `${lecture.courseCode}: ${lecture.title}`,
+          currentLecturerSpeech: 'Find a free seat, then join the lecture.',
           activeStudents: {},
         },
       });
-
-      // Notify multiplayer server to enter lecture sub-room
-      networkManager.enterLectureRoom(lecture.id, seatNumber);
       useGameStore.getState().setActiveModal(null);
     }, 400);
+  },
+
+  sitDown: (seatNumber: number) => {
+    const { currentLecture, isInClassroom, mySeatNumber } = get();
+    if (!isInClassroom || !currentLecture || mySeatNumber === seatNumber) return;
+    if (mySeatNumber !== null) get().standUp();
+    set({ mySeatNumber: seatNumber, isHandRaised: false });
+    // Seated players join the lecture's multiplayer room so classmates see them in their seat.
+    networkManager.enterLectureRoom(currentLecture.id, seatNumber);
+  },
+
+  standUp: () => {
+    const { currentLecture, mySeatNumber } = get();
+    if (mySeatNumber === null) return;
+    get().endAttendance();
+    if (currentLecture) networkManager.leaveLectureRoom(currentLecture.id);
+    set({ mySeatNumber: null, isHandRaised: false });
+  },
+
+  startAttendance: () => {
+    const { currentHallId, currentLecture, mySeatNumber, attendanceMode, classroomState } = get();
+    if (!currentLecture || mySeatNumber === null || attendanceMode) return;
+    const mode: AttendanceMode = getHallScheduleState(currentHallId).status === 'active' ? 'scheduled' : 'practice';
+    const now = Date.now();
+    set({
+      attendanceMode: mode,
+      attendanceStartedAt: now,
+      attendanceRewardClaimed: false,
+      classroomState: classroomState && {
+        ...classroomState,
+        startedAt: now,
+        currentLecturerSpeech: currentLecture.timeline[0]?.text || 'Welcome to class. Please take your seats.',
+        currentBoardText: currentLecture.timeline[0]?.boardTopic || classroomState.currentBoardText,
+      },
+    });
+  },
+
+  endAttendance: () => {
+    const state = get();
+    if (!state.attendanceMode) return;
+    // Allowance only for the timetabled class, after at least 30 seconds (server re-checks both).
+    if (state.attendanceMode === 'scheduled' && state.attendanceStartedAt && !state.attendanceRewardClaimed) {
+      const durationSec = Math.floor((Date.now() - state.attendanceStartedAt) / 1000);
+      if (durationSec >= 30) {
+        get().claimAttendanceAllowance(useAuthStore.getState().user?.id || 'local');
+      }
+    }
+    set({ attendanceMode: null, attendanceStartedAt: null, isHandRaised: false });
   },
 
   leaveLecture: () => {
     const state = get();
     if (!state.currentLecture || state.isTransitioning) return;
 
-    const current = state.currentLecture;
-    const started = state.attendanceStartedAt;
-
-    // Check attendance duration
-    if (started && !state.attendanceRewardClaimed) {
-      const durationSec = Math.floor((Date.now() - started) / 1000);
-      // If attended for at least 30 seconds in game simulation, grant attendance allowance
-      if (durationSec >= 30) {
-        get().claimAttendanceAllowance(useAuthStore.getState().user?.id || 'local');
-      }
-    }
-
-    networkManager.leaveLectureRoom(current.id);
+    get().standUp();
     useGameStore.setState((game) => ({
       myPosition: state.classroomReturnPosition || game.myPosition,
       myAnimation: 'idle',
@@ -109,8 +157,10 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
 
     set({
       isInClassroom: false,
+      currentHallId: null,
       currentLecture: null,
       mySeatNumber: null,
+      attendanceMode: null,
       isHandRaised: false,
       attendanceStartedAt: null,
       attendanceRewardClaimed: false,

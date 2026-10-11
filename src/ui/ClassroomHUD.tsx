@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLectureStore } from '../stores/lectureStore';
 import { useSocialStore } from '../stores/socialStore';
 import { networkManager } from '../game/multiplayer/networkManager';
+import { useGameStore } from '../stores/gameStore';
+import { freeHallSeats, getLectureHall } from '../config/lectureHalls';
 import {
   GraduationCap,
   Users,
@@ -12,6 +14,10 @@ import {
   Clock,
   CheckCircle2,
   X,
+  Armchair,
+  PlayCircle,
+  StopCircle,
+  ArrowUpFromLine,
 } from 'lucide-react';
 
 export const ClassroomHUD: React.FC = () => {
@@ -24,7 +30,17 @@ export const ClassroomHUD: React.FC = () => {
     classroomState,
     toggleRaiseHand,
     leaveLecture,
+    currentHallId,
+    attendanceMode,
+    sitDown,
+    standUp,
+    startAttendance,
+    endAttendance,
   } = useLectureStore();
+  const players = useGameStore((s) => s.players);
+  const hall = getLectureHall(currentHallId);
+  const isSeated = mySeatNumber !== null;
+  const isAttending = attendanceMode !== null;
 
   const { messages } = useSocialStore();
 
@@ -38,7 +54,10 @@ export const ClassroomHUD: React.FC = () => {
 
   // Track attendance duration
   useEffect(() => {
-    if (!attendanceStartedAt) return;
+    if (!attendanceStartedAt) {
+      setAttendanceDuration(0);
+      return;
+    }
     const interval = setInterval(() => {
       setAttendanceDuration(Math.floor((Date.now() - attendanceStartedAt) / 1000));
     }, 1000);
@@ -85,6 +104,30 @@ export const ClassroomHUD: React.FC = () => {
 
   if (!currentLecture) return null;
 
+  const takeSeat = () => {
+    const taken = [
+      ...Object.values(classroomState?.activeStudents || {}).map((s) => s.seatNumber),
+      ...Object.values(players).filter((p) => p.currentLectureId === currentLecture.id && p.seatNumber).map((p) => p.seatNumber!),
+    ];
+    const seat = freeHallSeats(hall, taken)[0];
+    if (seat) sitDown(seat.seatNumber);
+  };
+  // One primary action that walks the player through the attendance flow, plus a secondary
+  // action (stand up while seated, raise hand while attending).
+  const primary = !isSeated
+    ? { label: 'Take a Seat', short: 'Sit', icon: Armchair, onClick: takeSeat, tone: 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400' }
+    : !isAttending
+      ? { label: 'Join Lecture', short: 'Join', icon: PlayCircle, onClick: startAttendance, tone: 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400' }
+      : { label: 'End Attendance', short: 'End', icon: StopCircle, onClick: endAttendance, tone: 'bg-slate-900/90 hover:bg-slate-800 text-white border-slate-600' };
+  const PrimaryIcon = primary.icon;
+  const statusText = !isSeated
+    ? 'Standing — tap a highlighted seat or Take a Seat'
+    : !isAttending
+      ? `Seat #${mySeatNumber} — Join the lecture to start attendance`
+      : attendanceMode === 'scheduled'
+        ? 'Attending timetabled class'
+        : 'Practice session (outside class time, no allowance)';
+
   return (
     <div className="fixed inset-0 pointer-events-none z-40 font-['Plus_Jakarta_Sans'] select-none">
       <div className="hidden sm:flex absolute inset-0 flex-col justify-between p-4 sm:p-6">
@@ -102,14 +145,15 @@ export const ClassroomHUD: React.FC = () => {
                   {currentLecture.courseCode} — {currentLecture.title}
                 </h1>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30">
-                  {currentLecture.college}
+                  {hall.collegeCode}
                 </span>
               </div>
               <div className="text-[11px] text-slate-300 flex items-center gap-2">
-                <span>{currentLecture.locationName}</span>
+                <span>{hall.hallName}</span>
                 <span>•</span>
-                <span className="font-bold text-amber-400">Seat #{mySeatNumber || 1}</span>
+                <span className="font-bold text-amber-400">{isSeated ? `Seat #${mySeatNumber}` : 'Standing'}</span>
               </div>
+              <div className="text-[10px] text-emerald-300/90 mt-0.5">{statusText}</div>
             </div>
           </div>
         </div>
@@ -123,7 +167,7 @@ export const ClassroomHUD: React.FC = () => {
             <span className="font-mono font-bold text-white">
               {Math.floor(attendanceDuration / 60)}m {attendanceDuration % 60}s
             </span>
-            {attendanceDuration >= 60 && (
+            {attendanceMode === 'scheduled' && attendanceDuration >= 30 && (
               <span className="ml-1 text-[10px] font-bold text-emerald-400 flex items-center gap-0.5">
                 <CheckCircle2 className="w-3 h-3" /> +₦{currentLecture.attendanceAllowance}
               </span>
@@ -207,8 +251,24 @@ export const ClassroomHUD: React.FC = () => {
 
         {/* Classroom Controls Pill */}
         <div className="flex items-center gap-3 pointer-events-auto">
-          {/* Raise Hand Button */}
           <button
+            onClick={primary.onClick}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs transition transform active:scale-95 shadow-xl border ${primary.tone}`}
+          >
+            <PrimaryIcon className="w-4 h-4" />
+            <span>{primary.label}</span>
+          </button>
+          {isSeated && !isAttending && (
+            <button
+              onClick={standUp}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700 font-bold text-xs shadow-xl"
+            >
+              <ArrowUpFromLine className="w-4 h-4" />
+              <span>Stand Up</span>
+            </button>
+          )}
+          {/* Raise Hand Button */}
+          {isAttending && <button
             onClick={toggleRaiseHand}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs transition transform active:scale-95 shadow-xl ${
               isHandRaised
@@ -218,7 +278,7 @@ export const ClassroomHUD: React.FC = () => {
           >
             <Hand className="w-4 h-4" />
             <span>{isHandRaised ? 'Hand Raised ✋' : 'Raise Hand'}</span>
-          </button>
+          </button>}
 
           {/* Leave Class Button */}
           <button
@@ -226,7 +286,7 @@ export const ClassroomHUD: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-500/40 text-xs font-bold transition shadow-xl"
           >
             <LogOut className="w-4 h-4" />
-            <span>Leave Class</span>
+            <span>Leave Hall</span>
           </button>
         </div>
       </div>
@@ -314,13 +374,34 @@ export const ClassroomHUD: React.FC = () => {
       >
         <button
           type="button"
-          onClick={toggleRaiseHand}
-          aria-label={isHandRaised ? 'Hand raised' : 'Raise hand'}
-          className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-bold shadow-lg ${isHandRaised ? 'border-amber-300 bg-amber-500 text-slate-950' : 'border-slate-600 bg-slate-900/95 text-white'}`}
+          onClick={primary.onClick}
+          aria-label={primary.label}
+          className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-bold shadow-lg ${primary.tone}`}
         >
-          <Hand className="h-4 w-4 shrink-0" />
-          <span>{isHandRaised ? 'Raised' : 'Raise'}</span>
+          <PrimaryIcon className="h-4 w-4 shrink-0" />
+          <span>{primary.short}</span>
         </button>
+        {isSeated && (isAttending ? (
+          <button
+            type="button"
+            onClick={toggleRaiseHand}
+            aria-label={isHandRaised ? 'Hand raised' : 'Raise hand'}
+            className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 text-xs font-bold shadow-lg ${isHandRaised ? 'border-amber-300 bg-amber-500 text-slate-950' : 'border-slate-600 bg-slate-900/95 text-white'}`}
+          >
+            <Hand className="h-4 w-4 shrink-0" />
+            <span>{isHandRaised ? 'Raised' : 'Raise'}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={standUp}
+            aria-label="Stand up"
+            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900/95 px-2 text-xs font-bold text-white shadow-lg"
+          >
+            <ArrowUpFromLine className="h-4 w-4 shrink-0" />
+            <span>Stand</span>
+          </button>
+        ))}
         <button
           type="button"
           onClick={() => setIsChatOpen((open) => !open)}
@@ -347,10 +428,10 @@ export const ClassroomHUD: React.FC = () => {
             <div className="text-3xl">🚪</div>
             <div>
               <h3 className="text-lg font-bold text-white font-['Outfit']">
-                Leave {currentLecture.title}?
+                Leave {hall.hallName}?
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                You will step outside {currentLecture.locationName} back onto the campus grounds.
+                You will step back outside onto the {hall.collegeCode === 'CLT' ? 'campus' : hall.collegeCode} forecourt.
               </p>
             </div>
 
