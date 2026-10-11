@@ -27,7 +27,8 @@
     "test:keke:worker": "tsx scripts/test-keke-worker.ts",
     "test:keke:db": "node scripts/test-keke-db.cjs",
     "test:campus:browser": "node scripts/test-campus-browser.cjs",
-    "test:camera": "tsx scripts/test-mobile-camera.ts"
+    "test:camera": "tsx scripts/test-mobile-camera.ts",
+    "test:halls": "tsx scripts/test-lecture-halls.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

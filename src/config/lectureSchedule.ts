@@ -1,5 +1,6 @@
-import { LectureDefinition } from '../types/game';
+import { LectureDefinition, LectureScriptAction } from '../types/game';
 import { getLagosTime } from '../utils/lagosTime';
+import { DEFAULT_LECTURE_HALL_ID, LECTURE_HALLS, getLectureHall } from './lectureHalls';
 
 export const BETA_SCHEDULE_CONFIG = {
   LECTURE_DURATION_MINUTES: 12,
@@ -7,12 +8,44 @@ export const BETA_SCHEDULE_CONFIG = {
   CYCLE_DURATION_MINUTES: 15, // 12 mins lecture + 3 mins break = 15 min cycles
   ACADEMIC_HOUR_START: 9,     // 9:00 AM WAT
   ACADEMIC_HOUR_END: 17,      // 5:00 PM (17:00) WAT
-  HALL_OFFSETS_MINUTES: {
-    'colfhec-lecture-hall': 0,  // :00-:12 lecture, :12-:15 break
-    'central-lecture-hall': 5,  // :05-:17 lecture, :17-:20 break
-    'colbios-lecture-hall': 10, // :10-:22 lecture, :22-:25 break
-  } as Record<string, number>,
+  // Staggered starts per hall (COLFHEC :00, CLT :05, COLBIOS :10, ...) come from the hall config.
+  HALL_OFFSETS_MINUTES: Object.fromEntries(LECTURE_HALLS.map((h) => [h.id, h.scheduleOffsetMinutes])) as Record<string, number>,
 };
+
+
+// Compact definition for college lectures: five beats over ~3.5 minutes of the 12-minute slot.
+function collegeLecture(
+  collegeLocationId: string,
+  id: string,
+  courseCode: string,
+  title: string,
+  lecturerName: string,
+  lecturerTitle: string,
+  shirtColor: string,
+  skinColor: string,
+  description: string,
+  beats: Array<[string, string]>
+): LectureDefinition {
+  const hall = LECTURE_HALLS.find((h) => h.collegeLocationId === collegeLocationId && h.id === `${collegeLocationId}-lecture-hall`)!;
+  const times = [0, 20, 60, 110, 200];
+  const actions: LectureScriptAction['action'][] = ['speak', 'board', 'speak', 'gesture', 'speak'];
+  return {
+    id,
+    courseCode,
+    title,
+    college: hall.collegeCode,
+    locationId: hall.id,
+    locationName: hall.hallName,
+    lecturerName,
+    lecturerTitle,
+    lecturerAvatar: { shirtColor, skinColor },
+    durationMinutes: 12,
+    maxCapacity: 30,
+    attendanceAllowance: 100,
+    description,
+    timeline: beats.map(([text, boardTopic], i) => ({ atSeconds: times[i] ?? i * 40, action: actions[i] ?? 'speak', text, boardTopic })),
+  };
+}
 
 export const LECTURE_SCHEDULE: LectureDefinition[] = [
   {
@@ -178,6 +211,64 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
       },
     ],
   },
+  ...[
+    collegeLecture('coleng', 'funaab-cve-201', 'CVE 201', 'Strength of Materials', 'Engr. Dr. Okonkwo', 'Senior Lecturer, Civil Engineering', '#1e3a8a', '#6b4423',
+      'Stress, strain and the elastic behaviour of steel and timber members used in farm structures.', [
+        ['Good morning, engineers. CVE 201 — Strength of Materials. Notebooks out, please.', 'CVE 201: Strength of Materials\nTopic: Stress, Strain & Hooke\'s Law'],
+        ['Stress is force per unit area. Strain is the change in length over the original length.', 'σ = F / A   (N/m² = Pa)\nε = ΔL / L₀   (dimensionless)'],
+        ['Within the elastic limit, stress is proportional to strain. That constant is Young\'s modulus.', 'Hooke\'s Law: σ = E·ε\nE(steel) ≈ 200 GPa   E(timber) ≈ 10 GPa'],
+        ['Why do we prefer steel over timber for a long-span grain store roof? Raise your hand.', 'Design check: σ_working ≤ σ_yield / Factor of Safety'],
+        ['Good. Next week we load a mild steel bar in the structures laboratory. Class dismissed!', 'Class Dismissed!\nLab: Tensile test of mild steel'],
+      ]),
+    collegeLecture('colvet', 'funaab-vet-201', 'VET 201', 'Veterinary Anatomy I', 'Dr. Salami', 'Lecturer, Veterinary Anatomy', '#7f1d1d', '#8d5524',
+      'Topographic anatomy of the bovine forelimb and the principles of comparative osteology.', [
+        ['Welcome to VET 201. Today we start the forelimb of the ox.', 'VET 201: Veterinary Anatomy I\nTopic: Bovine Forelimb Osteology'],
+        ['The scapula, humerus, radius and ulna form the proximal forelimb skeleton.', 'Scapula → Humerus → Radius & Ulna → Carpus → Metacarpus'],
+        ['Notice that in ruminants the radius and ulna are partially fused. Compare this with the dog.', 'Comparative: Ox (fused radius-ulna) vs Dog (separate)'],
+        ['Who can name the joint between the humerus and the radius? Raise your hand.', 'Joints: Shoulder • Elbow • Carpal'],
+        ['Correct. Revise the bone specimens in the museum before Thursday\'s practical. Dismissed!', 'Class Dismissed!\nPractical: Bone identification'],
+      ]),
+    collegeLecture('colanim', 'funaab-anp-201', 'ANP 201', 'Introduction to Animal Production', 'Prof. Adebayo', 'Professor of Animal Production', '#9a3412', '#5c381e',
+      'Livestock systems in Nigeria, feed conversion and the economics of poultry and small ruminant farms.', [
+        ['Good afternoon. ANP 201 — Introduction to Animal Production.', 'ANP 201: Introduction to Animal Production\nTopic: Livestock Systems in Nigeria'],
+        ['We keep poultry, goats, sheep, pigs and cattle under extensive, semi-intensive and intensive systems.', 'Systems: Extensive • Semi-intensive • Intensive'],
+        ['Feed is about seventy percent of production cost, so feed conversion ratio matters.', 'FCR = Feed consumed (kg) / Weight gain (kg)\nBroilers ≈ 1.7 – 2.0'],
+        ['If a broiler eats 4kg of feed and gains 2kg, what is the FCR? Raise your hand.', 'Worked example: 4 kg ÷ 2 kg = ?'],
+        ['Exactly, two. Visit the university poultry unit this week to see it in practice. Dismissed!', 'Class Dismissed!\nVisit: FUNAAB Poultry Unit'],
+      ]),
+    collegeLecture('colplant', 'funaab-hrt-201', 'HRT 201', 'Principles of Horticulture', 'Dr. Mrs. Ogunleye', 'Senior Lecturer, Horticulture', '#3f6212', '#8d5524',
+      'Propagation of fruit and vegetable crops: seeds, cuttings, budding and grafting.', [
+        ['Welcome to HRT 201 — Principles of Horticulture.', 'HRT 201: Principles of Horticulture\nTopic: Plant Propagation'],
+        ['Plants are propagated sexually by seed or asexually by cuttings, layering, budding and grafting.', 'Sexual: Seed\nAsexual: Cuttings • Layering • Budding • Grafting'],
+        ['Grafting joins a scion to a rootstock. Mango and citrus orchards depend on it.', 'Graft union: Scion + Rootstock\nKeys: Cambium contact, clean cut, tight tie'],
+        ['Why would a farmer graft instead of planting seeds? Raise your hand.', 'Advantages: True-to-type • Early fruiting • Disease-tolerant rootstock'],
+        ['Well done. We graft citrus seedlings at the nursery next week. Dismissed!', 'Class Dismissed!\nPractical: Citrus budding'],
+      ]),
+    collegeLecture('colerm', 'funaab-emt-201', 'EMT 201', 'Principles of Environmental Management', 'Dr. Ibrahim', 'Lecturer, Environmental Management & Toxicology', '#115e59', '#5c381e',
+      'Environmental impact assessment, water quality indicators and sustainable resource use.', [
+        ['Good morning. EMT 201 — Principles of Environmental Management.', 'EMT 201: Environmental Management\nTopic: Environmental Impact Assessment'],
+        ['An EIA predicts the effects of a project on air, water, soil and people before it begins.', 'EIA stages: Screening → Scoping → Assessment → Mitigation → Monitoring'],
+        ['For rivers we track dissolved oxygen, BOD, turbidity and pH.', 'Water quality: DO • BOD • Turbidity • pH'],
+        ['What happens to dissolved oxygen when untreated waste enters the Ogun River? Raise your hand.', 'Organic load ↑ → BOD ↑ → DO ↓'],
+        ['Correct. Read the EIA case study on the course page before our next class. Dismissed!', 'Class Dismissed!\nReading: EIA case study'],
+      ]),
+    collegeLecture('colcoms', 'funaab-cyb-201', 'CYB 201', 'Foundations of Cyber Security', 'Dr. Eze', 'Lecturer, Cyber Security', '#312e81', '#8d5524',
+      'The CIA triad, common attacks and the basics of protecting accounts and networks.', [
+        ['Welcome to CYB 201 — Foundations of Cyber Security.', 'CYB 201: Foundations of Cyber Security\nTopic: The CIA Triad'],
+        ['Security protects Confidentiality, Integrity and Availability of information.', 'C — Confidentiality\nI — Integrity\nA — Availability'],
+        ['Phishing attacks confidentiality. Ransomware attacks availability.', 'Threats: Phishing • Malware • Ransomware • DDoS'],
+        ['Which part of the triad does a strong password protect? Raise your hand.', 'Defences: MFA • Strong passwords • Updates • Backups'],
+        ['Right. Turn on two-factor authentication on your student email today. Dismissed!', 'Class Dismissed!\nTask: Enable MFA'],
+      ]),
+    collegeLecture('colphys', 'funaab-phy-201', 'PHY 201', 'Mechanics & Properties of Matter', 'Dr. Akinola', 'Senior Lecturer, Physics', '#4c1d95', '#6b4423',
+      'Newton\'s laws, momentum and the elastic properties of solids and fluids.', [
+        ['Good afternoon, physicists. PHY 201 — Mechanics and Properties of Matter.', 'PHY 201: Mechanics & Properties of Matter\nTopic: Newton\'s Laws & Momentum'],
+        ['Newton\'s second law: force equals the rate of change of momentum.', 'F = dp/dt = m·a\np = m·v   (kg·m/s)'],
+        ['In a collision with no external force, total momentum is conserved.', 'm₁u₁ + m₂u₂ = m₁v₁ + m₂v₂'],
+        ['A 2kg ball moving at 3m/s hits a resting 1kg ball and stops. How fast does the second ball move? Raise your hand.', '2·3 + 1·0 = 2·0 + 1·v   →   v = ?'],
+        ['Six metres per second. Attempt problem set two before the tutorial. Class dismissed!', 'Class Dismissed!\nProblem Set 2'],
+      ]),
+  ],
 ];
 
 /**
@@ -185,15 +276,21 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
  * to standard canonical locationId: 'colfhec-lecture-hall' | 'central-lecture-hall' | 'colbios-lecture-hall'
  */
 export function normalizeHallLocationId(input?: string | null): string {
-  if (!input) return 'colfhec-lecture-hall';
+  if (!input) return DEFAULT_LECTURE_HALL_ID;
   const s = input.toLowerCase();
-  if (s.includes('central') || s.includes('clt') || s.includes('eng') || s.includes('203')) {
+  // Exact hall ids, world interactable ids and college location ids (e.g. 'coleng').
+  const hall = LECTURE_HALLS.find((h) => h.id === s || h.interactableId === s || h.collegeLocationId === s);
+  if (hall) return hall.id;
+  const lecture = LECTURE_SCHEDULE.find((l) => l.id === s);
+  if (lecture) return lecture.locationId;
+  // Legacy aliases kept for old links and `?forceLecture=` values.
+  if (s.includes('central') || s.includes('clt') || s.includes('203')) {
     return 'central-lecture-hall';
   }
   if (s.includes('colbios') || s.includes('bio') || s.includes('205')) {
     return 'colbios-lecture-hall';
   }
-  return 'colfhec-lecture-hall';
+  return DEFAULT_LECTURE_HALL_ID;
 }
 
 /**
@@ -369,7 +466,7 @@ export function getActiveLectureForTime(currentTimeMs = Date.now()): {
   nextLecture: LectureDefinition | null;
   nextStartTimeText: string;
 } {
-  const halls = ['colfhec-lecture-hall', 'central-lecture-hall', 'colbios-lecture-hall'];
+  const halls = LECTURE_HALLS.map((h) => h.id);
   const states = halls.map((h) => getHallScheduleState(h, currentTimeMs));
 
   // 1. Check if any hall has an active class right now
@@ -416,9 +513,7 @@ export function getNextLecture(currentTimeMs = Date.now()): LectureDefinition {
 }
 
 export function getAllCampusLecturesStatus(currentTimeMs = Date.now()): Record<string, HallScheduleState> {
-  return {
-    'colfhec-lecture-hall': getHallScheduleState('colfhec-lecture-hall', currentTimeMs),
-    'central-lecture-hall': getHallScheduleState('central-lecture-hall', currentTimeMs),
-    'colbios-lecture-hall': getHallScheduleState('colbios-lecture-hall', currentTimeMs),
-  };
+  return Object.fromEntries(LECTURE_HALLS.map((h) => [h.id, getHallScheduleState(h.id, currentTimeMs)]));
 }
+
+export const hallDisplayName = (hallId?: string | null) => getLectureHall(normalizeHallLocationId(hallId)).hallName;
