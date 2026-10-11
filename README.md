@@ -1,99 +1,138 @@
-# 🎓 FUNAAB Life (V0 Playable MVP)
+# FUNAAB Life
 
-> **"Lagos Life, but for FUNAAB students."**
-> A browser-based multiplayer social campus world built for FUNAAB (Federal University of Agriculture, Abeokuta) students.
+FUNAAB Life is a browser-based multiplayer campus world inspired by the Federal University of Agriculture, Abeokuta (FUNAAB). Explore the campus, meet other players, visit campus locations, ride a keke, and take part in student-life activities.
 
----
+This is an independent community project and is not affiliated with or endorsed by FUNAAB.
 
-## 🚀 Key Features in V0
+## Features
 
-- **3D Low-Poly FUNAAB Campus World**:
-  - **Ceremonial Main Gate**: Grand archway with security booth and resumption banners.
-  - **Car Park & Keke Terminal**: Dedicated stop for catching campus tricycles.
-  - **COLFHEC Academic Complex**: Multi-pillar faculty building.
-  - **FUNAAB Microfinance Bank & ATM**: Virtual banking with starter balance and ledger.
-  - **Mama Cass Campus Buka**: Food hut selling Jollof rice, chicken, beef suya, shawarma, and drinks.
-  - **Iyalode Hostel & Social Chill Square**: Gazebo with lounge seating and palm trees.
-  - **FUNAAB Game Den (PlayStation Room)**: 1v1 multiplayer penalty shootout minigame.
-  - **Sports Field**: Campus pitch with goalposts and football.
-- **Multiplayer & Movement**:
-  - 3rd-person avatar with WASD/Arrow keys, smooth camera follow, sprinting (Shift).
-  - Procedural animations (walking, running, idle breathing, sitting).
-  - Floating nameplate with username and College color badge.
-  - Snapshot interpolation at ~10Hz for butter-smooth remote player movement.
-- **Live Keke Napep System**:
-  - Procedural yellow tricycle that drives automatically along a campus route spline.
-  - Enter Keke (`[E]`) with ₦50 fare deduction, ride between stops, and exit whenever.
-- **Social & Proximity Chat**:
-  - Lightweight nearby chat UI showing college tags.
-  - Approach players to add friend, view college profile, mute, block, or report.
-- **Server-Authoritative Economy**:
-  - ₦5,000 initial resumption bonus.
-  - Purchases, fares, and peer-to-peer transfers update the transaction ledger.
-- **Data-Driven Architecture**:
-  - `src/worlds/funaab/world.json` defines all locations, routes, and interactables without hardcoding in the game engine.
+- 3D campus world with college buildings, hostels, shops, sports and social spaces.
+- Multiplayer avatars, campus chat, friends, and player safety tools.
+- Campus keke routes, jobs, a virtual wallet, inventory, and activities.
+- Supabase-backed authentication and persistence when configured.
+- A local WebSocket server for development and a Cloudflare Worker/Durable Objects backend for deployment.
 
----
+## Tech stack
 
-## 🛠️ Tech Stack
+- React, TypeScript, Vite, Three.js, React Three Fiber, and Zustand.
+- Supabase Auth and Postgres.
+- Cloudflare Workers and Durable Objects for the multiplayer backend.
 
-- **Client**: React 18, TypeScript, Three.js, React Three Fiber (`@react-three/fiber`), `@react-three/drei`, Tailwind CSS, Zustand, Lucide Icons.
-- **Realtime / Multiplayer**: Cloudflare Workers + Durable Objects (`worker/index.ts`) & built-in local WebSocket dev server (`server/index.ts`).
-- **Database & Auth**: Supabase Postgres & Auth (`supabase/migrations/001_initial_schema.sql`) with automatic instant guest/local fallback for zero-setup testing.
+## Requirements
 
----
+- Node.js 20 or newer and npm.
+- Supabase and Cloudflare accounts only if you want to run the persistent database or deploy the multiplayer Worker.
 
-## 🏁 How to Run Locally
+## Getting started
 
-### 1. Install Dependencies
-```bash
-npm install
-```
+1. Install dependencies:
 
-### 2. Start the Multiplayer Backend Server
-In terminal 1:
-```bash
-npm run server
-```
-*(Starts the WebSocket server on `ws://localhost:8787`)*
-
-### 3. Start the Frontend Dev Server
-In terminal 2:
-```bash
-npm run dev
-```
-*(Opens Vite on `http://localhost:5173`)*
-
----
-
-## 🧪 How to Test Multiplayer (Two Browser Windows)
-
-1. Open **Browser A** at `http://localhost:5173`.
-2. Enter username **Emmanuel**, select college **COLENG**, and click **"Enter FUNAAB Campus"**.
-3. Open **Browser B** (or an Incognito window) at `http://localhost:5173`.
-4. Enter username **Tobi**, select college **COLFHEC**, and click **"Enter FUNAAB Campus"**.
-5. **Move & See**: Both players see each other moving in realtime with college badges and smooth interpolation.
-6. **Chat**: Type a message in the bottom-left chat from Emmanuel; Tobi sees it immediately.
-7. **Social**: Walk Emmanuel close to Tobi -> press `[E]` -> Click **"Add Friend"**.
-8. **Keke Ride**: Walk to the Keke Park (`[-18, 18]`), wait for the yellow Keke, press `[E]` to board (₦50 deducted), and ride together to COLFHEC or the Hostel.
-9. **Food & Wallet**: Walk to **Mama Cass Buka** -> press `[E]` -> buy *Jollof Rice & Crispy Chicken (₦800)* -> check wallet balance and backpack inventory.
-10. **1v1 PlayStation Showdown**: Walk to the **PS Room** (`[-20, -38]`) -> Player A creates match -> Player B joins -> play 3 rounds of penalty shootout!
-
----
-
-## ☁️ Deployment
-
-### Cloudflare Workers (Multiplayer Room)
-1. Login to Cloudflare:
-   ```bash
-   npx wrangler login
+   ```sh
+   npm ci
    ```
-2. Deploy the Worker & Durable Object:
-   ```bash
-   npm run worker:deploy
-   ```
-3. Set `VITE_WS_URL=wss://<your-worker-subdomain>.workers.dev` in your frontend environment.
 
-### Supabase Database
-Run `supabase/migrations/001_initial_schema.sql` in the Supabase SQL Editor.
-Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`.
+2. Create your local environment file:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   On PowerShell, use `Copy-Item .env.example .env`.
+
+3. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` to your Supabase project URL and browser-safe publishable/anon key. Do not put a Supabase service-role key or any other secret in a `VITE_` variable; Vite bundles those values into the browser app.
+
+   For local guest-mode testing without Supabase, set `VITE_ENABLE_GUEST_MODE=true`. Do not enable guest mode for a public deployment unless that is intentional.
+
+4. Start the local multiplayer server and frontend in separate terminals:
+
+   ```sh
+   npm run server
+   ```
+
+   ```sh
+   npm run dev
+   ```
+
+   Open the URL printed by Vite (usually `http://localhost:5173`). The local frontend uses `ws://localhost:8787` for multiplayer by default. Set `VITE_WS_URL` only when you need a different WebSocket endpoint.
+
+## Supabase setup
+
+Create a Supabase project, then apply the SQL migrations in `supabase/migrations/` in numerical order using the Supabase SQL Editor or your preferred migration workflow. Configure the project URL and publishable/anon key in `.env`.
+
+The browser key is designed to be public. Protect data with the project's Row Level Security policies. Keep service-role keys and JWT signing secrets on the server/Worker only.
+
+## Cloudflare Worker
+
+For local Worker development:
+
+```sh
+npm run worker:dev
+```
+
+For local Worker credentials, create the ignored `.dev.vars` file with your own project values:
+
+```dotenv
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ALLOWED_ORIGINS=http://localhost:5173
+ENABLE_GUEST_MODE=true
+```
+
+For deployment, configure `SUPABASE_URL`, `ALLOWED_ORIGINS`, and `ENABLE_GUEST_MODE` as Worker variables for your own project. Replace the configured Supabase project URL in `wrangler.toml` when deploying a fork. Add privileged credentials as Cloudflare secrets, not as checked-in variables:
+
+```sh
+npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+```
+
+Only configure `SUPABASE_JWT_SECRET` if your deployment requires the legacy HS256 fallback. For deployment, authenticate with Wrangler and run:
+
+```sh
+npx wrangler login
+npm run worker:deploy
+```
+
+Set `VITE_WS_URL` in the frontend deployment environment to the deployed Worker's `wss://` URL.
+
+## Checks and tests
+
+Run the production TypeScript check and frontend build:
+
+```sh
+npm run build
+```
+
+Run the Worker type check:
+
+```sh
+npm run worker:typecheck
+```
+
+Focused local test suites include:
+
+```sh
+npm run test:student
+npm run test:hostel
+npm run test:campus
+npm run test:room
+npm run test:keke:worker
+```
+
+Some `:db` and `:browser` test scripts require their corresponding local services or browser-test setup; check the script before running one.
+
+## Project guide
+
+- `src/` — frontend, game world, UI, and shared configuration.
+- `server/` — local multiplayer WebSocket server.
+- `worker/` — Cloudflare multiplayer Worker and Durable Object.
+- `supabase/migrations/` — ordered database schema and policy migrations.
+- `scripts/` — focused test and verification scripts.
+
+Additional feature notes: [Hostel Life](./HOSTEL_LIFE.md), [Student Journey](./STUDENT_JOURNEY.md), and [Future Features](./FUTURE_FEATURES.md).
+
+## Contributing
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or pull request. In particular, never commit `.env` files, credentials, or production data.
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE).
