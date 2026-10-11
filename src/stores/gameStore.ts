@@ -10,6 +10,15 @@ import {
   ActivityFeedItem,
 } from '../types/game';
 
+export interface NavigationDestination {
+  id: string;
+  name: string;
+  shortName: string;
+  position: [number, number, number];
+  category?: string;
+  icon?: string;
+}
+
 interface GameState {
   isConnected: boolean;
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
@@ -46,6 +55,13 @@ interface GameState {
   activityEvents: ActivityFeedItem[];
   sendMoneyRecipient: { username: string; college?: string } | string | null;
 
+  // Navigation & Destination Guidance
+  navigationDestination: NavigationDestination | null;
+  setNavigationDestination: (dest: NavigationDestination | null) => void;
+  clearNavigationDestination: () => void;
+  openMap: () => void;
+  closeMap: () => void;
+
   // Active interaction prompt & Modals
   nearbyInteractable: InteractableZone | null;
   selectedPlayer: PlayerState | null;
@@ -71,6 +87,7 @@ interface GameState {
     | 'floral_world'
     | 'private_chat'
     | 'report_user'
+    | 'campus_map'
     | null;
 
   // Actions
@@ -128,6 +145,7 @@ interface GameState {
       | 'floral_world'
       | 'private_chat'
       | 'report_user'
+      | 'campus_map'
       | null
   ) => void;
   toggleDebugPhysics: () => void;
@@ -175,6 +193,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     },
   ],
   sendMoneyRecipient: null,
+  navigationDestination: null,
 
   nearbyInteractable: null,
   selectedPlayer: null,
@@ -405,6 +424,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     })),
 
   setSendMoneyRecipient: (sendMoneyRecipient) => set({ sendMoneyRecipient }),
+
+  setNavigationDestination: (navigationDestination) => set({ navigationDestination }),
+  clearNavigationDestination: () => set({ navigationDestination: null }),
+  openMap: () => set({ activeModal: 'campus_map' }),
+  closeMap: () => set((state) => ({ activeModal: state.activeModal === 'campus_map' ? null : state.activeModal })),
 
   setNearbyInteractable: (nearbyInteractable) => set({ nearbyInteractable }),
   setSelectedPlayer: (selectedPlayer) => set({ selectedPlayer }),

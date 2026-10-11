@@ -34,6 +34,7 @@ import { LectureHallModal } from './ui/LectureHallModal';
 import { FloralWorldModal } from './ui/FloralWorldModal';
 import { PrivateChatModal } from './ui/PrivateChatModal';
 import { ReportUserModal } from './ui/ReportUserModal';
+import { CampusMapModal } from './ui/CampusMapModal';
 import { DmNotificationToast } from './ui/DmNotificationToast';
 import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
 import { useLectureStore } from './stores/lectureStore';
@@ -157,6 +158,7 @@ export const App: React.FC = () => {
       )}
       {activeModal === 'private_chat' && <PrivateChatModal />}
       {activeModal === 'report_user' && <ReportUserModal />}
+      {activeModal === 'campus_map' && <CampusMapModal />}
 
       {/* First-time Mobile Touch Tutorial Overlay */}
       <MobileTutorialOverlay />

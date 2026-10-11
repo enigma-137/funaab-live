@@ -106,6 +106,13 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         handleInteraction();
       }
 
+      // Toggle Campus Map: 'M'
+      if (key === 'm') {
+        const { activeModal, setActiveModal } = useGameStore.getState();
+        setActiveModal(activeModal === 'campus_map' ? null : 'campus_map');
+        return;
+      }
+
       // Physics debug shortcut: 'P' or 'F3'
       if (key === 'p' || e.key === 'F3') {
         toggleDebugPhysics();
@@ -214,11 +221,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
 
     // 2. MOVEMENT: KEYBOARD (WASD) OR TAP-TO-MOVE
-    const forward = keysPressed.current['w'] || keysPressed.current['arrowup'] ? 1 : 0;
-    const backward = keysPressed.current['s'] || keysPressed.current['arrowdown'] ? 1 : 0;
-    const left = keysPressed.current['a'] || keysPressed.current['arrowleft'] ? 1 : 0;
-    const right = keysPressed.current['d'] || keysPressed.current['arrowright'] ? 1 : 0;
-    const isSprinting = keysPressed.current['shift'];
+    const isModalOpen = Boolean(useGameStore.getState().activeModal);
+    const forward = !isModalOpen && (keysPressed.current['w'] || keysPressed.current['arrowup']) ? 1 : 0;
+    const backward = !isModalOpen && (keysPressed.current['s'] || keysPressed.current['arrowdown']) ? 1 : 0;
+    const left = !isModalOpen && (keysPressed.current['a'] || keysPressed.current['arrowleft']) ? 1 : 0;
+    const right = !isModalOpen && (keysPressed.current['d'] || keysPressed.current['arrowright']) ? 1 : 0;
+    const isSprinting = !isModalOpen && Boolean(keysPressed.current['shift']);
 
     const moveZ = backward - forward;
     const moveX = right - left;

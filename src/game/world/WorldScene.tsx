@@ -1,5 +1,6 @@
 import { HostelEnvironment } from './HostelEnvironment';
 import { JobMarkers } from './JobMarkers';
+import { NavigationMarker } from './NavigationMarker';
 import { useHostelStore } from '../../stores/hostelStore';
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
@@ -61,8 +62,8 @@ export const WorldScene: React.FC = () => {
 
         <Suspense fallback={null}>
           <Physics key={roomId} debug={debugPhysics} gravity={[0, -9.81, 0]}>
-            {/* Static Campus Geometry with Colliders */}
-            {hostel ? <HostelEnvironment /> : <><CampusEnvironment /><JobMarkers /></>}
+            {/* Static Campus Geometry with Colliders & Navigation Waypoint */}
+            {hostel ? <HostelEnvironment /> : <><CampusEnvironment /><JobMarkers /><NavigationMarker /></>}
 
             {/* Autonomous Keke Route */}
             {!hostel && <><KekeVehicle id="keke-1"/><KekeVehicle id="keke-carpark"/></>}
