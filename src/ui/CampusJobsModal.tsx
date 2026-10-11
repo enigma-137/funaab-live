@@ -64,7 +64,6 @@ export const CampusJobsModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {error && <p role="alert" className="text-amber-200">{error} <button onClick={load}>Reload saved job</button></p>}
           {busy && <p role="status">Saving job progress…</p>}
@@ -74,7 +73,6 @@ export const CampusJobsModal: React.FC = () => {
             </div>
           )}
 
-          {/* Active Job Card if active */}
           {activeJob && (
             <div className="p-4 rounded-2xl bg-emerald-950/40 border-2 border-emerald-400 shadow-xl space-y-3">
               <div className="flex items-center justify-between">

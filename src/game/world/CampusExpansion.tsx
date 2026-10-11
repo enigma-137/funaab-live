@@ -1,15 +1,23 @@
 import React, { useRef } from 'react';
-import { Html, Line } from '@react-three/drei';
+import { Html, Line, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
-import { campusLocations, locationById, type Point } from '../../config/campusLocations';
+import { campusLocations, collegeCatalogue, locationById, type Point } from '../../config/campusLocations';
 import { pedestrianPaths } from '../../config/campusWorld';
 import { roadEdges, roadNodes } from '../../config/kekeRoutes';
 import { useGameStore } from '../../stores/gameStore';
 const cube=new THREE.BoxGeometry(1,1,1);
 const materials={wall:new THREE.MeshStandardMaterial({color:'#e9e5d8'}),roof:new THREE.MeshStandardMaterial({color:'#344957'}),glass:new THREE.MeshStandardMaterial({color:'#387b8c'}),wood:new THREE.MeshStandardMaterial({color:'#997354'})};
 const Block=({p,s,m='wall'}:{p:Point;s:Point;m?:keyof typeof materials})=><mesh geometry={cube} material={materials[m]} position={p} scale={s}/>;
+export function CollegeWallSign({position,width,height,code,name}:{position:Point;width:number;height:number;code:string;name:string}){
+  return <group position={position}>
+    <mesh position={[0,0,-.06]} castShadow><boxGeometry args={[width,height,.18]}/><meshStandardMaterial color="#08743b" emissive="#043b20" emissiveIntensity={.12} roughness={.45}/></mesh>
+    <Text position={[0,0,.04]} fontSize={height*.25} maxWidth={width-.7} lineHeight={1.08} color="white" outlineColor="#064e2b" outlineWidth={.012} textAlign="center" anchorX="center" anchorY="middle">
+      {`${code}\n${name}`}
+    </Text>
+  </group>;
+}
 export function NearbyLabel({position,children}:{position:Point;children:React.ReactNode}){
   const ref=useRef<HTMLDivElement>(null);
   const point=React.useMemo(()=>new THREE.Vector3(...position),[...position]);
@@ -46,7 +54,7 @@ export function CampusExpansion(){return <group>
         </>}
         {[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
       </RigidBody>
-      <NearbyLabel position={[0,3,d/2+2]}>{l.shortName}</NearbyLabel>
+      {id!=='library'&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
       {[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
     </group>;
   })}

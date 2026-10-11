@@ -1,5 +1,5 @@
-import { locationPosition, locationById } from '../../config/campusLocations';
-import { CampusRoads, CampusExpansion, KekeRouteDebug } from './CampusExpansion';
+import { locationPosition, locationById, collegeCatalogue } from '../../config/campusLocations';
+import { CampusRoads, CampusExpansion, CollegeWallSign, KekeRouteDebug } from './CampusExpansion';
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
@@ -571,11 +571,7 @@ export const CampusEnvironment: React.FC = () => {
           <CylinderCollider args={[3.5, 0.3]} position={[7, 3.5, 7.3]} />
         </RigidBody>
 
-        <Html position={[0, 7.5, 7.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-          <div className="px-3 py-1 rounded bg-emerald-950/90 border border-emerald-400 text-emerald-300 text-xs font-extrabold font-['Outfit'] shadow-xl whitespace-nowrap">
-            🎓 COLFHEC (Food Science & Human Ecology)
-          </div>
-        </Html>
+        <CollegeWallSign position={[0,7.15,7.12]} width={12.5} height={1.35} code="COLFHEC" name={collegeCatalogue.find(c=>c.code==='COLFHEC')?.name??'College of Food Science & Human Ecology'}/>
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -594,11 +590,7 @@ export const CampusEnvironment: React.FC = () => {
           </mesh>
           <CuboidCollider args={[7.0, 3.0, 4.0]} position={[0, 3.0, 0]} />
         </RigidBody>
-        <Html position={[0, 5.0, 4.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-          <div className="px-2.5 py-1 rounded bg-blue-950/90 border border-blue-400 text-blue-300 text-xs font-bold font-['Outfit'] shadow-lg whitespace-nowrap">
-            ⚙️ COLENG (College of Engineering)
-          </div>
-        </Html>
+        <CollegeWallSign position={[0,4.85,4.12]} width={11.5} height={1.35} code="COLENG" name={collegeCatalogue.find(c=>c.code==='COLENG')?.name??'College of Engineering'}/>
       </group>
 
       {/* COLERM & COLPLANT Plaza (Position: [26, 0, -44]) */}
@@ -614,11 +606,7 @@ export const CampusEnvironment: React.FC = () => {
           </mesh>
           <CuboidCollider args={[7.0, 3.5, 5.0]} position={[0, 3.5, 0]} />
         </RigidBody>
-        <Html position={[0, 5.5, 5.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-          <div className="px-2.5 py-1 rounded bg-amber-950/90 border border-amber-400 text-amber-300 text-xs font-bold font-['Outfit'] shadow-lg whitespace-nowrap">
-            COLERM
-          </div>
-        </Html>
+        <CollegeWallSign position={[0,5.55,5.12]} width={12.5} height={1.5} code="COLERM" name={collegeCatalogue.find(c=>c.code==='COLERM')?.name??'College of Environmental Resources Management'}/>
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
