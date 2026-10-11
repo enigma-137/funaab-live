@@ -1,3 +1,6 @@
+import { CampusArchitecture } from './CampusArchitecture';
+import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
+import { campusMaterials } from './campusVisualGeometry';
 import { locationPosition, locationById, collegeCatalogue } from '../../config/campusLocations';
 import { CampusRoads, CampusExpansion, CollegeWallSign, KekeRouteDebug } from './CampusExpansion';
 import React, { useMemo } from 'react';
@@ -6,24 +9,12 @@ import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
 
 export const CampusEnvironment: React.FC = () => {
-  // Memoized palm and neem trees placed along campus avenues and green belts
-  const trees = useMemo(() => {
-    const list: { pos: [number, number, number]; scale: number; type: 'neem' | 'palm' }[] = [];
-    const seedPoints: [number, number][] = [[-130,-120],[-130,-60],[-130,0],[-130,85],[130,-120],[130,-60],[130,0],[130,85],[-20,10],[40,10],[-35,85],[40,95],[-15,-120],[65,-120]];
-    seedPoints.forEach(([x, z], i) => {
-      list.push({
-        pos: [x, 0, z],
-        scale: 0.85 + (i % 5) * 0.08,
-        type: i % 2 === 0 ? 'palm' : 'neem',
-      });
-    });
-    return list;
-  }, []);
+  const trees = avenueTrees;
 
   return (
     <group>
       <RigidBody type="fixed" colliders={false}>
-        <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.01,-17.5]} receiveShadow><planeGeometry args={[300,270]}/><meshStandardMaterial color="#587748"/></mesh>
+        <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.01,-17.5]} receiveShadow><planeGeometry args={[300,270]}/><primitive object={campusMaterials.grass} attach="material"/></mesh>
         <CuboidCollider args={[150,.5,135]} position={[0,-.5,-17.5]}/>
         <CuboidCollider args={[146,4,1]} position={[0,4,-146]}/><CuboidCollider args={[146,4,1]} position={[0,4,111]}/>
         <CuboidCollider args={[1,4,130]} position={[-146,4,-17]}/><CuboidCollider args={[1,4,130]} position={[146,4,-17]}/>
@@ -528,33 +519,7 @@ export const CampusEnvironment: React.FC = () => {
       ══════════════════════════════════════════════════════════════════════ */}
       <group position={locationPosition('colfhec')}>
         <RigidBody type="fixed" colliders={false}>
-          {/* Main 2-story Hall (Width 20, Depth 14, Height 8) */}
-          <mesh position={[0, 4, 0]} castShadow>
-            <boxGeometry args={[20, 8, 14]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.5} />
-          </mesh>
-          {/* Emerald Roof Trim */}
-          <mesh position={[0, 8.2, 0]} castShadow>
-            <boxGeometry args={[21, 0.5, 15]} />
-            <meshStandardMaterial color="#166534" />
-          </mesh>
-
-          {/* Pillars & Entrance Portico */}
-          {[-7, -2.5, 2.5, 7].map((x, i) => (
-            <mesh key={i} position={[x, 3.5, 7.3]} castShadow>
-              <cylinderGeometry args={[0.3, 0.35, 7, 12]} />
-              <meshStandardMaterial color="#e2e8f0" />
-            </mesh>
-          ))}
-
-          {/* Windows Array */}
-          {[-6, 0, 6].map((x, i) => (
-            <mesh key={i} position={[x, 5.5, 7.05]}>
-              <boxGeometry args={[3, 2, 0.1]} />
-              <meshStandardMaterial color="#0284c7" opacity={0.7} transparent metalness={0.8} />
-            </mesh>
-          ))}
-
+          <CampusArchitecture id="colfhec" />
           {/* ─── PHYSICAL WALL COLLIDERS FOR COLFHEC ─── */}
           {/* Back Wall */}
           <CuboidCollider args={[10.0, 4.0, 0.4]} position={[0, 4.0, -6.6]} />
@@ -570,8 +535,6 @@ export const CampusEnvironment: React.FC = () => {
           <CylinderCollider args={[3.5, 0.3]} position={[-7, 3.5, 7.3]} />
           <CylinderCollider args={[3.5, 0.3]} position={[7, 3.5, 7.3]} />
         </RigidBody>
-
-        <CollegeWallSign position={[0,7.15,7.12]} width={12.5} height={1.35} code="COLFHEC" name={collegeCatalogue.find(c=>c.code==='COLFHEC')?.name??'College of Food Science & Human Ecology'}/>
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -596,17 +559,9 @@ export const CampusEnvironment: React.FC = () => {
       {/* COLERM & COLPLANT Plaza (Position: [26, 0, -44]) */}
       <group position={locationPosition('colerm-colplant')}>
         <RigidBody type="fixed" colliders={false}>
-          <mesh position={[0, 3.5, 0]} castShadow>
-            <boxGeometry args={[14, 7, 10]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.5} />
-          </mesh>
-          <mesh position={[0, 7.2, 0]} castShadow>
-            <boxGeometry args={[14.4, 0.4, 10.4]} />
-            <meshStandardMaterial color="#d97706" />
-          </mesh>
+          <CampusArchitecture id="colerm" />
           <CuboidCollider args={[7.0, 3.5, 5.0]} position={[0, 3.5, 0]} />
         </RigidBody>
-        <CollegeWallSign position={[0,5.55,5.12]} width={12.5} height={1.5} code="COLERM" name={collegeCatalogue.find(c=>c.code==='COLERM')?.name??'College of Environmental Resources Management'}/>
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -749,48 +704,10 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           15. CAMPUS VEGETATION (Neem & Palm Trees with Physics Colliders)
       ══════════════════════════════════════════════════════════════════════ */}
-      {trees.map((tree, idx) => (
-        <group key={idx} position={tree.pos} scale={[tree.scale, tree.scale, tree.scale]}>
-          <RigidBody type="fixed" colliders={false}>
-            {tree.type === 'palm' ? (
-              <>
-                {/* Palm Trunk */}
-                <mesh position={[0, 2.5, 0]} castShadow>
-                  <cylinderGeometry args={[0.18, 0.28, 5, 8]} />
-                  <meshStandardMaterial color="#78350f" roughness={0.9} />
-                </mesh>
-                {/* Palm Fronds */}
-                {[0, Math.PI / 3, (2 * Math.PI) / 3, Math.PI, (4 * Math.PI) / 3, (5 * Math.PI) / 3].map((angle, k) => (
-                  <mesh
-                    key={k}
-                    position={[0, 4.8, 0]}
-                    rotation={[0.4, angle, 0]}
-                    castShadow
-                  >
-                    <boxGeometry args={[0.4, 0.1, 2.4]} />
-                    <meshStandardMaterial color="#15803d" />
-                  </mesh>
-                ))}
-                <CylinderCollider args={[2.5, 0.25]} position={[0, 2.5, 0]} />
-              </>
-            ) : (
-              <>
-                {/* Neem Trunk */}
-                <mesh position={[0, 1.5, 0]} castShadow>
-                  <cylinderGeometry args={[0.25, 0.35, 3, 8]} />
-                  <meshStandardMaterial color="#543310" roughness={0.8} />
-                </mesh>
-                {/* Canopy */}
-                <mesh position={[0, 3.6, 0]} castShadow>
-                  <sphereGeometry args={[1.8, 12, 12]} />
-                  <meshStandardMaterial color="#166534" roughness={0.8} />
-                </mesh>
-                <CylinderCollider args={[1.5, 0.3]} position={[0, 1.5, 0]} />
-              </>
-            )}
-          </RigidBody>
-        </group>
-      ))}
+      <CampusTrees /><CampusGardens />
+      {trees.map((tree,idx)=><group key={idx} position={tree.pos} scale={tree.scale}><RigidBody type="fixed" colliders={false}>
+        {tree.type==='palm'?<CylinderCollider args={[2.5,.25]} position={[0,2.5,0]}/>:<CylinderCollider args={[1.5,.3]} position={[0,1.5,0]}/>}
+      </RigidBody></group>)}
 
       {/* ══════════════════════════════════════════════════════════════════════
           16. CAMPUS SOLAR STREETLIGHTS (Glowing Lighting)

@@ -68,6 +68,14 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const { world, rapier } = useRapier();
   const { camera, size } = useThree();
 
+  useEffect(() => {
+    useGameStore.getState().setPlayerRef(rigidBodyRef);
+    return () => {
+      const store = useGameStore.getState();
+      if (store.playerRef === rigidBodyRef) store.setPlayerRef(null);
+    };
+  }, []);
+
   // Initialize Kinematic Character Controller in Rapier world
   useEffect(() => {
     if (!characterControllerRef.current && world && rapier) {

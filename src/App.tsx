@@ -38,6 +38,8 @@ import { CampusMapModal } from './ui/CampusMapModal';
 import { DmNotificationToast } from './ui/DmNotificationToast';
 import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
 import { useLectureStore } from './stores/lectureStore';
+import { useInputStore } from './stores/inputStore';
+import { locationById } from './config/campusLocations';
 
 export const App: React.FC = () => {
   const [campusUserId, setCampusUserId] = useState<string | null>(null);
@@ -47,6 +49,31 @@ export const App: React.FC = () => {
   const { loadSocialData } = useSocialStore();
   const { isInClassroom } = useLectureStore();
   const hostelRoomId=useHostelStore(s=>s.roomId);
+
+  const visitLibraryLobby = () => {
+    const library = locationById('library');
+    const lobbyPosition: [number, number, number] = [
+      library.position[0],
+      0,
+      library.position[2] + library.footprint[1] / 2 - 2.5,
+    ];
+    const { playerRef, setMyPosition, setMyAnimation, setActiveModal } = useGameStore.getState();
+    const playerBody = playerRef?.current;
+
+    if (!playerBody) {
+      console.error('Cannot visit the library lobby because the player is not ready.');
+      return;
+    }
+
+    playerBody.setTranslation(
+      { x: lobbyPosition[0], y: playerBody.translation().y, z: lobbyPosition[2] },
+      true
+    );
+    setMyPosition(lobbyPosition);
+    setMyAnimation('idle');
+    useInputStore.getState().clearTargetDestination();
+    setActiveModal(null);
+  };
 
   useEffect(() => {
     initialize();
@@ -141,7 +168,7 @@ export const App: React.FC = () => {
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}
       {activeModal === 'help' && <HelpModal />}
-      {activeModal === 'library' && <div className="keke-backdrop"><section className="keke-sheet" role="dialog" aria-label="Library"><header><h2>📚 Library</h2><button aria-label="Close library" onClick={()=>useGameStore.getState().setActiveModal(null)}>×</button></header><p>Welcome to the Library. The covered lobby ahead is open for meeting friends and taking a study break.</p><footer><button className="keke-confirm" onClick={()=>useGameStore.getState().setActiveModal(null)}>Visit lobby</button></footer></section></div>}
+      {activeModal === 'library' && <div className="keke-backdrop"><section className="keke-sheet" role="dialog" aria-label="Library"><header><h2>📚 Library</h2><button aria-label="Close library" onClick={()=>useGameStore.getState().setActiveModal(null)}>×</button></header><p>Welcome to the Library. The covered lobby ahead is open for meeting friends and taking a study break.</p><footer><button className="keke-confirm" onClick={visitLibraryLobby}>Visit lobby</button></footer></section></div>}
       {activeModal === 'keke_destination'  && <KekeDestinationModal />}
       {activeModal === 'campus_jobs' && <CampusJobsModal />}
       {activeModal === 'send_money' && <SendMoneyModal />}
