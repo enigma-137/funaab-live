@@ -138,10 +138,21 @@ export const GameHUD: React.FC = () => {
     }
   };
 
-  if (!user) return null;
+  const [jobProx, setJobProx] = useState(() => checkJobProximity(useGameStore.getState().myPosition));
 
-  const playerPos = useGameStore.getState().myPosition;
-  const jobProx = checkJobProximity(playerPos);
+  // Live-update proximity smoothly every 250ms when a job is active
+  useEffect(() => {
+    if (!activeJob) return;
+    const update = () => {
+      const pos = useGameStore.getState().myPosition;
+      setJobProx(checkJobProximity(pos));
+    };
+    update();
+    const timer = setInterval(update, 250);
+    return () => clearInterval(timer);
+  }, [activeJob, checkJobProximity]);
+
+  if (!user) return null;
 
   const getInteractIcon = () => {
     if (isRidingKeke) return '🛺';
@@ -442,6 +453,11 @@ export const GameHUD: React.FC = () => {
       </div>
 
       {/* ACTIVE JOB BANNER & NOTICES */}
+      {jobNotice && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-4 py-2.5 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-white font-black text-xs sm:text-sm shadow-2xl animate-bounce flex items-center gap-2">
+          <span>{jobNotice}</span>
+        </div>
+      )}
       {!inRoom && jobError && <div role="alert" className="hostel-notice">{jobError}</div>}
       {!inRoom && activeJob && (
         <div className="mx-auto my-1 pointer-events-auto max-w-md w-full animate-in slide-in-from-top-4">

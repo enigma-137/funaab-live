@@ -7,7 +7,7 @@ import { X, Briefcase, MapPin, CheckCircle2, Navigation, AlertCircle } from 'luc
 export const CampusJobsModal: React.FC = () => {
   const { user } = useAuthStore();
   const { setActiveModal, myPosition } = useGameStore();
-  const { availableJobs, activeJob, error, busy, load, acceptJob, cancelJob, completeActiveJob, checkJobProximity } =
+  const { availableJobs, activeJob, error, busy, load, acceptJob, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } =
     useJobStore();
 
   const [notification, setNotification] = useState<string | null>(null);
@@ -17,10 +17,17 @@ export const CampusJobsModal: React.FC = () => {
   const handleAccept = async (jobId: string) => {
     const success = await acceptJob(jobId);
     if (success) {
-      setNotification('Job Accepted! Check the HUD indicator for your pickup / destination point.');
+      setNotification('Job Accepted! Go to Step 1 (Pickup Point) marked on campus to collect the order.');
       setTimeout(() => {
         setActiveModal(null);
       }, 1500);
+    }
+  };
+
+  const handlePickupNow = async () => {
+    const success = await pickupDeliveryPackage();
+    if (success) {
+      setNotification('📦 Order collected! Now proceed to Step 2 (Destination) to deliver.');
     }
   };
 
@@ -89,11 +96,56 @@ export const CampusJobsModal: React.FC = () => {
                 <p className="text-xs text-slate-300 mt-0.5">{activeJob.description}</p>
               </div>
 
+              {/* 2-Step Progress Indicator */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div
+                  className={`p-2.5 rounded-xl border flex items-center gap-2 ${
+                    activeJob.status === 'picked_up'
+                      ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300'
+                      : 'bg-indigo-950/50 border-indigo-500/50 text-indigo-200'
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${
+                      activeJob.status === 'picked_up' ? 'bg-emerald-500 text-black' : 'bg-indigo-500 text-white'
+                    }`}
+                  >
+                    {activeJob.status === 'picked_up' ? '✓' : '1'}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-semibold uppercase text-slate-400">
+                      {activeJob.status === 'picked_up' ? 'Collected' : 'Step 1: Pick Up'}
+                    </div>
+                    <div className="truncate font-bold text-white text-[11px]">{activeJob.source}</div>
+                  </div>
+                </div>
+
+                <div
+                  className={`p-2.5 rounded-xl border flex items-center gap-2 ${
+                    activeJob.status === 'picked_up'
+                      ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
+                      : 'bg-slate-950/40 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${
+                      activeJob.status === 'picked_up' ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    2
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-semibold uppercase text-slate-400">Step 2: Deliver</div>
+                    <div className="truncate font-bold text-white text-[11px]">{activeJob.destination}</div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
                 <div className="flex items-center gap-2 text-slate-300">
-                  <MapPin className="w-4 h-4 text-emerald-400" />
+                  <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>
-                    Objective:{' '}
+                    Current Target:{' '}
                     <strong className="text-white">
                       {activeJob.status === 'accepted'
                         ? `Pick up at ${activeJob.source}`
@@ -101,22 +153,33 @@ export const CampusJobsModal: React.FC = () => {
                     </strong>
                   </span>
                 </div>
-                <span className="text-emerald-400 font-bold font-mono text-[11px]">
+                <span className="text-emerald-400 font-bold font-mono text-[11px] shrink-0">
                   {proximity.distance < 999 ? `${proximity.distance}m away` : 'Track on Map'}
                 </span>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-1">
+                {proximity.canPickup && (
+                  <button
+                    onClick={handlePickupNow}
+                    disabled={busy}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-lg transition flex items-center gap-1.5 animate-pulse"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Pick Up Order
+                  </button>
+                )}
                 {proximity.canDeliver && (
                   <button
                     onClick={handleDeliverNow}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg transition"
+                    disabled={busy}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg transition flex items-center gap-1.5 animate-pulse"
                   >
-                    Complete Job (+₦{activeJob.reward})
+                    <CheckCircle2 className="w-4 h-4" /> Complete & Deliver (+₦{activeJob.reward})
                   </button>
                 )}
                 <button
                   onClick={cancelJob}
+                  disabled={busy}
                   className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-red-950 hover:text-red-300 text-slate-400 text-xs font-semibold transition"
                 >
                   Cancel Job
