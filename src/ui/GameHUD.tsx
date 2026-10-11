@@ -23,6 +23,9 @@ import {
   GraduationCap,
   Wallet,
   Plus,
+  Compass,
+  ChevronRight,
+  Landmark,
   ChevronUp,
   ChevronDown,
   X,
@@ -50,6 +53,8 @@ export const GameHUD: React.FC = () => {
     connectionStatus,
     playerRef,
     activeModal,
+    navigationDestination,
+    clearNavigationDestination,
   } = useGameStore();
 
   const { balance } = useWalletStore();
@@ -422,6 +427,16 @@ export const GameHUD: React.FC = () => {
             <Backpack className="w-4 h-4" />
           </button>
 
+          {/* Campus Map & Directory Button */}
+          <button
+            id="btn-hud-campus-map"
+            onClick={() => setActiveModal('campus_map')}
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 backdrop-blur-md border border-slate-700/60 shadow-lg transition"
+            title="Campus Map (M)"
+          >
+            <Compass className="w-4 h-4 text-emerald-400" />
+          </button>
+
           {/* Help Modal Button */}
           <button
             onClick={() => setActiveModal('help')}
@@ -441,6 +456,44 @@ export const GameHUD: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* ACTIVE DESTINATION WAYPOINT BANNER */}
+      {!inRoom && navigationDestination && (
+        <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-in slide-in-from-top-3">
+          <div className="p-2 sm:p-2.5 rounded-2xl bg-[#091f18]/95 border border-emerald-400/80 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xl shrink-0">{navigationDestination.icon || '📍'}</span>
+              <div className="min-w-0">
+                <div className="text-[9px] text-emerald-300/80 font-semibold uppercase tracking-wider">
+                  Target Destination
+                </div>
+                <div className="text-xs font-black text-white font-['Outfit'] truncate flex items-center gap-1.5">
+                  <span>{navigationDestination.shortName}</span>
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                    ({Math.round(Math.hypot(useGameStore.getState().myPosition[0] - navigationDestination.position[0], useGameStore.getState().myPosition[2] - navigationDestination.position[2]))}m)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setActiveModal('campus_map')}
+                className="px-2 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold transition"
+              >
+                Map
+              </button>
+              <button
+                onClick={clearNavigationDestination}
+                className="p-1 rounded-lg bg-slate-800/80 hover:bg-red-950/80 text-slate-400 hover:text-red-300 text-xs transition"
+                title="Clear Destination"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ACTIVE JOB BANNER & NOTICES */}
       {jobNotice && (
