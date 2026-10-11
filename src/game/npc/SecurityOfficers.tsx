@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import worldData from '../../config/campusWorld';
 import { useGameStore } from '../../stores/gameStore';
+import { AvatarBody } from '../player/AvatarBody';
+import { npcAppearance } from '../../config/npcAppearance';
 import { SecurityRoute } from '../../types/game';
 
 interface OfficerRuntime {
@@ -68,7 +70,7 @@ export const SecurityOfficers: React.FC = () => {
 
         const lookDir = new THREE.Vector3().subVectors(playerVec, officer.position).normalize();
         const targetRot = Math.atan2(lookDir.x, lookDir.z);
-        officer.rotation = THREE.MathUtils.lerp(officer.rotation, targetRot, delta * 8);
+        officer.rotation += Math.atan2(Math.sin(targetRot-officer.rotation), Math.cos(targetRot-officer.rotation)) * (1-Math.exp(-8*delta));
       } else {
         if (officer.alertTimer > 0) {
           officer.alertTimer -= delta;
@@ -96,24 +98,12 @@ export const SecurityOfficers: React.FC = () => {
 
         const moveDir = new THREE.Vector3().subVectors(nextWP, currentWP).normalize();
         const targetAngle = Math.atan2(moveDir.x, moveDir.z);
-        officer.rotation = THREE.MathUtils.lerp(officer.rotation, targetAngle, delta * 6);
+        officer.rotation += Math.atan2(Math.sin(targetAngle-officer.rotation), Math.cos(targetAngle-officer.rotation)) * (1-Math.exp(-6*delta));
       }
 
       // Apply to ThreeJS Group
       group.position.copy(officer.position);
       group.rotation.y = officer.rotation;
-
-      // Animate walking limbs
-      const limbAngle = isPlayerCaught ? 0 : Math.sin(Date.now() * 0.008 * officer.speed) * 0.45;
-      const leftLeg = group.getObjectByName('leftLeg');
-      const rightLeg = group.getObjectByName('rightLeg');
-      const leftArm = group.getObjectByName('leftArm');
-      const rightArm = group.getObjectByName('rightArm');
-
-      if (leftLeg) leftLeg.rotation.x = limbAngle;
-      if (rightLeg) rightLeg.rotation.x = -limbAngle;
-      if (leftArm) leftArm.rotation.x = -limbAngle;
-      if (rightArm) rightArm.rotation.x = limbAngle;
 
       // Sync state to game store
       updateSecurityOfficer(officer.id, {
@@ -165,108 +155,8 @@ export const SecurityOfficers: React.FC = () => {
             </div>
           </Html>
 
-          {/* ─── 3D LOW-POLY SECURITY OFFICER MODEL ─── */}
-          {/* Head & Security Beret */}
-          <group position={[0, 1.45, 0]}>
-            {/* Face / Head */}
-            <mesh castShadow position={[0, 0, 0]}>
-              <boxGeometry args={[0.3, 0.3, 0.3]} />
-              <meshStandardMaterial color="#8d5524" roughness={0.7} />
-            </mesh>
-            {/* Dark Green Security Beret */}
-            <mesh position={[0, 0.16, 0]} rotation={[0.1, 0, -0.15]} castShadow>
-              <cylinderGeometry args={[0.18, 0.16, 0.12, 12]} />
-              <meshStandardMaterial color="#064e3b" />
-            </mesh>
-            {/* Gold Beret Badge */}
-            <mesh position={[0.08, 0.16, 0.14]}>
-              <sphereGeometry args={[0.04, 8, 8]} />
-              <meshStandardMaterial color="#facc15" metalness={0.8} />
-            </mesh>
-          </group>
-
-          {/* Torso with High-Vis Lime/Yellow Security Vest */}
-          <mesh position={[0, 0.95, 0]} castShadow>
-            <boxGeometry args={[0.54, 0.65, 0.28]} />
-            <meshStandardMaterial color="#84cc16" roughness={0.5} />
-          </mesh>
-          {/* Yellow Reflective Crossed Straps */}
-          <mesh position={[0, 0.95, 0.145]}>
-            <boxGeometry args={[0.48, 0.12, 0.01]} />
-            <meshStandardMaterial color="#facc15" />
-          </mesh>
-          <mesh position={[0, 0.95, -0.145]}>
-            <boxGeometry args={[0.48, 0.12, 0.01]} />
-            <meshStandardMaterial color="#facc15" />
-          </mesh>
-          {/* Chest Security Shield / Badge */}
-          <mesh position={[-0.14, 1.05, 0.15]}>
-            <boxGeometry args={[0.08, 0.1, 0.02]} />
-            <meshStandardMaterial color="#1e293b" />
-          </mesh>
-
-          {/* Dark Green Security Trousers (Pelvis) */}
-          <mesh position={[0, 0.58, 0]} castShadow>
-            <boxGeometry args={[0.48, 0.16, 0.26]} />
-            <meshStandardMaterial color="#14532d" />
-          </mesh>
-
-          {/* Left Leg */}
-          <group name="leftLeg" position={[-0.14, 0.5, 0]}>
-            <mesh position={[0, -0.22, 0]} castShadow>
-              <boxGeometry args={[0.18, 0.44, 0.2]} />
-              <meshStandardMaterial color="#14532d" />
-            </mesh>
-            {/* Black Boot */}
-            <mesh position={[0, -0.44, 0.04]} castShadow>
-              <boxGeometry args={[0.2, 0.12, 0.28]} />
-              <meshStandardMaterial color="#0f172a" roughness={0.4} />
-            </mesh>
-          </group>
-
-          {/* Right Leg */}
-          <group name="rightLeg" position={[0.14, 0.5, 0]}>
-            <mesh position={[0, -0.22, 0]} castShadow>
-              <boxGeometry args={[0.18, 0.44, 0.2]} />
-              <meshStandardMaterial color="#14532d" />
-            </mesh>
-            {/* Black Boot */}
-            <mesh position={[0, -0.44, 0.04]} castShadow>
-              <boxGeometry args={[0.2, 0.12, 0.28]} />
-              <meshStandardMaterial color="#0f172a" roughness={0.4} />
-            </mesh>
-          </group>
-
-          {/* Left Arm */}
-          <group name="leftArm" position={[-0.34, 1.15, 0]}>
-            <mesh position={[0, -0.2, 0]} castShadow>
-              <boxGeometry args={[0.14, 0.44, 0.18]} />
-              <meshStandardMaterial color="#84cc16" />
-            </mesh>
-            {/* Hand */}
-            <mesh position={[0, -0.44, 0]}>
-              <boxGeometry args={[0.12, 0.1, 0.14]} />
-              <meshStandardMaterial color="#8d5524" />
-            </mesh>
-          </group>
-
-          {/* Right Arm with Walkie-Talkie */}
-          <group name="rightArm" position={[0.34, 1.15, 0]}>
-            <mesh position={[0, -0.2, 0]} castShadow>
-              <boxGeometry args={[0.14, 0.44, 0.18]} />
-              <meshStandardMaterial color="#84cc16" />
-            </mesh>
-            {/* Hand & Radio */}
-            <mesh position={[0, -0.44, 0]}>
-              <boxGeometry args={[0.12, 0.1, 0.14]} />
-              <meshStandardMaterial color="#8d5524" />
-            </mesh>
-            {/* Walkie-Talkie in Hand */}
-            <mesh position={[0, -0.44, 0.1]}>
-              <boxGeometry args={[0.06, 0.14, 0.06]} />
-              <meshStandardMaterial color="#020617" />
-            </mesh>
-          </group>
+          <AvatarBody identity={officer.id} trackMovement accessory="security"
+            config={npcAppearance(officer.id, {topStyle:'shirt',topColor:'#84cc16',bottomStyle:'trousers',bottomColor:'#14532d',shoeColor:'#17211d',hairstyle:'low-cut'})} />
         </group>
       ))}
     </group>

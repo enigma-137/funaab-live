@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useGameStore } from '../../stores/gameStore';
+import { npcAppearance } from '../../config/npcAppearance';
 import { AvatarModel } from '../player/AvatarModel';
 
 export const ClassroomScene: React.FC = () => {
@@ -169,10 +170,7 @@ export const ClassroomScene: React.FC = () => {
         <AvatarModel
           username={currentLecture?.lecturerName || 'Dr. Adeyemi'}
           college={currentLecture?.college || 'COLFHEC'}
-          avatarConfig={{
-            shirtColor: currentLecture?.lecturerAvatar.shirtColor || '#166534',
-            skinColor: currentLecture?.lecturerAvatar.skinColor || '#8d5524',
-          }}
+          avatarConfig={npcAppearance(currentLecture?.lecturerName || 'Dr. Adeyemi', {topStyle:'shirt', bottomStyle:'trousers', topColor:currentLecture?.lecturerAvatar.shirtColor || '#166534', skinTone:currentLecture?.lecturerAvatar.skinColor || '#8d5524'})}
           animation="idle"
         />
 

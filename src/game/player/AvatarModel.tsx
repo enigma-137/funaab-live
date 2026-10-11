@@ -86,7 +86,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
         </Html>
       )}
 
-      <AvatarBody config={avatarConfig} animation={animation} />
+      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement />
     </group>
   );
 };
