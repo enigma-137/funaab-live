@@ -229,7 +229,7 @@ export const CampusMapModal: React.FC = () => {
       onClick={closeMap}
     >
       <div
-        className="relative w-full max-w-6xl h-[95vh] sm:h-[90vh] rounded-3xl bg-[#0a1412] border-2 border-emerald-500/40 shadow-2xl flex flex-col overflow-hidden text-white"
+        className="relative w-full max-w-6xl h-[calc(100dvh-1rem)] sm:h-[90vh] rounded-2xl sm:rounded-3xl bg-[#0a1412] border-2 border-emerald-500/40 shadow-2xl flex flex-col overflow-hidden text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ─── 1. TOP HEADER & CATEGORY BAR ─── */}
@@ -240,8 +240,9 @@ export const CampusMapModal: React.FC = () => {
                 <Compass className="w-5 h-5 animate-spin-slow" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-black text-white font-['Outfit'] tracking-wider uppercase flex items-center gap-2 leading-tight">
-                  CAMPUS DIRECTORY & MAP
+                <h2 className="text-sm sm:text-lg font-black text-white font-['Outfit'] tracking-wide sm:tracking-wider uppercase flex items-center gap-1.5 sm:gap-2 leading-tight">
+                  <span className="sm:hidden">Campus Map</span>
+                  <span className="hidden sm:inline">CAMPUS DIRECTORY & MAP</span>
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-black uppercase">
                     Live
                   </span>

@@ -456,6 +456,17 @@ export const GameHUD: React.FC = () => {
         </div>
       </div>
 
+      <button
+        id="btn-hud-campus-map-mobile"
+        type="button"
+        onClick={() => setActiveModal('campus_map')}
+        className="fixed right-3 top-[calc(env(safe-area-inset-top,0px)+12px)] z-40 flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/40 bg-slate-900/95 text-emerald-400 shadow-lg backdrop-blur-md transition active:scale-95 sm:hidden pointer-events-auto"
+        title="Open Campus Map"
+        aria-label="Open Campus Map"
+      >
+        <Compass className="h-5 w-5" />
+      </button>
+
       {/* ACTIVE DESTINATION WAYPOINT BANNER */}
       {!inRoom && navigationDestination && (
         <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-in slide-in-from-top-3">
