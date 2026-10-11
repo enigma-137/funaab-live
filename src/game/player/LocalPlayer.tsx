@@ -16,22 +16,37 @@ import worldData from '../../config/campusWorld';
 import { InteractableZone } from '../../types/game';
 
 import { classifyTerrain, lawnEnforcement } from '../rules/lawnSecuritySystem';
+import { useShallow } from 'zustand/react/shallow';
+import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 
 const MOVE_SPEED = 6.0;
 const SPRINT_SPEED = 9.5;
-const ROTATION_SMOOTHING = 0.22;
+// Avatar turn rate (1/s); equals the old 0.22-per-frame smoothing at 60fps but is frame-rate independent.
+const ROTATION_RATE = 15;
 const CAPSULE_HALF_HEIGHT = 0.5;
 const CAPSULE_RADIUS = 0.35;
 const PLAYER_CENTER_OFFSET = CAPSULE_HALF_HEIGHT + CAPSULE_RADIUS; // 0.85m
+// Runs before @react-three/rapier's stepper (priority 0) whatever the mount order, so the
+// kinematic target set this frame is what gets stepped and rendered this frame.
+const PLAYER_FRAME_PRIORITY = -1;
+
+// Per-frame scratch objects (avoid GC hitches on mobile).
+const _up = new THREE.Vector3(0, 1, 0);
+const _moveDir = new THREE.Vector3();
+const _camTarget = new THREE.Vector3();
+const _feet = new THREE.Vector3();
+const _zone = new THREE.Vector3();
 
 export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) => {
 
   const { user } = useAuthStore();
+  // Subscribe only to what rendering / the key handler need. Values that change every
+  // frame (position, officers, players, camera angles, tap target) are read via getState()
+  // inside useFrame so this component (and the avatar) doesn't re-render at frame rate.
   const {
-    myPosition,
     isRidingKeke,
     currentKekeId,
-    kekes,
+    myAnimation,
     setMyPosition,
     setMyRotation,
     setMyAnimation,
@@ -39,23 +54,35 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     setSelectedPlayer,
     setSelectedHallLocationId,
     setActiveModal,
-    setRidingKeke,
     setIsOnRestrictedLawn,
     setCurrentTerrainType,
     setLawnViolationNotice,
-    securityOfficers,
-    players,
     toggleDebugPhysics,
     toggleDebugNet,
-  } = useGameStore();
-  const { deductFare, applyLawnFine } = useWalletStore();
-  const {
-    targetDestination,
-    targetInteraction,
-    clearTargetDestination,
-    cameraYaw,
-    cameraPitch,
-  } = useInputStore();
+  } = useGameStore(
+    useShallow((s) => ({
+      isRidingKeke: s.isRidingKeke,
+      currentKekeId: s.currentKekeId,
+      myAnimation: s.myAnimation,
+      setMyPosition: s.setMyPosition,
+      setMyRotation: s.setMyRotation,
+      setMyAnimation: s.setMyAnimation,
+      setNearbyInteractable: s.setNearbyInteractable,
+      setSelectedPlayer: s.setSelectedPlayer,
+      setSelectedHallLocationId: s.setSelectedHallLocationId,
+      setActiveModal: s.setActiveModal,
+      setIsOnRestrictedLawn: s.setIsOnRestrictedLawn,
+      setCurrentTerrainType: s.setCurrentTerrainType,
+      setLawnViolationNotice: s.setLawnViolationNotice,
+      toggleDebugPhysics: s.toggleDebugPhysics,
+      toggleDebugNet: s.toggleDebugNet,
+    }))
+  );
+  const applyLawnFine = useWalletStore((s) => s.applyLawnFine);
+  const clearTargetDestination = useInputStore((s) => s.clearTargetDestination);
+  // Spawn position is only for the initial RigidBody placement: a changing `position` prop makes
+  // @react-three/rapier setTranslation() on every re-render, snapping the body back a frame.
+  const [spawnPosition] = React.useState(() => useGameStore.getState().myPosition);
 
   const rigidBodyRef = useRef<RapierRigidBody>(null);
   const avatarVisualRef = useRef<THREE.Group>(null);
@@ -64,6 +91,10 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const currentRotation = useRef<number>(0);
   const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep'>('idle');
   const stuckTimerRef = useRef<number>(0);
+  // Camera rig state: damped follow point + lightly smoothed orbit angles.
+  const cameraFollow = useRef(new THREE.Vector3());
+  const cameraFollowPrevTarget = useRef(new THREE.Vector3());
+  const cameraRig = useRef({ initialized: false, yaw: 0, pitch: 0 });
 
   const { world, rapier } = useRapier();
   const { camera, size } = useThree();
@@ -143,7 +174,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isRidingKeke, currentKekeId, kekes]);
+  }, [isRidingKeke, currentKekeId]);
 
   const handleInteraction = async () => {
     const { nearbyInteractable, selectedPlayer, activeModal } = useGameStore.getState();
@@ -187,11 +218,42 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
   };
 
+  // Rigid third-person orbit: the follow point glides after the target (frame-rate independent),
+  // while swipe rotation is applied almost immediately.
+  const updateOrbitCamera = (
+    target: { x: number; y: number; z: number },
+    yaw: number,
+    pitch: number,
+    distance: number,
+    height: number,
+    pitchHeightScale: number,
+    lookHeight: number,
+    delta: number
+  ) => {
+    const rig = cameraRig.current;
+    const follow = cameraFollow.current;
+    if (!rig.initialized) {
+      follow.set(target.x, target.y, target.z);
+      cameraFollowPrevTarget.current.copy(follow);
+      rig.yaw = yaw;
+      rig.pitch = pitch;
+      rig.initialized = true;
+    } else {
+      dampFollow(follow, cameraFollowPrevTarget.current, target, delta);
+      rig.yaw = damp(rig.yaw, yaw, CAMERA_ROTATION_RATE, delta);
+      rig.pitch = damp(rig.pitch, pitch, CAMERA_ROTATION_RATE, delta);
+    }
+    orbitPosition(follow, rig.yaw, rig.pitch, distance, height, pitchHeightScale, camera.position);
+    camera.lookAt(follow.x, follow.y + lookHeight, follow.z);
+  };
+
   useFrame((_, delta) => {
     if (!rigidBodyRef.current || !user) return;
 
     const controller = characterControllerRef.current;
     const body = rigidBodyRef.current;
+    const { cameraYaw, cameraPitch, targetDestination, targetInteraction } = useInputStore.getState();
+    const { securityOfficers, players, kekes } = useGameStore.getState();
 
     // 1. IF RIDING KEKE
     if (isRidingKeke && currentKekeId) {
@@ -215,15 +277,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         setMyRotation(activeKeke.rotation);
 
         // Preserve the walking orbit on boarding and through road turns.
-        const totalYaw = cameraYaw;
-        const camDist = 7.5;
-        const camHeight = 4.2;
-        const cx = activeKeke.position[0] + Math.sin(totalYaw) * Math.cos(cameraPitch) * camDist;
-        const cy = nextY + camHeight + Math.sin(cameraPitch) * camDist * 0.5;
-        const cz = activeKeke.position[2] + Math.cos(totalYaw) * Math.cos(cameraPitch) * camDist;
-
-        camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
-        camera.lookAt(activeKeke.position[0], nextY + 0.5, activeKeke.position[2]);
+        _camTarget.set(activeKeke.position[0], nextY, activeKeke.position[2]);
+        updateOrbitCamera(_camTarget, cameraYaw, cameraPitch, 7.5, 4.2, 0.5, 0.5, delta);
         return;
       }
     }
@@ -255,9 +310,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
     if (isKeyboardMoving) {
       // Rotate movement vector according to camera yaw orientation
-      const rawDir = new THREE.Vector3(moveX, 0, moveZ).normalize();
-      rawDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-      moveDirection = rawDir;
+      moveDirection = _moveDir.set(moveX, 0, moveZ).normalize().applyAxisAngle(_up, cameraYaw);
     } else if (targetDestination) {
       const dx = targetDestination[0] - currentTranslation.x;
       const dz = targetDestination[2] - currentTranslation.z;
@@ -270,7 +323,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         clearTargetDestination();
         moveDirection = null;
       } else {
-        moveDirection = new THREE.Vector3(dx, 0, dz).normalize();
+        moveDirection = _moveDir.set(dx, 0, dz).normalize();
         activeSpeed = MOVE_SPEED;
       }
     }
@@ -285,7 +338,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       let angleDiff = targetAngle - currentRotation.current;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      currentRotation.current += angleDiff * ROTATION_SMOOTHING;
+      currentRotation.current += angleDiff * dampFactor(ROTATION_RATE, delta);
 
       // Calculate desired displacement vector
       const desiredDisplacement = {
@@ -365,9 +418,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     // Third-person Orbit Camera Rig (supports drag-to-look around player)
     const camDist = roomState.roomId === 'world:funaab:library' ? 6 : 8.2;
     const camHeight = 3.6;
-    const cx = nextX + Math.sin(cameraYaw) * Math.cos(cameraPitch) * camDist;
-    const cy = nextY + camHeight + Math.sin(cameraPitch) * camDist * 0.6;
-    const cz = nextZ + Math.cos(cameraYaw) * Math.cos(cameraPitch) * camDist;
+    const roomCamK = dampFactor(10.5, delta); // ≈ old 0.16-per-frame lerp at 60fps
 
     const hostelState=useHostelStore.getState();
     const decorating=offCampus && hostelState.owner && !!hostelState.preview;
@@ -376,13 +427,15 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     const fov=hostelState.owner?(size.width<650&&!decorating?65:55):50;if(lens.fov!==fov){lens.fov=fov;lens.updateProjectionMatrix();}
     if(decorating){
       const height=size.width<650?12:9;
-      camera.position.lerp(new THREE.Vector3(0,height,7),.16);camera.lookAt(0,0,-.3);
+      camera.position.lerp(_camTarget.set(0,height,7),roomCamK);camera.lookAt(0,0,-.3);
     }else if(offCampus&&hostelState.owner){
       // Clamp the orbit eye inside the room walls; no camera can pass through masonry.
       const clamp=(n:number)=>Math.max(-3.65,Math.min(3.65,n));
-      camera.position.lerp(new THREE.Vector3(clamp(nextX*.25+Math.sin(cameraYaw)*3.2),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),.16);
+      camera.position.lerp(_camTarget.set(clamp(nextX*.25+Math.sin(cameraYaw)*3.2),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),roomCamK);
       camera.lookAt(nextX*.25,.65,nextZ*.25-.8);
-    }else{camera.position.lerp(new THREE.Vector3(cx,cy,cz),.14);camera.lookAt(nextX,nextY+.8,nextZ);}
+    }else{
+      updateOrbitCamera(_camTarget.set(nextX,nextY,nextZ),cameraYaw,cameraPitch,camDist,camHeight,0.6,0.8,delta);
+    }
 
     if(offCampus) { setIsOnRestrictedLawn(false); setNearbyInteractable(null); return; }
     // Terrain Classification & FUNAAB Lawn Rule Enforcement
@@ -414,7 +467,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
 
     // Check Proximity to Interactables
-    const feetVec = new THREE.Vector3(...feetPosition);
+    const feetVec = _feet.set(feetPosition[0], feetPosition[1], feetPosition[2]);
     let closestInteractable: InteractableZone | null = null;
     let minDistance = 999;
     const interactionPriority: Record<InteractableZone['type'], number> = {
@@ -431,7 +484,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
-      const zonePos = new THREE.Vector3(...zone.position);
+      const zonePos = _zone.set(zone.position[0], zone.position[1], zone.position[2]);
       const dist = feetVec.distanceTo(zonePos);
       const isCloser = dist < minDistance - 0.01;
       const isPriorityTie =
@@ -483,7 +536,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
                 }
               }
 
-              const zonePos = new THREE.Vector3(...zone.position);
+              const zonePos = _zone.set(zone.position[0], zone.position[1], zone.position[2]);
               const dist = feetVec.distanceTo(zonePos);
               if (dist <= zone.radius + HYSTERESIS_BUFFER) {
                 isWithinRadius = true;
@@ -499,7 +552,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       } else if (activeModal === 'player_profile') {
         const selPlayer = useGameStore.getState().selectedPlayer;
         if (selPlayer) {
-          const pPos = new THREE.Vector3(...selPlayer.position);
+          const pPos = _zone.set(selPlayer.position[0], selPlayer.position[1], selPlayer.position[2]);
           const dist = feetVec.distanceTo(pPos);
           if (dist > 5.5) {
             setActiveModal(null);
@@ -514,7 +567,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     let closestPlayer: any = null;
     let minPlayerDist = 3.5;
     for (const player of Object.values(players)) {
-      const pPos = new THREE.Vector3(...player.position);
+      const pPos = _zone.set(player.position[0], player.position[1], player.position[2]);
       const dist = feetVec.distanceTo(pPos);
       if (dist <= minPlayerDist) {
         minPlayerDist = dist;
@@ -522,7 +575,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       }
     }
     setSelectedPlayer(closestPlayer);
-  });
+  }, PLAYER_FRAME_PRIORITY);
 
   if (!user) return null;
 
@@ -532,7 +585,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       type="kinematicPosition"
       colliders={false}
       enabledRotations={[false, false, false]}
-      position={[myPosition[0], myPosition[1] + PLAYER_CENTER_OFFSET, myPosition[2]]}
+      position={[spawnPosition[0], spawnPosition[1] + PLAYER_CENTER_OFFSET, spawnPosition[2]]}
       lockRotations
     >
       {/* Exact Capsule Collider: halfHeight 0.5, radius 0.35 => height 1.7m */}
@@ -544,7 +597,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           username={user.username}
           college={user.college}
           avatarConfig={user.avatarConfig}
-          animation={currentAnimation.current}
+          animation={myAnimation}
           isLocal
         />
       </group>

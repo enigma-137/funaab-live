@@ -7,12 +7,21 @@
   color-scheme: dark;
 }
 
+html {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+/* Pin the page: no pull-to-refresh, overscroll bounce or toolbar-driven page shifts on mobile. */
 body {
   margin: 0;
   padding: 0;
-  width: 100vw;
-  height: 100vh;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   background-color: #070d08;
   color: #f8fafc;
   user-select: none;

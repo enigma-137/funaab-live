@@ -20,7 +20,10 @@ import { useGameStore } from '../../stores/gameStore';
 export const WorldScene: React.FC = () => {
   const roomId=useHostelStore(s=>s.roomId);
   const hostel=roomId!=='world:funaab:main';
-  const { players, myConnectionId, debugPhysics } = useGameStore();
+  // Selectors: subscribing to the whole store re-rendered the entire Canvas tree on every per-frame player update.
+  const players = useGameStore((s) => s.players);
+  const myConnectionId = useGameStore((s) => s.myConnectionId);
+  const debugPhysics = useGameStore((s) => s.debugPhysics);
 
   return (
     <div className="w-full h-full relative select-none">
@@ -63,7 +66,9 @@ export const WorldScene: React.FC = () => {
         />
 
         <Suspense fallback={null}>
-          <Physics key={roomId} debug={debugPhysics} gravity={[0, -9.81, 0]}>
+          {/* timeStep="vary": one physics step per rendered frame, so the kinematic player, its mesh and
+              the follow camera stay in lock-step on 60/90/120Hz and variable-rate mobile displays. */}
+          <Physics key={roomId} debug={debugPhysics} gravity={[0, -9.81, 0]} timeStep="vary">
             {/* Static Campus Geometry with Colliders & Navigation Waypoint */}
             {roomId === LIBRARY_ROOM ? <LibraryEnvironment /> : hostel ? <HostelEnvironment /> : <><CampusEnvironment /><JobMarkers /><NavigationMarker /></>}
 

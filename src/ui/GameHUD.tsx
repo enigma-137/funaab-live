@@ -2,6 +2,7 @@ import {useHostelStore} from '../stores/hostelStore';
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useWalletStore } from '../stores/walletStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useJobStore } from '../stores/jobStore';
@@ -55,12 +56,34 @@ export const GameHUD: React.FC = () => {
     activeModal,
     navigationDestination,
     clearNavigationDestination,
-  } = useGameStore();
+  } = useGameStore(
+    useShallow((s) => ({
+      onlineCount: s.onlineCount,
+      nearbyInteractable: s.nearbyInteractable,
+      selectedPlayer: s.selectedPlayer,
+      isRidingKeke: s.isRidingKeke,
+      currentKekeId: s.currentKekeId,
+      targetKekeDestinationId: s.targetKekeDestinationId,
+      isOnRestrictedLawn: s.isOnRestrictedLawn,
+      currentTerrainType: s.currentTerrainType,
+      kekes: s.kekes,
+      setActiveModal: s.setActiveModal,
+      setSelectedHallLocationId: s.setSelectedHallLocationId,
+      setRidingKeke: s.setRidingKeke,
+      connectionStatus: s.connectionStatus,
+      playerRef: s.playerRef,
+      activeModal: s.activeModal,
+      navigationDestination: s.navigationDestination,
+      clearNavigationDestination: s.clearNavigationDestination,
+    }))
+  );
 
   const { balance } = useWalletStore();
   const { messages } = useSocialStore();
   const { activeJob, error: jobError, busy: jobBusy, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
-  const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore();
+  const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore(
+    useShallow((s) => ({ isTouchDevice: s.isTouchDevice, triggerHaptic: s.triggerHaptic, setIsInputFocused: s.setIsInputFocused }))
+  );
 
   const [chatInput, setChatInput] = useState('');
   const [isChatExpanded, setIsChatExpanded] = useState(!isTouchDevice);

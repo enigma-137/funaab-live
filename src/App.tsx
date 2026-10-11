@@ -1,6 +1,7 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { useGameStore } from './stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useWalletStore } from './stores/walletStore';
 import { useSocialStore } from './stores/socialStore';
 import { networkManager } from './game/multiplayer/networkManager';
@@ -44,7 +45,7 @@ import { LIBRARY_ROOM } from './config/library';
 export const App: React.FC = () => {
   const [campusUserId, setCampusUserId] = useState<string | null>(null);
   const { user, isAuthenticated, isInitializingAuth, initialize } = useAuthStore();
-  const { activeModal, setActiveModal, selectedHallLocationId } = useGameStore();
+  const { activeModal, setActiveModal, selectedHallLocationId } = useGameStore(useShallow((s) => ({ activeModal: s.activeModal, setActiveModal: s.setActiveModal, selectedHallLocationId: s.selectedHallLocationId })));
   const { loadWallet } = useWalletStore();
   const { loadSocialData } = useSocialStore();
   const { isInClassroom } = useLectureStore();
