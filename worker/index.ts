@@ -33,6 +33,8 @@ interface SessionData {
   token?: string;
   accessCheckedAt?: number;
   trustedPosition?: [number,number,number];
+  /** Last position the client reported; trustedPosition chases it at the max legal speed. */
+  claimedPosition?: [number,number,number];
   trustedAt?: number;
   movementBudget?: number;
   movementClock?: number;
@@ -511,7 +513,7 @@ export class WorldRoomDO {
           this.dirtyPlayerIds.add(id);
         }
         p.position=position;p.rotation=k.rotation;p.animation='sit';
-        for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.trustedAt=Date.now();}
+        for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.claimedPosition=p.position;session.trustedAt=Date.now();}
         if(arrived && (k.id===PARKED_KEKE_ID || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
       if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');
@@ -530,7 +532,7 @@ export class WorldRoomDO {
     if(p){p.kekeRiding=false;p.kekeId=undefined;p.position=position;p.animation='idle';this.dirtyPlayerIds.add(id);}
     this.kekesDirty = true;
     for(const [socket,session] of this.sessions)if(session.connectionId===id){
-      session.trustedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
+      session.trustedPosition=position;session.claimedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
       socket.send(JSON.stringify({type:'keke_dropoff',position,reason:action==='complete'?'Arrived':'Ride ended'}));
     }
     if(action==='refund'&&k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'&&k.passengers.length===0)Object.assign(k,createKeke(true));
@@ -543,6 +545,7 @@ export class WorldRoomDO {
     const k=this.kekes.get(data.kekeId),p=this.players.get(session.connectionId);
     if(!k||!p)throw new Error('Keke unavailable');
     if(p.kekeRiding)return {kekeId:p.kekeId};
+    this.advanceTrustedPosition(session);
     if(!session.trustedPosition||Date.now()-(session.trustedAt||0)>5000||Math.hypot(session.trustedPosition[0]-k.position[0],session.trustedPosition[2]-k.position[2])>8)throw new Error('Walk closer to the Keke');
     if(k.passengers.length>=3)throw new Error('This Keke is full');
     if(!['IDLE','BOARDING'].includes(k.phase))throw new Error('Wait for the Keke to stop');
@@ -631,6 +634,30 @@ export class WorldRoomDO {
     if (!room.startsWith('world:funaab:hostel-room:')) return true;
     return this.dbRpc('hostel_can_enter',{p_owner:room.split(':')[3],p_guest:user});
   }
+  /**
+   * Speed-limited anti-teleport: the trusted position moves toward the client's last claim at
+   * most 35 m/s. Leftover budget is capped at 8 m so idling can't bank a burst, but a lagging
+   * trusted position keeps catching up over time. Previously a reconnect (trusted reset to spawn
+   * while the client stayed put) froze the trusted position forever, breaking jobs, keke and bets.
+   */
+  private advanceTrustedPosition(session: SessionData, now = Date.now()) {
+    const claimed = session.claimedPosition;
+    if (!claimed) return;
+    const previous = session.trustedPosition || CAMPUS_SPAWN;
+    const elapsed = Math.max(0, (now - (session.movementClock || now)) / 1000);
+    const budget = (session.movementBudget ?? 4) + elapsed * 35;
+    const distance = Math.hypot(claimed[0] - previous[0], claimed[2] - previous[2]);
+    session.movementClock = now;
+    session.trustedAt = now;
+    if (distance <= budget) {
+      session.trustedPosition = claimed;
+      session.movementBudget = Math.min(8, budget - distance);
+    } else {
+      const f = budget / distance;
+      session.trustedPosition = [previous[0] + (claimed[0] - previous[0]) * f, claimed[1], previous[2] + (claimed[2] - previous[2]) * f];
+      session.movementBudget = 0;
+    }
+  }
   // Campus Bet: the database owns the lifecycle; this DO only supplies freshly generated
   // fixtures (secure randomness, hidden strengths) and relays a player's ticket.
   private async campusBetSync(user: string | null) {
@@ -664,6 +691,7 @@ export class WorldRoomDO {
     session.campusBetAt = now;
     if (data.op !== 'place') return this.campusBetSync(session.id);
     // Only the round, stake and picks come from the client; results and payouts never do.
+    this.advanceTrustedPosition(session);
     const pos = session.trustedPosition;
     if (!pos || Math.hypot(pos[0] - CAMPUS_BET_SHOP.counter[0], pos[2] - CAMPUS_BET_SHOP.counter[2]) > CAMPUS_BET_SHOP.serverRadius) {
       throw new Error('Walk up to the Campus Bet counter to place a ticket.');
@@ -937,6 +965,7 @@ export class WorldRoomDO {
             if (!current) return;
             if (current.room !== 'world:funaab:main') { webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:'Return to campus to work this job.'})); return; }
             try {
+              this.advanceTrustedPosition(current);
               const pos=current.trustedPosition;
               if (!pos || Date.now()-(current.trustedAt || 0)>3000) throw new Error('Walk to the objective and reconnect if needed');
               const result=await this.dbRpc('job_action_trusted',{p_user:current.id,p_action:data.action,p_job:data.jobId || null,p_run:data.runId || null,p_x:pos[0],p_z:pos[2]});
@@ -980,15 +1009,8 @@ export class WorldRoomDO {
               if(player.kekeRiding)return;
               if (!Array.isArray(data.position) || data.position.length!==3 || !data.position.every((n: unknown)=>typeof n==='number' && Number.isFinite(n) && Math.abs(n)<200)) return;
               const current=this.sessions.get(webSocket)!;
-              const previous=current.trustedPosition || CAMPUS_SPAWN;
-              const clock=Date.now();
-              const elapsed=Math.max(0,(clock-(current.movementClock || clock))/1000);
-              const budget=Math.min(8,(current.movementBudget ?? 4)+elapsed*35);
-              const distance=Math.hypot(data.position[0]-previous[0],data.position[2]-previous[2]);
-              current.movementClock=clock;current.movementBudget=budget;
-              if (distance <= budget) {
-                current.trustedPosition=data.position;current.trustedAt=clock;current.movementBudget=budget-distance;
-              }
+              current.claimedPosition=[data.position[0],data.position[1],data.position[2]];
+              this.advanceTrustedPosition(current);
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
               const animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
               if (player.position.some((value, index) => value !== data.position[index])
@@ -1535,7 +1557,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet'],
+          features: ['campus_bet', 'trusted_catchup'],
           timestamp: Date.now(),
         }),
         {

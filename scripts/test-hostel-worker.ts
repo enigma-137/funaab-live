@@ -75,7 +75,7 @@ await join(world,'guest4');await join(world,'guest5');
   const mainWorld:any=new WorldRoomDO(state,env),student=await join(mainWorld,owner,'world:funaab:main','world:funaab:main');
   await student.packet({type:'move',position:[-18,0,-53],rotation:0,animation:'walk'});
   await student.packet({type:'job_action',requestId:'test',action:'accept',jobId:'job-food-delivery',position:[-18,0,-53],reward:999999});
-  const rpc=calls.find(c=>c.url.endsWith('job_action_trusted'));assert(rpc);assert.equal(rpc.body.p_user,owner);assert.equal(rpc.body.p_x,7);assert.equal(rpc.body.p_z,78);assert(!('reward' in rpc.body));
+  const rpc=calls.find(c=>c.url.endsWith('job_action_trusted'));assert(rpc);assert.equal(rpc.body.p_user,owner);assert(Math.hypot(rpc.body.p_x-7,rpc.body.p_z-78)<=8,'a teleport only advances at the max legal speed');assert(Math.hypot(rpc.body.p_x+18,rpc.body.p_z+53)>100,'the teleport target is not trusted');assert(!('reward' in rpc.body));
   const opponent=await join(mainWorld,guest,'world:funaab:main','world:funaab:main');
   const studentConnId=mainWorld.sessions.get(student).connectionId;
   await student.packet({type:'move',position:[-17.8,0,-53],rotation:0.1,animation:'run'});

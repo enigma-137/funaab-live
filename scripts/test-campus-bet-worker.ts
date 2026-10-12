@@ -65,7 +65,11 @@ async function main() {
     // Far from the counter: rejected before touching the database.
     session.trustedPosition = [7, 0, 78];
     assert.match((await bet({ op: 'place', roundId, stake: 100, picks })).error, /counter/);
-    session.trustedPosition = [...CAMPUS_BET_SHOP.counter];
+    // Reconnect while standing at the counter: the server restarts the player at spawn.
+    // Its trusted position must catch up at legal speed instead of freezing there.
+    session.trustedPosition = [7, 0, 78]; session.movementBudget = 4; session.movementClock = now;
+    await socket.packet({ type: 'move', position: [...CAMPUS_BET_SHOP.counter], rotation: 0, animation: 'idle' });
+    now += 1000; // ~1–2 s at legal speed covers the ~33 m from spawn; the valid ticket below proves the catch-up.
     for (const [stake, p] of [[45, picks], [510, picks], [105, picks], ['100', picks], [100, picks.slice(0, 4)], [100, ['HOME', 'WIN', 'AWAY', 'HOME', 'HOME']], [100, 'HOME']] as const) {
       assert((await bet({ op: 'place', roundId, stake, picks: p })).error, `rejects ${JSON.stringify([stake, p])}`);
     }
