@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { useGameStore } from './stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -40,11 +40,14 @@ import { DmNotificationToast } from './ui/DmNotificationToast';
 import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
+import { CampusBetModal } from './ui/CampusBetModal';
 import { LIBRARY_ROOM } from './config/library';
+import { identifyTraceIQUser, trackTraceIQEvent } from './lib/traceiq';
 
 export const App: React.FC = () => {
   const [campusUserId, setCampusUserId] = useState<string | null>(null);
   const { user, isAuthenticated, isInitializingAuth, initialize } = useAuthStore();
+  const lastIdentifiedUserRef = useRef<string | null>(null);
   const { activeModal, setActiveModal, selectedHallLocationId } = useGameStore(useShallow((s) => ({ activeModal: s.activeModal, setActiveModal: s.setActiveModal, selectedHallLocationId: s.selectedHallLocationId })));
   const { loadWallet } = useWalletStore();
   const { loadSocialData } = useSocialStore();
@@ -56,6 +59,31 @@ export const App: React.FC = () => {
   }, [initialize]);
 
   useEffect(() => {
+    if (!user?.id) {
+      lastIdentifiedUserRef.current = null;
+      return;
+    }
+
+    if (lastIdentifiedUserRef.current === user.id) return;
+    lastIdentifiedUserRef.current = user.id;
+
+    identifyTraceIQUser({
+      id: user.id,
+      username: user.username,
+      college: user.college,
+      courseId: user.courseId ?? null,
+      onboardingCompleted: user.onboardingCompleted,
+      lastWorld: user.lastWorld ?? 'funaab',
+    });
+
+    trackTraceIQEvent('app_user_identified', {
+      userId: user.id,
+      college: user.college,
+      onboardingCompleted: Boolean(user.onboardingCompleted),
+    });
+  }, [user?.id, user?.college, user?.courseId, user?.onboardingCompleted, user?.lastWorld, user?.username]);
+
+  useEffect(() => {
     if (isAuthenticated && user && campusUserId === user.id && user.onboardingCompleted) {
       // Connect to Multiplayer network
       networkManager.connect(user);
@@ -64,6 +92,11 @@ export const App: React.FC = () => {
       loadWallet(user.id);
       useJobStore.getState().load();
       loadSocialData(user.id);
+      trackTraceIQEvent('campus_session_started', {
+        userId: user.id,
+        college: user.college,
+        courseId: user.courseId ?? null,
+      });
     } else {
       networkManager.disconnect();
     }
@@ -148,6 +181,7 @@ export const App: React.FC = () => {
       {activeModal === 'campus_jobs' && <CampusJobsModal />}
       {activeModal === 'send_money' && <SendMoneyModal />}
       {activeModal === 'daily_reward' && <DailyRewardModal />}
+      {activeModal === 'campus_bet' && <CampusBetModal />}
       {activeModal === 'lecture_hall' && (
         <LectureHallModal
           isOpen={true}

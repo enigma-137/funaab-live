@@ -2,6 +2,7 @@ import base from '../worlds/funaab/world.json';
 import { campusLocations, collegeCatalogue, locationById, CAMPUS_BOUNDS, CAMPUS_SPAWN, type Point } from './campusLocations';
 import { roadBounds, kekeDestinations, publicRoute, routeStops, ROUTE_FARE } from './kekeRoutes';
 import { LECTURE_HALLS } from './lectureHalls';
+import { CAMPUS_BET_SHOP } from './campusBet';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
   const a=l.kekeStop,b=l.entrance,w=l.footprint[0]/2,d=l.footprint[1]/2;
@@ -63,13 +64,26 @@ const colfhecForecourtSeats = [-1, 1].map((side) => ({
   radius: 2,
   rotation: 0,
 }));
+export const OUTSIDE_GATE = {
+  gateWalk:{minX:-9,maxX:9,minZ:80,maxZ:95},
+  road:{minX:-48,maxX:48,minZ:93,maxZ:98},
+  betFrontage:{minX:CAMPUS_BET_SHOP.position[0]-7,maxX:CAMPUS_BET_SHOP.position[0]+7,minZ:97,maxZ:CAMPUS_BET_SHOP.position[2]+CAMPUS_BET_SHOP.footprint[1]/2},
+};
+const outsideGateZones=[
+  {id:'gate-walk',name:'Main Gate',type:'path',restricted:false,bounds:OUTSIDE_GATE.gateWalk},
+  {id:'gate-road',name:'Gate Road',type:'road',restricted:false,bounds:OUTSIDE_GATE.road},
+  {id:'campus-bet-frontage',name:'Campus Bet',type:'plaza',restricted:false,bounds:OUTSIDE_GATE.betFrontage},
+];
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
+    {id:'campus-bet-counter',type:'campus_bet',label:'Campus Bet',actionText:'Open Campus Bet',position:CAMPUS_BET_SHOP.counter,radius:CAMPUS_BET_SHOP.interactionRadius,targetId:CAMPUS_BET_SHOP.id},
     // Every college hall without a hand-placed world.json entry gets the same lecture-hall interaction.
     ...LECTURE_HALLS.filter(h=>!h.legacyInteractable).map(h=>({id:h.interactableId,type:'lecture_hall',label:h.hallName,actionText:'Enter Lecture Hall',position:h.entrance,radius:4.5,targetId:h.id}))],
   terrainZones:[...roadBounds.map((bounds,i)=>({id:`road-${i}`,name:'Campus road',type:'road',restricted:false,bounds})),...pedestrianPaths,
     ...campusLocations.map(l=>({id:`forecourt-${l.id}`,name:l.shortName,type:l.id==='sports-centre'?'sports':'plaza',restricted:false,bounds:corridor(l.entrance,l.entrance,7)})),
     {id:'sports-turf',name:'Sports Centre',type:'sports',restricted:false,bounds:{minX:-118,maxX:-80,minZ:-18,maxZ:18}},
+    // Outside the main gate: the gate walk, the public road and the Campus Bet frontage are paved.
+    ...outsideGateZones,
     {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],
   kekeDestinations,kekeRoutes:[{id:'route-alpha',name:'Public campus route',fare:ROUTE_FARE,waypoints:publicRoute,stops:routeStops.map(id=>({id,name:locationById(id).shortName,position:locationById(id).kekeStop,duration:4}))}],
   securityRoutes:base.securityRoutes.map(r=>({...r,points:r.points.map(p=>[p[0]*1.6,p[1],p[2]*1.6])})),

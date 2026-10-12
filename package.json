@@ -25,10 +25,14 @@
     "test:library:browser": "node scripts/test-library-browser.cjs",
     "test:campus": "tsx scripts/test-campus-transit.ts",
     "test:keke:worker": "tsx scripts/test-keke-worker.ts",
+    "test:movement-sync": "tsx scripts/test-movement-sync.ts",
     "test:keke:db": "node scripts/test-keke-db.cjs",
     "test:campus:browser": "node scripts/test-campus-browser.cjs",
     "test:camera": "tsx scripts/test-mobile-camera.ts",
-    "test:halls": "tsx scripts/test-lecture-halls.ts"
+    "test:halls": "tsx scripts/test-lecture-halls.ts",
+    "test:campus-bet": "tsx scripts/test-campus-bet.ts",
+    "test:campus-bet:worker": "tsx scripts/test-campus-bet-worker.ts",
+    "test:campus-bet:db": "node scripts/test-campus-bet-db.cjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
@@ -42,6 +46,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.173.0",
+    "traceiq-sdk-js": "^0.1.10",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

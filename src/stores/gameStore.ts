@@ -89,6 +89,7 @@ interface GameState {
     | 'private_chat'
     | 'report_user'
     | 'campus_map'
+    | 'campus_bet'
     | null;
 
   // Actions
@@ -149,6 +150,7 @@ interface GameState {
       | 'private_chat'
       | 'report_user'
       | 'campus_map'
+      | 'campus_bet'
       | null
   ) => void;
   toggleDebugPhysics: () => void;

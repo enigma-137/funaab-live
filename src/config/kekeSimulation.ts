@@ -48,3 +48,65 @@ export function tickKeke(k:TransitState,now:number,dt:number):boolean{
     return true;
   }return false;
 }
+
+export function advanceKekeElapsed(k:TransitState,from:number,to:number){
+  let simulationTime=from;
+  let remaining=Math.max(0,to-from);
+  if(k.phase==='IDLE'||k.phase==='BLOCKED'||remaining===0)return;
+  const advanceInTicks=()=>{
+    while(remaining>0&&k.phase!=='BLOCKED'){
+      const dt=Math.min(.2,remaining/1000);
+      simulationTime+=dt*1000;
+      tickKeke(k,simulationTime,dt);
+      remaining-=dt*1000;
+    }
+  };
+  if(k.id!=='keke-1'||k.passengers.length||!k.route.length||k.speed<=0){
+    advanceInTicks();return;
+  }
+
+  if(!k.route.every((point,index)=>canAdvance(point,k.route[(index+1)%k.route.length]))){
+    advanceInTicks();return;
+  }
+  const routeDistance=k.route.reduce((total,point,index)=>{const next=k.route[(index+1)%k.route.length];return total+Math.hypot(next[0]-point[0],next[2]-point[2]);},0);
+  const cycleDuration=routeDistance/k.speed*1000+k.route.length*3500;
+  if(cycleDuration<=0){advanceInTicks();return;}
+  while(remaining>0){
+    if(k.phase==='BOARDING'){
+      const wait=Math.max(0,k.deadline-simulationTime);
+      if(wait>=remaining){simulationTime+=remaining;remaining=0;break;}
+      simulationTime+=wait;remaining-=wait;
+      if(remaining===0)break;
+      const previousIndex=(k.currentWaypointIndex-1+k.route.length)%k.route.length;
+      const previousPoint=k.route[previousIndex];
+      const isAtRoutePoint=previousPoint
+        && Math.hypot(k.position[0]-previousPoint[0],k.position[2]-previousPoint[2])<.001;
+      const cycles=isAtRoutePoint?Math.floor(remaining/cycleDuration):0;
+      if(cycles>0){
+        const skipped=cycles*cycleDuration;
+        simulationTime+=skipped;remaining-=skipped;k.deadline=simulationTime;
+        const beforePrevious=k.route[(previousIndex-1+k.route.length)%k.route.length];
+        k.rotation=Math.atan2(previousPoint[0]-beforePrevious[0],previousPoint[2]-beforePrevious[2]);
+        k.currentStopName=campusLocations.find(l=>nodeKey(l.kekeStop)===nodeKey(previousPoint))?.shortName||'Campus junction';
+      }
+      if(remaining===0)break;
+      k.phase='MOVING';k.isStopped=false;
+    }
+    if(k.phase!=='MOVING'){advanceInTicks();return;}
+    const target=k.route[k.currentWaypointIndex];
+    if(!target){advanceInTicks();return;}
+    const dx=target[0]-k.position[0],dz=target[2]-k.position[2],distance=Math.hypot(dx,dz);
+    const travelTime=distance/k.speed*1000;
+    const travel=Math.min(remaining,travelTime);
+    const progress=travelTime>0?travel/travelTime:1;
+    const next:Point=[k.position[0]+dx*progress,0,k.position[2]+dz*progress];
+    if(!canAdvance(k.position,next)){advanceInTicks();return;}
+    if(distance>.001)k.rotation=Math.atan2(dx,dz);
+    k.position=next;simulationTime+=travel;remaining-=travel;
+    if(travel+0.001<travelTime)break;
+    k.position=[...target];
+    k.currentWaypointIndex=(k.currentWaypointIndex+1)%k.route.length;
+    k.currentStopName=campusLocations.find(l=>nodeKey(l.kekeStop)===nodeKey(target))?.shortName||'Campus junction';
+    k.phase='BOARDING';k.isStopped=true;k.deadline=simulationTime+3500;
+  }
+}

@@ -156,6 +156,9 @@ export const GameHUD: React.FC = () => {
         case 'job_board':
           setActiveModal('campus_jobs');
           break;
+        case 'campus_bet':
+          setActiveModal('campus_bet');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -213,6 +216,8 @@ export const GameHUD: React.FC = () => {
         return '💼';
       case 'playstation':
         return '🎮';
+      case 'campus_bet':
+        return '🔴';
       default:
         return '✨';
     }
@@ -238,6 +243,8 @@ export const GameHUD: React.FC = () => {
           return 'View Campus Jobs';
         case 'playstation':
           return '1v1 PS5 Challenge';
+        case 'campus_bet':
+          return 'Open Campus Bet';
         default:
           return nearbyInteractable.actionText || 'Interact';
       }
@@ -268,6 +275,8 @@ export const GameHUD: React.FC = () => {
         return 'Jobs';
       case 'playstation':
         return 'Play';
+      case 'campus_bet':
+        return 'Campus Bet';
       default:
         return selectedPlayer ? 'Talk' : 'Interact';
     }

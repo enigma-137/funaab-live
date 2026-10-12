@@ -226,6 +226,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         case 'job_board':
           setActiveModal('campus_jobs');
           break;
+        case 'campus_bet':
+          setActiveModal('campus_bet');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -525,6 +528,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       job_board: 5,
       player: 6,
       bench: 7,
+      campus_bet: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
@@ -558,6 +562,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         campus_jobs: ['job_board'],
         jobs: ['job_board'],
         ps_match: ['playstation'],
+        campus_bet: ['campus_bet'],
       };
 
       const targetZoneTypes = PROXIMITY_MODAL_ZONES[activeModal];

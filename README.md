@@ -127,6 +127,12 @@ Some `:db` and `:browser` test scripts require their corresponding local service
 - `supabase/migrations/` — ordered database schema and policy migrations.
 - `scripts/` — focused test and verification scripts.
 
+## Multiplayer lifecycle
+
+The Cloudflare Durable Object runs its 100 ms Keke simulation only while a campus session needs it; movement batches are sent only for changed player or Keke state. The public Keke's state is saved when the last campus player leaves and advanced by elapsed time when the room is next joined. Player movement packets are sent on meaningful position, rotation, or animation changes, with a final stop update.
+
+WebSocket hibernation is not enabled. The Worker currently calls standard `webSocket.accept()` and registers closure-capturing event listeners; a migration must use `ctx.acceptWebSocket()`, the Durable Object `webSocketMessage`/`webSocketClose`/`webSocketError` handlers, and attachments or durable state to restore the current in-memory session/player maps after wake-up. The active campus simulation interval is another obstacle while the autonomous route is moving; hibernation would require moving that work to an alarm or elapsed-time/on-demand model. The client also sends a three-second application heartbeat, so genuinely idle WebSocket connections still generate traffic and would need an explicit hibernation-compatible heartbeat policy.
+
 Additional feature notes: [Hostel Life](./HOSTEL_LIFE.md), [Student Journey](./STUDENT_JOURNEY.md), and [Future Features](./FUTURE_FEATURES.md).
 
 ## Contributing

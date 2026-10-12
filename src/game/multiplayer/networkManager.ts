@@ -8,6 +8,7 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
+import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 
 class NetworkManager {
   public room = 'world:funaab:main';
@@ -19,6 +20,10 @@ class NetworkManager {
   private currentUser: PlayerProfile | null = null;
   public connectionId: string = '';
   private lastMoveSentTime: number = 0;
+  private lastMoveSent: MovementSnapshot | null = null;
+  private pendingMove: MovementSnapshot | null = null;
+  private pendingMoveTimeout: ReturnType<typeof setTimeout> | null = null;
+  private waitingForSnapshot = false;
   private targetWsUrl: string = '';
   private pingStartTime: number = 0;
 
@@ -80,6 +85,16 @@ class NetworkManager {
       this.send({type:'keke_book',requestId,kekeId,destinationId});
     });
   }
+  /** Campus Bet: the Worker validates and the database decides results and payouts. */
+  public campusBet(op:'state'|'place',payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to use Campus Bet'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Campus Bet timed out. Reopen the shop to check your ticket.'));},15000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);if(typeof v?.balance==='number')useWalletStore.setState({balance:v.balance});resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'campus_bet',requestId,op,...payload});
+    });
+  }
   public roomChanged() { this.send({type:'room_changed'}); }
   public switchRoom(room: string, user: PlayerProfile) {
     this.disconnect(); this.room=room; this.connectionId=this.generateConnectionId();
@@ -116,6 +131,10 @@ class NetworkManager {
       this.ws.onopen = () => {
         const user = this.currentUser;
         if (!user) return;
+        this.clearPendingMove();
+        this.lastMoveSent = null;
+        this.lastMoveSentTime = 0;
+        this.waitingForSnapshot = true;
         useGameStore.getState().setConnectionStatus('connected');
         console.log('[WS] connected to', this.targetWsUrl);
 
@@ -156,8 +175,9 @@ class NetworkManager {
           useGameStore.getState().setMyPosition(CAMPUS_SPAWN);useHostelStore.setState({teleport:CAMPUS_SPAWN});
         }
 
-        if(event.code===1008) { window.dispatchEvent(new CustomEvent(this.room === 'world:funaab:library' ? 'library-access-ended' : 'hostel-access-ended',{detail:event.reason})); this.stopHeartbeat(); return; }
+        if(event.code===1008) { window.dispatchEvent(new CustomEvent(this.room === 'world:funaab:library' ? 'library-access-ended' : 'hostel-access-ended',{detail:event.reason})); this.clearPendingMove(); this.stopHeartbeat(); return; }
         useGameStore.getState().setConnectionStatus('disconnected');
+        this.clearPendingMove();
         this.stopHeartbeat();
         this.scheduleReconnect();
       };
@@ -183,11 +203,15 @@ class NetworkManager {
         if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result); return;
       }
       case 'room_changed': window.dispatchEvent(new Event('hostel-room-changed')); return;
+      case 'campus_bet_settled': { window.dispatchEvent(new Event('campus-bet-settled')); const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
       case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
 
       case 'init':
       case 'snapshot': {
+        this.waitingForSnapshot = false;
+        this.lastMoveSent = null;
+        this.lastMoveSentTime = 0;
         if (data.yourConnectionId) {
           this.connectionId=data.yourConnectionId;
           gameStore.setMyConnectionId(this.connectionId);
@@ -452,19 +476,47 @@ class NetworkManager {
   }
 
   public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false) {
-    const now = Date.now();
-    // Throttle to ~10Hz (every 100ms)
-    if (now - this.lastMoveSentTime < 95) return;
-    this.lastMoveSentTime = now;
+    if (this.ws?.readyState !== WebSocket.OPEN || this.waitingForSnapshot) return;
+    this.pendingMove = { position: [...position], rotation, animation, kekeRiding };
+    this.flushPendingMove();
+  }
 
+  private flushPendingMove() {
+    const next = this.pendingMove;
+    if (!next || this.ws?.readyState !== WebSocket.OPEN || this.waitingForSnapshot) return;
+    const previous = this.lastMoveSent;
+    if (!hasMeaningfulMovementChange(previous, next)) {
+      this.pendingMove = null;
+      return;
+    }
+
+    const elapsed = Date.now() - this.lastMoveSentTime;
+    if (previous && elapsed < 95) {
+      if (this.pendingMoveTimeout === null) {
+        this.pendingMoveTimeout = setTimeout(() => {
+          this.pendingMoveTimeout = null;
+          this.flushPendingMove();
+        }, 95 - elapsed);
+      }
+      return;
+    }
+
+    this.pendingMove = null;
+    this.lastMoveSent = next;
+    this.lastMoveSentTime = Date.now();
     this.send({
       type: 'move',
       connectionId: this.connectionId,
-      position,
-      rotation,
-      animation,
-      kekeRiding,
+      ...next,
     });
+  }
+
+  private clearPendingMove() {
+    if (this.pendingMoveTimeout !== null) {
+      clearTimeout(this.pendingMoveTimeout);
+      this.pendingMoveTimeout = null;
+    }
+    this.pendingMove = null;
   }
 
   public sendChat(text: string) {
@@ -672,6 +724,8 @@ class NetworkManager {
     this.pending.clear();
     this.currentUser = null;
     this.connectGeneration++;
+    this.clearPendingMove();
+    this.waitingForSnapshot = false;
     this.stopHeartbeat();
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     if (this.ws) {

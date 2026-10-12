@@ -8,8 +8,11 @@ class Socket {
  async packet(data:object){await this.handlers.message({data:JSON.stringify(data)});}
 }
 async function main(){
- const oldInterval=globalThis.setInterval,oldFetch=globalThis.fetch,oldWS=globalThis.WebSocket;
- (globalThis as any).setInterval=()=>0;(globalThis as any).WebSocket=Socket;
+ const oldInterval=globalThis.setInterval,oldClearInterval=globalThis.clearInterval,oldFetch=globalThis.fetch,oldWS=globalThis.WebSocket,oldNow=Date.now;
+ const simulationIntervals=new Map<number,Function>();let nextInterval=0;
+ (globalThis as any).setInterval=(callback:Function)=>{const id=++nextInterval;simulationIntervals.set(id,callback);return id;};
+ (globalThis as any).clearInterval=(id:number)=>simulationIntervals.delete(id);
+ (globalThis as any).WebSocket=Socket;
  const owner='00000000-0000-4000-8000-000000000001',guest='00000000-0000-4000-8000-000000000002';
  const allowed=new Set([owner,guest,'guest3','guest4','guest5','guest6']);const calls:any[]=[];
  let failReward=false;
@@ -28,6 +31,21 @@ async function main(){
    const socket=new Socket();await w.handleSession(socket,null,bound);
    await socket.packet({type:'join',room:target,player:{id,username:id,connectionId:'attacker-chosen-id',position:[0,0,2]}});return socket;
   };
+  const lifecycleWorld:any=new WorldRoomDO({} as any,env);
+  assert.equal(simulationIntervals.size,0,'Construction must not start a permanent simulation timer');
+  const lifecycleSocket=await join(lifecycleWorld,owner,'world:funaab:main','world:funaab:main');
+  assert.equal(simulationIntervals.size,1,'An active campus session starts the Keke simulation timer');
+  lifecycleSocket.close(1000,'Leaving');
+  assert.equal(simulationIntervals.size,0,'The Keke simulation timer stops after the last campus session leaves');
+  const originalNow=Date.now;
+  const libraryWorld:any=new WorldRoomDO({storage:{}} as any,env),librarySocket=new Socket();
+  Date.now=()=>Date.UTC(2026,6,17,10);
+  await libraryWorld.handleSession(librarySocket,null,'world:funaab:library');
+  await librarySocket.packet({type:'join',room:'world:funaab:library',player:{id:owner,username:'Library visitor',position:[0,0,2]}});
+  Date.now=()=>Date.UTC(2026,6,17,16);
+  await librarySocket.packet({type:'ping',t:1});
+  Date.now=originalNow;
+  assert.equal(librarySocket.readyState,3,'A connected library session is closed on its next packet after closing time');
   const a=await join(world,owner),b=await join(world,guest);
   const duplicateWorld:any=new WorldRoomDO({} as any,env),duplicate=new Socket();
   await duplicateWorld.handleSession(duplicate,null,room);
@@ -59,6 +77,15 @@ await join(world,'guest4');await join(world,'guest5');
   await student.packet({type:'job_action',requestId:'test',action:'accept',jobId:'job-food-delivery',position:[-18,0,-53],reward:999999});
   const rpc=calls.find(c=>c.url.endsWith('job_action_trusted'));assert(rpc);assert.equal(rpc.body.p_user,owner);assert.equal(rpc.body.p_x,7);assert.equal(rpc.body.p_z,78);assert(!('reward' in rpc.body));
   const opponent=await join(mainWorld,guest,'world:funaab:main','world:funaab:main');
+  const studentConnId=mainWorld.sessions.get(student).connectionId;
+  await student.packet({type:'move',position:[-17.8,0,-53],rotation:0.1,animation:'run'});
+  const opponentBatchCount=opponent.messages.filter((message:any)=>message.type==='players_batch').length;
+  mainWorld.broadcastBatchPlayers();
+  const sentBatch=opponent.messages.filter((message:any)=>message.type==='players_batch');
+  assert.equal(sentBatch.length,opponentBatchCount+1,'A changed player state produces a batch');
+  assert(sentBatch.at(-1).updates[studentConnId],'The batch contains the changed player');
+  mainWorld.broadcastBatchPlayers();
+  assert.equal(opponent.messages.filter((message:any)=>message.type==='players_batch').length,sentBatch.length,'An unchanged state does not produce a redundant batch');
   await student.packet({type:'ps_challenge_create'});
   const match:any=[...mainWorld.psMatches.values()][0];
   await opponent.packet({type:'ps_challenge_join',matchId:match.id});
@@ -78,10 +105,17 @@ await join(world,'guest4');await join(world,'guest5');
   const rewardCalls=calls.filter(c=>c.url.endsWith('ps_reward_trusted')).length;
   await opponent.packet({type:'ps_action',matchId:match.id,choice:'right'});
   assert.equal(calls.filter(c=>c.url.endsWith('ps_reward_trusted')).length,rewardCalls);
+  const currentPosition=[...mainWorld.players.get(studentConnId).position];
+  student.close(1000,'Reconnect test');
+  const reconnected=new Socket();await mainWorld.handleSession(reconnected,null,'world:funaab:main');
+  await reconnected.packet({type:'join',room:'world:funaab:main',player:{id:owner,username:'Reconnected student',connectionId:studentConnId,position:currentPosition,rotation:0.1,animation:'run'}});
+  const reconnectSnapshot=reconnected.messages.find((message:any)=>message.type==='snapshot');
+  assert.equal(reconnectSnapshot.players[studentConnId].animation,'run','A reconnect snapshot carries the latest local animation state');
+  assert.deepEqual(reconnectSnapshot.players[studentConnId].position,currentPosition,'A reconnect snapshot carries the latest local position');
   const otherRoom:any=new WorldRoomDO({} as any,env);await join(otherRoom,owner,'world:funaab:hostel','world:funaab:hostel');
   assert.equal(otherRoom.players.size,1);assert.equal(mainWorld.players.size,2);
   const strict:any=new WorldRoomDO({} as any,{...env,ENABLE_GUEST_MODE:'false'});const denied=await join(strict,owner);assert.equal(strict.players.size,0);assert(denied.messages.some(m=>m.type==='error'));
   console.log('HOSTEL WORKER PASSED: membership, capacity, snapshots, scoped chat/movement/leave, owner invalidation, revocation, routing, spoofed destination/reward rejection and strict auth.');
- }finally{globalThis.setInterval=oldInterval;globalThis.fetch=oldFetch;globalThis.WebSocket=oldWS;}
+ }finally{Date.now=oldNow;globalThis.setInterval=oldInterval;globalThis.clearInterval=oldClearInterval;globalThis.fetch=oldFetch;globalThis.WebSocket=oldWS;}
 }
 main().catch(e=>{console.error(e);process.exit(1);});

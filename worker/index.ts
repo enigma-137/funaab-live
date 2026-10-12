@@ -1,9 +1,12 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
-import { createKeke, bookRide, tickKeke, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
+import { createKeke, bookRide, tickKeke, advanceKekeElapsed, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
 import { summarizeCampus } from '../src/config/campusSummary';
+import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
+import { generateMatchday } from '../src/config/campusBetModel';
+import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -33,6 +36,7 @@ interface SessionData {
   trustedAt?: number;
   movementBudget?: number;
   movementClock?: number;
+  campusBetAt?: number;
 }
 
 interface PlayerState {
@@ -306,7 +310,12 @@ export class WorldRoomDO {
   private psMatches: Map<string, PSMatchState>;
   private lectureRooms: Map<string, LectureRoomState>;
   private kekeWaypointTimer: number = 0;
-  private isSimulationRunning: boolean = false;
+  private simulationTimer: ReturnType<typeof setInterval> | null = null;
+  private batchBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private dirtyPlayerIds = new Set<string>();
+  private kekesDirty = false;
+  private restoreKekePromise: Promise<void> | null = null;
+  private persistKekePromise: Promise<void> | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -319,30 +328,189 @@ export class WorldRoomDO {
 
     this.kekes.set('keke-1',createKeke(false));
     this.kekes.set(PARKED_KEKE_ID,createKeke(true));
+  }
 
-    this.startSimulationLoop();
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const raw = typeof message === 'string' ? message : new TextDecoder().decode(message);
+    const attachment = typeof ws.deserializeAttachment === 'function'
+      ? (ws.deserializeAttachment() as {
+          initialToken?: string | null;
+          boundRoom?: string;
+          session?: SessionData | null;
+          player?: PlayerState | null;
+        } | null)
+      : null;
+
+    if (!this.sessions.has(ws) && attachment?.session && attachment?.player) {
+      const { session, player } = attachment;
+      this.sessions.set(ws, session);
+      this.players.set(session.connectionId, player);
+      this.dirtyPlayerIds.add(session.connectionId);
+      this.refreshSimulationLoop();
+      this.scheduleBatchBroadcast();
+    }
+
+    const handler = (ws as any).__messageHandler as ((event: { data: string }) => Promise<void>) | undefined;
+    if (handler) {
+      await handler({ data: raw });
+      return;
+    }
+
+    if (!this.sessions.has(ws)) {
+      await this.handleSession(ws, attachment?.initialToken ?? null, attachment?.boundRoom ?? 'world:funaab:main');
+      const fallbackHandler = (ws as any).__messageHandler as ((event: { data: string }) => Promise<void>) | undefined;
+      if (fallbackHandler) await fallbackHandler({ data: raw });
+    }
+  }
+
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    const cleanup = (ws as any).__cleanupHandler as (() => void) | undefined;
+    if (cleanup) cleanup();
+    else this.cleanupSocket(ws);
+  }
+
+  webSocketError(ws: WebSocket, error: unknown): void {
+    console.warn('[DO] WebSocket error:', error);
+    const cleanup = (ws as any).__cleanupHandler as (() => void) | undefined;
+    if (cleanup) cleanup();
+    else this.cleanupSocket(ws);
+  }
+
+  private cleanupSocket(webSocket: WebSocket) {
+    const sessionConnId = [...this.sessions.entries()].find(([ws]) => ws === webSocket)?.[1]?.connectionId ?? null;
+    const matchingSession = this.sessions.get(webSocket);
+    if (sessionConnId) {
+      const session = this.sessions.get(webSocket);
+
+      if (session && session.currentLectureId) {
+        const roomState = this.lectureRooms.get(session.currentLectureId);
+        if (roomState) {
+          delete roomState.activeStudents[sessionConnId];
+          this.broadcastToRoom(
+            session.room,
+            JSON.stringify({
+              type: 'lecture_student_left',
+              connectionId: sessionConnId,
+            })
+          );
+        }
+      }
+
+      this.kekes.forEach((keke) => {
+        if (keke.passengers.includes(sessionConnId)) void this.dropPassenger(keke, sessionConnId, 'refund');
+      });
+
+      this.players.delete(sessionConnId);
+      this.broadcastToRoom(
+        matchingSession?.room || 'world:funaab:main',
+        JSON.stringify({
+          type: 'player_left',
+          connectionId: sessionConnId,
+          id: session?.id,
+        })
+      );
+    }
+    this.sessions.delete(webSocket);
+    this.refreshSimulationLoop();
+    if (this.sessions.size === 0) {
+      if (this.batchBroadcastTimer !== null) clearTimeout(this.batchBroadcastTimer);
+      this.batchBroadcastTimer = null;
+      this.dirtyPlayerIds.clear();
+      this.kekesDirty = false;
+    }
+    if (![...this.sessions.values()].some((session) => session.room === 'world:funaab:main')) {
+      this.restoreKekePromise = null;
+      void this.persistAutonomousKeke().catch((error) => {
+        console.error('[DO] Failed to persist autonomous Keke state:', error);
+      });
+    }
   }
 
   private startSimulationLoop() {
-    if (this.isSimulationRunning) return;
-    this.isSimulationRunning = true;
-
-    // Run 10Hz tick for batch updates & Keke simulation
-    setInterval(() => {
-      for (const [socket, session] of this.sessions) { if (session.room === LIBRARY_ROOM && !isLibraryOpen()) socket.close(1008, 'The library is closed. Open Monday–Friday, 8am–5pm Lagos time.'); }
+    if (this.simulationTimer !== null || !this.hasActiveKekeSimulation()) return;
+    this.simulationTimer = setInterval(() => {
       this.tickKekeSimulation();
       this.broadcastBatchPlayers();
+      if (!this.hasActiveKekeSimulation()) this.stopSimulationLoop();
     }, 100);
+  }
+
+  private hasActiveKekeSimulation() {
+    return [...this.sessions.values()].some((session) => session.room === 'world:funaab:main')
+      && [...this.kekes.values()].some((keke) => keke.phase !== 'IDLE' && keke.phase !== 'BLOCKED');
+  }
+
+  private refreshSimulationLoop() {
+    if (this.hasActiveKekeSimulation()) this.startSimulationLoop();
+    else this.stopSimulationLoop();
+  }
+
+  private stopSimulationLoop() {
+    if (this.simulationTimer === null) return;
+    clearInterval(this.simulationTimer);
+    this.simulationTimer = null;
+  }
+
+  private scheduleBatchBroadcast() {
+    if (this.batchBroadcastTimer !== null) return;
+    this.batchBroadcastTimer = setTimeout(() => {
+      this.batchBroadcastTimer = null;
+      this.broadcastBatchPlayers();
+    }, 50);
+  }
+
+  private async restoreAutonomousKeke() {
+    if (this.restoreKekePromise) return this.restoreKekePromise;
+    const storage = this.state?.storage;
+    if (!storage || typeof storage.get !== 'function') return;
+
+    this.restoreKekePromise = (async () => {
+      await this.persistKekePromise;
+      const saved = await storage.get<{ transit: TransitState; updatedAt: number }>('keke-autonomous-state');
+      if (!saved) return;
+      const keke = this.kekes.get('keke-1');
+      if (!keke) throw new Error('Autonomous Keke state is unavailable');
+      Object.assign(keke, saved.transit);
+
+      advanceKekeElapsed(keke, saved.updatedAt, Date.now());
+      this.kekesDirty = true;
+    })();
+    return this.restoreKekePromise;
+  }
+
+  private async persistAutonomousKeke() {
+    const keke = this.kekes.get('keke-1');
+    const storage = this.state?.storage;
+    if (!keke || !storage || typeof storage.put !== 'function') return;
+    const persist = storage.put('keke-autonomous-state', { transit: keke, updatedAt: Date.now() });
+    this.persistKekePromise = persist;
+    await persist;
   }
 
   private transitBusy=false;
   private tickKekeSimulation() {
     if(this.transitBusy)return;
     for(const k of this.kekes.values()) {
+      const previousPosition = [...k.position] as [number, number, number];
+      const previousRotation = k.rotation;
+      const previousPhase = k.phase;
+      const previousWaypoint = k.currentWaypointIndex;
+      const previousDeadline = k.deadline;
+      const previousStopped = k.isStopped;
       const arrived=tickKeke(k,Date.now(),.1);
+      if (previousPosition.some((value, index) => value !== k.position[index])
+        || previousRotation !== k.rotation
+        || previousPhase !== k.phase
+        || previousWaypoint !== k.currentWaypointIndex
+        || previousDeadline !== k.deadline
+        || previousStopped !== k.isStopped) this.kekesDirty = true;
       for(const id of [...k.passengers]){
         const p=this.players.get(id);if(!p)continue;
-        p.position=seatPosition(k,id);p.rotation=k.rotation;p.animation='sit';
+        const position=seatPosition(k,id);
+        if (p.position.some((value, index) => value !== position[index]) || p.rotation !== k.rotation || p.animation !== 'sit') {
+          this.dirtyPlayerIds.add(id);
+        }
+        p.position=position;p.rotation=k.rotation;p.animation='sit';
         for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.trustedAt=Date.now();}
         if(arrived && (k.id===PARKED_KEKE_ID || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
@@ -359,7 +527,8 @@ export class WorldRoomDO {
     const ticket=k.paid[id];delete k.paid[id];delete k.targets[id];
     k.passengers=k.passengers.filter(p=>p!==id);
     const p=this.players.get(id),position=exitPosition(k);
-    if(p){p.kekeRiding=false;p.kekeId=undefined;p.position=position;p.animation='idle';}
+    if(p){p.kekeRiding=false;p.kekeId=undefined;p.position=position;p.animation='idle';this.dirtyPlayerIds.add(id);}
+    this.kekesDirty = true;
     for(const [socket,session] of this.sessions)if(session.connectionId===id){
       session.trustedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
       socket.send(JSON.stringify({type:'keke_dropoff',position,reason:action==='complete'?'Arrived':'Ride ended'}));
@@ -393,16 +562,21 @@ export class WorldRoomDO {
       if(k.phase==='IDLE')bookRide(k,destinationId,Date.now(),crypto.randomUUID());
       k.passengers.push(session.connectionId);k.paid[session.connectionId]=ticket;k.targets[session.connectionId]=destinationId;
       p.kekeRiding=true;p.kekeId=k.id;p.animation='sit';p.position=seatPosition(k,session.connectionId);
+      this.dirtyPlayerIds.add(session.connectionId);
+      this.kekesDirty = true;
+      this.refreshSimulationLoop();
       this.broadcastBatchPlayers();
       return {kekeId:k.id,destinationId,fare,balance:receipt.balance};
     }finally{this.transitBusy=false;}
   }
 
   private broadcastBatchPlayers() {
-    if (this.players.size === 0) return;
-
+    if (this.sessions.size === 0) return;
+    if (this.dirtyPlayerIds.size === 0 && !this.kekesDirty) return;
     const updates: Record<string, any> = {};
-    for (const [connId, player] of this.players) {
+    for (const connId of this.dirtyPlayerIds) {
+      const player = this.players.get(connId);
+      if (!player) continue;
       updates[connId] = {
         id: player.id,
         connectionId: connId,
@@ -420,18 +594,26 @@ export class WorldRoomDO {
       };
     }
 
-    const payload = JSON.stringify({
+    const batch: Record<string, unknown> = {
       type: 'players_batch',
       updates,
-      kekes: Object.fromEntries(this.kekes),
-    });
+    };
+    if (this.kekesDirty) batch.kekes = Object.fromEntries(this.kekes);
+    const payload = JSON.stringify(batch);
 
+    let sendFailed = false;
     for (const [ws, session] of this.sessions) {
       if (ws.readyState === WebSocket.OPEN) {
         try {
           ws.send(payload);
-        } catch (e) {}
+        } catch (e) {
+          sendFailed = true;
+        }
       }
+    }
+    if (!sendFailed) {
+      this.dirtyPlayerIds.clear();
+      this.kekesDirty = false;
     }
   }
 
@@ -449,6 +631,52 @@ export class WorldRoomDO {
     if (!room.startsWith('world:funaab:hostel-room:')) return true;
     return this.dbRpc('hostel_can_enter',{p_owner:room.split(':')[3],p_guest:user});
   }
+  // Campus Bet: the database owns the lifecycle; this DO only supplies freshly generated
+  // fixtures (secure randomness, hidden strengths) and relays a player's ticket.
+  private async campusBetSync(user: string | null) {
+    let state = await this.dbRpc('campus_bet_sync_trusted', { p_user: user, p_candidate: null });
+    if (state.needs_round) {
+      state = await this.dbRpc('campus_bet_sync_trusted', { p_user: user, p_candidate: generateMatchday(state.recent_pairs || []) });
+    }
+    if (state.settled > 0) this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'campus_bet_settled' }));
+    if (state.current?.status === 'OPEN') await this.scheduleCampusBetSettlement(Date.parse(state.current.closes_at));
+    const { needs_round, recent_pairs, settled, ...view } = state;
+    return { ...view, teams: publicCampusBetTeams() };
+  }
+  private async scheduleCampusBetSettlement(closesAt: number) {
+    const storage = this.state?.storage;
+    if (!storage || typeof storage.get !== 'function' || !Number.isFinite(closesAt)) return;
+    const due = closesAt + 1000;
+    if ((await storage.get<number>('campus-bet-settle-at')) === due) return;
+    await storage.put('campus-bet-settle-at', due);
+    await this.ensureAlarmBy(due);
+  }
+  /** Other features overwrite the single DO alarm; never push an earlier alarm later. */
+  private async ensureAlarmBy(at: number) {
+    const storage = this.state.storage;
+    const existing = typeof storage.getAlarm === 'function' ? await storage.getAlarm() : null;
+    if (existing == null || existing > at) await storage.setAlarm(at);
+  }
+  private async campusBetCommand(session: SessionData, data: any) {
+    if (session.room !== 'world:funaab:main') throw new Error('Campus Bet is just outside the main gate.');
+    const now = Date.now();
+    if (now - (session.campusBetAt || 0) < 1000) throw new Error('One moment — the attendant is still printing.');
+    session.campusBetAt = now;
+    if (data.op !== 'place') return this.campusBetSync(session.id);
+    // Only the round, stake and picks come from the client; results and payouts never do.
+    const pos = session.trustedPosition;
+    if (!pos || Math.hypot(pos[0] - CAMPUS_BET_SHOP.counter[0], pos[2] - CAMPUS_BET_SHOP.counter[2]) > CAMPUS_BET_SHOP.serverRadius) {
+      throw new Error('Walk up to the Campus Bet counter to place a ticket.');
+    }
+    const stake = data.stake;
+    if (!isValidCampusBetStake(stake)) throw new Error('Stake must be ₦50–₦500 in ₦10 steps.');
+    const picks = data.picks;
+    if (!Array.isArray(picks) || picks.length !== 5 || !picks.every((p) => CAMPUS_BET_PICKS.includes(p))) throw new Error('Pick a result for all 5 matches.');
+    const roundId = String(data.roundId || '');
+    if (!/^[0-9a-f-]{36}$/i.test(roundId)) throw new Error('Matchday not found.');
+    const receipt = await this.dbRpc('campus_bet_place_trusted', { p_user: session.id, p_round: roundId, p_stake: stake, p_picks: picks });
+    return { ...(await this.campusBetSync(session.id)), balance: Number(receipt.balance) };
+  }
   async alarm() {
     const settlements=await this.state.storage.list<any>({prefix:'keke-settle:',limit:100});
     for(const [key,entry] of settlements){
@@ -463,6 +691,17 @@ export class WorldRoomDO {
       catch { /* A later alarm safely retries the same idempotent match receipt. */ }
     }
     if ((await this.state.storage.list({prefix:'ps-reward:',limit:1})).size) await this.state.storage.setAlarm(Date.now()+60000);
+
+    // Backstop settlement for Campus Bet when nobody opens the shop after betting closes.
+    const storage = this.state.storage;
+    const betDue = typeof storage.get === 'function' ? await storage.get<number>('campus-bet-settle-at') : undefined;
+    if (betDue) {
+      if (betDue <= Date.now()) {
+        await storage.delete('campus-bet-settle-at');
+        try { await this.campusBetSync(null); }
+        catch { await storage.put('campus-bet-settle-at', Date.now() + 60000); await this.ensureAlarmBy(Date.now() + 60000); }
+      } else await this.ensureAlarmBy(betDue);
+    }
   }
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -473,11 +712,24 @@ export class WorldRoomDO {
 
     if (isWebSocket) {
       const token = url.searchParams.get('token');
+      const boundRoom = url.searchParams.get('room') || 'world:funaab:main';
       console.log('[WS] WebSocket upgrade received at path:', url.pathname, token ? '(token present)' : '(no token)');
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
-      await this.handleSession(server, token, url.searchParams.get('room') || 'world:funaab:main');
+      if (typeof server.serializeAttachment === 'function') {
+        server.serializeAttachment({
+          initialToken: token,
+          boundRoom,
+          session: null,
+          player: null,
+        });
+      }
+      if (typeof this.state.acceptWebSocket === 'function') {
+        this.state.acceptWebSocket(server, [boundRoom]);
+      } else if (typeof server.accept === 'function') {
+        server.accept();
+      }
 
       return new Response(null, {
         status: 101,
@@ -502,7 +754,29 @@ export class WorldRoomDO {
   }
 
   private async handleSession(webSocket: WebSocket, initialToken: string | null, boundRoom: string) {
-    webSocket.accept();
+    const attachment = typeof webSocket.deserializeAttachment === 'function'
+      ? (webSocket.deserializeAttachment() as {
+          initialToken?: string | null;
+          boundRoom?: string;
+          session?: SessionData | null;
+          player?: PlayerState | null;
+        } | null)
+      : null;
+
+    const hydratedToken = attachment?.initialToken ?? initialToken ?? null;
+    const hydratedBoundRoom = attachment?.boundRoom ?? boundRoom;
+
+    if (attachment?.session && attachment?.player) {
+      const existingSession = attachment.session;
+      const existingPlayer = attachment.player;
+      this.sessions.set(webSocket, existingSession);
+      this.players.set(existingSession.connectionId, existingPlayer);
+      this.dirtyPlayerIds.add(existingSession.connectionId);
+      this.kekesDirty = true;
+      this.refreshSimulationLoop();
+      this.scheduleBatchBroadcast();
+      return;
+    }
 
     let sessionConnId: string | null = null;
     let joining = false;
@@ -526,6 +800,10 @@ export class WorldRoomDO {
         // Lightweight abuse/rate limiting per connection
         const session = this.sessions.get(webSocket);
         const now = Date.now();
+        if (session?.room === LIBRARY_ROOM && !isLibraryOpen()) {
+          webSocket.close(1008, 'The library is closed. Open Monday–Friday, 8am–5pm Lagos time.');
+          return;
+        }
         if (session) {
           if (now - session.lastPacketTime < 1000) {
             session.packetCount++;
@@ -580,6 +858,7 @@ export class WorldRoomDO {
             }
 
             if (!(await this.checkRoom(room, verifiedUserId))) { webSocket.close(1008,'Room is private or invite expired'); return; }
+            if (room === 'world:funaab:main') await this.restoreAutonomousKeke();
             if (room.startsWith('world:funaab:hostel-room:')) {
               const owner = room.split(':')[3];
               const guests = [...this.sessions.values()].filter(s => s.id !== owner).length;
@@ -622,6 +901,7 @@ export class WorldRoomDO {
             };
 
             this.players.set(assignedConnId, playerState);
+            this.refreshSimulationLoop();
 
             // Send full initial snapshot
             const roomPlayers: Record<string, any> = {};
@@ -664,6 +944,13 @@ export class WorldRoomDO {
             } catch(e) { webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:(e as Error).message})); }
             break;
           }
+          case 'campus_bet': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: await this.campusBetCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
           case 'room_changed': {
             if (!session || !session.room.startsWith('world:funaab:hostel-room:') || session.room.split(':')[3]!==session.id) return;
             // Never trust client furniture; peers refetch the RLS-protected snapshot.
@@ -702,11 +989,17 @@ export class WorldRoomDO {
               if (distance <= budget) {
                 current.trustedPosition=data.position;current.trustedAt=clock;current.movementBudget=budget-distance;
               }
+              const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
+              const animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
+              if (player.position.some((value, index) => value !== data.position[index])
+                || player.rotation !== rotation
+                || player.animation !== animation) this.dirtyPlayerIds.add(sessionConnId);
               player.position = data.position;
-              player.rotation = data.rotation;
-              player.animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
+              player.rotation = rotation;
+              player.animation = animation;
 
               player.lastUpdated = Date.now();
+              if (this.dirtyPlayerIds.has(sessionConnId)) this.scheduleBatchBroadcast();
             }
             break;
           }
@@ -1149,7 +1442,10 @@ export class WorldRoomDO {
       }
     });
 
+    let cleanedUp = false;
     const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
       if (sessionConnId) {
         const session = this.sessions.get(webSocket);
 
@@ -1186,6 +1482,19 @@ export class WorldRoomDO {
         );
       }
       this.sessions.delete(webSocket);
+      this.refreshSimulationLoop();
+      if (this.sessions.size === 0) {
+        if (this.batchBroadcastTimer !== null) clearTimeout(this.batchBroadcastTimer);
+        this.batchBroadcastTimer = null;
+        this.dirtyPlayerIds.clear();
+        this.kekesDirty = false;
+      }
+      if (![...this.sessions.values()].some((session) => session.room === 'world:funaab:main')) {
+        this.restoreKekePromise = null;
+        void this.persistAutonomousKeke().catch((error) => {
+          console.error('[DO] Failed to persist autonomous Keke state:', error);
+        });
+      }
     };
 
     webSocket.addEventListener('close', cleanup);

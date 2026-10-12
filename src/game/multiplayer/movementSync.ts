@@ -1,0 +1,24 @@
+export interface MovementSnapshot {
+  position: [number, number, number];
+  rotation: number;
+  animation: string;
+  kekeRiding: boolean;
+}
+
+export function hasMeaningfulMovementChange(
+  previous: MovementSnapshot | null,
+  next: MovementSnapshot,
+): boolean {
+  if (!previous) return true;
+  const dx = next.position[0] - previous.position[0];
+  const dy = next.position[1] - previous.position[1];
+  const dz = next.position[2] - previous.position[2];
+  const rotationDelta = Math.abs(Math.atan2(
+    Math.sin(next.rotation - previous.rotation),
+    Math.cos(next.rotation - previous.rotation),
+  ));
+  return dx * dx + dy * dy + dz * dz >= 0.12 * 0.12
+    || rotationDelta >= 0.06
+    || next.animation !== previous.animation
+    || next.kekeRiding !== previous.kekeRiding;
+}
