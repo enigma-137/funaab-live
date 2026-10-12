@@ -725,11 +725,11 @@ export class WorldRoomDO {
           player: null,
         });
       }
-      if (typeof this.state.acceptWebSocket === 'function') {
-        this.state.acceptWebSocket(server, [boundRoom]);
-      } else if (typeof server.accept === 'function') {
-        server.accept();
-      }
+      // Hibernation (state.acceptWebSocket) is disabled until webSocketMessage has a real handler:
+      // nothing sets ws.__messageHandler, so hibernatable sockets silently dropped every message
+      // (join, ping, chat, keke, Campus Bet). Standard sockets deliver to handleSession's listeners.
+      server.accept();
+      await this.handleSession(server, token, boundRoom);
 
       return new Response(null, {
         status: 101,
