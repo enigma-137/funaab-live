@@ -385,3 +385,15 @@
 }
 
 .hostel-campus-return{position:fixed;top:calc(env(safe-area-inset-top,0px) + 65px);left:12px;z-index:55;display:flex;align-items:center;gap:5px;padding:9px 11px;border:1px solid #b6c9b7;border-radius:12px;background:#f3f6eb;color:#244c39;font-size:12px;box-shadow:0 3px 12px #102a1820}.hostel-dock button{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 10px;min-height:38px}.hostel-dock strong{font-size:11px}@media(max-width:600px){.hostel-dock{gap:4px;padding:7px;max-width:calc(100vw - 24px)}.hostel-dock button{font-size:11px;padding:7px}.hostel-dock strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+
+/* Hostel compound: room identity chip + Enter Room prompt (shared courtyard only). */
+.hostel-compound-chip{position:fixed;top:calc(env(safe-area-inset-top,0px) + 112px);left:12px;z-index:54;display:flex;flex-direction:column;gap:1px;
+ padding:6px 10px;border-radius:12px;background:#f3f6ebee;border:1px solid #b6c9b7;color:#244c39;font-size:11.5px;box-shadow:0 3px 12px #102a1820;max-width:calc(100vw - 24px)}
+.hostel-compound-count{font-size:10.5px;color:#56705e}
+.hostel-enter-room{position:fixed;z-index:60;display:flex;align-items:center;gap:8px;min-height:50px;padding:8px 16px;border-radius:18px;
+ background:#14532d;color:#ecfdf5;border:2px solid #4ade80;font-weight:800;font-size:14px;box-shadow:0 8px 28px #0006;
+ left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 24px)}
+.hostel-enter-room.is-touch{left:auto;right:16px;transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 90px)}
+.hostel-enter-room kbd{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#4ade80;color:#052e16;font:800 13px ui-monospace,monospace}
+.hostel-enter-room small{font-size:10.5px;font-weight:700;color:#bbf7d0}
+.hostel-enter-room:disabled{opacity:.6}

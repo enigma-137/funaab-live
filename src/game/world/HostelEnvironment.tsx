@@ -1,5 +1,4 @@
 import React from "react";
-import { Html } from "@react-three/drei";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { useAuthStore } from "../../stores/authStore";
 import { useInputStore } from "../../stores/inputStore";
@@ -12,7 +11,8 @@ import {
 import { HostelItemModel } from "./HostelItemModel";
 import { useHostelStore } from "../../stores/hostelStore";
 import { hostelItem } from "../../config/hostelShop";
-import { openHostel } from "../../ui/HostelLife";
+import { HostelCompound } from "./HostelCompound";
+import { hostelRoomFor } from "../../config/hostelCompound";
 function Box({
   pos,
   size,
@@ -37,57 +37,7 @@ export function HostelEnvironment() {
     useInputStore.getState().clearTargetDestination();
     useHostelStore.setState({ selected: id });
   };
-  if (!owner)
-    return (
-      <group>
-        <RigidBody type="fixed" colliders="cuboid">
-          <Box pos={[0, -0.2, 0]} size={[32, 0.4, 30]} color="#cbbd98" />
-        </RigidBody>
-        <RigidBody type="fixed" colliders="cuboid">
-          <Box pos={[-7, 2, -4]} size={[9, 4, 6]} color="#e8d8b6" />
-          <Box pos={[7, 1.5, -4]} size={[6, 3, 5]} color="#649981" />
-        </RigidBody>
-        <Box pos={[-7, 4.1, -4]} size={[10, 0.3, 7]} color="#597065" />
-        <Box pos={[7, 3.1, -4]} size={[7, 0.25, 6]} color="#a56342" />
-        <Html position={[-7, 3.2, -0.95]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
-          HOSTEL
-        </span></Html>
-        <Html position={[7, 2.5, -1.45]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
-          IYA IBEJI SHOP
-        </span></Html>
-        <mesh
-          position={[-7, 1.2, -0.9]}
-          onClick={(e) => {
-            e.stopPropagation();
-            travel("room");
-          }}
-        >
-          <boxGeometry args={[1.8, 2.4, 0.2]} />
-          <meshStandardMaterial color="#4a6455" />
-        </mesh>
-        <mesh
-          position={[7, 1, -1.4]}
-          onClick={(e) => {
-            e.stopPropagation();
-            openHostel("shop");
-          }}
-        >
-          <boxGeometry args={[2, 2, 0.2]} />
-          <meshStandardMaterial color="#dbbe71" />
-        </mesh>
-
-        <Html position={[7, 1.5, -0.5]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
-          Visit Iya Ibeji
-        </span></Html>
-        <Box pos={[8, 0.35, 7]} size={[3, 0.7, 2]} color="#8a8069" />
-        <Html position={[8, 1.5, 7]} center zIndexRange={[5,0]} style={{pointerEvents:"none"}}><span style={{whiteSpace:"nowrap",fontSize:11,fontWeight:700,color:"#1f4434",background:"#f2f3dd",padding:"3px 6px",borderRadius:4}}>
-          SECURITY POST
-        </span></Html>
-        <Box pos={[0, 0.015, 8]} size={[3, 0.03, 12]} color="#aaa58f" />
-
-
-      </group>
-    );
+  if (!owner) return <HostelCompound myRoom={user ? hostelRoomFor(user.id).room : null} />;
   const valid = preview
     ? !placementError(preview, snapshot?.placements || [])
     : true;

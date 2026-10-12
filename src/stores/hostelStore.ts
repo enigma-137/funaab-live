@@ -1,3 +1,4 @@
+import { HOSTEL_SPAWN } from "../config/hostelCompound";
 import { CAMPUS_SPAWN } from '../config/campusLocations';
 import { create } from "zustand";
 import { supabase } from "../lib/supabase";
@@ -280,7 +281,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
           ? CAMPUS_SPAWN
           : target === "room"
             ? [0, 0, 2]
-            : [0, 0, 8],
+            : HOSTEL_SPAWN,
       activeModal: null,
       nearbyInteractable: null,
       isRidingKeke: false,

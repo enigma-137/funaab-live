@@ -1,4 +1,6 @@
 import { CAMPUS_SPAWN } from '../config/campusLocations';
+import { SECURITY_POST, SECURITY_RADIUS } from '../config/hostelCompound';
+import { HostelCompoundHud } from './HostelCompoundHud';
 import { ArrowLeft, Home, ShoppingBag, Backpack, Users } from 'lucide-react';
 import { HostelThumbnail } from "./HostelThumbnail";
 import { RoomControls } from "./RoomControls";
@@ -24,7 +26,7 @@ export function HostelLife() {
       (x) => Math.hypot(x.myPosition[0]-CAMPUS_SPAWN[0], x.myPosition[2]-CAMPUS_SPAWN[2]) < 8,
     ),
     nearSecurity = useGameStore(
-      (x) => Math.hypot(x.myPosition[0] - 8, x.myPosition[2] - 7) < 3,
+      (x) => Math.hypot(x.myPosition[0] - SECURITY_POST[0], x.myPosition[2] - SECURITY_POST[2]) < SECURITY_RADIUS,
     ),
     setModal = useGameStore((x) => x.setActiveModal);
   const { inventory, balance } = useWalletStore(),
@@ -133,6 +135,7 @@ export function HostelLife() {
   return (
     <>
       <RoomControls />
+      <HostelCompoundHud />
       {away && !s.preview && !s.pose && <button className="hostel-campus-return" aria-label="Return to campus" title="Return to campus" onClick={()=>s.travel('campus')}><ArrowLeft size={17}/><span>Campus</span></button>}
 
       {(s.transition || securityHold) && (
