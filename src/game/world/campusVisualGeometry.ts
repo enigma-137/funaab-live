@@ -68,6 +68,8 @@ export const campusMaterials = {
   curbDark: mat("#48504b"),
   flower: mat("#c37d58"),
   gravel: mat("#998b6c"),
+  concrete: mat("#cfcbc0"),
+  engBlue: mat("#3a5f86", 0.7),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

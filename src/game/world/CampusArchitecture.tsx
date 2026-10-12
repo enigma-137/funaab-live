@@ -1,5 +1,6 @@
 import {
   CylinderGeometry,
+  SphereGeometry,
   BufferGeometry,
   Float32BufferAttribute,
 } from "three";
@@ -10,7 +11,7 @@ import {
   type Batch,
 } from "./campusVisualGeometry";
 import { CampusSign } from "./CampusSign";
-export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library";
+export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys";
 export function StaticBatches({ batches }: { batches: Batch[] }) {
   return (
     <group dispose={null}>
@@ -26,8 +27,78 @@ export function StaticBatches({ batches }: { batches: Batch[] }) {
     </group>
   );
 }
+// Glazed side-wall windows (frame, glass, mullion, transoms) on both end walls.
+function sideWindows(b: VisualBuilder, halfWidth: number, zs: number[], ys: number[], h: number) {
+  for (const side of [-1, 1])
+    for (const z of zs)
+      for (const y of ys) {
+        b.box([side * (halfWidth + 0.045), y, z], [0.09, h + 0.14, 1.45], "ivory");
+        b.box([side * (halfWidth + 0.1), y, z], [0.035, h, 1.3], "glass");
+        b.box([side * (halfWidth + 0.125), y, z], [0.04, h, 0.055], "ivory");
+      }
+}
 export function buildLandmark(id: LandmarkId): Batch[] {
   const b = new VisualBuilder();
+  if (id === "coleng") {
+    // Two-storey engineering block (30m x 15m body, 32m x 18m with porch): brick end pavilions,
+    // blue structural fins, sawtooth workshop roof lights and a glazed double-height entrance.
+    const W = 30, D = 15, front = D / 2;
+    b.box([0, 0.2, 0], [W + 0.6, 0.4, D + 0.6], "curbDark");
+    b.box([0, 2.4, 0], [W, 4, D], "concrete"); // ground floor 0.4–4.4
+    b.box([0, 4.575, 0], [W + 0.5, 0.35, D + 0.5], "ivory"); // first-floor slab band
+    b.box([0, 6.75, 0], [W, 4, D], "cream"); // first floor 4.75–8.75
+    b.box([0, 9.05, 0], [W + 0.4, 0.6, D + 0.4], "engBlue"); // parapet
+    for (const x of [-8.6, 0, 8.6]) b.roof(7.2, 12.5, 9.35, 1.5, "roofDark", [x, 0, 0], false);
+    for (const x of [-8.6, 0, 8.6]) b.box([x, 9.95, 0.2], [6.6, 0.9, 0.08], "glass", [-0.25, 0, 0]);
+    // End pavilions, slightly proud of the facade.
+    for (const side of [-1, 1]) {
+      const x = side * 12.5;
+      b.box([x, 4.7, 0.25], [5.2, 9.4, D + 0.5], "brick");
+      b.box([x, 9.55, 0.25], [5.5, 0.4, D + 0.8], "ivory");
+      for (const y of [2.4, 6.75]) b.window(x, y, front + 0.56, 2.4, 2.6, "ivory");
+    }
+    // Facade bays: three windows per floor each side of the entrance, framed by blue fins.
+    for (const side of [-1, 1]) {
+      for (const x of [4.7, 6.3, 7.9])
+        for (const y of [2.4, 6.75]) b.window(side * x, y, front + 0.06, 1.15, 2.3, "metal");
+      for (const x of [3.9, 5.5, 7.1, 8.7]) b.box([side * x, 4.6, front + 0.18], [0.18, 8.4, 0.35], "engBlue");
+    }
+    // Entrance: twin columns, double-height glazing, blue canopy, steps and a raised name crown.
+    for (const x of [-3.1, 3.1]) b.box([x, 4.6, front + 1.1], [0.6, 9.2, 0.6], "ivory");
+    b.box([0, 6.75, front + 0.4], [5.6, 3.6, 0.12], "glass");
+    for (const x of [-1.4, 0, 1.4]) b.box([x, 6.75, front + 0.48], [0.08, 3.6, 0.06], "metal");
+    b.box([0, 4.55, front + 0.9], [6.8, 0.3, 2.2], "engBlue");
+    b.box([0, 1.9, front + 0.03], [3.2, 3, 0.06], "shadow");
+    b.box([0, 3.45, front + 0.06], [3.5, 0.18, 0.1], "metal");
+    b.box([0, 0.3, front + 0.5], [5.6, 0.2, 1], "curb");
+    b.box([0, 0.12, front + 1.1], [6.4, 0.24, 1.8], "curb");
+    b.box([0, 9.9, front + 0.7], [7.2, 1.2, 1.6], "engBlue");
+    sideWindows(b, W / 2, [-5, -1.7, 1.7, 5], [2.4, 6.75], 2);
+    for (const x of [-9, -6, -3, 3, 6, 9])
+      for (const y of [2.4, 6.75]) b.box([x, y, -front - 0.03], [1.2, 2.2, 0.06], "glass");
+  }
+  if (id === "colphys") {
+    // Placeholder massing (no reference photograph yet): two storeys, terracotta bands and a
+    // rooftop observatory dome. Swap this block for a photo-matched model when one is available.
+    const W = 20, D = 12, front = D / 2;
+    b.box([0, 0.15, 0], [W + 0.5, 0.3, D + 0.5], "curbDark");
+    b.box([0, 2.2, 0], [W, 3.8, D], "cream");
+    b.box([0, 4.25, 0], [W + 0.3, 0.3, D + 0.3], "terracotta");
+    b.box([0, 6.2, 0], [W, 3.6, D], "cream");
+    b.box([0, 8.25, 0], [W + 0.4, 0.5, D + 0.4], "terracotta");
+    b.box([0, 8.02, 0], [W - 0.4, 0.05, D - 0.4], "roofDark");
+    b.add(new CylinderGeometry(2.3, 2.3, 0.8, 20), "ivory", [5.5, 8.9, -1.5]);
+    b.add(new SphereGeometry(2.2, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), "metal", [5.5, 9.3, -1.5]);
+    b.box([5.5, 10.5, -1.5], [0.5, 2.4, 4.45], "shadow"); // observing slit
+    for (const x of [-8.2, -6, -3.8, 3.8, 6, 8.2])
+      for (const y of [2.2, 6.2]) b.window(x, y, front + 0.06, 1.4, 2, "terracotta");
+    b.box([0, 1.8, front + 0.03], [3.6, 3.4, 0.06], "shadow");
+    for (const x of [-2.1, 2.1]) b.box([x, 2.1, front + 0.3], [0.5, 4.2, 0.6], "terracotta");
+    b.box([0, 4.25, front + 0.6], [5.2, 0.25, 1.6], "roofDark");
+    b.box([0, 0.1, front + 0.8], [5, 0.2, 1.2], "curb");
+    b.window(0, 6.2, front + 0.06, 3, 2, "terracotta");
+    sideWindows(b, W / 2, [-3.5, 0, 3.5], [2.2, 6.2], 1.8);
+  }
   if (id === "colerm") {
     b.box([0, 3.5, 0], [14, 7, 10], "ochre");
     b.roof(14.7, 10.7, 7, 1, "roofDark");
@@ -151,7 +222,7 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     for (const x of [-11.6, 11.6]) b.box([x, 0.55, 6], [0.8, 1.1, 4], "ivory");
   }
   // Modest side-wall windows keep oblique approach views from reading as blank boxes.
-  if (id !== "library") {
+  if (id !== "library" && id !== "coleng" && id !== "colphys") {
     const sideX = id === "colerm" ? 7 : id === "colfhec" ? 10 : 11;
     for (const side of [-1, 1])
       for (const z of [-4, 0, 3]) {
@@ -200,6 +271,20 @@ const signs: Record<
     h: 0.42,
     title: "COLVET",
     sub: "VETERINARY MEDICINE",
+  },
+  coleng: {
+    p: [0, 9.9, 9.06],
+    w: 6.8,
+    h: 1,
+    title: "COLENG",
+    sub: "COLLEGE OF ENGINEERING",
+  },
+  colphys: {
+    p: [0, 5, 6.1],
+    w: 6.6,
+    h: 0.75,
+    title: "COLPHYS",
+    sub: "COLLEGE OF PHYSICAL SCIENCES",
   },
   library: {
     p: [0, 3.96, 6.99],

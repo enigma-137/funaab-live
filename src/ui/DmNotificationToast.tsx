@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { useSocialStore } from '../stores/socialStore';
 import { useInputStore } from '../stores/inputStore';
+import { useShallow } from 'zustand/react/shallow';
 import { MessageSquare, X, ArrowRight } from 'lucide-react';
 
 export const DmNotificationToast: React.FC = () => {
   const { lastIncomingDm, dismissLastIncomingDm, openDm } = useSocialStore();
-  const { triggerHaptic } = useInputStore();
+  const { triggerHaptic } = useInputStore(useShallow((s) => ({ triggerHaptic: s.triggerHaptic })));
 
   useEffect(() => {
     if (lastIncomingDm) {

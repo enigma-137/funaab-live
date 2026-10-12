@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useInputStore } from '../stores/inputStore';
 import { ActivityFeedItem } from '../types/game';
 import { Bell, X } from 'lucide-react';
 
 export const ActivityFeed: React.FC = () => {
-  const { activityEvents, isRidingKeke } = useGameStore();
-  const { isTouchDevice } = useInputStore();
+  const { activityEvents, isRidingKeke } = useGameStore(useShallow((s) => ({ activityEvents: s.activityEvents, isRidingKeke: s.isRidingKeke })));
+  const { isTouchDevice } = useInputStore(useShallow((s) => ({ isTouchDevice: s.isTouchDevice })));
   const [visibleEvents, setVisibleEvents] = useState<ActivityFeedItem[]>([]);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [showMobileToast, setShowMobileToast] = useState(true);

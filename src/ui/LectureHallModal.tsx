@@ -5,6 +5,7 @@ import {
   normalizeHallLocationId,
   checkForceLectureParam,
 } from '../config/lectureSchedule';
+import { getLectureHall, hallSeatPositions } from '../config/lectureHalls';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { formatCountdown } from '../utils/lagosTime';
@@ -21,7 +22,7 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
   hallLocationId: propHallId,
 }) => {
   const [nowMs, setNowMs] = useState(Date.now());
-  const { enterLecture } = useLectureStore();
+  const enterHall = useLectureStore((s) => s.enterHall);
   const { user } = useAuthStore();
   const selectedHallLocationId = useGameStore((s) => s.selectedHallLocationId);
 
@@ -43,19 +44,21 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
   const isBreakActive = hallSchedule.status === 'break';
   const isOffHours = hallSchedule.status === 'off_hours' || hallSchedule.status === 'weekend';
 
-  // Hall display names
-  const hallNames: Record<string, string> = {
-    'colfhec-lecture-hall': 'COLFHEC Lecture Hall 1',
-    'central-lecture-hall': 'Central Lecture Theatre (CLT)',
-    'colbios-lecture-hall': 'COLBIOS Lecture Hall A',
-  };
-  const hallTitle = hallNames[canonicalHallId] || 'Campus Lecture Hall';
+  const hall = getLectureHall(canonicalHallId);
+  const hallTitle = hall.hallName;
+  const capacity = hallSeatPositions(hall).length;
 
+  // The hall itself is always open; only the timetabled class counts toward the allowance.
   const handleEnter = () => {
-    if (!activeLecture || !user) return;
-    enterLecture(activeLecture, 1);
+    if (!user) return;
+    enterHall(hall.id);
     onClose();
   };
+  const enterHallButton = (
+    <button id="btn-enter-hall" onClick={handleEnter} style={btnWaitStyle}>
+      🚪 [ Enter Hall ]
+    </button>
+  );
 
   return (
     <div style={overlayStyle} onClick={(e) => { e.stopPropagation(); onClose(); }}>
@@ -102,7 +105,7 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
                 </div>
                 <div style={infoItemStyle}>
                   <div style={infoLabelStyle}>Capacity</div>
-                  <div style={infoValStyle}>30 Students Max</div>
+                  <div style={infoValStyle}>{capacity} Seats</div>
                 </div>
                 <div style={infoItemStyle}>
                   <div style={infoLabelStyle}>Attendance Bonus</div>
@@ -146,17 +149,15 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
               <div style={{ marginTop: '14px', backgroundColor: '#0f172a', padding: '12px', borderRadius: '8px', border: '1px solid #334155' }}>
                 <div style={{ fontSize: '13px', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>⏳</span>
-                  <span>Doors unlock automatically when class commences. Students are gathering outside.</span>
+                  <span>Students are gathering inside. Take a seat now; attendance counts once class starts.</span>
                 </div>
               </div>
 
               <div style={{ marginTop: '18px', display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => setNowMs(Date.now())}
-                  style={btnWaitStyle}
-                >
-                  ⏳ [ Waiting Outside • Starts in {formatCountdown(hallSchedule.timeRemainingSeconds)} ]
-                </button>
+                {enterHallButton}
+                <span style={{ alignSelf: 'center', fontSize: '12px', color: '#cbd5e1' }}>
+                  ⏳ Starts in {formatCountdown(hallSchedule.timeRemainingSeconds)}
+                </span>
                 <button
                   onClick={onClose}
                   style={btnCancelStyle}
@@ -194,12 +195,16 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
               </div>
 
               <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                {enterHallButton}
                 <button
                   onClick={onClose}
                   style={btnCancelStyle}
                 >
                   Close
                 </button>
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
+                Outside class time you can sit in and replay the lecture as a practice session (no allowance).
               </div>
             </div>
           )}

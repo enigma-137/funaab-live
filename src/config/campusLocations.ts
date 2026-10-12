@@ -18,7 +18,7 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'bank-atm': [30,68, 14,10, 30,75, 30,45],
   'senate-library': [0,-105, 20,12, 0,-96, 0,-85],
   'colfhec': [-30,-65, 22,16, -30,-54, -30,-40],
-  'coleng': [80,-65, 16,10, 80,-57, 55,-57],
+  'coleng': [80,-65, 32,18, 80,-51, 55,-51],
   'colerm-colplant': [100,-25, 16,12, 100,-16, 55,-16],
   'agromet': [100,20, 14,14, 100,30, 55,30],
   'hostel-social': [78,-5, 24,28, 66,2, 55,2],
@@ -33,12 +33,13 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
+  'colphys': [-35,-108, 22,14, -35,-97, -35,-85],
 };
 export const collegeCatalogue = [...base.colleges,
   {code:'COLERM', name:'College of Environmental Resources Management',color:'#0d9488'},
   {code:'COLCOMS', name:'College of Computing Sciences',color:'#4f46e5'},
 ];
-const additions = ['colvet','colanim','colplant','colcoms','colbios','library'].map(id => ({
+const additions = ['colvet','colanim','colplant','colcoms','colbios','colphys','library'].map(id => ({
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));

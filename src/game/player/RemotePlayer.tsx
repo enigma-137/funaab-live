@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { PlayerState } from '../../types/game';
 import { AvatarModel } from './AvatarModel';
 import { useGameStore } from '../../stores/gameStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface RemotePlayerProps {
   player: PlayerState;
@@ -24,7 +25,7 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
   const initial = safePos(player.position);
   const targetPos = useRef(new THREE.Vector3(...initial));
   const currentPos = useRef(new THREE.Vector3(...initial));
-  const { setSelectedPlayer, setActiveModal } = useGameStore();
+  const { setSelectedPlayer, setActiveModal } = useGameStore(useShallow((s) => ({ setSelectedPlayer: s.setSelectedPlayer, setActiveModal: s.setActiveModal })));
 
   useEffect(() => {
     const p = safePos(player.position);

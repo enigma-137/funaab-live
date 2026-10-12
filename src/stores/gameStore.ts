@@ -399,17 +399,24 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
   setPlayerRef: (playerRef) => set({ playerRef }),
 
-  setMyPosition: (myPosition) => set({ myPosition }),
-  setMyRotation: (myRotation) => set({ myRotation }),
-  setMyAnimation: (myAnimation) => set({ myAnimation }),
+  // Called every frame by LocalPlayer: skip unchanged values so idle frames don't notify subscribers.
+  setMyPosition: (myPosition) =>
+    set((state) => {
+      const p = state.myPosition;
+      return p[0] === myPosition[0] && p[1] === myPosition[1] && p[2] === myPosition[2] ? state : { myPosition };
+    }),
+  setMyRotation: (myRotation) => set((state) => (state.myRotation === myRotation ? state : { myRotation })),
+  setMyAnimation: (myAnimation) => set((state) => (state.myAnimation === myAnimation ? state : { myAnimation })),
   sitAtPosition: (position, rotation = 0) => set({ seatedAt: { position, rotation } }),
   standUp: () => set({ seatedAt: null }),
   setRidingKeke: (isRidingKeke, currentKekeId = null, targetKekeDestinationId = null) =>
     set({ isRidingKeke, currentKekeId, targetKekeDestinationId }),
   setTargetKekeDestinationId: (targetKekeDestinationId) => set({ targetKekeDestinationId }),
 
-  setIsOnRestrictedLawn: (isOnRestrictedLawn) => set({ isOnRestrictedLawn }),
-  setCurrentTerrainType: (currentTerrainType) => set({ currentTerrainType }),
+  setIsOnRestrictedLawn: (isOnRestrictedLawn) =>
+    set((state) => (state.isOnRestrictedLawn === isOnRestrictedLawn ? state : { isOnRestrictedLawn })),
+  setCurrentTerrainType: (currentTerrainType) =>
+    set((state) => (state.currentTerrainType === currentTerrainType ? state : { currentTerrainType })),
   setSecurityOfficers: (securityOfficers) => set({ securityOfficers }),
   updateSecurityOfficer: (id, update) =>
     set((state) => {
@@ -436,8 +443,26 @@ export const useGameStore = create<GameState>((set, get) => ({
   openMap: () => set({ activeModal: 'campus_map' }),
   closeMap: () => set((state) => ({ activeModal: state.activeModal === 'campus_map' ? null : state.activeModal })),
 
-  setNearbyInteractable: (nearbyInteractable) => set({ nearbyInteractable }),
-  setSelectedPlayer: (selectedPlayer) => set({ selectedPlayer }),
+  // Both are re-evaluated every frame; keep the old reference when nothing meaningful changed.
+  setNearbyInteractable: (nearbyInteractable) =>
+    set((state) => {
+      const prev = state.nearbyInteractable;
+      if (prev === nearbyInteractable) return state;
+      if (
+        prev &&
+        nearbyInteractable &&
+        prev.id === nearbyInteractable.id &&
+        prev.type === nearbyInteractable.type &&
+        prev.targetId === nearbyInteractable.targetId &&
+        prev.label === nearbyInteractable.label &&
+        prev.actionText === nearbyInteractable.actionText
+      ) {
+        return state;
+      }
+      return { nearbyInteractable };
+    }),
+  setSelectedPlayer: (selectedPlayer) =>
+    set((state) => (state.selectedPlayer === selectedPlayer ? state : { selectedPlayer })),
   setSelectedHallLocationId: (selectedHallLocationId) => set({ selectedHallLocationId }),
   setActiveModal: (activeModal) => set({ activeModal }),
 

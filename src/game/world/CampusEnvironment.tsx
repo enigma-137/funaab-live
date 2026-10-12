@@ -1,9 +1,12 @@
 import { CampusArchitecture } from './CampusArchitecture';
 import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
 import { campusMaterials } from './campusVisualGeometry';
-import { locationPosition, locationById, collegeCatalogue } from '../../config/campusLocations';
-import { CampusRoads, CampusExpansion, CollegeWallSign, KekeRouteDebug } from './CampusExpansion';
-import React, { useMemo } from 'react';
+import { locationPosition, locationById } from '../../config/campusLocations';
+import { CampusRoads, CampusExpansion, KekeRouteDebug } from './CampusExpansion';
+import React, { useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { LECTURE_HALLS } from '../../config/lectureHalls';
+import { LECTURE_SCHEDULE } from '../../config/lectureSchedule';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
@@ -558,20 +561,19 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           11. COLENG & COLERM/COLPLANT FACULTY ZONES
       ══════════════════════════════════════════════════════════════════════ */}
-      {/* COLENG Engineering Complex (Position: [-18, 0, -60]) */}
+      {/* COLENG Engineering Complex: two-storey, 32m x 18m footprint (see campusLocations) */}
       <group position={locationPosition('coleng')}>
         <RigidBody type="fixed" colliders={false}>
-          <mesh position={[0, 3.0, 0]} castShadow>
-            <boxGeometry args={[14, 6, 8]} />
-            <meshStandardMaterial color="#e2e8f0" roughness={0.6} />
-          </mesh>
-          <mesh position={[0, 6.2, 0]} castShadow>
-            <boxGeometry args={[14.4, 0.4, 8.4]} />
-            <meshStandardMaterial color="#2563eb" />
-          </mesh>
-          <CuboidCollider args={[7.0, 3.0, 4.0]} position={[0, 3.0, 0]} />
+          <CampusArchitecture id="coleng" />
+          {/* Main two-storey body */}
+          <CuboidCollider args={[15.0, 4.7, 7.5]} position={[0, 4.7, 0]} />
+          {/* End pavilions stand 0.5m proud of the facade */}
+          <CuboidCollider args={[2.6, 4.7, 0.25]} position={[-12.5, 4.7, 7.75]} />
+          <CuboidCollider args={[2.6, 4.7, 0.25]} position={[12.5, 4.7, 7.75]} />
+          {/* Entrance columns */}
+          <CuboidCollider args={[0.3, 4.6, 0.3]} position={[-3.1, 4.6, 8.6]} />
+          <CuboidCollider args={[0.3, 4.6, 0.3]} position={[3.1, 4.6, 8.6]} />
         </RigidBody>
-        <CollegeWallSign position={[0,4.85,4.12]} width={11.5} height={1.35} code="COLENG" name={collegeCatalogue.find(c=>c.code==='COLENG')?.name??'College of Engineering'}/>
       </group>
 
       {/* COLERM & COLPLANT Plaza (Position: [26, 0, -44]) */}
@@ -907,55 +909,62 @@ export const CampusEnvironment: React.FC = () => {
       {/* ══════════════════════════════════════════════════════════════════════
           19. LECTURE HALL 3D ENTRANCES & TIMETABLE NOTICE BOARDS
       ══════════════════════════════════════════════════════════════════════ */}
-      {[
-        { pos: locationPosition('colfhec-lecture-hall'), rot: 0, title: 'COLFHEC Lecture Hall', course: 'FST 201 • Food Chemistry' },
-        { pos: locationPosition('central-lecture-hall'), rot: 0, title: 'Central Lecture Theatre (CLT)', course: 'MEE 203 • Thermodynamics' },
-        { pos: locationPosition('colbios-lecture-hall'), rot: 0, title: 'COLBIOS Lecture Hall', course: 'BIO 205 • Principles of Genetics' },
-      ].map((hall, idx) => (
-        <group key={idx} position={[hall.pos[0], 0, hall.pos[2]]} rotation={[0, hall.rot, 0]}>
-          <RigidBody type="fixed" colliders={false}>
-            {/* Entrance Arch Pillars */}
-            <mesh position={[-1.6, 2.0, 0]} castShadow>
-              <cylinderGeometry args={[0.22, 0.25, 4.0, 12]} />
-              <meshStandardMaterial color="#047857" roughness={0.4} />
-            </mesh>
-            <mesh position={[1.6, 2.0, 0]} castShadow>
-              <cylinderGeometry args={[0.22, 0.25, 4.0, 12]} />
-              <meshStandardMaterial color="#047857" roughness={0.4} />
-            </mesh>
-            {/* Overhead Lintel */}
-            <mesh position={[0, 4.1, 0]} castShadow>
-              <boxGeometry args={[3.8, 0.4, 0.6]} />
-              <meshStandardMaterial color="#065f46" />
-            </mesh>
-            {/* Double Glass Doors */}
-            <mesh position={[-0.75, 1.8, 0]}>
-              <boxGeometry args={[1.3, 3.4, 0.08]} />
-              <meshStandardMaterial color="#38bdf8" opacity={0.65} transparent metalness={0.9} />
-            </mesh>
-            <mesh position={[0.75, 1.8, 0]}>
-              <boxGeometry args={[1.3, 3.4, 0.08]} />
-              <meshStandardMaterial color="#38bdf8" opacity={0.65} transparent metalness={0.9} />
-            </mesh>
-
-            {/* Physical Colliders for the Doorframe Sides */}
-            <CylinderCollider args={[2.0, 0.25]} position={[-1.6, 2.0, 0]} />
-            <CylinderCollider args={[2.0, 0.25]} position={[1.6, 2.0, 0]} />
-          </RigidBody>
-
-          {/* 3D Entrance Wayfinding Sign */}
-          <Html position={[0, 4.7, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-            <div className="px-3 py-1 rounded-xl bg-emerald-950/95 border-2 border-emerald-400 text-center shadow-xl backdrop-blur-md whitespace-nowrap">
-              <div className="text-[10.5px] font-black text-emerald-300 font-['Outfit'] uppercase flex items-center justify-center gap-1">
-                <span>🎓</span> {hall.title}
-              </div>
-              <div className="text-[8.5px] font-bold text-amber-300">
-                {hall.course} • [E] Enter Hall
-              </div>
-            </div>
-          </Html>
-        </group>
+      {LECTURE_HALLS.map((hall) => (
+        <LectureHallEntrance
+          key={hall.id}
+          position={hall.arch}
+          title={hall.hallName}
+          course={(() => {
+            const lecture = LECTURE_SCHEDULE.find((l) => l.locationId === hall.id);
+            return lecture ? `${lecture.courseCode} • ${lecture.title}` : hall.collegeName;
+          })()}
+        />
       ))}
     </group>
   );
 };
+
+// Shared entrance arch for every lecture hall. The wayfinding label is only shown nearby so ten
+// halls don't keep ten DOM overlays positioned every frame across the whole campus.
+const LectureHallEntrance: React.FC<{ position: [number, number, number]; title: string; course: string }> = ({ position, title, course }) => {
+  const labelRef = useRef<HTMLDivElement>(null);
+  const labelPoint = useMemo(() => new THREE.Vector3(position[0], 4.7, position[2]), [position]);
+  useFrame(({ camera }) => {
+    if (labelRef.current) labelRef.current.style.visibility = camera.position.distanceToSquared(labelPoint) < 45 * 45 ? 'visible' : 'hidden';
+  });
+  return (
+    <group position={[position[0], 0, position[2]]}>
+      <RigidBody type="fixed" colliders={false}>
+        {/* Entrance Arch Pillars */}
+        <mesh position={[-1.6, 2.0, 0]} castShadow geometry={archPillarGeometry} material={archPillarMaterial} />
+        <mesh position={[1.6, 2.0, 0]} castShadow geometry={archPillarGeometry} material={archPillarMaterial} />
+        {/* Overhead Lintel */}
+        <mesh position={[0, 4.1, 0]} castShadow geometry={archLintelGeometry} material={archLintelMaterial} />
+        {/* Double Glass Doors */}
+        <mesh position={[-0.75, 1.8, 0]} geometry={archDoorGeometry} material={archDoorMaterial} />
+        <mesh position={[0.75, 1.8, 0]} geometry={archDoorGeometry} material={archDoorMaterial} />
+        {/* Physical Colliders for the Doorframe Sides */}
+        <CylinderCollider args={[2.0, 0.25]} position={[-1.6, 2.0, 0]} />
+        <CylinderCollider args={[2.0, 0.25]} position={[1.6, 2.0, 0]} />
+      </RigidBody>
+
+      {/* 3D Entrance Wayfinding Sign */}
+      <Html position={[0, 4.7, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
+        <div ref={labelRef} className="px-3 py-1 rounded-xl bg-emerald-950/95 border-2 border-emerald-400 text-center shadow-xl backdrop-blur-md whitespace-nowrap">
+          <div className="text-[10.5px] font-black text-emerald-300 font-['Outfit'] uppercase flex items-center justify-center gap-1">
+            <span>🎓</span> {title}
+          </div>
+          <div className="text-[8.5px] font-bold text-amber-300">
+            {course} • [E] Enter Hall
+          </div>
+        </div>
+      </Html>
+    </group>
+  );
+};
+const archPillarGeometry = new THREE.CylinderGeometry(0.22, 0.25, 4.0, 12);
+const archPillarMaterial = new THREE.MeshStandardMaterial({ color: '#047857', roughness: 0.4 });
+const archLintelGeometry = new THREE.BoxGeometry(3.8, 0.4, 0.6);
+const archLintelMaterial = new THREE.MeshStandardMaterial({ color: '#065f46' });
+const archDoorGeometry = new THREE.BoxGeometry(1.3, 3.4, 0.08);
+const archDoorMaterial = new THREE.MeshStandardMaterial({ color: '#38bdf8', opacity: 0.65, transparent: true, metalness: 0.9 });

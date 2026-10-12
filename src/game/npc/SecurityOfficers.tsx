@@ -23,9 +23,11 @@ interface OfficerRuntime {
   alertText: string;
 }
 
+const _playerVec = new THREE.Vector3();
+
 export const SecurityOfficers: React.FC = () => {
   const routes = (worldData.securityRoutes || []) as SecurityRoute[];
-  const { updateSecurityOfficer, isOnRestrictedLawn, myPosition } = useGameStore();
+  const updateSecurityOfficer = useGameStore((s) => s.updateSecurityOfficer);
 
   const officersRef = useRef<Record<string, THREE.Group | null>>({});
 
@@ -51,7 +53,9 @@ export const SecurityOfficers: React.FC = () => {
   }, [routes]);
 
   useFrame((_, delta) => {
-    const playerVec = new THREE.Vector3(myPosition[0], 0, myPosition[2]);
+    // Read per-frame player state directly; subscribing re-rendered this component every frame.
+    const { myPosition, isOnRestrictedLawn } = useGameStore.getState();
+    const playerVec = _playerVec.set(myPosition[0], 0, myPosition[2]);
 
     runtimes.forEach((officer) => {
       if (officer.waypoints.length < 2) return;
