@@ -1534,6 +1534,8 @@ export default {
           ok: true,
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
+          // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
+          features: ['campus_bet'],
           timestamp: Date.now(),
         }),
         {

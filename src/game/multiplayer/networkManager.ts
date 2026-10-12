@@ -90,7 +90,7 @@ class NetworkManager {
     if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to use Campus Bet'));
     const requestId=crypto.randomUUID();
     return new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Campus Bet timed out. Reopen the shop to check your ticket.'));},15000);
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Campus Bet got no reply from the game server. If this keeps happening, the multiplayer Worker may need redeploying.'));},15000);
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);if(typeof v?.balance==='number')useWalletStore.setState({balance:v.balance});resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
       this.send({type:'campus_bet',requestId,op,...payload});
     });
