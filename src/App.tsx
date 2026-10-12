@@ -41,6 +41,7 @@ import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
 import { CampusBetModal } from './ui/CampusBetModal';
+import { FoodVendorSheet, FoodVendorToast } from './ui/FoodVendorSheet';
 import { LIBRARY_ROOM } from './config/library';
 import { identifyTraceIQUser, trackTraceIQEvent } from './lib/traceiq';
 
@@ -182,6 +183,8 @@ export const App: React.FC = () => {
       {activeModal === 'send_money' && <SendMoneyModal />}
       {activeModal === 'daily_reward' && <DailyRewardModal />}
       {activeModal === 'campus_bet' && <CampusBetModal />}
+      {activeModal === 'food_vendor' && <FoodVendorSheet />}
+      <FoodVendorToast />
       {activeModal === 'lecture_hall' && (
         <LectureHallModal
           isOpen={true}

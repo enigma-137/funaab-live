@@ -17,6 +17,7 @@ import { InteractableZone } from '../../types/game';
 
 import { classifyTerrain, lawnEnforcement } from '../rules/lawnSecuritySystem';
 import { useShallow } from 'zustand/react/shallow';
+import { openFoodVendor } from '../../stores/foodVendorStore';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 
 const MOVE_SPEED = 6.0;
@@ -228,6 +229,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           break;
         case 'campus_bet':
           setActiveModal('campus_bet');
+          break;
+        case 'food_vendor':
+          openFoodVendor(nearbyInteractable.targetId);
           break;
       }
     } else if (selectedPlayer) {
@@ -529,6 +533,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       player: 6,
       bench: 7,
       campus_bet: 1,
+      food_vendor: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
@@ -563,6 +568,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         jobs: ['job_board'],
         ps_match: ['playstation'],
         campus_bet: ['campus_bet'],
+        food_vendor: ['food_vendor'],
       };
 
       const targetZoneTypes = PROXIMITY_MODAL_ZONES[activeModal];

@@ -4,6 +4,7 @@ import { campusMaterials } from './campusVisualGeometry';
 import { locationPosition, locationById } from '../../config/campusLocations';
 import { CampusRoads, CampusExpansion, KekeRouteDebug } from './CampusExpansion';
 import { CampusBetShop, OutsideGateRoad } from './CampusBetShop';
+import { FoodVendorStalls } from './FoodVendorStalls';
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { LECTURE_HALLS } from '../../config/lectureHalls';
@@ -24,7 +25,7 @@ export const CampusEnvironment: React.FC = () => {
         <CuboidCollider args={[1,4,130]} position={[-146,4,-17]}/><CuboidCollider args={[1,4,130]} position={[146,4,-17]}/>
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
-      <OutsideGateRoad/><CampusBetShop/>
+      <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}

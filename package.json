@@ -32,7 +32,9 @@
     "test:halls": "tsx scripts/test-lecture-halls.ts",
     "test:campus-bet": "tsx scripts/test-campus-bet.ts",
     "test:campus-bet:worker": "tsx scripts/test-campus-bet-worker.ts",
-    "test:campus-bet:db": "node scripts/test-campus-bet-db.cjs"
+    "test:campus-bet:db": "node scripts/test-campus-bet-db.cjs",
+    "test:vendors": "tsx scripts/test-food-vendors.ts",
+    "test:vendors:db": "tsx scripts/test-food-vendors-db.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

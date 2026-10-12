@@ -90,6 +90,7 @@ interface GameState {
     | 'report_user'
     | 'campus_map'
     | 'campus_bet'
+    | 'food_vendor'
     | null;
 
   // Actions
@@ -151,6 +152,7 @@ interface GameState {
       | 'report_user'
       | 'campus_map'
       | 'campus_bet'
+      | 'food_vendor'
       | null
   ) => void;
   toggleDebugPhysics: () => void;
