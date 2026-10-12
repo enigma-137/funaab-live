@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import { ECONOMY_CONFIG } from '../config/economy';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
-import worldData from '../config/campusWorld';
 import { FoodItem } from '../types/game';
 import { X, UtensilsCrossed, CheckCircle2, ShoppingBag } from 'lucide-react';
 
@@ -69,7 +69,7 @@ export const FoodVendorModal: React.FC = () => {
 
         {/* Menu Grid */}
         <div className="p-6 space-y-3 max-h-96 overflow-y-auto">
-          {(worldData.foodMenu as FoodItem[]).map((item) => {
+          {(ECONOMY_CONFIG.FOOD_COURT_MENU as FoodItem[]).map((item) => {
             const canAfford = balance >= item.price;
             return (
               <div

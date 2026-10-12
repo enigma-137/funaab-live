@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { useAuthStore } from '../stores/authStore';
 import worldData from '../config/campusWorld';
 import { Users, ChevronDown, Check, Search, MapPin, Compass, MessageCircle, Building2, Play } from 'lucide-react';
@@ -290,7 +291,7 @@ export const LandingPage: React.FC = () => {
                 <div className="p-3 rounded-xl bg-[#F7F9F5] border border-[#E5EAE6] flex items-center justify-between text-xs">
                   <span className="text-[#66736B]">Starting Balance:</span>
                   <span className="font-extrabold text-[#008751] font-['Outfit'] text-sm">
-                    ₦5,000.00
+                    {formatNaira(ECONOMY_CONFIG.STARTER_BALANCE)}.00
                   </span>
                 </div>
 

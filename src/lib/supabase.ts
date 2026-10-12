@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { ECONOMY_CONFIG } from '../config/economy';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -32,14 +33,14 @@ export const localDB = {
     const raw = localStorage.getItem(`funaab_wallet_${userId}`);
     if (raw) return JSON.parse(raw);
     const initial = {
-      balance: 5000,
+      balance: ECONOMY_CONFIG.STARTER_BALANCE,
       transactions: [
         {
           id: `tx-${Date.now()}`,
           userId,
           type: 'starter',
-          amount: 5000,
-          balanceAfter: 5000,
+          amount: ECONOMY_CONFIG.STARTER_BALANCE,
+          balanceAfter: ECONOMY_CONFIG.STARTER_BALANCE,
           description: 'FUNAAB Resumption Allowance (Welcome Bonus)',
           createdAt: new Date().toISOString(),
         },

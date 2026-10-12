@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { WalletTransaction, InventoryItem, FoodItem } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
 
@@ -20,7 +21,7 @@ interface WalletState {
 }
 
 export const useWalletStore = create<WalletState>()((set, get) => ({
-  balance: 5000,
+  balance: ECONOMY_CONFIG.STARTER_BALANCE,
   transactions: [],
   inventory: [],
   isLoading: false,
@@ -33,7 +34,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     if (isSupabaseConfigured) {
       try {
         // Ensure wallet exists in Postgres via idempotent bootstrap RPC
-        let currentBalance = 5000;
+        let currentBalance = ECONOMY_CONFIG.STARTER_BALANCE;
         const { data: bootstrapData } = await supabase.rpc('ensure_player_wallet', {
           p_user_id: userId,
         });
@@ -136,7 +137,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     return true;
   },
 
-  applyLawnFine: async (userId: string, amount: number = 500) => {
+  applyLawnFine: async (userId: string, amount: number = ECONOMY_CONFIG.LAWN_FINE) => {
     const currentBalance = get().balance;
     const deducted = Math.min(currentBalance, amount);
     const newBalance = Math.max(0, currentBalance - amount);
@@ -354,7 +355,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         }
 
         const newBalance = Number(data.balance);
-        const rewardAmount = Number(data.reward) || 1000;
+        const rewardAmount = Number(data.reward) || ECONOMY_CONFIG.DAILY_RESUMPTION_ALLOWANCE;
         const tx: WalletTransaction = {
           id: `tx-daily-${Date.now()}`,
           userId,
@@ -389,7 +390,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
       return { success: false, amount: 0, message: 'Already claimed today! Check back tomorrow.' };
     }
 
-    const rewardAmount = 1000;
+    const rewardAmount = ECONOMY_CONFIG.DAILY_RESUMPTION_ALLOWANCE;
     const currentBalance = get().balance;
     const newBalance = currentBalance + rewardAmount;
 
@@ -415,7 +416,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     local.transactions = newTransactions;
     localDB.saveWallet(userId, local);
 
-    return { success: true, amount: rewardAmount, message: 'Received ₦1,000 Daily Campus Allowance!' };
+    return { success: true, amount: rewardAmount, message: `Received ${formatNaira(rewardAmount)} Daily Campus Allowance!` };
   },
 
   receiveTransfer: (senderUsername: string, amount: number) => {

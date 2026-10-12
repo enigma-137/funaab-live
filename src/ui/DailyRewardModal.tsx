@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
@@ -51,7 +52,7 @@ export const DailyRewardModal: React.FC = () => {
         <div className="p-6 space-y-4">
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
             <div className="text-[11px] text-slate-400 uppercase font-bold">Today's Allowance</div>
-            <div className="text-3xl font-black text-emerald-400 font-mono">+₦200</div>
+            <div className="text-3xl font-black text-emerald-400 font-mono">+{formatNaira(ECONOMY_CONFIG.DAILY_RESUMPTION_ALLOWANCE)}</div>
             <div className="text-[10px] text-slate-500">Credited directly to your game wallet</div>
           </div>
 
@@ -67,7 +68,7 @@ export const DailyRewardModal: React.FC = () => {
               onClick={handleClaim}
               className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs font-['Outfit'] tracking-wider uppercase shadow-xl transition transform active:scale-95 flex items-center justify-center gap-2"
             >
-              <span>Collect ₦200 Allowance</span>
+              <span>Collect {formatNaira(ECONOMY_CONFIG.DAILY_RESUMPTION_ALLOWANCE)} Allowance</span>
             </button>
           ) : (
             <button

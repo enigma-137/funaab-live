@@ -41,9 +41,9 @@ for (const zone of zones) {
 
 }
 
-// Menu is central and server-priced items match the brief.
-assert.deepEqual(FOOD_VENDORS.mai_suya.items.map((i) => [i.id, i.price]), [['vendor_suya_beef', 800], ['vendor_suya_chicken', 700]]);
-assert.deepEqual(FOOD_VENDORS.indomie_egg.items.map((i) => [i.id, i.price]), [['vendor_indomie_plain', 600], ['vendor_indomie_egg', 800]]);
+// Menu is central and server-priced items match the economy rebalance (migration 012).
+assert.deepEqual(FOOD_VENDORS.mai_suya.items.map((i) => [i.id, i.price]), [['vendor_suya_beef', 400], ['vendor_suya_chicken', 350]]);
+assert.deepEqual(FOOD_VENDORS.indomie_egg.items.map((i) => [i.id, i.price]), [['vendor_indomie_plain', 250], ['vendor_indomie_egg', 350]]);
 assert.equal(vendorItem('mai_suya', 'vendor_indomie_egg'), undefined, 'items belong to one vendor');
 
 console.log(`FOOD VENDOR SCHEDULE PASSED under device timezones ${zones.join(', ')}: Mai Suya 18:30/19:00/20:00/22:59/23:00/23:15/00:30, Indomie 06:00/08:00/10:59/11:01/18:30/19:30/22:59/23:01, labels, exact closesAt/nextOpensAt, transitions, menu.`);

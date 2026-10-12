@@ -1,4 +1,6 @@
 import React from 'react';
+import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
+import { kekeDestinations } from '../config/kekeRoutes';
 import { useGameStore } from '../stores/gameStore';
 import { X, HelpCircle, Compass, Gamepad2, Users, Landmark } from 'lucide-react';
 
@@ -58,8 +60,8 @@ export const HelpModal: React.FC = () => {
               <Landmark className="w-4 h-4" /> Campus Rules & Hotspots
             </h3>
             <ul className="space-y-1.5 list-disc pl-4 text-slate-300">
-              <li><strong className="text-emerald-400">🌿 FUNAAB Lawn Rule:</strong> Walking across green lawns is strictly prohibited! Campus Security officers patrol the grounds and will fine violators <strong className="text-red-400">₦500</strong>. Use paved footpaths and roads. (Sports Centre turf is legal).</li>
-              <li><strong className="text-amber-400">🛺 Destination Keke Transit:</strong> Board yellow Keke Napeps at the Car Park or stops, choose your destination, and enjoy automatic road transit across campus (fares: ₦50 - ₦150).</li>
+              <li><strong className="text-emerald-400">🌿 FUNAAB Lawn Rule:</strong> Walking across green lawns is strictly prohibited! Campus Security officers patrol the grounds and will fine violators <strong className="text-red-400">{formatNaira(ECONOMY_CONFIG.LAWN_FINE)}</strong>. Use paved footpaths and roads. (Sports Centre turf is legal).</li>
+              <li><strong className="text-amber-400">🛺 Destination Keke Transit:</strong> Board yellow Keke Napeps at the Car Park or stops, choose your destination, and enjoy automatic road transit across campus (fares: {formatNaira(Math.min(...kekeDestinations.map((d) => d.fare)))} – {formatNaira(Math.max(...kekeDestinations.map((d) => d.fare)))}).</li>
               <li><strong className="text-white">Main Gate:</strong> The ceremonial resumption gate monument.</li>
               <li><strong className="text-white">COLFHEC & Senate:</strong> Academic lecture halls and central library.</li>
               <li><strong className="text-white">Microfinance ATM:</strong> View your balance & transfer money to other students.</li>

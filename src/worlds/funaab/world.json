@@ -604,12 +604,5 @@
         [-32, 0, 4]
       ]
     }
-  ],
-  "foodMenu": [
-    { "id": "jollof_chicken", "name": "Jollof Rice & Crispy Chicken", "price": 800, "icon": "🍗", "type": "food" },
-    { "id": "shawarma_beef", "name": "Campus Special Beef Shawarma", "price": 1200, "icon": "🌯", "type": "food" },
-    { "id": "suya_spicy", "name": "FUNAAB Evening Beef Suya", "price": 600, "icon": "🥩", "type": "food" },
-    { "id": "cold_water", "name": "Chilled Bottle Water", "price": 150, "icon": "💧", "type": "drink" },
-    { "id": "malt_drink", "name": "Chilled Malt Drink", "price": 400, "icon": "🥤", "type": "drink" }
   ]
 }

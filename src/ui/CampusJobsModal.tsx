@@ -35,7 +35,7 @@ export const CampusJobsModal: React.FC = () => {
     if (!user) return;
     const res = await completeActiveJob(user.id);
     if (res.success) {
-      setNotification(`🎉 Job Complete! Received +₦${res.reward}!`);
+      setNotification(`🎉 Job Complete! Received +₦${res.reward.toLocaleString()}${res.bonus ? ` + ₦${res.bonus.toLocaleString()} first job of the day bonus` : ''}!`);
       setTimeout(() => {
         setActiveModal(null);
       }, 2000);

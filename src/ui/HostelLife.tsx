@@ -1,4 +1,5 @@
 import { CAMPUS_SPAWN } from '../config/campusLocations';
+import { ECONOMY_CONFIG, canBuyOnCredit, formatNaira, hostelCreditDebt } from '../config/economy';
 import { SECURITY_POST, SECURITY_RADIUS } from '../config/hostelCompound';
 import { HostelCompoundHud } from './HostelCompoundHud';
 import { ArrowLeft, Home, ShoppingBag, Backpack, Users } from 'lucide-react';
@@ -324,7 +325,7 @@ export function HostelLife() {
               <>
                 <p>
                   “My student, choose well!” Credit: 10% game fee, due in 48
-                  real hours; 24-hour grace period. Limit ₦1,500. No real money.
+                  real hours; 24-hour grace period. Limit {formatNaira(ECONOMY_CONFIG.HOSTEL_CREDIT_LIMIT)}. No real money.
                 </p>
                 <nav aria-label="Shop categories">
                   {[
@@ -371,7 +372,7 @@ export function HostelLife() {
                             >
                               {owned ? "Owned" : "Pay Now"}
                             </button>
-                            {i.credit && (
+                            {i.credit && canBuyOnCredit(i.price) && (
                               <button
                                 disabled={owned}
                                 onClick={() =>
@@ -381,7 +382,7 @@ export function HostelLife() {
                                   })
                                 }
                               >
-                                Credit · owe ₦{Math.ceil((i.price * 110) / 100)}
+                                Credit · owe {formatNaira(hostelCreditDebt(i.price))}
                               </button>
                             )}
                           </div>

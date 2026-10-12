@@ -5,12 +5,13 @@ import { networkManager } from '../game/multiplayer/networkManager';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
-interface Run {id:string;job_id:string;status:string;reward_claimed:boolean}
+// paid/bonus are only present on the delivery that completed the run (server amounts).
+interface Run {id:string;job_id:string;status:string;reward_claimed:boolean;paid?:number;bonus?:number}
 interface JobState {
  activeJob:CampusJob|null; run:Run|null; availableJobs:CampusJob[]; busy:boolean; error:string|null;
  lastCompletedJobAt:number|null;
  load:()=>Promise<void>; acceptJob:(id:string)=>Promise<boolean>; cancelJob:()=>Promise<void>;
- pickupDeliveryPackage:()=>Promise<boolean>; completeActiveJob:(id:string)=>Promise<{success:boolean;reward:number}>;
+ pickupDeliveryPackage:()=>Promise<boolean>; completeActiveJob:(id:string)=>Promise<{success:boolean;reward:number;bonus:number}>;
  checkJobProximity:(pos:[number,number,number])=>{canPickup:boolean;canDeliver:boolean;targetName:string;distance:number};
 }
 const active = (run:Run|null):CampusJob|null => {
@@ -42,12 +43,12 @@ export const useJobStore=create<JobState>((set,get)=>{
  cancelJob:async()=>{await action('cancel');},
  pickupDeliveryPackage:async()=>!!(await action('pickup')),
  completeActiveJob:async userId=>{
-   const reward=get().activeJob?.reward || 0;
+   const listed=get().activeJob?.reward || 0;
    const run=await action('deliver');
-   if(!run?.reward_claimed)return {success:false,reward:0};
+   if(!run?.reward_claimed)return {success:false,reward:0,bonus:0};
    await useWalletStore.getState().loadWallet(userId);
    set({lastCompletedJobAt:Date.now()});
-   return {success:true,reward};
+   return {success:true,reward:run.paid ?? listed,bonus:run.bonus ?? 0};
  },
  checkJobProximity:pos=>{
    const job=get().activeJob;

@@ -1,4 +1,5 @@
 import {useHostelStore} from '../stores/hostelStore';
+import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
@@ -191,7 +192,7 @@ export const GameHUD: React.FC = () => {
     triggerHaptic(30);
     const res = await completeActiveJob(user.id);
     if (res.success) {
-      setJobNotice(`🎉 Job Complete! +₦${res.reward.toLocaleString()}`);
+      setJobNotice(`🎉 Job Complete! +₦${res.reward.toLocaleString()}${res.bonus ? ` (+₦${res.bonus.toLocaleString()} first job today)` : ''}`);
       setTimeout(() => setJobNotice(null), 4000);
     }
   };
@@ -402,7 +403,7 @@ export const GameHUD: React.FC = () => {
             </div>
             <div className="text-left hidden md:block">
               <div className="text-[9px] text-slate-400 font-semibold uppercase">Daily</div>
-              <div className="font-bold text-amber-300 text-xs">+₦200</div>
+              <div className="font-bold text-amber-300 text-xs">+{formatNaira(ECONOMY_CONFIG.DAILY_RESUMPTION_ALLOWANCE)}</div>
             </div>
           </button>
 
@@ -800,7 +801,7 @@ export const GameHUD: React.FC = () => {
               <span className="text-xs">⚠️</span>
               <div className="text-[10px]">
                 <span className="font-extrabold text-red-300 uppercase">Restricted Lawn</span>
-                <span className="text-red-400 text-[9px] ml-1.5">(Risk ₦500 Fine)</span>
+                <span className="text-red-400 text-[9px] ml-1.5">(Risk {formatNaira(ECONOMY_CONFIG.LAWN_FINE)} Fine)</span>
               </div>
             </div>
           ) : (

@@ -1,4 +1,5 @@
 import { LectureDefinition, LectureScriptAction } from '../types/game';
+import { ECONOMY_CONFIG } from './economy';
 import { getLagosTime } from '../utils/lagosTime';
 import { DEFAULT_LECTURE_HALL_ID, LECTURE_HALLS, getLectureHall } from './lectureHalls';
 
@@ -41,7 +42,7 @@ function collegeLecture(
     lecturerAvatar: { shirtColor, skinColor },
     durationMinutes: 12,
     maxCapacity: 30,
-    attendanceAllowance: 100,
+    attendanceAllowance: ECONOMY_CONFIG.ATTENDANCE_ALLOWANCE,
     description,
     timeline: beats.map(([text, boardTopic], i) => ({ atSeconds: times[i] ?? i * 40, action: actions[i] ?? 'speak', text, boardTopic })),
   };
@@ -60,7 +61,7 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
     lecturerAvatar: { shirtColor: '#166534', skinColor: '#8d5524' },
     durationMinutes: 12,
     maxCapacity: 30,
-    attendanceAllowance: 100,
+    attendanceAllowance: ECONOMY_CONFIG.ATTENDANCE_ALLOWANCE,
     description: 'Structure of polysaccharides, starch retrogradation, and enzymatic browning in Nigerian root tubers.',
     timeline: [
       {
@@ -122,7 +123,7 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
     lecturerAvatar: { shirtColor: '#1e40af', skinColor: '#5c381e' },
     durationMinutes: 12,
     maxCapacity: 30,
-    attendanceAllowance: 100,
+    attendanceAllowance: ECONOMY_CONFIG.ATTENDANCE_ALLOWANCE,
     description: 'First and Second Laws of Thermodynamics, Carnot heat engines, and steam power cycles in agricultural machinery.',
     timeline: [
       {
@@ -173,7 +174,7 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
     lecturerAvatar: { shirtColor: '#831843', skinColor: '#a16207' },
     durationMinutes: 12,
     maxCapacity: 30,
-    attendanceAllowance: 100,
+    attendanceAllowance: ECONOMY_CONFIG.ATTENDANCE_ALLOWANCE,
     description: 'Mendelian genetics, monohybrid and dihybrid crosses, DNA transcription and translation in tropical crops.',
     timeline: [
       {

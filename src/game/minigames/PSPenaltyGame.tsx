@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { ECONOMY_CONFIG, formatNaira } from '../../config/economy';
 import confetti from 'canvas-confetti';
 import { useAuthStore } from '../../stores/authStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { networkManager } from '../multiplayer/networkManager';
 import { X, Play, Trophy, Shield, ArrowLeft, ArrowUp, ArrowRight } from 'lucide-react';
+
+const GAME_DEN = ECONOMY_CONFIG.GAME_DEN;
 
 export const PSPenaltyGame: React.FC = () => {
   const { user } = useAuthStore();
@@ -76,7 +79,7 @@ export const PSPenaltyGame: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white font-['Outfit']">FUNAAB Game Den: 1v1 Showdown</h2>
-              <p className="text-xs text-indigo-300">No wagers · Campus: winner ₦120 / loser ₦40 · Ties go to sudden death · 2-minute cooldown, 6 rewarded matches per day · Home games: social only</p>
+              <p className="text-xs text-indigo-300">No wagers · Campus: winner {formatNaira(GAME_DEN.WINNER)} / loser {formatNaira(GAME_DEN.LOSER)} · Ties go to sudden death · {GAME_DEN.COOLDOWN_MINUTES}-minute cooldown, {GAME_DEN.DAILY_REWARDED_MATCHES} rewarded matches per day (max {GAME_DEN.SAME_OPPONENT_DAILY_MATCHES} vs the same opponent) · Home games: social only</p>
             </div>
           </div>
           <button

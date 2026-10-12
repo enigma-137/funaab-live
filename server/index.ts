@@ -2,6 +2,7 @@ import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, seatPosition, exitPosition } from '../src/config/kekeSimulation';
+import { ECONOMY_CONFIG } from '../src/config/economy';
 import { normalizeAvatar } from '../src/config/avatar';
 import { summarizeCampus } from '../src/config/campusSummary';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -227,14 +228,14 @@ wss.on('connection', (ws: WebSocket, req) => {
           // Wallet initialization for dev
           if (!localWallets.has(authoritativeUserId)) {
             localWallets.set(authoritativeUserId, {
-              balance: 5000,
+              balance: ECONOMY_CONFIG.STARTER_BALANCE,
               transactions: [
                 {
                   id: `tx-${Date.now()}`,
                   userId: authoritativeUserId,
                   type: 'starter',
-                  amount: 5000,
-                  balanceAfter: 5000,
+                  amount: ECONOMY_CONFIG.STARTER_BALANCE,
+                  balanceAfter: ECONOMY_CONFIG.STARTER_BALANCE,
                   description: 'FUNAAB Resumption Allowance',
                   createdAt: new Date().toISOString(),
                 },
@@ -436,7 +437,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             const destinationId=k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'?k.destinationId:data.destinationId;
             if(!kekeDestinations.some(d=>d.id===destinationId)||destinationId==='car-park')throw new Error('Choose a destination');
             const fare=k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
-            let wallet=localWallets.get(session.id);if(!wallet){wallet={balance:5000,transactions:[],inventory:[]};localWallets.set(session.id,wallet);}
+            let wallet=localWallets.get(session.id);if(!wallet){wallet={balance:ECONOMY_CONFIG.STARTER_BALANCE,transactions:[],inventory:[]};localWallets.set(session.id,wallet);}
             if(wallet.balance<fare)throw new Error('Insufficient balance');wallet.balance-=fare;
             if(k.phase==='IDLE')bookRide(k,destinationId,Date.now(),crypto.randomUUID());
             k.passengers.push(sessionConnId);k.paid[sessionConnId!]=String(fare);k.targets[sessionConnId!]=destinationId;p.kekeRiding=true;p.kekeId=k.id;
@@ -599,7 +600,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             if (recipientPlayer) {
               let recWallet = localWallets.get(recipientPlayer.id);
               if (!recWallet) {
-                recWallet = { balance: 5000, transactions: [], inventory: [] };
+                recWallet = { balance: ECONOMY_CONFIG.STARTER_BALANCE, transactions: [], inventory: [] };
                 localWallets.set(recipientPlayer.id, recWallet);
               }
               recWallet.balance += amount;
