@@ -40,6 +40,7 @@ export const GameHUD: React.FC = () => {
   const {
     onlineCount,
     nearbyInteractable,
+    seatedAt,
     selectedPlayer,
     isRidingKeke,
     currentKekeId,
@@ -48,6 +49,8 @@ export const GameHUD: React.FC = () => {
     currentTerrainType,
     kekes,
     setActiveModal,
+    sitAtPosition,
+    standUp,
     setSelectedHallLocationId,
     setRidingKeke,
     connectionStatus,
@@ -87,6 +90,11 @@ export const GameHUD: React.FC = () => {
   const handleInteractButton = async () => {
     triggerHaptic(25);
 
+    if (seatedAt) {
+      standUp();
+      return;
+    }
+
     if (isRidingKeke && currentKekeId) {
       networkManager.exitKeke(currentKekeId);
 
@@ -99,8 +107,12 @@ export const GameHUD: React.FC = () => {
           setActiveModal('bank');
           break;
         case 'food':
-        case 'restaurant_dining':
           setActiveModal('floral_world');
+          break;
+        case 'restaurant_dining':
+        case 'bench':
+          sitAtPosition(nearbyInteractable.position, nearbyInteractable.rotation);
+          useInputStore.getState().clearTargetDestination();
           break;
         case 'lecture_hall':
           setSelectedHallLocationId(nearbyInteractable.targetId || nearbyInteractable.id || 'colfhec-lecture-hall');
@@ -181,6 +193,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
+    if (seatedAt) return 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
@@ -189,8 +202,10 @@ export const GameHUD: React.FC = () => {
         case 'lecture_hall':
           return 'View Lecture Schedule';
         case 'food':
-        case 'restaurant_dining':
           return 'Order Food & Drinks';
+        case 'restaurant_dining':
+        case 'bench':
+          return nearbyInteractable.actionText;
         case 'atm':
           return 'Open ATM & Transfer';
         case 'job_board':
@@ -208,6 +223,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
+    if (seatedAt) return 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';
@@ -216,8 +232,10 @@ export const GameHUD: React.FC = () => {
       case 'lecture_hall':
         return 'Class';
       case 'food':
-      case 'restaurant_dining':
         return 'Food';
+      case 'restaurant_dining':
+      case 'bench':
+        return 'Sit';
       case 'atm':
         return 'Bank';
       case 'job_board':

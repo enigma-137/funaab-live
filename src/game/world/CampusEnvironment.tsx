@@ -400,6 +400,24 @@ export const CampusEnvironment: React.FC = () => {
                 <cylinderGeometry args={[0.04, 0.04, 2.2, 8]} />
                 <meshStandardMaterial color="#475569" />
               </mesh>
+              {[-1, 1].map((side) => (
+                <group key={`bench-${side}`}>
+                  <mesh position={[0, 0.46, side * 1.25]} castShadow>
+                    <boxGeometry args={[2, 0.12, 0.36]} />
+                    <meshStandardMaterial color="#78350f" />
+                  </mesh>
+                  {[-0.7, 0.7].map((legX) => (
+                    <mesh key={legX} position={[legX, 0.23, side * 1.25]} castShadow>
+                      <boxGeometry args={[0.12, 0.46, 0.3]} />
+                      <meshStandardMaterial color="#475569" />
+                    </mesh>
+                  ))}
+                  <mesh position={[0, 0.87, side * 1.48]} castShadow>
+                    <boxGeometry args={[2, 0.62, 0.1]} />
+                    <meshStandardMaterial color="#78350f" />
+                  </mesh>
+                </group>
+              ))}
               <CuboidCollider args={[1.2, 0.4, 0.8]} position={[0, 0.4, 0]} />
             </group>
           ))}

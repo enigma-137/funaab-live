@@ -84,7 +84,7 @@ class NetworkManager {
   public switchRoom(room: string, user: PlayerProfile) {
     this.disconnect(); this.room=room; this.connectionId=this.generateConnectionId();
     useSocialStore.setState({messages: [], unreadCount: 0});
-    useGameStore.setState({players:{},kekes:{},activeMatches:{},currentMatch:null,nearbyInteractable:null,isRidingKeke:false});
+    useGameStore.setState({players:{},kekes:{},activeMatches:{},currentMatch:null,nearbyInteractable:null,isRidingKeke:false,seatedAt:null});
     return this.connect(user);
   }
   public async connect(user: PlayerProfile) {

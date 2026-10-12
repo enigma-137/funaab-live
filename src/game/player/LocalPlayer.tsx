@@ -111,7 +111,14 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
       // Handle 'E' or 'Enter' for Context Interaction
       if (key === 'e' || e.key === 'Enter') {
+        if (useGameStore.getState().seatedAt) {
+          useGameStore.getState().standUp();
+          return;
+        }
         handleInteraction();
+      }
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'].includes(key)) {
+        useGameStore.getState().standUp();
       }
 
       // Toggle Campus Map: 'M'
@@ -162,8 +169,15 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           setActiveModal('bank');
           break;
         case 'food':
-        case 'restaurant_dining':
           setActiveModal('floral_world');
+          break;
+        case 'restaurant_dining':
+        case 'bench':
+          useGameStore.getState().sitAtPosition(
+            nearbyInteractable.position,
+            nearbyInteractable.rotation,
+          );
+          useInputStore.getState().clearTargetDestination();
           break;
         case 'lecture_hall':
           setSelectedHallLocationId(nearbyInteractable.targetId || nearbyInteractable.id || 'colfhec-lecture-hall');
@@ -224,6 +238,36 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
         camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
         camera.lookAt(activeKeke.position[0], nextY + 0.5, activeKeke.position[2]);
+        return;
+      }
+    }
+
+    const seatedAt = useGameStore.getState().seatedAt;
+    if (seatedAt) {
+      if (targetDestination) {
+        useGameStore.getState().standUp();
+      } else {
+        const [x, , z] = seatedAt.position;
+        body.setNextKinematicTranslation({
+          x,
+          y: PLAYER_CENTER_OFFSET,
+          z,
+        });
+        currentRotation.current = seatedAt.rotation;
+        currentAnimation.current = 'sit';
+        if (avatarVisualRef.current) avatarVisualRef.current.rotation.y = seatedAt.rotation;
+        setMyPosition(seatedAt.position);
+        setMyRotation(seatedAt.rotation);
+        setMyAnimation('sit');
+        networkManager.sendMove(seatedAt.position, seatedAt.rotation, 'sit', false);
+
+        const camDist =
+          useHostelStore.getState().roomId === 'world:funaab:library' ? 6 : 8.2;
+        const cx = x + Math.sin(cameraYaw) * Math.cos(cameraPitch) * camDist;
+        const cy = PLAYER_CENTER_OFFSET + 3.6 + Math.sin(cameraPitch) * camDist * 0.6;
+        const cz = z + Math.cos(cameraYaw) * Math.cos(cameraPitch) * camDist;
+        camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
+        camera.lookAt(x, PLAYER_CENTER_OFFSET + 0.5, z);
         return;
       }
     }

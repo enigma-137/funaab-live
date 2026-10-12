@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuthStore } from '../../stores/authStore';
 import { useGameStore } from '../../stores/gameStore';
@@ -32,6 +32,12 @@ export const PSPenaltyGame: React.FC = () => {
         m.status !== 'finished'
     );
 
+  useEffect(() => {
+    if (myActiveMatch?.status === 'finished') {
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+    }
+  }, [myActiveMatch?.id, myActiveMatch?.status]);
+
   const handleCreate = () => {
     networkManager.createPSChallenge('ps5-station-1');
   };
@@ -44,10 +50,6 @@ export const PSPenaltyGame: React.FC = () => {
     if (!myActiveMatch) return;
     setSelectedDirection(dir);
     networkManager.sendPSAction(myActiveMatch.id, dir);
-
-    if (myActiveMatch.currentRound >= myActiveMatch.totalRounds) {
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-    }
   };
 
   const isHost =
@@ -73,7 +75,7 @@ export const PSPenaltyGame: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-white font-['Outfit']">FUNAAB Game Den: 1v1 Showdown</h2>
-              <p className="text-xs text-indigo-300">No wagers · Campus: winner ₦120 / loser ₦40 / draw ₦80 · 2-minute cooldown, 6 rewarded matches per day · Home games: social only</p>
+              <p className="text-xs text-indigo-300">No wagers · Campus: winner ₦120 / loser ₦40 · Ties go to sudden death · 2-minute cooldown, 6 rewarded matches per day · Home games: social only</p>
             </div>
           </div>
           <button

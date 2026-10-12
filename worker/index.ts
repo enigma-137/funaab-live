@@ -917,23 +917,29 @@ export class WorldRoomDO {
               }
 
               if (match.currentRound >= match.totalRounds) {
-                match.status = 'finished';
-                if (match.hostScore > match.guestScore) match.winnerName = match.hostName;
-                else if (match.guestScore > match.hostScore) match.winnerName = match.guestName;
-                else match.winnerName = 'Tie Game!';
-                // Fixed campus rewards only; home matches never mint passive income.
-                if (sessionRoom==='world:funaab:main') {
-                  const rewardBody={p_match:match.id,p_host:match.hostId,p_guest:match.guestId,
-                    p_winner:match.hostScore===match.guestScore?null:match.hostScore>match.guestScore?match.hostId:match.guestId};
-                  await this.state.storage.put('ps-reward:'+match.id,rewardBody);
-                  await this.state.storage.setAlarm(Date.now()+60000);
-                  try {
-                    await this.dbRpc('ps_reward_trusted',rewardBody);
-                    await this.state.storage.delete('ps-reward:'+match.id);
-                    this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'wallet_refresh'}));
-                  } catch(e) { this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'reward_error',message:'Match finished. Your reward is queued for a safe retry; reopen your wallet shortly.'})); }
+                if (match.hostScore === match.guestScore) {
+                  match.totalRounds += 2;
+                  match.roundResult += ' Scores are level; sudden death starts.';
+                } else {
+                  match.status = 'finished';
+                  match.winnerName = match.hostScore > match.guestScore
+                    ? match.hostName
+                    : match.guestName;
+                  // Fixed campus rewards only; home matches never mint passive income.
+                  if (sessionRoom==='world:funaab:main') {
+                    const rewardBody={p_match:match.id,p_host:match.hostId,p_guest:match.guestId,
+                      p_winner:match.hostScore>match.guestScore?match.hostId:match.guestId};
+                    await this.state.storage.put('ps-reward:'+match.id,rewardBody);
+                    await this.state.storage.setAlarm(Date.now()+60000);
+                    try {
+                      await this.dbRpc('ps_reward_trusted',rewardBody);
+                      await this.state.storage.delete('ps-reward:'+match.id);
+                      this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'wallet_refresh'}));
+                    } catch(e) { this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'reward_error',message:'Match finished. Your reward is queued for a safe retry; reopen your wallet shortly.'})); }
+                  }
                 }
-              } else {
+              }
+              if (match.status !== 'finished') {
                 match.currentRound++;
                 match.hostChoice = undefined;
                 match.guestChoice = undefined;

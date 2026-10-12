@@ -3,7 +3,12 @@ import { campusLocations,locationById,CAMPUS_SPAWN,CAR_PARK_BAY } from '../src/c
 import { roadEdges,roadNodes,roadPath,nodeKey,canAdvance,publicRoute,fareFor,campusObstacles } from '../src/config/kekeRoutes';
 import { createKeke,bookRide,tickKeke } from '../src/config/kekeSimulation';
 import {classifyTerrain} from '../src/game/rules/lawnSecuritySystem';
+import worldData from '../src/config/campusWorld';
 for(const id of ['colvet','colanim','colplant','colerm','colcoms','library'])assert(locationById(id));
+assert.equal(worldData.interactables.filter(i=>i.id.startsWith('floral-world-seat-')).length,4);
+assert.equal(worldData.interactables.filter(i=>i.id.startsWith('food-court-seat-')).length,4);
+assert.equal(worldData.interactables.filter(i=>i.id.startsWith('library-front-bench-')).length,2);
+assert.equal(worldData.interactables.filter(i=>i.id.startsWith('colfhec-forecourt-bench-')).length,2);
 assert(!publicRoute.some(p=>nodeKey(p)===nodeKey(CAR_PARK_BAY)),'Public route must not enter booked bay');
 assert.equal(new Set(campusLocations.map(l=>l.id)).size,campusLocations.length);
 assert(!classifyTerrain(CAMPUS_SPAWN[0],CAMPUS_SPAWN[2]).restricted);

@@ -104,6 +104,7 @@ export interface InteractableZone {
   actionText: string;
   position: [number, number, number];
   radius: number;
+  rotation?: number;
   targetId?: string;
 }
 

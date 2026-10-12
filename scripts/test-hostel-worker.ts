@@ -64,10 +64,15 @@ await join(world,'guest4');await join(world,'guest5');
   await opponent.packet({type:'ps_challenge_join',matchId:match.id});
   failReward=true;
   for(let round=0;round<3;round++){
-    await student.packet({type:'ps_action',matchId:match.id,choice:'left'});
-    await opponent.packet({type:'ps_action',matchId:match.id,choice:'right'});
+    await student.packet({type:'ps_action',matchId:match.id,choice:'center'});
+    await opponent.packet({type:'ps_action',matchId:match.id,choice:'center'});
   }
-  assert.equal(match.status,'finished');assert.equal(pending.size,1);
+  assert.equal(match.status,'in_progress');assert.equal(match.currentRound,4);assert.equal(match.totalRounds,5);assert.equal(match.winnerName,undefined);assert.equal(pending.size,0);
+  await student.packet({type:'ps_action',matchId:match.id,choice:'right'});
+  await opponent.packet({type:'ps_action',matchId:match.id,choice:'left'});
+  await student.packet({type:'ps_action',matchId:match.id,choice:'left'});
+  await opponent.packet({type:'ps_action',matchId:match.id,choice:'left'});
+  assert.equal(match.status,'finished');assert.equal(match.currentRound,5);assert.equal(match.winnerName,match.guestName);assert.equal(pending.size,1);
   assert(student.messages.some(m=>m.type==='reward_error'));
   await mainWorld.alarm();assert.equal(pending.size,0);
   const rewardCalls=calls.filter(c=>c.url.endsWith('ps_reward_trusted')).length;

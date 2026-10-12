@@ -515,11 +515,17 @@ wss.on('connection', (ws: WebSocket, req) => {
             }
 
             if (match.currentRound >= match.totalRounds) {
-              match.status = 'finished';
-              if (match.hostScore > match.guestScore) match.winnerName = match.hostName;
-              else if (match.guestScore > match.hostScore) match.winnerName = match.guestName;
-              else match.winnerName = 'Tie Game!';
-            } else {
+              if (match.hostScore === match.guestScore) {
+                match.totalRounds += 2;
+                match.roundResult += ' Scores are level; sudden death starts.';
+              } else {
+                match.status = 'finished';
+                match.winnerName = match.hostScore > match.guestScore
+                  ? match.hostName
+                  : match.guestName;
+              }
+            }
+            if (match.status !== 'finished') {
               match.currentRound++;
               match.hostChoice = undefined;
               match.guestChoice = undefined;
