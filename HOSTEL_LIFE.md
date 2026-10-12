@@ -55,7 +55,7 @@ minimum and a 12-job rolling daily cap limit farming.
 
 `src/config/hostelShop.ts` defines the display catalogue, stable IDs and model keys.
 The matching database catalogue is the price authority; clients submit only item ID
-and payment choice. Prices range from ₦50 water/plate to ₦800 console. Categories:
+and payment choice. Prices range from ₦50 water/plate to ₦1,500 console (rebalanced in migration 012). Categories:
 Room, Entertainment, Power, Foodstuff and Basics (including cooking supplies).
 `HostelItemModel` uses small procedural meshes and exposes a future GLB boundary at
 `/models/hostel/<modelKey>.glb`. No external models or large textures are added.
@@ -87,11 +87,12 @@ comedy, without real-world arrest, interest accrual, forced deductions or legal 
 
 | Loop | Fixed game reward | Guard |
 | --- | ---: | --- |
-| Floral World → COLENG delivery | ₦250 | Pickup, route, 15s minimum, run receipt |
-| Health Centre → Senate dispatch | ₦200 | Same persistent job protocol |
-| Sports Centre pitch check | ₦175 | Collect equipment and finish check |
-| Game Den controller shift | ₦200 | Collect kit and finish station check |
-| Campus PS match | Winner ₦120, loser ₦40, draw ₦80 each | Distinct players, server match state, 2m cooldown, 6 rewarded matches/24h |
+| Floral World → COLENG delivery | ₦500 (long delivery) | Pickup, route, 15s minimum, run receipt |
+| Health Centre → Senate dispatch | ₦350 | Same persistent job protocol |
+| Sports Centre pitch check | ₦300 | Collect equipment and finish check |
+| Game Den controller shift | ₦250 | Collect kit and finish station check |
+| Campus PS match | Winner ₦250, loser ₦100, draw ₦150 each | Distinct players, server match state, 2m cooldown, 6 rewarded matches/24h, max 2 rewarded vs the same opponent/24h |
+| First job of the day | +₦200 bonus | Once per Africa/Lagos day, paid with the first completed job |
 
 Home PS matches grant no money. There are no wagers or player-funded prizes.
 PS payouts are idempotent by match/user. A durable retry queue recovers temporary

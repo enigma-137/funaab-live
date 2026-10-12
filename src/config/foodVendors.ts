@@ -1,6 +1,6 @@
 // Timed campus food vendors. Single source of truth for hours, menus and placement.
 // Hours and prices are mirrored in supabase/migrations/011_timed_food_vendors.sql (food_vendor_hours,
-// food_vendor_items); scripts/test-food-vendors-db.ts fails if the two drift apart.
+// food_vendor_items; prices updated by 012_economy_rebalance.sql); scripts/test-food-vendors-db.ts fails if the two drift apart.
 // The server (database clock, Africa/Lagos) is authoritative for purchases.
 import type { Point } from './campusLocations';
 
@@ -36,8 +36,8 @@ export const FOOD_VENDORS: Record<FoodVendorId, FoodVendor> = {
     closedMessage: 'Mai Suya has closed for the night.',
     windows: [{ open: hm(19), close: hm(23), label: 'Night' }],
     items: [
-      { id: 'vendor_suya_beef', name: 'Beef Suya', price: 800 },
-      { id: 'vendor_suya_chicken', name: 'Chicken Suya', price: 700 },
+      { id: 'vendor_suya_beef', name: 'Beef Suya', price: 400 },
+      { id: 'vendor_suya_chicken', name: 'Chicken Suya', price: 350 },
     ],
     // North of the Food Court walkway (z=32), facing the path.
     position: [-61, 0, 37],
@@ -55,8 +55,8 @@ export const FOOD_VENDORS: Record<FoodVendorId, FoodVendor> = {
       { open: hm(19), close: hm(23), label: 'Evening' },
     ],
     items: [
-      { id: 'vendor_indomie_plain', name: 'Plain Indomie', price: 600 },
-      { id: 'vendor_indomie_egg', name: 'Indomie + Egg', price: 800 },
+      { id: 'vendor_indomie_plain', name: 'Plain Indomie', price: 250 },
+      { id: 'vendor_indomie_egg', name: 'Indomie + Egg', price: 350 },
     ],
     position: [-69, 0, 37],
     rotation: Math.PI,

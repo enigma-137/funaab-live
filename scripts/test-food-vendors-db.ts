@@ -6,6 +6,10 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { FOOD_VENDORS, FOOD_VENDOR_LIST } from '../src/config/foodVendors';
+import { ECONOMY_CONFIG } from '../src/config/economy';
+
+// Prices come from config (migration 012 rebalanced them); the drift check above pins config = database.
+const P = (id: string) => FOOD_VENDOR_LIST.flatMap((v) => v.items).find((i) => i.id === id)!.price;
 
 const require = createRequire(import.meta.url);
 const { PGlite } = require(process.env.PGLITE_MODULE || '@electric-sql/pglite');
@@ -76,41 +80,45 @@ async function main() {
   // Open: exact server price, ledger, inventory.
   await forceHours('mai_suya', true);
   const r1 = await buy(u, 'mai_suya', 'vendor_suya_beef');
-  assert.equal(r1.price, 800); assert.equal(Number(r1.balance), 1780); assert.equal(await balance(u), 1780);
+  const afterBeef = 2580 - P('vendor_suya_beef');
+  assert.equal(r1.price, P('vendor_suya_beef')); assert.equal(Number(r1.balance), afterBeef); assert.equal(await balance(u), afterBeef);
   const [tx] = await rows("select * from wallet_transactions where user_id=$1 and type='food_purchase' order by created_at desc limit 1", [u]);
-  assert.equal(Number(tx.amount), -800); assert.equal(Number(tx.balance_after), 1780); assert.equal(tx.description, 'Mai Suya: Beef Suya');
+  assert.equal(Number(tx.amount), -P('vendor_suya_beef')); assert.equal(Number(tx.balance_after), afterBeef); assert.equal(tx.description, 'Mai Suya: Beef Suya');
   assert.equal((await rows("select quantity from inventory where user_id=$1 and item_id='vendor_suya_beef'", [u]))[0].quantity, 1);
 
   // Retry with the same request id: no second charge.
   const req = crypto.randomUUID();
   await buy(u, 'mai_suya', 'vendor_suya_chicken', req);
   await buy(u, 'mai_suya', 'vendor_suya_chicken', req);
-  assert.equal(await balance(u), 1080, 'one ₦700 charge for a retried request');
+  assert.equal(await balance(u), afterBeef - P('vendor_suya_chicken'), 'one charge for a retried request');
   assert.equal((await rows("select quantity from inventory where user_id=$1 and item_id='vendor_suya_chicken'", [u]))[0].quantity, 1);
 
   // Wrong vendor / unknown item / insufficient funds.
   await assert.rejects(() => buy(u, 'mai_suya', 'vendor_indomie_egg'), /not on the Mai Suya menu/);
   await assert.rejects(() => buy(u, 'mai_suya', 'vendor_suya_goat'), /not on the Mai Suya menu/);
   await assert.rejects(() => buy(u, 'nobody', 'vendor_suya_beef'), /Unknown vendor/);
-  await db.query('update wallets set balance=500 where user_id=$1', [u]);
+  const short = P('vendor_suya_beef') - 1;
+  await db.query('update wallets set balance=$2 where user_id=$1', [u, short]);
   await assert.rejects(() => buy(u, 'mai_suya', 'vendor_suya_beef'), /Insufficient funds/);
-  assert.equal(await balance(u), 500);
+  assert.equal(await balance(u), short);
 
   // Indomie: own schedule, independent of Mai Suya.
   await forceHours('indomie_egg', false);
   await assert.rejects(() => buy(other, 'indomie_egg', 'vendor_indomie_egg'), /Indomie & Egg is closed/);
   await forceHours('indomie_egg', true);
-  assert.equal((await buy(other, 'indomie_egg', 'vendor_indomie_egg')).price, 800);
-  assert.equal((await buy(other, 'indomie_egg', 'vendor_indomie_plain')).price, 600);
-  assert.equal(await balance(other), 1180, 'two players, independent wallets');
+  assert.equal((await buy(other, 'indomie_egg', 'vendor_indomie_egg')).price, P('vendor_indomie_egg'));
+  assert.equal((await buy(other, 'indomie_egg', 'vendor_indomie_plain')).price, P('vendor_indomie_plain'));
+  const otherAfter = 2580 - P('vendor_indomie_egg') - P('vendor_indomie_plain');
+  assert.equal(await balance(other), otherAfter, 'two players, independent wallets');
 
   // Legacy RPC hole closed: a client-priced vendor item is refused.
   await as(other);
   await assert.rejects(() => db.query("select process_wallet_purchase('food_purchase',1,'cheap','vendor_suya_beef','Beef Suya',null)"), /vendor stall/);
-  // Floral World still works through the legacy path at its server price.
+  // Floral World still works through process_wallet_purchase at its server menu price.
   const fw = (await rows("select process_wallet_purchase('food_purchase',1,null,'fw_water','x',null) r"))[0].r;
   await db.exec('reset role;');
-  assert.equal(fw.success, true); assert.equal(await balance(other), 1180 - 150, 'Floral World water still ₦150 server price');
+  const water = ECONOMY_CONFIG.FLORAL_WORLD_MENU.find((i) => i.id === 'fw_water')!.price;
+  assert.equal(fw.success, true); assert.equal(await balance(other), otherAfter - water, 'Floral World water at the server menu price');
 
   // Anonymous users cannot buy; status RPC is public and reports the server clock.
   await db.exec('set role anon;');

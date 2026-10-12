@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { useLectureStore } from '../stores/lectureStore';
 import {
   getHallScheduleState,
@@ -109,7 +110,7 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
                 </div>
                 <div style={infoItemStyle}>
                   <div style={infoLabelStyle}>Attendance Bonus</div>
-                  <div style={{ ...infoValStyle, color: '#48bb78' }}>+₦100 Allowance</div>
+                  <div style={{ ...infoValStyle, color: '#48bb78' }}>+{formatNaira(ECONOMY_CONFIG.ATTENDANCE_ALLOWANCE)} Allowance</div>
                 </div>
               </div>
 
