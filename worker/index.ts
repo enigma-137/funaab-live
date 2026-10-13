@@ -7,6 +7,10 @@ import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
+import {
+  FOOTBALL_PITCH, FOOTBALL_RULES, createLobby, createChallenge, joinChallenge, cancelChallenge, takeMatchShot,
+  takePracticeShot, expireTurn, leaveMatch, voteRematch, isFootballError, type FootballMatchState,
+} from '../src/config/football';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -39,6 +43,7 @@ interface SessionData {
   movementBudget?: number;
   movementClock?: number;
   campusBetAt?: number;
+  footballAt?: number;
 }
 
 interface PlayerState {
@@ -318,6 +323,9 @@ export class WorldRoomDO {
   private kekesDirty = false;
   private restoreKekePromise: Promise<void> | null = null;
   private persistKekePromise: Promise<void> | null = null;
+  // Sports Centre penalty challenge: one shared pitch, one ball, one match at a time.
+  private football: FootballMatchState = createLobby(Date.now());
+  private footballTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -401,6 +409,7 @@ export class WorldRoomDO {
       this.kekes.forEach((keke) => {
         if (keke.passengers.includes(sessionConnId)) void this.dropPassenger(keke, sessionConnId, 'refund');
       });
+      this.footballDisconnect(sessionConnId, session?.id);
 
       this.players.delete(sessionConnId);
       this.broadcastToRoom(
@@ -705,6 +714,62 @@ export class WorldRoomDO {
     const receipt = await this.dbRpc('campus_bet_place_trusted', { p_user: session.id, p_round: roundId, p_stake: stake, p_picks: picks });
     return { ...(await this.campusBetSync(session.id)), balance: Number(receipt.balance) };
   }
+  private setFootball(next: FootballMatchState) {
+    this.football = next;
+    if (this.footballTimer !== null) clearTimeout(this.footballTimer);
+    this.footballTimer = null;
+    if (next.status === 'ACTIVE' && next.turnDeadline) {
+      this.footballTimer = setTimeout(() => {
+        this.footballTimer = null;
+        const expired = expireTurn(this.football, Date.now());
+        if (expired) this.setFootball(expired);
+      }, Math.max(0, next.turnDeadline - Date.now()) + 50);
+    }
+    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'football_state', football: next }));
+  }
+  /** Penalty challenge: the client supplies only aim + power; turns, results and score are decided here. */
+  private footballCommand(session: SessionData, data: any) {
+    if (session.room !== 'world:funaab:main') throw new Error('The penalty challenge is at the Sports Centre.');
+    const now = Date.now();
+    const op = String(data.op || 'state');
+    if (op === 'state') return this.football;
+    const me = { userId: session.id, connectionId: session.connectionId, name: session.username };
+    if (['practice', 'create', 'join', 'shoot'].includes(op)) {
+      this.advanceTrustedPosition(session);
+      const pos = session.trustedPosition, spot = FOOTBALL_PITCH.penaltySpot;
+      if (!pos || Math.hypot(pos[0] - spot[0], pos[2] - spot[2]) > FOOTBALL_PITCH.serverRadius) throw new Error('Walk up to the penalty spot at the Sports Centre.');
+    }
+    const shot = { aim: data.aim, power: data.power };
+    let next: FootballMatchState | { error: string } | null;
+    switch (op) {
+      case 'practice':
+        if (now - (session.footballAt || 0) < FOOTBALL_RULES.PRACTICE_COOLDOWN_MS) throw new Error('Wait for the ball to come back.');
+        next = takePracticeShot(this.football, me, shot, Math.random, now);
+        if (!isFootballError(next)) session.footballAt = now;
+        break;
+      case 'create': next = createChallenge(this.football, me, crypto.randomUUID(), now); break;
+      case 'join': next = joinChallenge(this.football, me, String(data.matchId || ''), now); break;
+      case 'cancel': next = cancelChallenge(this.football, me.userId, now); break;
+      case 'shoot':
+        // Only the shooter's own socket may kick (a second tab cannot shoot for them).
+        if (this.football.status === 'ACTIVE' && this.football.turnUserId === me.userId
+          && ![this.football.player1, this.football.player2].some((p) => p?.connectionId === me.connectionId)) throw new Error('Shoot from the device you joined with.');
+        next = takeMatchShot(this.football, me.userId, shot, Math.random, now);
+        break;
+      case 'rematch': next = voteRematch(this.football, me.userId, now, crypto.randomUUID()); break;
+      case 'leave': next = leaveMatch(this.football, me.userId, now) ?? this.football; break;
+      default: throw new Error('Unknown football action.');
+    }
+    if (isFootballError(next)) throw new Error(next.error);
+    if (next !== this.football) this.setFootball(next);
+    return this.football;
+  }
+  private footballDisconnect(connectionId: string, userId?: string) {
+    const f = this.football;
+    if (!userId || ![f.player1, f.player2].some((p) => p?.connectionId === connectionId)) return;
+    const next = leaveMatch(f, userId, Date.now());
+    if (next) this.setFootball(next);
+  }
   async alarm() {
     const settlements=await this.state.storage.list<any>({prefix:'keke-settle:',limit:100});
     for(const [key,entry] of settlements){
@@ -945,6 +1010,7 @@ export class WorldRoomDO {
                 players: roomPlayers,
                 kekes: Object.fromEntries(this.kekes),
                 activeMatches: Object.fromEntries(this.psMatches),
+                ...(sessionRoom === 'world:funaab:main' ? { football: this.football } : {}),
               })
             );
 
@@ -977,6 +1043,13 @@ export class WorldRoomDO {
             const current = this.sessions.get(webSocket);
             if (!current) return;
             try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: await this.campusBetCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
+          case 'football': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: this.footballCommand(current, data) })); }
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
@@ -1490,6 +1563,7 @@ export class WorldRoomDO {
         this.kekes.forEach((keke) => {
           if(keke.passengers.includes(sessionConnId!))void this.dropPassenger(keke,sessionConnId!,'refund');
         });
+        this.footballDisconnect(sessionConnId, session?.id);
 
         this.players.delete(sessionConnId);
 
@@ -1557,7 +1631,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet', 'trusted_catchup'],
+          features: ['campus_bet', 'trusted_catchup', 'football'],
           timestamp: Date.now(),
         }),
         {

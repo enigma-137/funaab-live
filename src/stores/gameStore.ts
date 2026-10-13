@@ -41,6 +41,8 @@ interface GameState {
   myRotation: number;
   myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
   seatedAt: { position: [number, number, number]; rotation: number } | null;
+  /** One-shot facing request (e.g. turn to face the goal); LocalPlayer applies then clears it. */
+  faceRotation: number | null;
   isRidingKeke: boolean;
   currentKekeId: string | null;
   targetKekeDestinationId: string | null;
@@ -91,6 +93,7 @@ interface GameState {
     | 'campus_map'
     | 'campus_bet'
     | 'food_vendor'
+    | 'football'
     | null;
 
   // Actions
@@ -116,6 +119,7 @@ interface GameState {
   setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer') => void;
   sitAtPosition: (position: [number, number, number], rotation?: number) => void;
   standUp: () => void;
+  setFaceRotation: (rotation: number | null) => void;
   setRidingKeke: (isRiding: boolean, kekeId?: string | null, targetDestinationId?: string | null) => void;
   setTargetKekeDestinationId: (id: string | null) => void;
 
@@ -153,6 +157,7 @@ interface GameState {
       | 'campus_map'
       | 'campus_bet'
       | 'food_vendor'
+      | 'football'
       | null
   ) => void;
   toggleDebugPhysics: () => void;
@@ -183,6 +188,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   myRotation: 0,
   myAnimation: 'idle',
   seatedAt: null,
+  faceRotation: null,
   isRidingKeke: false,
   currentKekeId: null,
   targetKekeDestinationId: null,
@@ -413,6 +419,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMyAnimation: (myAnimation) => set((state) => (state.myAnimation === myAnimation ? state : { myAnimation })),
   sitAtPosition: (position, rotation = 0) => set({ seatedAt: { position, rotation } }),
   standUp: () => set({ seatedAt: null }),
+  setFaceRotation: (faceRotation) => set({ faceRotation }),
   setRidingKeke: (isRidingKeke, currentKekeId = null, targetKekeDestinationId = null) =>
     set({ isRidingKeke, currentKekeId, targetKekeDestinationId }),
   setTargetKekeDestinationId: (targetKekeDestinationId) => set({ targetKekeDestinationId }),

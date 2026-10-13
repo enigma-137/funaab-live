@@ -1,4 +1,5 @@
 import base from '../worlds/funaab/world.json';
+import { LOVE_GARDEN, isInLoveGarden } from './loveGarden';
 
 export type Point = [number, number, number];
 export interface CampusLocation {
@@ -57,6 +58,7 @@ export const CAMPUS_SPAWN:Point=[7,0,78];
 export const CAR_PARK_BAY:Point=[-64,0,64];
 export const CAMPUS_BOUNDS={minX:-145,maxX:145,minZ:-145,maxZ:110};
 export const campusZoneName=(x:number,z:number)=>{
+  if(isInLoveGarden(x,z))return LOVE_GARDEN.name;
   const nearest=[...campusLocations].sort((a,b)=>Math.hypot(x-a.position[0],z-a.position[2])-Math.hypot(x-b.position[0],z-b.position[2]))[0];
   return Math.hypot(x-nearest.position[0],z-nearest.position[2])<24?nearest.shortName:'Campus walkways';
 };

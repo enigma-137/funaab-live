@@ -9,6 +9,7 @@ import { useWalletStore } from '../../stores/walletStore';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
+import { useFootballStore } from '../../stores/footballStore';
 
 class NetworkManager {
   public room = 'world:funaab:main';
@@ -93,6 +94,16 @@ class NetworkManager {
       const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Campus Bet got no reply from the game server. If this keeps happening, the multiplayer Worker may need redeploying.'));},15000);
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);if(typeof v?.balance==='number')useWalletStore.setState({balance:v.balance});resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
       this.send({type:'campus_bet',requestId,op,...payload});
+    });
+  }
+  /** Penalty challenge: only aim + power leave the client; the Worker decides every result. */
+  public football(op:string,payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to play football'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('The pitch did not answer. If this keeps happening, the multiplayer Worker may need redeploying.'));},10000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'football',requestId,op,...payload});
     });
   }
   public roomChanged() { this.send({type:'room_changed'}); }
@@ -236,6 +247,7 @@ class NetworkManager {
         if (data.kekes) gameStore.setKekes(data.kekes);
         gameStore.setRidingKeke(false,null,null);
         if (data.activeMatches) gameStore.setMatches(data.activeMatches);
+        if (data.football) useFootballStore.getState().receive(data.football, true);
 
         const account=useAuthStore.getState().user;if(account)void useWalletStore.getState().loadWallet(account.id);
         console.log(`[WS] joined ${this.room}`);
@@ -387,6 +399,11 @@ class NetworkManager {
             currentStopName: data.currentStopName,
           });
         }
+        break;
+      }
+
+      case 'football_state': {
+        if (data.football) useFootballStore.getState().receive(data.football);
         break;
       }
 

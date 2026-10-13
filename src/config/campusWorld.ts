@@ -4,6 +4,8 @@ import { roadBounds, kekeDestinations, publicRoute, routeStops, ROUTE_FARE } fro
 import { LECTURE_HALLS } from './lectureHalls';
 import { CAMPUS_BET_SHOP } from './campusBet';
 import { FOOD_VENDOR_LIST, VENDOR_PLAZA, vendorCounter } from './foodVendors';
+import { FOOTBALL_PITCH } from './football';
+import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
   const a=l.kekeStop,b=l.entrance,w=l.footprint[0]/2,d=l.footprint[1]/2;
@@ -65,6 +67,27 @@ const colfhecForecourtSeats = [-1, 1].map((side) => ({
   radius: 2,
   rotation: 0,
 }));
+// Love Garden: two seats per bench, every seat facing the tree. Reuses the campus bench sit flow.
+const loveGardenSeats = loveGardenBenches.flatMap((bench) =>
+  bench.seats.map((position, seat) => ({
+    id: `love-garden-seat-${bench.index}-${seat}`,
+    type: 'bench' as const,
+    label: 'Love Garden Bench',
+    actionText: 'Sit',
+    position,
+    radius: 1.1,
+    rotation: bench.rotation,
+  })),
+);
+const penaltySpot = {
+  id: 'sports-penalty-spot',
+  type: 'football' as const,
+  label: 'Sports Centre · Penalty Challenge',
+  actionText: 'Practice or 1v1 Penalty Challenge',
+  position: FOOTBALL_PITCH.shooterSpot,
+  radius: FOOTBALL_PITCH.interactionRadius,
+  targetId: 'sports-centre',
+};
 export const OUTSIDE_GATE = {
   gateWalk:{minX:-9,maxX:9,minZ:80,maxZ:95},
   road:{minX:-48,maxX:48,minZ:93,maxZ:98},
@@ -77,7 +100,7 @@ const outsideGateZones=[
   {id:'food-vendor-plaza',name:'Food Court',type:'plaza',restricted:false,bounds:VENDOR_PLAZA},
 ];
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
-  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
+  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...loveGardenSeats,penaltySpot,{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
     ...FOOD_VENDOR_LIST.map(v=>({id:`vendor-${v.id}`,type:'food_vendor',label:v.name,actionText:v.actionLabel,position:vendorCounter(v),radius:2.6,targetId:v.id})),
     {id:'campus-bet-counter',type:'campus_bet',label:'Campus Bet',actionText:'Open Campus Bet',position:CAMPUS_BET_SHOP.counter,radius:CAMPUS_BET_SHOP.interactionRadius,targetId:CAMPUS_BET_SHOP.id},
     // Every college hall without a hand-placed world.json entry gets the same lecture-hall interaction.
@@ -87,6 +110,9 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
     {id:'sports-turf',name:'Sports Centre',type:'sports',restricted:false,bounds:{minX:-118,maxX:-80,minZ:-18,maxZ:18}},
     // Outside the main gate: the gate walk, the public road and the Campus Bet frontage are paved.
     ...outsideGateZones,
+    {id:'love-garden-plaza',name:'Love Garden',type:'plaza',restricted:false,bounds:LOVE_GARDEN_PAVING.plaza},
+    {id:'love-garden-walk',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.walkway},
+    {id:'love-garden-connector',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.connector},
     {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],
   kekeDestinations,kekeRoutes:[{id:'route-alpha',name:'Public campus route',fare:ROUTE_FARE,waypoints:publicRoute,stops:routeStops.map(id=>({id,name:locationById(id).shortName,position:locationById(id).kekeStop,duration:4}))}],
   securityRoutes:base.securityRoutes.map(r=>({...r,points:r.points.map(p=>[p[0]*1.6,p[1],p[2]*1.6])})),

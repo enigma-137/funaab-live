@@ -36,6 +36,8 @@
     "test:vendors": "tsx scripts/test-food-vendors.ts",
     "test:vendors:db": "tsx scripts/test-food-vendors-db.ts",
     "test:hostel:compound": "tsx scripts/test-hostel-compound.ts",
+    "test:football": "tsx scripts/test-football.ts && tsx scripts/test-football-worker.ts",
+    "test:football:browser": "tsx scripts/test-football-browser.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
     "sim:economy": "tsx scripts/simulate-economy.ts"
   },
