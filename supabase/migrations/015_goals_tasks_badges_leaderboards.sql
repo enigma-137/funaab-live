@@ -281,7 +281,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------------------------
--- 5. Grants: students call the four entry points; the helpers are internal.
+-- 5. Grants: students call the five entry points; the helpers are internal.
 -- ---------------------------------------------------------------------------------------------
 revoke all on function public.daily_tasks_for(uuid,date) from public,anon,authenticated;
 revoke all on function public.daily_task_count(uuid,text,date) from public,anon,authenticated;
