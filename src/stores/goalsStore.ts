@@ -46,7 +46,9 @@ export const useGoalsStore = create<GoalsState>()((set, get) => ({
   loadTasks: async () => {
     const r = await call<DailyTasks>('get_daily_tasks');
     if (r.missing) return set({ unavailable: true });
-    set(r.error ? { error: r.error } : { tasks: r.data, error: null, unavailable: false });
+    if (r.error) return set({ error: r.error });
+    if (!r.data || !Array.isArray(r.data.tasks)) return set({ error: 'Could not load tasks' });
+    set({ tasks: r.data, error: null, unavailable: false });
   },
 
   claim: async (task) => {
@@ -81,7 +83,7 @@ export const useGoalsStore = create<GoalsState>()((set, get) => ({
 
 /** Tasks that are done but not yet claimed, plus the bonus when it's ready. */
 export const claimableCount = (t: DailyTasks | null) => {
-  if (!t) return 0;
+  if (!t || !Array.isArray(t.tasks)) return 0;
   const tasks = t.tasks.filter((x) => !x.claimed && x.progress >= x.target).length;
   const bonusReady = !t.bonus.claimed && t.tasks.length > 0 && t.tasks.every((x) => x.claimed);
   return tasks + (bonusReady ? 1 : 0);

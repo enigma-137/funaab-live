@@ -39,15 +39,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     return () => window.clearInterval(t);
   }, []);
 
-  const openMessages = () => {
-    const s = useSocialStore.getState();
-    if (s.activeDmPartner) return setModal('private_chat');
-    const last = Object.values(s.directMessages).flat()
-      .filter((m) => m.senderId !== user.id)
-      .sort((a, b) => b.timestamp - a.timestamp)[0];
-    if (last) s.openDm({ id: last.senderId, username: last.senderName, college: last.college });
-    else setModal('friends');
-  };
+  const openMessages = () => setModal('inbox');
 
   const replayTour = () => {
     onClose();

@@ -488,28 +488,7 @@ export const GameHUD: React.FC = () => {
           {/* Direct Messages (DMs) Modal Button with Red Unread Badge */}
           <button
             id="btn-hud-dms"
-            onClick={() => {
-              const { directMessages, openDm, activeDmPartner, friends } = useSocialStore.getState();
-              const partners = Object.keys(directMessages);
-              if (activeDmPartner) {
-                setActiveModal('private_chat');
-              } else if (partners.length > 0) {
-                const latestPartner = partners[0];
-                openDm({
-                  id: latestPartner,
-                  username: latestPartner,
-                  college: 'STUDENT',
-                });
-              } else if (friends.length > 0) {
-                openDm({
-                  id: friends[0].id,
-                  username: friends[0].username,
-                  college: friends[0].college,
-                });
-              } else {
-                setActiveModal('friends');
-              }
-            }}
+            onClick={() => setActiveModal('inbox')}
             className="relative p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Direct Messages (DMs)"
           >

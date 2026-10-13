@@ -50,6 +50,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     isRidingKeke,
     currentKekeId,
     myAnimation,
+    myHeldItem,
     setMyPosition,
     setMyRotation,
     setMyAnimation,
@@ -67,6 +68,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       isRidingKeke: s.isRidingKeke,
       currentKekeId: s.currentKekeId,
       myAnimation: s.myAnimation,
+      myHeldItem: s.myHeldItem,
       setMyPosition: s.setMyPosition,
       setMyRotation: s.setMyRotation,
       setMyAnimation: s.setMyAnimation,
@@ -677,6 +679,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           avatarConfig={user.avatarConfig}
           animation={myAnimation}
           isLocal
+          held={myHeldItem}
         />
       </group>
     </RigidBody>

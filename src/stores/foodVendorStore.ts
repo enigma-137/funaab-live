@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
 import { useGameStore } from './gameStore';
+import { holdPurchasedItem } from '../game/player/holdItem';
 import { getVendorStatus, nextVendorTransition, type FoodVendorId, type VendorStatus } from '../config/foodVendors';
 
 interface Toast { id: number; text: string; amount: number }
@@ -51,6 +52,7 @@ export const useFoodVendorStore = create<FoodVendorStore>((set, get) => ({
       if (error) throw new Error(error.message);
       useWalletStore.setState({ balance: Number(data.balance) });
       set({ toast: { id: Date.now(), text: `${data.name} bought`, amount: Number(data.price) } });
+      holdPurchasedItem(itemId);
       void useWalletStore.getState().loadWallet(user.id); // ledger + inventory
       return true;
     } catch (e) {

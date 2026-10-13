@@ -3,7 +3,8 @@ import { useSocialStore } from '../stores/socialStore';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { networkManager } from '../game/multiplayer/networkManager';
-import { Send, DollarSign, ShieldAlert, Ban, X, CheckCircle2 } from 'lucide-react';
+import { Send, DollarSign, ShieldAlert, Ban, X, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { useGameStore } from '../stores/gameStore';
 
 export const PrivateChatModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -99,6 +100,14 @@ export const PrivateChatModal: React.FC = () => {
         {/* Header */}
         <div style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <button
+              onClick={() => { useSocialStore.setState({ activeDmPartner: null }); useGameStore.getState().setActiveModal('inbox'); }}
+              style={btnSafetyActionStyle}
+              title="All messages"
+              aria-label="Back to all messages"
+            >
+              <ArrowLeft style={{ width: '16px', height: '16px' }} />
+            </button>
             <div style={avatarCircleStyle}>
               {activeDmPartner.username[0].toUpperCase()}
             </div>

@@ -45,6 +45,8 @@ export interface PlayerState {
   seatNumber?: number;
   handRaised?: boolean;
   isDining?: boolean;
+  /** Food or drink they just bought, shown in hand until `until` (local clock). */
+  heldItem?: { kind: 'pack' | 'wrap' | 'bowl' | 'water' | 'malt'; until: number };
   lastUpdated: number;
 }
 

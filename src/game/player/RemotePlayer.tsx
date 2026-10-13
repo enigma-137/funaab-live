@@ -72,6 +72,7 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
         college={player.college || 'COLENG'}
         avatarConfig={player.avatarConfig}
         animation={player.animation || 'idle'}
+        held={player.heldItem}
       />
     </group>
   );

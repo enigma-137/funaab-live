@@ -10,6 +10,8 @@ import {
   ActivityFeedItem,
 } from '../types/game';
 
+import type { HeldItem } from '../config/heldItems';
+
 export interface NavigationDestination {
   id: string;
   name: string;
@@ -95,6 +97,7 @@ interface GameState {
     | 'feedback'
     | 'earn'
     | 'goals'
+    | 'inbox'
     | 'food_vendor'
     | 'football'
     | null;
@@ -118,6 +121,8 @@ interface GameState {
   setPlayerRef: (ref: React.RefObject<any> | null) => void;
 
   setMyPosition: (pos: [number, number, number]) => void;
+  myHeldItem: HeldItem | null;
+  setMyHeldItem: (item: HeldItem | null) => void;
   setMyRotation: (rot: number) => void;
   setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer') => void;
   sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep'; exit?: [number, number, number] }) => void;
@@ -162,6 +167,7 @@ interface GameState {
     | 'feedback'
     | 'earn'
     | 'goals'
+    | 'inbox'
       | 'food_vendor'
       | 'football'
       | null
@@ -191,6 +197,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   debugNet: initialDebugNet,
 
   myPosition: [0, 0, 8],
+  myHeldItem: null,
+  setMyHeldItem: (myHeldItem) => set({ myHeldItem }),
   myRotation: 0,
   myAnimation: 'idle',
   seatedAt: null,

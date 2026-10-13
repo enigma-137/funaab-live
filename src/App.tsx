@@ -43,6 +43,7 @@ import { DmNotificationToast } from './ui/DmNotificationToast';
 import { CampusTourAutoStart } from './ui/CampusTourAutoStart';
 import { EarnPanel } from './ui/EarnPanel';
 import { GoalsPanel } from './ui/GoalsPanel';
+import { MessagesInbox } from './ui/MessagesInbox';
 import { CollegeVisitTracker } from './ui/CollegeVisitTracker';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
@@ -209,6 +210,7 @@ export const App: React.FC = () => {
       {activeModal === 'campus_map' && <CampusMapModal />}
       {activeModal === 'earn' && <EarnPanel />}
       {activeModal === 'goals' && <GoalsPanel />}
+      {activeModal === 'inbox' && <MessagesInbox />}
       {hostelRoomId === 'world:funaab:main' && !isInClassroom && <CollegeVisitTracker />}
 
       {/* First-visit guided tour (replaces the old touch-controls popup) */}

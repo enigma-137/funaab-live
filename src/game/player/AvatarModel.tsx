@@ -1,6 +1,7 @@
 import React from 'react';
 import {useHostelStore} from '../../stores/hostelStore';
 import { AvatarBody } from './AvatarBody';
+import type { HeldItem } from '../../config/heldItems';
 import { Html } from '@react-three/drei';
 import { AvatarConfig } from '../../types/game';
 import { useSocialStore } from '../../stores/socialStore';
@@ -15,6 +16,7 @@ interface AvatarModelProps {
   avatarConfig: AvatarConfig;
   animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
   isLocal?: boolean;
+  held?: HeldItem | null;
 }
 
 export const AvatarModel: React.FC<AvatarModelProps> = ({
@@ -24,6 +26,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   avatarConfig,
   animation = 'idle',
   isLocal = false,
+  held,
 }) => {
   const { unreadDmsByPartner, openDm } = useSocialStore();
   const riding=useGameStore(s=>s.isRidingKeke);
@@ -82,7 +85,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
         </Html>
       )}
 
-      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement />
+      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement held={held} />
     </group>
   );
 };

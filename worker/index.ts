@@ -4,6 +4,7 @@ import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campus
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, advanceKekeElapsed, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
+import { HELD_ITEM_KINDS, HELD_ITEM_MS } from '../src/config/heldItems';
 import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
@@ -56,6 +57,8 @@ interface SessionData {
   movementBudget?: number;
   movementClock?: number;
   campusBetAt?: number;
+  /** Last time this session showed a held item (rate limit). */
+  heldItemAt?: number;
   footballAt?: number;
 }
 
@@ -1172,6 +1175,17 @@ export class WorldRoomDO {
             }
             break;
           }
+          case 'held_item': {
+            // Purely visual: the student bought food or a drink and carries it for a minute.
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session || !HELD_ITEM_KINDS.includes(data.kind)) return;
+            const now = Date.now();
+            if (session.heldItemAt && now - session.heldItemAt < 1500) return;
+            session.heldItemAt = now;
+            this.broadcastToRoom(session.room, JSON.stringify({ type: 'held_item', connectionId: sessionConnId, kind: data.kind, ms: HELD_ITEM_MS }));
+            break;
+          }
           case 'avatar_update': {
             if (!sessionConnId) return;
             const session = this.sessions.get(webSocket);
@@ -1731,7 +1745,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet', 'trusted_catchup', 'football', 'feedback'],
+          features: ['campus_bet', 'trusted_catchup', 'football', 'feedback', 'held_item'],
           timestamp: Date.now(),
         }),
         {

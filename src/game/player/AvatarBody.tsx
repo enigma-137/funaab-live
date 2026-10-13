@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { AvatarConfig } from "../../types/game";
 import { normalizeAvatar } from "../../config/avatar";
+import type { HeldItem } from "../../config/heldItems";
+import { HeldProp } from "./HeldProp";
 import {
   ellipsoids,
   silhouette,
@@ -17,12 +19,15 @@ export const AvatarBody = memo(
     identity = "",
     trackMovement = false,
     accessory,
+    held,
   }: {
     config: AvatarConfig;
     animation?: string;
     identity?: string;
     trackMovement?: boolean;
     accessory?: "security";
+    /** Food or drink just bought, carried in the right hand until it expires. */
+    held?: HeldItem | null;
   }) => {
     const a = useMemo(() => normalizeAvatar(config), [config]);
     const seed = identitySeed(
@@ -37,6 +42,7 @@ export const AvatarBody = memo(
       knees = useRef<(THREE.Group | null)[]>([]);
     const skirt = useRef<THREE.Group>(null);
     const ankles = useRef<(THREE.Group | null)[]>([]);
+    const heldRef = useRef<THREE.Group>(null);
     const arms = useRef<(THREE.Group | null)[]>([]),
       elbows = useRef<(THREE.Group | null)[]>([]);
     const motion = useRef({
@@ -299,7 +305,11 @@ export const AvatarBody = memo(
       s.blend = THREE.MathUtils.damp(s.blend, moving ? 1 : 0, 12, delta);
       s.phase += moving ? Math.min(speed, 12) * delta * 4.2 : 0;
       const swing = Math.sin(s.phase) * 0.62 * s.blend;
+      // Right hand (i = 0) carries a purchase: forearm raised in front, item kept level.
+      const holding = !!held && !sleep && Date.now() < held.until;
+      if (heldRef.current) heldRef.current.visible = holding;
       for (let i = 0; i < 2; i++) {
+        const carry = holding && i === 0;
         const sign = i === 0 ? 1 : -1,
           leg = legs.current[i],
           knee = knees.current[i],
@@ -341,7 +351,7 @@ export const AvatarBody = memo(
         if (arm) {
           arm.rotation.x = THREE.MathUtils.damp(
             arm.rotation.x,
-            seated ? -0.35 : -sign * swing * 0.72,
+            carry ? -0.45 : seated ? -0.35 : -sign * swing * 0.72,
             12,
             delta,
           );
@@ -356,7 +366,12 @@ export const AvatarBody = memo(
             delta,
           );
         }
-        if (elbow) elbow.rotation.x = -0.12 - s.blend * 0.18;
+        if (elbow)
+          elbow.rotation.x = carry
+            ? THREE.MathUtils.damp(elbow.rotation.x, -1.15, 12, delta)
+            : -0.12 - s.blend * 0.18;
+        if (carry && heldRef.current && arm && elbow)
+          heldRef.current.rotation.x = -(arm.rotation.x + elbow.rotation.x);
       }
       if (skirt.current)
         skirt.current.rotation.x = THREE.MathUtils.damp(
@@ -447,6 +462,11 @@ export const AvatarBody = memo(
                     ["hoodie", "shirt"].includes(a.topStyle) ? "top" : "skin",
                   )}
                   {part("hand", "skin")}
+                  {i === 0 && held && (
+                    <group ref={heldRef} position={[0, -0.31, 0.02]} scale={1.3} visible={false}>
+                      <HeldProp kind={held.kind} />
+                    </group>
+                  )}
                 </group>
               </group>
               <group
