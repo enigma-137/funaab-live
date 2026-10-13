@@ -226,7 +226,8 @@
 .room-rest-bar {
   position: fixed;
   z-index: 85;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  /* Sit above the proximity chat (GameHUD publishes its height) so you can sit and talk. */
+  bottom: max(16px, env(safe-area-inset-bottom), calc(var(--hud-chat-clearance, 0px) + 10px));
   left: 50%;
   transform: translateX(-50%);
   width: min(460px, calc(100vw - 24px));

@@ -114,6 +114,31 @@ export const GameHUD: React.FC = () => {
     ? worldData.kekeDestinations.find((destination) => destination.id === targetKekeDestinationId)?.name
     : undefined;
 
+  // Keep seat/interaction controls clear of the chat box so you can sit and talk. The height the
+  // chat occupies above the bottom edge is also published as --hud-chat-clearance for other
+  // overlays (e.g. the hostel's Sitting bar).
+  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const [chatClearance, setChatClearance] = useState(0);
+  const [narrowDesktop, setNarrowDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1200);
+  useEffect(() => {
+    const el = chatBoxRef.current;
+    const measure = () => {
+      setNarrowDesktop(window.innerWidth < 1200);
+      const c = el ? Math.max(0, Math.round(window.innerHeight - el.getBoundingClientRect().top)) : 0;
+      setChatClearance(c);
+      document.documentElement.style.setProperty('--hud-chat-clearance', `${c}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver !== 'undefined' && el ? new ResizeObserver(measure) : null;
+    if (observer && el) observer.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      document.documentElement.style.removeProperty('--hud-chat-clearance');
+    };
+  }, [isChatExpanded]);
+
   // Auto scroll chat to bottom
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -680,7 +705,10 @@ export const GameHUD: React.FC = () => {
         className={isTouchDevice
           ? 'pointer-events-none fixed right-4 z-[60]'
           : 'pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-0 z-30 w-full max-w-[100vw] px-3 sm:px-4'}
-        style={isTouchDevice ? { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' } : undefined}
+        style={isTouchDevice
+          ? { bottom: `calc(env(safe-area-inset-bottom, 0px) + ${Math.max(90, chatClearance + 10)}px)` }
+          // On narrower desktops the centred button would sit on the chat input; lift it above.
+          : narrowDesktop ? { bottom: `${chatClearance + 8}px` } : undefined}
       >
         {!activeModal && (nearbyInteractable || selectedPlayer || isRidingKeke) && (
           <div className="pointer-events-auto flex justify-center">
@@ -721,7 +749,7 @@ export const GameHUD: React.FC = () => {
       {/* 3. BOTTOM BAR: PROXIMITY CHAT & LAWN STATUS */}
       <div className="flex items-end justify-between w-full gap-2 sm:gap-4 pointer-events-none">
         {/* Proximity Chat Window (Responsive & Touch-Friendly) */}
-        <div className="w-full max-w-md pointer-events-auto">
+        <div ref={chatBoxRef} className="w-full max-w-md pointer-events-auto">
           {/* If on mobile and collapsed, show sleek floating chat toggle */}
           {isTouchDevice && !isChatExpanded ? (
             <button
