@@ -49,6 +49,8 @@
     "test:daily:db": "tsx scripts/test-daily-plan-db.ts",
     "test:academics:db": "tsx scripts/test-academics-db.ts",
     "test:academics:browser": "tsx scripts/test-academics-browser.ts",
+    "test:backgrounds:db": "tsx scripts/test-backgrounds-db.ts",
+    "test:backgrounds:browser": "tsx scripts/test-background-browser.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
     "sim:economy": "tsx scripts/simulate-economy.ts"
   },
