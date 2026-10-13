@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import './ui/sheet.css';
 import { initializeTraceIQ } from './lib/traceiq';
 import { installAudioUnlock, gameSound } from './game/audio/gameAudio';
 import { useWalletStore } from './stores/walletStore';

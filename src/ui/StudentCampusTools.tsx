@@ -1,3 +1,5 @@
+import { FeedbackLauncher } from './FeedbackPanel';
+import { SoundToggle } from './SoundToggle';
 import { openHostel } from './HostelLife';
 import { useHostelStore } from '../stores/hostelStore';
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
@@ -111,6 +113,7 @@ export function StudentCampusTools() {
   }, [showing, setModal]);
   return (
     <>
+      <div className="campus-launchers">
       {!modal && (
         <button
           className="student-phone-button"
@@ -122,6 +125,9 @@ export function StudentCampusTools() {
           {unreadDms > 0 && <span className="student-phone-badge">{unreadDms > 9 ? '9+' : unreadDms}</span>}
         </button>
       )}
+      <FeedbackLauncher />
+      <SoundToggle />
+      </div>
       {!riding && !offCampus && !modal && journey && !journey.orientation_completed && (
         <aside className="student-orientation">
           <button onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed}>

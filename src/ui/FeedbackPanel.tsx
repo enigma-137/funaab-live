@@ -8,28 +8,30 @@ import { FEEDBACK_KINDS, FEEDBACK_LABELS, FEEDBACK_LIMITS, type FeedbackKind } f
 
 const isMobile = () => typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth < 640);
 
-/** Small always-available launcher (below the Phone button) plus the feedback form. */
-export function FeedbackButton() {
+/** Small always-available launcher, stacked under the Phone button by StudentCampusTools. */
+export function FeedbackLauncher() {
   const activeModal = useGameStore((s) => s.activeModal);
   const setActiveModal = useGameStore((s) => s.setActiveModal);
   const user = useAuthStore((s) => s.user);
-  if (!user) return null;
+  if (!user || activeModal) return null;
   return (
-    <>
-      {!activeModal && (
-        <button
-          type="button"
-          onClick={() => setActiveModal('feedback')}
-          title="Send feedback"
-          aria-label="Send feedback, report a bug or suggest an idea"
-          className="campus-launcher-mini fixed right-[17px] top-[128px] z-[45] flex h-10 w-10 items-center justify-center rounded-xl border border-[#c7d6c9] bg-[#f8faf7] shadow-lg transition active:scale-95"
-        >
-          <AppTile glyph="feedback" colors={['#2dd4bf', '#0f766e']} />
-        </button>
-      )}
-      {activeModal === 'feedback' && <FeedbackModal onClose={() => setActiveModal(null)} />}
-    </>
+    <button
+      type="button"
+      onClick={() => setActiveModal('feedback')}
+      title="Send feedback"
+      aria-label="Send feedback, report a bug or suggest an idea"
+      className="campus-launcher-mini flex h-10 w-10 items-center justify-center rounded-xl border border-[#c7d6c9] bg-[#f8faf7] shadow-lg transition active:scale-95"
+    >
+      <AppTile glyph="feedback" colors={['#2dd4bf', '#0f766e']} />
+    </button>
   );
+}
+
+/** The feedback form, opened from the launcher or the phone. */
+export function FeedbackButton() {
+  const activeModal = useGameStore((s) => s.activeModal);
+  const setActiveModal = useGameStore((s) => s.setActiveModal);
+  return activeModal === 'feedback' ? <FeedbackModal onClose={() => setActiveModal(null)} /> : null;
 }
 
 function FeedbackModal({ onClose }: { onClose: () => void }) {

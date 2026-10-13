@@ -61,7 +61,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'sound', label: soundOn ? 'Sound on' : 'Sound off', glyph: soundOn ? 'soundOn' : 'soundOff', colors: soundOn ? ['#818cf8', '#4338ca'] : ['#94a3b8', '#475569'], open: () => useSoundStore.getState().toggle() },
     { id: 'tour', label: 'Tour', glyph: 'tour', colors: ['#22d3ee', '#0e7490'], open: replayTour },
     { id: 'help', label: 'Help', glyph: 'help', colors: ['#94a3b8', '#475569'], open: () => setModal('help') },
-    { id: 'signout', label: 'Sign out', glyph: 'signout', colors: ['#64748b', '#1e293b'], open: () => useAuthStore.getState().logout() },
+    { id: 'signout', label: 'Sign out', glyph: 'signout', colors: ['#64748b', '#1e293b'], open: () => { if (window.confirm('Leave campus and sign out?')) useAuthStore.getState().logout(); } },
   ];
   const dock: App[] = [
     { id: 'messages', label: 'Messages', glyph: 'messages', colors: ['#4ade80', '#16a34a'], open: openMessages, badge: unread },

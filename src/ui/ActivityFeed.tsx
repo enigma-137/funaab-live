@@ -4,56 +4,37 @@ import { useShallow } from 'zustand/react/shallow';
 import { useInputStore } from '../stores/inputStore';
 import { ActivityFeedItem } from '../types/game';
 import { Bell, X } from 'lucide-react';
+import { toast } from '../stores/toastStore';
+
+const EVENT_ICON: Record<string, string> = { delivery: '🛵', transfer: '💸', fine: '🚨', ps_win: '🏆' };
 
 export const ActivityFeed: React.FC = () => {
   const { activityEvents, isRidingKeke } = useGameStore(useShallow((s) => ({ activityEvents: s.activityEvents, isRidingKeke: s.isRidingKeke })));
   const { isTouchDevice } = useInputStore(useShallow((s) => ({ isTouchDevice: s.isTouchDevice })));
   const [visibleEvents, setVisibleEvents] = useState<ActivityFeedItem[]>([]);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
-  const [showMobileToast, setShowMobileToast] = useState(true);
 
   useEffect(() => {
     if (!activityEvents || activityEvents.length === 0) return;
     setVisibleEvents(activityEvents.slice(-4));
   }, [activityEvents]);
 
+  // Phones: each new campus event goes through the shared toast stack instead of its own pill.
+  const lastEventId = activityEvents[activityEvents.length - 1]?.id;
   useEffect(() => {
-    if (!isTouchDevice || visibleEvents.length === 0) return;
-    setShowMobileToast(true);
-    const timeout = window.setTimeout(() => setShowMobileToast(false), 4000);
-    return () => window.clearTimeout(timeout);
-  }, [activityEvents, isTouchDevice, visibleEvents.length]);
+    if (!isTouchDevice || !lastEventId || isRidingKeke) return;
+    const event = activityEvents[activityEvents.length - 1];
+    toast({ icon: EVENT_ICON[event.type] ?? '🎓', text: event.text, tone: 'info', ms: 4000 });
+  }, [lastEventId, isTouchDevice]);
 
   if (
     visibleEvents.length === 0 ||
     isMinimized ||
-    (isTouchDevice && (!showMobileToast || isRidingKeke))
+    isTouchDevice
   ) return null;
 
-  if (isTouchDevice) {
-    const event = visibleEvents[visibleEvents.length - 1];
-    return (
-      <div className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top,0px)+8px)] z-40 max-w-[calc(100vw-32px)] -translate-x-1/2 animate-in fade-in duration-300">
-        <div className="flex items-center gap-2 truncate rounded-full border border-slate-700/80 bg-slate-950/90 px-3 py-2 text-[11px] font-semibold text-slate-100 shadow-lg backdrop-blur-md">
-          <span className="shrink-0">
-            {event.type === 'delivery'
-              ? '🛵'
-              : event.type === 'transfer'
-                ? '💸'
-                : event.type === 'fine'
-                  ? '🚨'
-                  : event.type === 'ps_win'
-                    ? '🏆'
-                    : '🎓'}
-          </span>
-          <span className="truncate">{event.text}</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed top-[132px] right-4 z-40 pointer-events-auto max-w-xs w-full space-y-1.5 animate-in slide-in-from-right-4 duration-300 font-['Plus_Jakarta_Sans']">
+    <div className="fixed top-[236px] right-4 z-40 pointer-events-auto max-w-xs w-full space-y-1.5 animate-in slide-in-from-right-4 duration-300 font-['Plus_Jakarta_Sans']">
       <div className="flex items-center justify-between px-3 py-1 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] text-slate-400 backdrop-blur-md">
         <div className="flex items-center gap-1.5 font-bold text-slate-300">
           <Bell className="w-3 h-3 text-emerald-400" />

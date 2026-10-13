@@ -1,0 +1,50 @@
+/* Shared campus dialog (Sheet.tsx) and HUD stacks: one dark theme, bottom sheet on phones. */
+.campus-sheet-backdrop{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;
+ padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));background:#020617a6;backdrop-filter:blur(6px);
+ font-family:'Plus Jakarta Sans',system-ui,sans-serif;animation:campus-fade .15s ease-out}
+.campus-sheet{--sheet-accent:#10b981;width:min(100%,440px);max-height:min(86dvh,720px);display:flex;flex-direction:column;
+ background:#0f172a;color:#f8fafc;border:1px solid #334155;border-top:3px solid var(--sheet-accent);border-radius:22px;
+ box-shadow:0 20px 60px #000a;overflow:hidden;animation:campus-rise .2s ease-out}
+.campus-sheet.is-wide{width:min(100%,640px)}
+.campus-sheet-header{display:flex;align-items:center;gap:10px;padding:12px 12px 10px 14px;border-bottom:1px solid #1e293b;background:#020617}
+.campus-sheet-icon{width:36px;height:36px;flex-shrink:0;display:grid;place-items:center;border-radius:12px;color:#fff;font-size:18px;
+ background:var(--sheet-accent);box-shadow:0 4px 14px color-mix(in srgb,var(--sheet-accent) 40%,transparent)}
+.campus-sheet-title{font-family:'Outfit',system-ui,sans-serif;font-weight:800;font-size:16px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campus-sheet-subtitle{font-size:11px;color:#94a3b8;margin-top:1px}
+.campus-sheet-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.campus-sheet-footer{padding:10px 14px;border-top:1px solid #1e293b;background:#020617}
+@media (min-width:700px){.campus-sheet-backdrop{align-items:center;padding:16px}}
+@keyframes campus-fade{from{opacity:0}}
+@keyframes campus-rise{from{transform:translateY(18px);opacity:.6}}
+
+/* One stack for transient notices so they never sit on top of each other. */
+.campus-toasts{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 92px);z-index:10001;
+ display:flex;flex-direction:column;align-items:center;gap:8px;width:min(100% - 24px,440px);pointer-events:none}
+.campus-toasts>*{pointer-events:auto;width:100%}
+.campus-toast{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#020617f2;color:#f8fafc;
+ border:1px solid #334155;box-shadow:0 10px 30px #0008;font-size:13px;font-weight:600;animation:campus-rise .2s ease-out}
+.campus-toast.is-good{border-color:#34d399}.campus-toast.is-bad{border-color:#f87171}.campus-toast.is-info{border-color:#60a5fa}
+.campus-toast-icon{font-size:18px;flex-shrink:0}
+.campus-toast-text{flex:1;min-width:0}
+.campus-toast-amount{font-family:'Outfit',system-ui,sans-serif;font-weight:900;font-variant-numeric:tabular-nums}
+.campus-toast.is-good .campus-toast-amount{color:#4ade80}.campus-toast.is-bad .campus-toast-amount{color:#f87171}
+
+/* Right-hand launcher column (phone, feedback, sound): one flex stack, no pixel offsets. */
+.campus-launchers{position:fixed;right:14px;top:calc(env(safe-area-inset-top,0px) + 74px);z-index:45;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.campus-launchers>*{pointer-events:auto}
+.campus-launchers .student-phone-button{position:relative;right:auto;top:auto}
+.campus-launchers .campus-launcher-mini{position:relative;right:auto;top:auto}
+@media (prefers-reduced-motion:reduce){.campus-sheet,.campus-sheet-backdrop,.campus-toast{animation:none}}
+
+/* Status strip: one compact line under the profile/wallet pills. */
+.campus-status{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 58px);z-index:34;max-width:calc(100vw - 84px);
+ display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:#020617d9;border:1px solid #334155;
+ color:#e2e8f0;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;pointer-events:none;backdrop-filter:blur(8px)}
+.campus-status>span{overflow:hidden;text-overflow:ellipsis}
+.campus-status-time{color:#fff;font-variant-numeric:tabular-nums;flex-shrink:0}
+.campus-status-dot{color:#64748b;flex-shrink:0}
+.campus-status-place{color:#a7f3d0;min-width:0}
+.campus-status-class{color:#cbd5e1;min-width:0}
+.campus-status-class.is-live{color:#fbbf24}
+.campus-status-delta{flex-shrink:0;margin-left:2px;padding:0 6px;border-radius:999px;font-family:'Outfit',system-ui,sans-serif;font-weight:900;animation:campus-rise .2s ease-out}
+.campus-status-delta.is-up{background:#14532d;color:#4ade80}.campus-status-delta.is-down{background:#7f1d1d;color:#fca5a5}

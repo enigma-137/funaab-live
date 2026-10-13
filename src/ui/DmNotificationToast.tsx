@@ -30,7 +30,7 @@ export const DmNotificationToast: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in slide-in-from-top-4 duration-300 w-full max-w-md px-4 select-none">
+    <div className="pointer-events-auto animate-in slide-in-from-top-4 duration-300 select-none">
       <div className="p-3 sm:p-3.5 rounded-3xl bg-slate-950/95 border-2 border-red-500/80 shadow-2xl backdrop-blur-xl flex items-center justify-between gap-3 text-white">
         {/* Sender & Snippet */}
         <div

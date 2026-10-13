@@ -44,6 +44,7 @@
     "test:hostel:compound": "tsx scripts/test-hostel-compound.ts",
     "test:football": "tsx scripts/test-football.ts && tsx scripts/test-football-worker.ts",
     "test:football:browser": "tsx scripts/test-football-browser.ts",
+    "test:ux:browser": "tsx scripts/test-ux-browser.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
     "sim:economy": "tsx scripts/simulate-economy.ts"
   },

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sheet } from './Sheet';
 import { ECONOMY_CONFIG } from '../config/economy';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
@@ -31,26 +32,7 @@ export const FoodVendorModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-slate-900 border-2 border-orange-500/40 rounded-3xl shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-amber-950 via-slate-900 to-orange-950 border-b border-orange-500/30">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30 text-lg">
-              🍗
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white font-['Outfit']">Mama Cass Campus Buka</h2>
-              <p className="text-[11px] text-orange-300">Hot Meals, Snacks & Cold Drinks</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveModal(null)}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Sheet title={'Mama Cass Campus Buka'} subtitle={'Hot meals, snacks & cold drinks'} icon={'🍗'} accent="#ea580c" onClose={() => setActiveModal(null)}>
 
         {/* Balance Reminder & Alert */}
         <div className="px-6 py-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between text-xs">
@@ -68,7 +50,7 @@ export const FoodVendorModal: React.FC = () => {
         )}
 
         {/* Menu Grid */}
-        <div className="p-6 space-y-3 max-h-96 overflow-y-auto">
+        <div className="p-6 space-y-3">
           {(ECONOMY_CONFIG.FOOD_COURT_MENU as FoodItem[]).map((item) => {
             const canAfford = balance >= item.price;
             return (
@@ -104,7 +86,6 @@ export const FoodVendorModal: React.FC = () => {
             );
           })}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };
