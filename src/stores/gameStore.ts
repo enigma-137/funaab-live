@@ -354,6 +354,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => {
       const currentUser = useAuthStore.getState().user;
       const current = state.currentMatch;
+      // A withdrawn challenge disappears for everyone; its host goes back to the lobby.
+      if (match.cancelled) {
+        const { [match.id]: _gone, ...rest } = state.activeMatches;
+        const wasMine = current?.id === match.id;
+        return {
+          activeMatches: rest,
+          currentMatch: wasMine ? null : current,
+          activeChallengeId: wasMine ? null : state.activeChallengeId,
+          psViewState: wasMine ? 'lobby' : state.psViewState,
+        };
+      }
       const isMyMatch =
         (!!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id)) ||
         match.hostId === state.myConnectionId ||

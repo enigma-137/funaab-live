@@ -628,6 +628,11 @@ class NetworkManager {
     });
   }
 
+  /** Withdraw your Game Den challenge, or forfeit the match you're in. */
+  public leavePSMatch() {
+    this.send({ type: 'ps_leave' });
+  }
+
   public sendPSAction(matchId: string, choice: 'left' | 'center' | 'right') {
     this.send({
       type: 'ps_action',

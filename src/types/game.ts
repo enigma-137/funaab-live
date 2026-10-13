@@ -89,6 +89,10 @@ export interface PSMatchState {
   winnerName?: string;
   isDraw?: boolean;
   lastRound?: PSLastRound;
+  /** Ended because a player left, disconnected, walked away or went idle (no rewards). */
+  forfeit?: boolean;
+  /** A waiting challenge withdrawn before anyone joined. */
+  cancelled?: boolean;
   updatedAt: number;
 }
 

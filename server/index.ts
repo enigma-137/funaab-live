@@ -517,6 +517,26 @@ wss.on('connection', (ws: WebSocket, req) => {
           break;
         }
 
+        // Local mock parity with the Worker: withdraw a waiting challenge or forfeit a running match.
+        case 'ps_leave': {
+          const me = sessionConnId;
+          for (const match of [...psMatches.values()]) {
+            if (match.status === 'finished') continue;
+            const isHost = match.hostConnectionId === me, isGuest = match.guestConnectionId === me;
+            if (!isHost && !isGuest) continue;
+            match.status = 'finished';
+            match.updatedAt = Date.now();
+            if (!match.guestId) { match.cancelled = true; psMatches.delete(match.id); }
+            else {
+              match.forfeit = true;
+              match.winnerName = isHost ? match.guestName : match.hostName;
+              match.roundResult = `${isHost ? match.hostName : match.guestName} left the match.`;
+            }
+            broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
+          }
+          break;
+        }
+
         case 'ps_action': {
           const connId = data.connectionId || sessionConnId;
           if (!connId) return;

@@ -9,6 +9,14 @@ import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src
 import { generateMatchday } from '../src/config/campusBetModel';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
+
+// Game Den: the campus PS station, how far you can wander before your match ends, and timeouts.
+const PS_DEN = locationById('ps-room').entrance;
+const PS_LEAVE_RADIUS = 20;
+const PS_SWEEP_MS = 15_000;
+const PS_WAITING_TTL_MS = 5 * 60_000;
+const PS_IDLE_TTL_MS = 2 * 60_000;
+const PS_FINISHED_TTL_MS = 60_000;
 import {
   FOOTBALL_PITCH, FOOTBALL_RULES, createLobby, createChallenge, joinChallenge, cancelChallenge, takeMatchShot,
   takePracticeShot, expireTurn, leaveMatch, voteRematch, isFootballError, type FootballMatchState,
@@ -93,6 +101,11 @@ interface PSMatchState {
   winnerName?: string;
   isDraw?: boolean;
   lastRound?: PSLastRound;
+  /** Ended because a player left, disconnected, walked away or went idle. No rewards. */
+  forfeit?: boolean;
+  /** A waiting challenge withdrawn before anyone joined. */
+  cancelled?: boolean;
+  room?: string;
   updatedAt: number;
   startedAt?: number;
 }
@@ -417,6 +430,8 @@ export class WorldRoomDO {
         if (keke.passengers.includes(sessionConnId)) void this.dropPassenger(keke, sessionConnId, 'refund');
       });
       this.footballDisconnect(sessionConnId, session?.id);
+      // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
+      if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
       this.players.delete(sessionConnId);
       this.broadcastToRoom(
@@ -801,6 +816,56 @@ export class WorldRoomDO {
     await this.state.storage.put(key, [...recent, now]);
     return { sent: true };
   }
+  // ── Game Den match lifecycle: leaving, disconnects, walking away, idle and stale matches ──
+  private psSweepTimer: ReturnType<typeof setInterval> | null = null;
+  private ensurePSSweep() {
+    if (this.psSweepTimer !== null) return;
+    this.psSweepTimer = setInterval(() => this.sweepPSMatches(), PS_SWEEP_MS);
+  }
+  private sweepPSMatches(now = Date.now()) {
+    for (const m of [...this.psMatches.values()]) {
+      const idle = now - m.updatedAt;
+      if (m.status === 'waiting' && idle > PS_WAITING_TTL_MS) this.endPSMatch(m, null, 'expired');
+      else if (m.status === 'in_progress' && idle > PS_IDLE_TTL_MS) {
+        // Whoever has not picked is the one who went quiet; if neither did, nobody wins.
+        const idlePlayer = m.hostChoice && !m.guestChoice ? 'guest' : m.guestChoice && !m.hostChoice ? 'host' : null;
+        this.endPSMatch(m, idlePlayer, 'idle');
+      } else if (m.status === 'finished' && idle > PS_FINISHED_TTL_MS) this.psMatches.delete(m.id);
+    }
+    if (this.psMatches.size === 0 && this.psSweepTimer !== null) {
+      clearInterval(this.psSweepTimer);
+      this.psSweepTimer = null;
+    }
+  }
+  /** End every unfinished match this user is in (they left, disconnected or walked away). */
+  private endPSMatchesFor(userId: string, reason: 'left' | 'disconnected' | 'walked_away') {
+    for (const m of [...this.psMatches.values()]) {
+      if (m.status === 'finished' || (m.hostId !== userId && m.guestId !== userId)) continue;
+      this.endPSMatch(m, m.hostId === userId ? 'host' : 'guest', reason);
+    }
+  }
+  /** Waiting challenges are withdrawn; running matches go to the other player by forfeit. No rewards either way. */
+  private endPSMatch(m: PSMatchState, leaver: 'host' | 'guest' | null, reason: 'left' | 'disconnected' | 'walked_away' | 'idle' | 'expired') {
+    const room = m.room || 'world:funaab:main';
+    m.status = 'finished';
+    m.updatedAt = Date.now();
+    if (!m.guestId) {
+      m.cancelled = true;
+      m.roundResult = reason === 'expired' ? 'Challenge expired: nobody joined.' : 'Challenge cancelled.';
+      this.broadcastToRoom(room, JSON.stringify({ type: 'ps_match_update', match: m }));
+      this.psMatches.delete(m.id);
+      return;
+    }
+    m.forfeit = true;
+    m.isDraw = false;
+    const leaverName = leaver === 'host' ? m.hostName : leaver === 'guest' ? m.guestName : null;
+    m.winnerName = leaver === 'host' ? m.guestName : leaver === 'guest' ? m.hostName : undefined;
+    m.roundResult = !leaverName ? 'Match ended: nobody played for 2 minutes.'
+      : reason === 'walked_away' ? `${leaverName} walked away from the Game Den.`
+        : reason === 'idle' ? `${leaverName} stopped playing.`
+          : `${leaverName} left the match.`;
+    this.broadcastToRoom(room, JSON.stringify({ type: 'ps_match_update', match: m }));
+  }
   private footballDisconnect(connectionId: string, userId?: string) {
     const f = this.football;
     if (!userId || ![f.player1, f.player2].some((p) => p?.connectionId === connectionId)) return;
@@ -1128,6 +1193,11 @@ export class WorldRoomDO {
               const current=this.sessions.get(webSocket)!;
               current.claimedPosition=[data.position[0],data.position[1],data.position[2]];
               this.advanceTrustedPosition(current);
+              // Walking away from the campus Game Den ends your challenge or match.
+              if (current.room === 'world:funaab:main' && current.trustedPosition
+                && Math.hypot(current.trustedPosition[0] - PS_DEN[0], current.trustedPosition[2] - PS_DEN[2]) > PS_LEAVE_RADIUS
+                && [...this.psMatches.values()].some((m) => m.status !== 'finished' && m.stationId === 'ps5-station-1' && (m.hostId === current.id || m.guestId === current.id)))
+                this.endPSMatchesFor(current.id, 'walked_away');
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
               const animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
               if (player.position.some((value, index) => value !== data.position[index])
@@ -1291,9 +1361,11 @@ export class WorldRoomDO {
               totalRounds: PS_TOTAL_ROUNDS,
               hostScore: 0,
               guestScore: 0,
+              room: sessionRoom,
               updatedAt: Date.now(),
             };
             this.psMatches.set(matchId, match);
+            this.ensurePSSweep();
             this.broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
             break;
           }
@@ -1316,6 +1388,12 @@ export class WorldRoomDO {
               );
               this.broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
             }
+            break;
+          }
+
+          case 'ps_leave': {
+            const current = this.sessions.get(webSocket);
+            if (current) this.endPSMatchesFor(current.id, 'left');
             break;
           }
 
@@ -1583,6 +1661,9 @@ export class WorldRoomDO {
           if(keke.passengers.includes(sessionConnId!))void this.dropPassenger(keke,sessionConnId!,'refund');
         });
         this.footballDisconnect(sessionConnId, session?.id);
+        if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
+      // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
+      if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
         this.players.delete(sessionConnId);
 

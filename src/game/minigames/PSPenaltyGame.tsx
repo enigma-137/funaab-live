@@ -149,7 +149,14 @@ export const PSPenaltyGame: React.FC = () => {
               <div className="font-bold text-white text-base">Waiting for Challenger...</div>
               <p className="text-xs text-slate-400 max-w-xs mx-auto">
                 Your challenge is open in the Game Den. Another player can join it from the challenge list.
+                Walking away from the Game Den cancels it.
               </p>
+              <button
+                onClick={() => networkManager.leavePSMatch()}
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition"
+              >
+                Cancel challenge
+              </button>
             </div>
           ) : (
             <MatchView
@@ -162,6 +169,7 @@ export const PSPenaltyGame: React.FC = () => {
                 setCurrentMatch(null);
                 setActiveModal(null);
               }}
+              onLeave={() => networkManager.leavePSMatch()}
             />
           )}
         </div>
@@ -259,10 +267,11 @@ function KickDots({ kicks, side }: { kicks: Record<number, PSLastRound>; side: '
   );
 }
 
-function MatchView({ match, isHost, isShooter, selectedDirection, onChoice, onExit }: {
+function MatchView({ match, isHost, isShooter, selectedDirection, onChoice, onExit, onLeave }: {
   match: PSMatchState; isHost: boolean; isShooter: boolean; selectedDirection: PSDirection | null;
-  onChoice: (d: PSDirection) => void; onExit: () => void;
+  onChoice: (d: PSDirection) => void; onExit: () => void; onLeave: () => void;
 }) {
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const kick = lastRoundOf(match);
   const [kicks, setKicks] = useState<Record<number, PSLastRound>>({});
   const [phase, setPhase] = useState<Phase>('idle');
@@ -330,10 +339,11 @@ function MatchView({ match, isHost, isShooter, selectedDirection, onChoice, onEx
       {finished ? (
         <div className="text-center space-y-3">
           <div className="text-xl font-black text-white font-['Outfit']">
-            {match.isDraw ? "It's a draw" : `${match.winnerName} wins`}
+            {match.isDraw ? "It's a draw" : match.winnerName ? `${match.winnerName} wins` : 'Match ended'}
           </div>
           <div className="text-xs text-slate-400">
-            {match.isDraw ? `${match.hostScore} – ${match.guestScore} after ${PS_KICKS_EACH} kicks each.` : iWon ? 'Nice finishing.' : 'Good game.'}
+            {match.forfeit ? `${match.roundResult ?? 'A player left.'} Forfeits pay no rewards.`
+              : match.isDraw ? `${match.hostScore} – ${match.guestScore} after ${PS_KICKS_EACH} kicks each.` : iWon ? 'Nice finishing.' : 'Good game.'}
           </div>
           <button onClick={onExit} className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition">
             Return to Campus
@@ -359,6 +369,19 @@ function MatchView({ match, isHost, isShooter, selectedDirection, onChoice, onEx
                 <span className="font-bold text-[11px]">{label}</span>
               </button>
             ))}
+          </div>
+          <div className="pt-1 text-center">
+            {confirmLeave ? (
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-300">
+                <span>Leave and give {isHost ? match.guestName : match.hostName} the win?</span>
+                <button onClick={onLeave} className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 font-bold text-white">Leave</button>
+                <button onClick={() => setConfirmLeave(false)} className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold text-white">Stay</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmLeave(true)} className="text-[11px] font-semibold text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline">
+                Leave match
+              </button>
+            )}
           </div>
         </div>
       )}
