@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sheet } from './Sheet';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useJobStore } from '../stores/jobStore';
@@ -43,33 +44,7 @@ export const CampusJobsModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-xl rounded-3xl bg-slate-900 border-2 border-emerald-500/40 shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans'] flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-b border-emerald-500/30">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600/30 border border-emerald-500 flex items-center justify-center text-xl shadow-lg">
-              💼
-            </div>
-            <div>
-              <h2 className="text-base font-black text-white font-['Outfit'] tracking-wide uppercase flex items-center gap-2">
-                CAMPUS JOB BOARD
-                <span className="text-[7px] font-bold px-1 py-0.5 rounded-sm bg-emerald-500 text-black uppercase">
-                  Earn Cash
-                </span>
-              </h2>
-              <p className="text-xs text-emerald-200/80">
-                Complete student errands, food deliveries, and tasks to earn game currency.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveModal(null)}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Sheet title={'Campus Job Board'} subtitle={'Errands, deliveries and tasks that pay game Naira.'} icon={'💼'} accent="#059669" onClose={() => setActiveModal(null)} wide>
 
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {error && <p role="alert" className="text-amber-200">{error} <button onClick={load}>Reload saved job</button></p>}
@@ -236,7 +211,6 @@ export const CampusJobsModal: React.FC = () => {
             })}
           </div>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };

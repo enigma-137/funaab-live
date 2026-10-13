@@ -18,8 +18,8 @@ export const LawnViolationToast: React.FC = () => {
   if (!lawnViolationNotice || !lawnViolationNotice.visible) return null;
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in slide-in-from-top-4 duration-300">
-      <div className="flex items-center gap-3.5 px-5 py-3.5 rounded-3xl bg-slate-950/95 border-2 border-red-500 shadow-2xl backdrop-blur-xl max-w-md text-white">
+    <div className="pointer-events-auto animate-in slide-in-from-top-4 duration-300 select-none">
+      <div className="flex items-center gap-3.5 px-5 py-3.5 rounded-3xl bg-slate-950/95 border-2 border-red-500 shadow-2xl backdrop-blur-xl text-white">
         <div className="w-10 h-10 rounded-2xl bg-red-600/30 border border-red-500/60 flex items-center justify-center text-red-400 shrink-0">
           <ShieldAlert className="w-6 h-6 animate-pulse text-red-400" />
         </div>

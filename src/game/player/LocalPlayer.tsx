@@ -245,6 +245,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         case 'football':
           openFootball();
           break;
+        case 'hustle':
+          setActiveModal('hustles');
+          break;
+        case 'lodge':
+          setActiveModal('lodge');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -556,6 +562,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       campus_bet: 1,
       food_vendor: 1,
       football: 1,
+      hustle: 1,
+      lodge: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
@@ -583,14 +591,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     // Auto-close proximity modals when walking outside interaction radius + hysteresis buffer
     const activeModal = useGameStore.getState().activeModal;
     if (activeModal) {
+      // Only counter-style dialogs close when you walk away. Wallet (bank) and Jobs are phone
+      // apps opened from anywhere, so they must not snap shut when you're away from an ATM/board.
       const PROXIMITY_MODAL_ZONES: Record<string, string[]> = {
-        bank: ['atm'],
         food: ['food', 'restaurant_dining'],
         floral_world: ['food', 'restaurant_dining'],
         lecture_hall: ['lecture_hall'],
-
-        campus_jobs: ['job_board'],
-        jobs: ['job_board'],
         ps_match: ['playstation'],
         campus_bet: ['campus_bet'],
         food_vendor: ['food_vendor'],

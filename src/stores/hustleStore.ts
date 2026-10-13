@@ -1,0 +1,115 @@
+import { create } from 'zustand';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { networkManager } from '../game/multiplayer/networkManager';
+import { useWalletStore } from './walletStore';
+import { toast } from './toastStore';
+import type { ErrandKind, ShopStockId } from '../config/hustles';
+
+export interface ShopItem { item: ShopStockId; title: string; cost: number; units_per_restock: number; unit_price: number; units: number; ready: number }
+export interface ShopState { items: ShopItem[]; earned_today: number; sales_today: number; max_sales_per_day: number; hustle_today: number; daily_cap: number }
+export interface Errand { id: string; kind: ErrandKind; reward: number; poster?: string; mine?: boolean; status?: string; role?: 'poster' | 'runner'; other?: string | null; other_id?: string | null }
+export interface ErrandBoard { open: Errand[]; mine: Errand[] }
+export interface TutorSession { session: string; ends_at: string; questions: Array<{ id: string; question: string; options: string[] }> }
+
+interface HustleStore {
+  shop: ShopState | null;
+  errands: ErrandBoard | null;
+  posEndsAt: number | null;
+  tutor: TutorSession | null;
+  tutorAnswers: Record<string, number>;
+  tutorResult: { score: number; total: number; paid: number; answers: Record<string, number> } | null;
+  busy: string | null;
+  error: string | null;
+  loadShop: () => Promise<void>;
+  loadErrands: () => Promise<void>;
+  restock: (item: ShopStockId) => Promise<void>;
+  collect: () => Promise<void>;
+  startPos: () => Promise<void>;
+  finishPos: () => Promise<void>;
+  photo: (spot: string) => Promise<void>;
+  startTutor: () => Promise<void>;
+  pickTutor: (id: string, option: number) => void;
+  submitTutor: () => Promise<void>;
+  postErrand: (kind: ErrandKind, reward: number) => Promise<void>;
+  acceptErrand: (id: string) => Promise<void>;
+  cancelErrand: (id: string) => Promise<void>;
+  handOver: (id: string) => Promise<void>;
+}
+
+const rpc = async <T,>(name: string, args?: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.rpc(name, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+};
+const validShop = (s: any): s is ShopState => !!s && Array.isArray(s.items);
+const validBoard = (b: any): b is ErrandBoard => !!b && Array.isArray(b.open) && Array.isArray(b.mine);
+const setBalance = (b: unknown) => { if (b != null && Number.isFinite(Number(b))) useWalletStore.setState({ balance: Number(b) }); };
+
+export const useHustleStore = create<HustleStore>((set, get) => {
+  /** Run an action with a busy flag and a friendly error. */
+  const run = async (key: string, fn: () => Promise<void>) => {
+    if (get().busy) return;
+    set({ busy: key, error: null });
+    try { await fn(); } catch (e) { set({ error: (e as Error).message }); } finally { set({ busy: null }); }
+  };
+  return {
+    shop: null, errands: null, posEndsAt: null, tutor: null, tutorAnswers: {}, tutorResult: null, busy: null, error: null,
+    loadShop: async () => {
+      if (!isSupabaseConfigured) return;
+      try { const s = await rpc<ShopState>('shop_state'); if (validShop(s)) set({ shop: s }); } catch { /* older database */ }
+    },
+    loadErrands: async () => {
+      if (!isSupabaseConfigured) return;
+      try { const b = await rpc<ErrandBoard>('errand_board'); if (validBoard(b)) set({ errands: b }); } catch { /* older database */ }
+    },
+    restock: (item) => run(`restock-${item}`, async () => {
+      const r = await rpc<ShopState & { balance: number }>('restock_shop', { p_item: item });
+      set({ shop: r }); setBalance(r.balance);
+      toast({ icon: '📦', text: 'Stock is on your shelf. It sells while you’re away.', tone: 'good' });
+    }),
+    collect: () => run('collect', async () => {
+      const r = await rpc<ShopState & { paid: number; balance: number }>('collect_shop');
+      set({ shop: r }); setBalance(r.balance);
+      toast({ icon: '🛒', text: r.paid > 0 ? 'Room shop sales collected' : 'Nothing sold yet. Check back later.', amount: r.paid > 0 ? r.paid : undefined, tone: r.paid > 0 ? 'good' : 'info' });
+    }),
+    startPos: () => run('pos', async () => {
+      const r = await networkManager.hustle('pos_start');
+      set({ posEndsAt: Date.now() + Math.max(0, r.endsAt - Date.now()) });
+    }),
+    finishPos: () => run('pos', async () => {
+      try {
+        const r = await networkManager.hustle('pos_finish');
+        toast({ icon: '🏧', text: 'POS shift done', amount: r.paid, tone: 'good' });
+      } finally { set({ posEndsAt: null }); void get().loadShop(); }
+    }),
+    photo: (spot) => run('photo', async () => {
+      const r = await networkManager.hustle('photo', { spot });
+      toast({ icon: '📸', text: r.clients ? `Shoot done · ${r.clients} student${r.clients === 1 ? '' : 's'} paid for photos` : 'Shoot done · bring friends for bigger jobs', amount: r.paid, tone: 'good' });
+      void get().loadShop();
+    }),
+    startTutor: () => run('tutor', async () => {
+      const t = await networkManager.hustle('tutor_start');
+      set({ tutor: t, tutorAnswers: {}, tutorResult: null });
+    }),
+    pickTutor: (id, option) => { if (!get().tutorResult) set({ tutorAnswers: { ...get().tutorAnswers, [id]: option } }); },
+    submitTutor: () => run('tutor', async () => {
+      const t = get().tutor; if (!t) return;
+      const r = await networkManager.hustle('tutor_submit', { session: t.session, answers: get().tutorAnswers });
+      set({ tutorResult: r });
+      if (r.paid > 0) toast({ icon: '📚', text: `Tutoring: ${r.score}/${r.total} right`, amount: r.paid, tone: 'good' });
+      void get().loadShop();
+    }),
+    postErrand: (kind, reward) => run('post', async () => {
+      const b = await rpc<ErrandBoard & { balance: number }>('post_errand', { p_kind: kind, p_reward: reward });
+      set({ errands: b }); setBalance(b.balance);
+      toast({ icon: '📌', text: 'Errand posted. The reward is held until someone does it.', tone: 'info' });
+    }),
+    acceptErrand: (id) => run(`accept-${id}`, async () => { set({ errands: await rpc<ErrandBoard>('accept_errand', { p_errand: id }) }); }),
+    cancelErrand: (id) => run(`cancel-${id}`, async () => { set({ errands: await rpc<ErrandBoard>('cancel_errand', { p_errand: id }) }); }),
+    handOver: (id) => run(`hand-${id}`, async () => {
+      const r = await networkManager.hustle('errand_handover', { errand: id });
+      toast({ icon: '✅', text: 'Errand done', amount: r.paid, tone: 'good' });
+      void get().loadErrands();
+    }),
+  };
+});

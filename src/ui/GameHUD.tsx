@@ -38,6 +38,7 @@ import worldData from '../config/campusWorld';
 import { FOOD_VENDORS, getVendorStatus, type FoodVendorId } from '../config/foodVendors';
 import { openFoodVendor, vendorNow } from '../stores/foodVendorStore';
 import { openFootball } from '../stores/footballStore';
+import { toast } from '../stores/toastStore';
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -92,6 +93,11 @@ export const GameHUD: React.FC = () => {
   // Classroom messages belong to the class chat only.
   const allMessages = useSocialStore((s) => s.messages);
   const messages = useMemo(() => allMessages.filter((m) => !m.lectureId), [allMessages]);
+  const unreadDmCount = useSocialStore((s) => s.unreadDmCount);
+  // Whole metres only, so walking re-renders the HUD at most once per metre.
+  const waypointDistance = useGameStore((s) => s.navigationDestination
+    ? Math.round(Math.hypot(s.myPosition[0] - s.navigationDestination.position[0], s.myPosition[2] - s.navigationDestination.position[2]))
+    : 0);
   const { activeJob, error: jobError, busy: jobBusy, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
   const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore(
     useShallow((s) => ({ isTouchDevice: s.isTouchDevice, triggerHaptic: s.triggerHaptic, setIsInputFocused: s.setIsInputFocused }))
@@ -99,7 +105,6 @@ export const GameHUD: React.FC = () => {
 
   const [chatInput, setChatInput] = useState('');
   const [isChatExpanded, setIsChatExpanded] = useState(!isTouchDevice);
-  const [jobNotice, setJobNotice] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const activeKeke = currentKekeId ? kekes[currentKekeId] : undefined;
@@ -205,6 +210,12 @@ export const GameHUD: React.FC = () => {
         case 'football':
           openFootball();
           break;
+        case 'hustle':
+          setActiveModal('hustles');
+          break;
+        case 'lodge':
+          setActiveModal('lodge');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -214,8 +225,7 @@ export const GameHUD: React.FC = () => {
   const handlePickup = async () => {
     triggerHaptic(20);
     if (!(await pickupDeliveryPackage())) return;
-    setJobNotice('📦 Package/Document picked up! Head to destination.');
-    setTimeout(() => setJobNotice(null), 3500);
+    toast({ icon: '📦', text: 'Picked up! Head to the destination.', tone: 'info' });
   };
 
   const handleDeliver = async () => {
@@ -223,8 +233,7 @@ export const GameHUD: React.FC = () => {
     triggerHaptic(30);
     const res = await completeActiveJob(user.id);
     if (res.success) {
-      setJobNotice(`🎉 Job Complete! +₦${res.reward.toLocaleString()}${res.bonus ? ` (+₦${res.bonus.toLocaleString()} first job today)` : ''}`);
-      setTimeout(() => setJobNotice(null), 4000);
+      toast({ icon: '🎉', text: res.bonus ? `Job complete · includes ₦${res.bonus.toLocaleString()} first-job bonus` : 'Job complete', amount: res.reward + (res.bonus || 0), tone: 'good', ms: 4000 });
     }
   };
 
@@ -260,6 +269,10 @@ export const GameHUD: React.FC = () => {
         return '🪑';
       case 'football':
         return '⚽';
+      case 'hustle':
+        return nearbyInteractable.targetId === 'pos' ? '🏧' : '📸';
+      case 'lodge':
+        return '🏘️';
       case 'atm':
         return '🏧';
       case 'job_board':
@@ -299,6 +312,10 @@ export const GameHUD: React.FC = () => {
           return 'Open Campus Bet';
         case 'football':
           return 'Practice Shot / 1v1 Challenge';
+        case 'hustle':
+          return nearbyInteractable.actionText;
+        case 'lodge':
+          return nearbyInteractable.actionText;
         case 'food_vendor':
           return vendorStatus?.isOpen ? `${nearVendor!.actionLabel} · ${vendorStatus.label}` : vendorStatus?.shortLabel ?? 'Closed';
         default:
@@ -336,6 +353,10 @@ export const GameHUD: React.FC = () => {
         return 'Campus Bet';
       case 'football':
         return 'Penalty';
+      case 'hustle':
+        return nearbyInteractable.targetId === 'pos' ? 'POS shift' : 'Photos';
+      case 'lodge':
+        return 'Lodge';
       case 'food_vendor':
         return vendorStatus?.isOpen ? nearVendor!.actionLabel : vendorStatus?.shortLabel ?? 'Closed';
       default:
@@ -495,9 +516,9 @@ export const GameHUD: React.FC = () => {
             title="Direct Messages (DMs)"
           >
             <MessageSquare className="w-4 h-4" />
-            {useSocialStore.getState().unreadDmCount > 0 && (
+            {unreadDmCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white font-extrabold text-[10px] flex items-center justify-center border-2 border-slate-950 animate-pulse shadow-md">
-                {useSocialStore.getState().unreadDmCount}
+                {unreadDmCount}
               </span>
             )}
           </button>
@@ -541,7 +562,7 @@ export const GameHUD: React.FC = () => {
 
           {/* Logout Button */}
           <button
-            onClick={logout}
+            onClick={() => { if (window.confirm('Leave campus and sign out?')) logout(); }}
             className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-red-950/60 text-slate-400 hover:text-red-400 backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Leave Campus"
           >
@@ -574,7 +595,7 @@ export const GameHUD: React.FC = () => {
                 <div className="text-xs font-black text-white font-['Outfit'] truncate flex items-center gap-1.5">
                   <span>{navigationDestination.shortName}</span>
                   <span className="text-[10px] text-emerald-400 font-mono font-bold">
-                    ({Math.round(Math.hypot(useGameStore.getState().myPosition[0] - navigationDestination.position[0], useGameStore.getState().myPosition[2] - navigationDestination.position[2]))}m)
+                    ({waypointDistance}m)
                   </span>
                 </div>
               </div>
@@ -600,11 +621,6 @@ export const GameHUD: React.FC = () => {
       )}
 
       {/* ACTIVE JOB BANNER & NOTICES */}
-      {jobNotice && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-4 py-2.5 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-white font-black text-xs sm:text-sm shadow-2xl animate-bounce flex items-center gap-2">
-          <span>{jobNotice}</span>
-        </div>
-      )}
       {!inRoom && jobError && <div role="alert" className="hostel-notice">{jobError}</div>}
       {!inRoom && activeJob && (
         <div className="mx-auto my-1 pointer-events-auto max-w-md w-full animate-in slide-in-from-top-4">
@@ -674,13 +690,6 @@ export const GameHUD: React.FC = () => {
         </div>
       )}
 
-      {!inRoom && jobNotice && (
-        <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-bounce">
-          <div className="p-2.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold text-center shadow-2xl backdrop-blur-md">
-            {jobNotice}
-          </div>
-        </div>
-      )}
 
       {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
       <div

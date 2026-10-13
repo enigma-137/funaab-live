@@ -6,6 +6,9 @@ import { ECONOMY_CONFIG as E } from '../src/config/economy';
 import { FOOD_VENDOR_LIST } from '../src/config/foodVendors';
 import { HOSTEL_SHOP } from '../src/config/hostelShop';
 import { kekeDestinations } from '../src/config/kekeRoutes';
+import { DAILY_GOALS, DAILY_PLAN } from '../src/config/dailyPlan';
+import { BACKGROUNDS, type BackgroundDef } from '../src/config/backgrounds';
+import { HUSTLE_RULES, SHOP_STOCK } from '../src/config/hustles';
 
 type Economy = {
   name: string;
@@ -64,7 +67,10 @@ function rng(seed: number) {
   return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
 }
 
-function simulate(econ: Economy, p: Profile, players = 2000, sessions = 100) {
+/** Extra daily income/spend on top of the base economy (Student Life pass), from its own RNG. */
+type Extra = (day: number, jobsDone: number, jobPay: number, r: () => number) => { inc: number; out: number };
+function simulate(econ: Economy, p: Profile, players = 2000, sessions = 100, extra?: Extra) {
+  const er = rng(0xbeef);
   const r = rng(0xf00d);
   const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)];
   const between = ([lo, hi]: [number, number]) => lo + Math.floor(r() * (hi - lo + 1));
@@ -74,16 +80,21 @@ function simulate(econ: Economy, p: Profile, players = 2000, sessions = 100) {
   for (let pl = 0; pl < players; pl++) {
     let bal = econ.starter, next = 0, brokeStreak = 0, everStuck = false, gotBig = -1;
     for (let day = 1; day <= sessions; day++) {
-      let inc = 0, out = 0;
+      let inc = 0, out = 0; // eslint-disable-line prefer-const
       if (r() < p.dailyClaim) inc += econ.daily;
       const jobs = between(p.jobs);
-      for (let j = 0; j < jobs; j++) inc += pick(econ.jobs) + (j === 0 ? econ.firstJobBonus : 0);
+      let jobPay = 0;
+      for (let j = 0; j < jobs; j++) { const pay = pick(econ.jobs); jobPay += pay; inc += pay + (j === 0 ? econ.firstJobBonus : 0); }
+      const life = extra?.(day, jobs, jobPay, er);
+      if (life) { inc += life.inc; }
       const matches = Math.floor(p.psMatches) + (r() < p.psMatches % 1 ? 1 : 0);
       for (let m = 0; m < Math.min(matches, 6); m++) inc += r() < 0.5 ? econ.psWin : econ.psLose;
       const lectures = Math.min(econ.lectureDailyCap, Math.floor(p.lectures) + (r() < p.lectures % 1 ? 1 : 0));
       inc += lectures * econ.lecture;
       bal += inc; income += inc;
+      let out0 = life ? Math.min(life.out, bal) : 0;
       // Necessities first; a player who can't afford the meal skips it.
+      out += out0;
       const meals = between(p.meals);
       for (let m = 0; m < meals; m++) { const c = pick(econ.meals); if (bal - out >= c) out += c; else skippedMeals++; }
       if (r() < p.drink) { const c = pick(econ.drinks); if (bal - out >= c) out += c; }
@@ -142,4 +153,49 @@ assert(active.stuck <= 1, 'active players never get stuck broke');
 assert(casual.skippedMeals <= 5 && casual.brokeAtEnd <= 15, 'casual players still eat and travel');
 assert(active.bigThree >= 50 && active.bigThreeDay! >= 7, 'active players save up for TV + PS + generator, not instantly');
 assert(active.income - active.spend > 0 && active.income - active.spend < 1500, 'active net income is positive but modest');
+
+// ---------- Student Life pass: Today's Plan, money from home, hustle bonus, hustles ----------
+// Engagement per profile: share of daily goals finished, hustle activity (₦/day before the cap),
+// and how often they restock the room shop (a money sink that pays back over the day).
+const LIFE: Record<string, { goals: number; hustle: [number, number]; restock: number }> = {
+  active: { goals: 2, hustle: [100, 600], restock: 0.25 },
+  casual: { goals: 1, hustle: [0, 200], restock: 0.05 },
+  grinder: { goals: 3, hustle: [1500, 3500], restock: 0.6 },
+};
+const goalPay = DAILY_GOALS[0].reward;
+const lifeExtra = (p: Profile, bg: BackgroundDef): Extra => (day, _jobs, jobPay, r) => {
+  const L = LIFE[p.name];
+  let inc = 0, out = 0;
+  // Today's Plan: goals done that day (±1), bonus only when all three are claimed.
+  const done = Math.max(0, Math.min(DAILY_PLAN.GOALS_PER_DAY, L.goals + (r() < 0.3 ? -1 : r() < 0.15 ? 1 : 0)));
+  inc += done * goalPay + (done === DAILY_PLAN.GOALS_PER_DAY ? DAILY_PLAN.ALL_DONE_BONUS : 0);
+  // Money from home on day 1 (welcome) and every 7th day; spread for comparability.
+  if (day === 1) inc += bg.welcome;
+  if (day % 7 === 0) inc += bg.weekly;
+  // Hustles: capped daily, plus the background's bonus on hustle AND job pay.
+  const hustle = Math.min(HUSTLE_RULES.DAILY_CAP, L.hustle[0] + Math.floor(r() * (L.hustle[1] - L.hustle[0] + 1)));
+  inc += hustle + Math.floor(((hustle + jobPay) * bg.hustleBonusPercent) / 100);
+  if (r() < L.restock) out += SHOP_STOCK.snacks.cost;
+  return { inc, out };
+};
+const lifeRows: Array<[string, string, ReturnType<typeof simulate>]> = [];
+for (const p of PROFILES) for (const bg of BACKGROUNDS) lifeRows.push([p.name, bg.id, simulate(NEW, p, 2000, 100, lifeExtra(p, bg))]);
+console.log('== Student Life pass (NEW + plan + home money + hustles), 2000 players × 100 sessions');
+console.log(`${'profile'.padEnd(9)}${'background'.padEnd(13)}${'income/day'.padStart(11)}${'spend/day'.padStart(11)}${'net/day'.padStart(9)}${'bal@100'.padStart(10)}${'stuck%'.padStart(8)}`);
+for (const [p, bg, r] of lifeRows) console.log(`${p.padEnd(9)}${bg.padEnd(13)}${String(r.income).padStart(11)}${String(r.spend).padStart(11)}${String(r.income - r.spend).padStart(9)}${String(r.bal100).padStart(10)}${String(r.stuck).padStart(8)}`);
+const life = (p: string, bg: string) => lifeRows.find((x) => x[0] === p && x[1] === bg)![2];
+for (const bg of BACKGROUNDS) {
+  // Nobody is left behind: even a struggling casual player keeps eating.
+  assert(life('casual', bg.id).skippedMeals <= 5, `${bg.id} casual players still eat`);
+  assert(life('active', bg.id).stuck <= 1, `${bg.id} active players never get stuck broke`);
+  // The new systems add to the day, but don't turn active play into a money printer.
+  const added = life('active', bg.id).income - results.active.NEW.income;
+  assert(added > 0 && added < 1200, `${bg.id}: Student Life adds a modest ₦${added}/day for active players`);
+}
+// Backgrounds are different paths, not a ladder: after 100 sessions an active struggling student
+// who hustles ends within 30% of a comfortable one, and grinders gain more from the hustle bonus.
+const comfy = life('active', 'comfortable').bal100, poor = life('active', 'struggling').bal100;
+assert(Math.abs(comfy - poor) / Math.max(comfy, poor) <= 0.3, `active comfortable ₦${comfy} vs struggling ₦${poor} stay within 30%`);
+assert(life('grinder', 'struggling').income >= life('grinder', 'comfortable').income, 'hard hustlers from struggling homes out-earn comfortable grinders');
+assert(life('grinder', 'comfortable').income - results.grinder.NEW.income <= HUSTLE_RULES.DAILY_CAP + 1200, 'hustle cap bounds grinders');
 console.log('ECONOMY SIMULATION: NEW economy within targets.');

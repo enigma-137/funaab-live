@@ -96,10 +96,14 @@ interface GameState {
     | 'campus_bet'
     | 'feedback'
     | 'earn'
-    | 'goals'
     | 'inbox'
     | 'food_vendor'
     | 'football'
+    | 'academics'
+    | 'background'
+    | 'hustles'
+    | 'lodge'
+    | 'league'
     | null;
 
   // Actions
@@ -166,10 +170,14 @@ interface GameState {
       | 'campus_bet'
     | 'feedback'
     | 'earn'
-    | 'goals'
     | 'inbox'
       | 'food_vendor'
       | 'football'
+      | 'academics'
+      | 'background'
+      | 'hustles'
+      | 'lodge'
+      | 'league'
       | null
   ) => void;
   toggleDebugPhysics: () => void;

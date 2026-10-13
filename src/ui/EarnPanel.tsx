@@ -6,7 +6,9 @@ import { CAMPUS_JOBS } from '../config/campusJobs';
 import { CAMPUS_BET_SHOP, CAMPUS_BET_STAKE } from '../config/campusBet';
 import { getCampusLocationById } from '../config/campusRegistry';
 import { ModalCloseButton } from './ModalCloseButton';
-import { taskBonusFor } from '../config/goals';
+import { DAILY_GOALS, DAILY_PLAN } from '../config/dailyPlan';
+import { HUSTLE_RULES } from '../config/hustles';
+import { useDailyPlanStore } from '../stores/dailyPlanStore';
 
 type Way = {
   id: string;
@@ -42,10 +44,16 @@ export function EarnPanel() {
 
   const ways: Way[] = [
     {
-      id: 'tasks', icon: '🔥', title: 'Daily tasks',
-      pays: `${formatNaira(3 * 50)} a day + streak bonus up to ${formatNaira(taskBonusFor(7))}`,
-      how: 'Three small tasks every day. Finish all three for a bonus that grows with your streak.',
-      action: 'See today\'s tasks', go: () => setModal('goals'),
+      id: 'tasks', icon: '🔥', title: "Today's Plan",
+      pays: `${formatNaira(DAILY_PLAN.GOALS_PER_DAY * DAILY_GOALS[0].reward)} a day + ${formatNaira(DAILY_PLAN.ALL_DONE_BONUS)} when all are done`,
+      how: 'Three small goals every day. Finish them all to keep your streak going.',
+      action: "See today's plan", go: () => { close(); useDailyPlanStore.getState().setOpen(true); },
+    },
+    {
+      id: 'hustles', icon: '🛒', title: 'Hustles',
+      pays: `Up to ${formatNaira(HUSTLE_RULES.DAILY_CAP)} a day`,
+      how: 'Room shop, POS kiosk shifts, Library tutoring, photo shoots and errands for other students.',
+      action: 'Open Hustles', go: () => setModal('hustles'),
     },
     {
       id: 'jobs', icon: '💼', title: 'Campus jobs',

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Sheet } from './Sheet';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
@@ -99,28 +100,7 @@ export const SendMoneyModal: React.FC<SendMoneyModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-sm rounded-3xl bg-slate-900 border-2 border-emerald-500/40 shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600/30 border border-emerald-500 flex items-center justify-center text-emerald-400 font-black text-sm">
-              ₦
-            </div>
-            <div>
-              <h2 className="text-sm font-black text-white font-['Outfit'] tracking-wide uppercase">
-                Send Game Currency
-              </h2>
-              <p className="text-[10px] text-slate-400">Student-to-Student Transfer</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Sheet title={'Send Game Naira'} subtitle={'Student-to-student transfer'} icon={'₦'} accent="#059669" onClose={onClose}>
 
         {/* Content */}
         <div className="p-6 space-y-4">
@@ -257,7 +237,6 @@ export const SendMoneyModal: React.FC<SendMoneyModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };

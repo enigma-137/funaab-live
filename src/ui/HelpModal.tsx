@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sheet } from './Sheet';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { kekeDestinations } from '../config/kekeRoutes';
 import { useGameStore } from '../stores/gameStore';
@@ -8,31 +9,20 @@ export const HelpModal: React.FC = () => {
   const { setActiveModal } = useGameStore();
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-slate-900 border-2 border-emerald-500/40 rounded-3xl shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-sm">
-              <HelpCircle className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white font-['Outfit']">Campus Guide & Controls</h2>
-              <p className="text-[11px] text-slate-400">Everything you need to know in FUNAAB Life</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveModal(null)}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Sheet title={'Campus Guide & Controls'} subtitle={'Everything you need to know in FUNAAB Life'} icon={<HelpCircle className="w-4 h-4" />} accent="#059669" onClose={() => setActiveModal(null)}>
 
         {/* Guide Content */}
-        <div className="p-6 space-y-4 max-h-96 overflow-y-auto text-xs text-slate-300">
+        <div className="p-6 space-y-4 text-xs text-slate-300">
           <div>
-            <h3 className="font-bold text-white text-sm font-['Outfit'] mb-2 flex items-center gap-1.5 text-emerald-400">
+            <h3 className="font-bold text-sm font-['Outfit'] mb-2 flex items-center gap-1.5 text-emerald-400">
+              <Compass className="w-4 h-4" /> On a phone
+            </h3>
+            <ul className="space-y-1.5 mb-3">
+              <li><strong className="text-white">Tap the ground</strong> to walk there · <strong className="text-white">drag</strong> to look around.</li>
+              <li><strong className="text-white">Bottom-right button</strong> appears near things you can use (sit, buy, play, ride).</li>
+              <li><strong className="text-white">Phone</strong> (top-right) has your wallet, jobs, map, messages and more.</li>
+            </ul>
+            <h3 className="font-bold text-sm font-['Outfit'] mb-2 flex items-center gap-1.5 text-emerald-400">
               <Compass className="w-4 h-4" /> Keyboard Controls
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -72,7 +62,6 @@ export const HelpModal: React.FC = () => {
             </ul>
           </div>
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };

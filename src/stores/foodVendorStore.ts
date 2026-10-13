@@ -5,16 +5,15 @@ import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
 import { useGameStore } from './gameStore';
 import { holdPurchasedItem } from '../game/player/holdItem';
+import { toast as pushToast } from './toastStore';
 import { getVendorStatus, nextVendorTransition, type FoodVendorId, type VendorStatus } from '../config/foodVendors';
 
-interface Toast { id: number; text: string; amount: number }
 interface FoodVendorStore {
   /** server − device clock (ms). Display uses the server clock, so a wrong phone clock can't fake hours. */
   clockOffset: number;
   activeVendor: FoodVendorId | null;
   buying: string | null;
   error: string | null;
-  toast: Toast | null;
   syncClock: () => Promise<void>;
   open: (vendor: FoodVendorId) => void;
   buy: (vendor: FoodVendorId, itemId: string) => Promise<boolean>;
@@ -31,7 +30,7 @@ export function openFoodVendor(vendorId: string | undefined) {
 }
 
 export const useFoodVendorStore = create<FoodVendorStore>((set, get) => ({
-  clockOffset: 0, activeVendor: null, buying: null, error: null, toast: null,
+  clockOffset: 0, activeVendor: null, buying: null, error: null,
   syncClock: async () => {
     if (!isSupabaseConfigured) return;
     const sent = Date.now();
@@ -51,7 +50,7 @@ export const useFoodVendorStore = create<FoodVendorStore>((set, get) => ({
       const { data, error } = await supabase.rpc('food_vendor_purchase', { p_vendor: vendor, p_item: itemId, p_request: crypto.randomUUID() });
       if (error) throw new Error(error.message);
       useWalletStore.setState({ balance: Number(data.balance) });
-      set({ toast: { id: Date.now(), text: `${data.name} bought`, amount: Number(data.price) } });
+      pushToast({ icon: '🛍️', text: `${data.name} bought`, amount: -Number(data.price), tone: 'good' });
       holdPurchasedItem(itemId);
       void useWalletStore.getState().loadWallet(user.id); // ledger + inventory
       return true;

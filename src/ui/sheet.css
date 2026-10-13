@@ -1,0 +1,150 @@
+/* Shared campus dialog (Sheet.tsx) and HUD stacks: one dark theme, bottom sheet on phones. */
+.campus-sheet-backdrop{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;
+ padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));background:#020617a6;backdrop-filter:blur(6px);
+ font-family:'Plus Jakarta Sans',system-ui,sans-serif;animation:campus-fade .15s ease-out}
+.campus-sheet{--sheet-accent:#10b981;width:min(100%,440px);max-height:min(86dvh,720px);display:flex;flex-direction:column;
+ background:#0f172a;color:#f8fafc;border:1px solid #334155;border-top:3px solid var(--sheet-accent);border-radius:22px;
+ box-shadow:0 20px 60px #000a;overflow:hidden;animation:campus-rise .2s ease-out}
+.campus-sheet.is-wide{width:min(100%,640px)}
+.campus-sheet-header{display:flex;align-items:center;gap:10px;padding:12px 12px 10px 14px;border-bottom:1px solid #1e293b;background:#020617}
+.campus-sheet-icon{width:36px;height:36px;flex-shrink:0;display:grid;place-items:center;border-radius:12px;color:#fff;font-size:18px;
+ background:var(--sheet-accent);box-shadow:0 4px 14px color-mix(in srgb,var(--sheet-accent) 40%,transparent)}
+.campus-sheet-title{font-family:'Outfit',system-ui,sans-serif;font-weight:800;font-size:16px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campus-sheet-subtitle{font-size:11px;color:#94a3b8;margin-top:1px}
+.campus-sheet-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.campus-sheet-footer{padding:10px 14px;border-top:1px solid #1e293b;background:#020617}
+@media (min-width:700px){.campus-sheet-backdrop{align-items:center;padding:16px}}
+@keyframes campus-fade{from{opacity:0}}
+@keyframes campus-rise{from{transform:translateY(18px);opacity:.6}}
+
+/* One stack for transient notices so they never sit on top of each other. Below dialogs (9999):
+   an open sheet is never covered; it shows its own result. */
+.campus-toasts{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 92px);z-index:9998;
+ display:flex;flex-direction:column;align-items:center;gap:8px;width:min(100% - 24px,440px);pointer-events:none}
+.campus-toasts>*{pointer-events:auto;width:100%}
+.campus-toast{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#020617f2;color:#f8fafc;
+ border:1px solid #334155;box-shadow:0 10px 30px #0008;font-size:13px;font-weight:600;animation:campus-rise .2s ease-out}
+.campus-toast.is-good{border-color:#34d399}.campus-toast.is-bad{border-color:#f87171}.campus-toast.is-info{border-color:#60a5fa}
+.campus-toast-icon{font-size:18px;flex-shrink:0}
+.campus-toast-text{flex:1;min-width:0}
+.campus-toast-amount{font-family:'Outfit',system-ui,sans-serif;font-weight:900;font-variant-numeric:tabular-nums}
+.campus-toast.is-good .campus-toast-amount{color:#4ade80}.campus-toast.is-bad .campus-toast-amount{color:#f87171}
+
+/* Right-hand launcher column (phone, feedback, sound): one flex stack, no pixel offsets. */
+.campus-launchers{position:fixed;right:14px;top:calc(env(safe-area-inset-top,0px) + 74px);z-index:45;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.campus-launchers>*{pointer-events:auto}
+.campus-launchers .student-phone-button{position:relative;right:auto;top:auto}
+.campus-launchers .campus-launcher-mini{position:relative;right:auto;top:auto}
+@media (prefers-reduced-motion:reduce){.campus-sheet,.campus-sheet-backdrop,.campus-toast{animation:none}}
+
+/* Status strip: one compact line under the profile/wallet pills. */
+.campus-status{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 58px);z-index:34;max-width:calc(100vw - 84px);
+ display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:#020617d9;border:1px solid #334155;
+ color:#e2e8f0;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;pointer-events:none;backdrop-filter:blur(8px)}
+.campus-status>span{overflow:hidden;text-overflow:ellipsis}
+.campus-status-time{color:#fff;font-variant-numeric:tabular-nums;flex-shrink:0}
+.campus-status-dot{color:#64748b;flex-shrink:0}
+.campus-status-place{color:#a7f3d0;min-width:0}
+.campus-status-class{color:#cbd5e1;min-width:0}
+.campus-status-class.is-live{color:#fbbf24}
+.campus-status-delta{flex-shrink:0;margin-left:2px;padding:0 6px;border-radius:999px;font-family:'Outfit',system-ui,sans-serif;font-weight:900;animation:campus-rise .2s ease-out}
+.campus-status-delta.is-up{background:#14532d;color:#4ade80}.campus-status-delta.is-down{background:#7f1d1d;color:#fca5a5}
+
+/* Today's Plan card (left column, same slot orientation used). */
+.campus-plan{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:35;width:min(270px,calc(100vw - 88px));
+ color:#f8fafc;background:#020617e6;border:1px solid #334155;border-radius:16px;font-size:12px;backdrop-filter:blur(8px);overflow:hidden}
+.campus-plan-head{width:100%;min-height:36px;display:flex;align-items:center;gap:6px;padding:6px 10px;text-align:left}
+.campus-plan-head b{font-family:'Outfit',system-ui,sans-serif;font-weight:800}
+.campus-plan-count{color:#94a3b8;font-weight:700;font-variant-numeric:tabular-nums}
+.campus-plan-streak{color:#fdba74;font-weight:900}
+.campus-plan-ready{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px #4ade8040;animation:campus-pulse 1.4s infinite}
+.campus-plan-chevron{margin-left:auto;color:#94a3b8;font-weight:900}
+.campus-plan-body{padding:0 10px 10px}
+.campus-plan-body ul{display:flex;flex-direction:column;gap:6px}
+.campus-plan-body li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:#0f172a;border:1px solid #1e293b}
+.campus-plan-body li.is-ready{border-color:#34d399}
+.campus-plan-body li.is-claimed{opacity:.6}
+.campus-plan-icon{font-size:16px}
+.campus-plan-title{flex:1;min-width:0;line-height:1.25}
+.campus-plan-title small{color:#94a3b8}
+.campus-plan-body li button{min-height:32px;padding:0 10px;border-radius:9px;background:#059669;color:#fff;font-weight:900}
+.campus-plan-body li button:disabled{opacity:.5}
+.campus-plan-reward{color:#94a3b8;font-weight:700}
+.campus-plan-done{color:#4ade80;font-weight:900}
+.campus-plan-note,.campus-plan-hint{margin-top:8px;color:#cbd5e1;line-height:1.35}
+.campus-plan-hint{color:#64748b;font-size:10.5px}
+.campus-plan-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.campus-plan-badges span{padding:2px 8px;border-radius:999px;background:#422006;color:#fde68a;font-weight:800;font-size:11px}
+.campus-plan-error{margin-top:6px;color:#fca5a5}
+@keyframes campus-pulse{50%{box-shadow:0 0 0 6px #4ade8000}}
+.campus-status-streak{flex-shrink:0;color:#fdba74;font-weight:900}
+
+/* Academic record, quiz and exam. */
+.academic-body{padding:14px;display:flex;flex-direction:column;gap:12px;font-size:13px}
+.academic-note{color:#94a3b8;font-size:12px;line-height:1.4}
+.academic-error{color:#fca5a5;font-size:12px}
+.academic-urgent{color:#f87171;font-weight:900}
+.academic-progress-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.academic-progress-head b{font-family:'Outfit',system-ui,sans-serif;font-size:18px}
+.academic-progress-head span{color:#94a3b8;font-size:12px}
+.academic-bar{height:8px;border-radius:999px;background:#1e293b;overflow:hidden;margin-top:6px}
+.academic-bar i{display:block;height:100%;background:linear-gradient(90deg,#2563eb,#22c55e)}
+.academic-card{padding:12px;border-radius:14px;background:#0b1222;border:1px solid #1e293b}
+.academic-card h3,.academic-h{font-family:'Outfit',system-ui,sans-serif;font-weight:800;font-size:14px;margin-bottom:8px}
+.academic-card h3 small{color:#94a3b8;font-weight:600;font-size:11px;margin-left:6px}
+.academic-checks{display:flex;flex-direction:column;gap:6px}
+.academic-checks li.is-done{color:#86efac}
+.academic-primary{min-height:44px;padding:0 16px;border-radius:12px;background:#2563eb;color:#fff;font-weight:900}
+.academic-primary:disabled{opacity:.45}
+.academic-wide{width:100%;margin-top:10px}
+.academic-results{display:flex;flex-direction:column;gap:4px}
+.academic-results li{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:6px 8px;border-radius:9px;background:#0b1222;font-size:12px}
+.academic-results li.is-failed{color:#fca5a5}.academic-results li.is-incomplete{color:#94a3b8}
+.academic-how summary{cursor:pointer;color:#93c5fd;font-weight:700;font-size:12px}
+.academic-how p{color:#94a3b8;font-size:12px;line-height:1.45;margin-top:6px}
+.academic-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.academic-questions{display:flex;flex-direction:column;gap:14px}
+.academic-questions p{margin-bottom:8px;line-height:1.35}
+.academic-questions [role=radiogroup]{display:grid;gap:6px}
+.academic-questions button{min-height:42px;padding:8px 12px;text-align:left;border-radius:10px;background:#0b1222;border:1px solid #1e293b;color:#e2e8f0}
+.academic-questions button.is-chosen{border-color:#60a5fa;background:#172554}
+.academic-questions button.is-correct{border-color:#22c55e;background:#14532d}
+.academic-questions button.is-wrong{border-color:#ef4444;background:#450a0a}
+.campus-status-level{flex-shrink:0;padding:0 6px;border-radius:999px;background:#1d4ed8;color:#fff;font-weight:900}
+
+/* Home background chooser. */
+.bg-options{display:flex;flex-direction:column;gap:8px}
+.bg-options button{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:12px;border-radius:14px;background:#0b1222;border:1px solid #1e293b;color:#e2e8f0}
+.bg-options button.is-picked{border-color:#f59e0b;background:#2a1a05}
+.bg-icon{font-size:26px;line-height:1}
+.bg-text{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#cbd5e1}
+.bg-text b{font-family:'Outfit',system-ui,sans-serif;font-size:15px;color:#fff}
+.bg-stats{color:#fcd34d;font-weight:800}
+.bg-later{min-height:44px;padding:0 12px;color:#94a3b8;font-weight:700}
+
+/* Hustles sheet. */
+.hustle-card{padding:12px;border-radius:14px;background:#0b1222;border:1px solid #1e293b;display:flex;flex-direction:column;gap:8px}
+.hustle-card h3{font-family:'Outfit',system-ui,sans-serif;font-weight:800;font-size:14px}
+.hustle-card h3 small{color:#94a3b8;font-weight:600;font-size:11px;margin-left:6px}
+.hustle-shop{display:flex;flex-direction:column;gap:6px}
+.hustle-shop li,.hustle-errand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:10px;background:#0f172a;border:1px solid #1e293b}
+.hustle-shop li>span,.hustle-errand>span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px}
+.hustle-shop small,.hustle-errand small{color:#94a3b8;font-size:11px}
+.hustle-errand.is-mine{border-color:#16a34a}
+.hustle-btn{min-height:40px;padding:0 12px;border-radius:10px;background:#134e4a;border:1px solid #2dd4bf55;color:#ecfdf5;font-weight:800;font-size:12px;white-space:nowrap}
+.hustle-btn:disabled{opacity:.45}
+.hustle-btn.is-quiet{background:transparent;border-color:#334155;color:#cbd5e1}
+.hustle-wide{width:100%}
+.hustle-row{display:flex;flex-wrap:wrap;gap:6px}
+.hustle-post{display:grid;grid-template-columns:1fr 84px auto;gap:6px}
+.hustle-post select,.hustle-post input{min-height:40px;min-width:0;padding:0 8px;border-radius:10px;background:#0f172a;border:1px solid #334155;color:#f8fafc;font-size:13px}
+
+/* College League. */
+.league-champ{padding:8px 10px;border-radius:12px;background:#422006;color:#fde68a;font-size:12px}
+.league-table{display:flex;flex-direction:column;gap:6px}
+.league-table li{display:grid;grid-template-columns:34px 1fr auto;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:#0b1222;border:1px solid #1e293b;font-size:13px}
+.league-table li small{grid-column:2/4;color:#94a3b8;font-size:11px}
+.league-table li.is-mine{border-color:#ca8a04;background:#1c1405}
+.league-table li.is-unranked{opacity:.6}
+.league-rank{grid-row:1/3;font-family:'Outfit',system-ui,sans-serif;font-weight:900;color:#fbbf24}
+.league-sources{display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:12px;color:#cbd5e1}

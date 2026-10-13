@@ -1,3 +1,4 @@
+import { useAcademicStore } from '../stores/academicStore';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
@@ -10,8 +11,7 @@ import { ModalCloseButton } from './ModalCloseButton';
 import { useSoundStore } from '../game/audio/gameAudio';
 import { useInputStore } from '../stores/inputStore';
 import { startCampusTour } from './campusTour';
-import { useGoalsStore } from '../stores/goalsStore';
-import { useGoalsBadge } from './GoalsPanel';
+import { useDailyPlanStore } from '../stores/dailyPlanStore';
 
 type App = { id: string; label: string; glyph: string; colors: [string, string]; open: () => void; badge?: number };
 
@@ -30,10 +30,10 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
   const balance = useWalletStore((s) => s.balance);
   const unread = useSocialStore((s) => s.unreadDmCount);
   const soundOn = useSoundStore((s) => s.enabled);
-  const goalsReady = useGoalsBadge();
+  const goalsReady = useDailyPlanStore((s) => s.plan?.goals.filter((g) => !g.claimed && g.progress >= g.target).length ?? 0);
   const [time, setTime] = useState(lagosTime);
-  // Refresh today's tasks so the Goals tile can show what's ready to claim.
-  useEffect(() => { void useGoalsStore.getState().loadTasks(); }, []);
+  // Refresh Today's Plan so the Goals tile can show what's ready to claim.
+  useEffect(() => { void useDailyPlanStore.getState().load(); }, []);
   useEffect(() => {
     const t = window.setInterval(() => setTime(lagosTime()), 15000);
     return () => window.clearInterval(t);
@@ -50,10 +50,14 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
   const apps: App[] = [
     { id: 'profile', label: 'Profile', glyph: 'profile', colors: ['#34d399', '#059669'], open: onProfile },
     { id: 'earn', label: 'Earn', glyph: 'earn', colors: ['#4ade80', '#15803d'], open: () => setModal('earn') },
-    { id: 'goals', label: 'Goals', glyph: 'goals', colors: ['#fbbf24', '#d97706'], open: () => setModal('goals'), badge: goalsReady },
+    { id: 'goals', label: 'Goals', glyph: 'goals', colors: ['#fbbf24', '#d97706'], open: () => { setModal(null); useDailyPlanStore.getState().setOpen(true); }, badge: goalsReady },
     { id: 'hostel', label: 'Hostel', glyph: 'hostel', colors: ['#fb923c', '#c2410c'], open: () => openHostel() },
     { id: 'friends', label: 'Friends', glyph: 'friends', colors: ['#60a5fa', '#2563eb'], open: () => setModal('friends') },
+    { id: 'league', label: 'League', glyph: 'league', colors: ['#facc15', '#a16207'], open: () => setModal('league') },
+    { id: 'lodge', label: 'Lodge', glyph: 'hostel', colors: ['#fbbf24', '#b45309'], open: () => setModal('lodge') },
+    { id: 'hustles', label: 'Hustles', glyph: 'hustles', colors: ['#4ade80', '#15803d'], open: () => setModal('hustles') },
     { id: 'jobs', label: 'Jobs', glyph: 'jobs', colors: ['#a78bfa', '#6d28d9'], open: () => setModal('campus_jobs') },
+    { id: 'school', label: 'School', glyph: 'school', colors: ['#60a5fa', '#1d4ed8'], open: () => useAcademicStore.getState().open() },
     { id: 'timetable', label: 'Timetable', glyph: 'timetable', colors: ['#f472b6', '#be185d'], open: () => setModal('lecture_hall') },
     { id: 'inventory', label: 'Bag', glyph: 'inventory', colors: ['#fbbf24', '#b45309'], open: () => setModal('inventory') },
     { id: 'daily', label: 'Allowance', glyph: 'daily', colors: ['#f87171', '#b91c1c'], open: () => setModal('daily_reward') },
@@ -61,7 +65,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'sound', label: soundOn ? 'Sound on' : 'Sound off', glyph: soundOn ? 'soundOn' : 'soundOff', colors: soundOn ? ['#818cf8', '#4338ca'] : ['#94a3b8', '#475569'], open: () => useSoundStore.getState().toggle() },
     { id: 'tour', label: 'Tour', glyph: 'tour', colors: ['#22d3ee', '#0e7490'], open: replayTour },
     { id: 'help', label: 'Help', glyph: 'help', colors: ['#94a3b8', '#475569'], open: () => setModal('help') },
-    { id: 'signout', label: 'Sign out', glyph: 'signout', colors: ['#64748b', '#1e293b'], open: () => useAuthStore.getState().logout() },
+    { id: 'signout', label: 'Sign out', glyph: 'signout', colors: ['#64748b', '#1e293b'], open: () => { if (window.confirm('Leave campus and sign out?')) useAuthStore.getState().logout(); } },
   ];
   const dock: App[] = [
     { id: 'messages', label: 'Messages', glyph: 'messages', colors: ['#4ade80', '#16a34a'], open: openMessages, badge: unread },

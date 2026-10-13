@@ -59,13 +59,3 @@ export function FoodVendorSheet() {
   return vendorId ? <Sheet vendorId={vendorId} /> : null;
 }
 
-export function FoodVendorToast() {
-  const toast = useFoodVendorStore((s) => s.toast);
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => useFoodVendorStore.setState({ toast: null }), 2600);
-    return () => clearTimeout(timer);
-  }, [toast?.id]);
-  if (!toast) return null;
-  return <div className="fv-toast" role="status"><b>{toast.text}</b><span>−{naira(toast.amount)}</span></div>;
-}
