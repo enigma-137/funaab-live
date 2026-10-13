@@ -10,7 +10,8 @@ import { useSocialStore } from '../stores/socialStore';
 import { useStudentStore } from '../stores/studentStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useLectureStore } from '../stores/lectureStore';
-import { courseById } from '../config/academics';
+import { courseById, courses, colleges } from '../config/academics';
+import { networkManager } from '../game/multiplayer/networkManager';
 import { orientationTasks } from '../config/studentJourney';
 import { normalizeAvatar } from '../config/avatar';
 import world from '../config/campusWorld';
@@ -199,6 +200,7 @@ export function StudentCampusTools() {
                         <div className="student-id">
                           <strong>{user.college}</strong>
                           <span>{courseById(user.courseId)?.name}</span>
+                          <DepartmentChanger />
                           <span>Game matric: {user.gameMatricNumber}</span>
                           <span>{status}</span>
                           <span>
@@ -238,5 +240,48 @@ export function StudentCampusTools() {
         </div>
       )}
     </>
+  );
+}
+
+/** Change department from the profile. The database allows one change a day; the college follows. */
+function DepartmentChanger() {
+  const user = useAuthStore((s) => s.user)!;
+  const saving = useStudentStore((s) => s.saving);
+  const [open, setOpen] = useState(false);
+  const [choice, setChoice] = useState(user.courseId || '');
+  const [done, setDone] = useState('');
+  if (!open)
+    return (
+      <span>
+        <button className="student-link" onClick={() => { setChoice(user.courseId || ''); setDone(''); setOpen(true); }}>
+          Change department
+        </button>
+        {done && <em> · {done}</em>}
+      </span>
+    );
+  const save = async () => {
+    if (!choice || choice === user.courseId) return setOpen(false);
+    if (await useStudentStore.getState().changeDepartment(choice)) {
+      setOpen(false);
+      setDone(`Now in ${courseById(choice)?.name}`);
+      // Rejoin so other players see the new college on your name tag.
+      const room = useHostelStore.getState().roomId;
+      const updated = useAuthStore.getState().user;
+      if (updated && room === 'world:funaab:main') void networkManager.switchRoom(room, updated);
+    }
+  };
+  return (
+    <span className="student-dept-change">
+      <select value={choice} onChange={(e) => setChoice(e.target.value)} aria-label="Department">
+        {colleges.map((c) => (
+          <optgroup key={c.code} label={c.code}>
+            {courses.filter((d) => d.college === c.code).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      <button className="student-primary" disabled={saving || choice === user.courseId} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+      <button className="student-link" onClick={() => setOpen(false)}>Cancel</button>
+      <small>You can change department once a day.</small>
+    </span>
   );
 }

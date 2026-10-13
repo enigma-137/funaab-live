@@ -79,6 +79,11 @@
 .student-campus-dialog { z-index:10000; background:#14291c99; }
 .student-campus-dialog .student-card { position:relative; max-height:calc(100dvh - 52px); overflow:auto; }
 .student-close { float:right; }
+.student-link { background:none; border:0; padding:0; color:#1f7a4d; font-weight:700; text-decoration:underline; text-underline-offset:2px; cursor:pointer; }
+.student-dept-change { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.student-dept-change select { max-width:100%; min-height:40px; padding:6px 8px; border:1px solid #c7d6c9; border-radius:10px; background:white; }
+.student-dept-change .student-primary { display:inline-block; margin-top:0; min-width:0; min-height:40px; padding:8px 14px; }
+.student-dept-change small { flex-basis:100%; color:#5b6b5f; }
 .student-phone-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
 .student-orientation { position:absolute; left:14px; top:106px; width:min(255px,calc(100vw - 28px)); z-index:35; color:#193b29; background:#f8faf7f5; border:1px solid #c7d6c9; border-radius:14px; padding:10px 12px; font-size:12px; }
 .student-orientation>button { width:100%; min-height:28px; text-align:left; font-weight:700; }

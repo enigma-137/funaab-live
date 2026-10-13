@@ -2,9 +2,12 @@ import { collegeCatalogue } from './campusLocations';
 
 // The campus catalogue is themed for play, not official admissions guidance.
 export const courses = [
-  ['AGE', 'Agricultural Engineering', 'COLENG', 60],
+  // COLENG: the five departments on funaab.edu.ng (mirrored in SQL, latest in 014).
+  ['AGE', 'Agricultural and Bio-Resources Engineering', 'COLENG', 60],
   ['CVE', 'Civil Engineering', 'COLENG', 65],
+  ['EEE', 'Electrical and Electronics Engineering', 'COLENG', 65],
   ['MEE', 'Mechanical Engineering', 'COLENG', 65],
+  ['MCE', 'Mechatronics Engineering', 'COLENG', 63],
   ['FST', 'Food Science and Technology', 'COLFHEC', 60],
   ['NTD', 'Nutrition and Dietetics', 'COLFHEC', 58],
   ['HSM', 'Home Science and Management', 'COLFHEC', 0],
