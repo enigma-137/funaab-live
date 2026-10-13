@@ -372,6 +372,13 @@ class NetworkManager {
         break;
       }
 
+      case 'lecture_chat_message': {
+        // Classroom chat: tag it with this class so it shows in the class chat, not campus chat.
+        const lectureId = data.lectureId || useLectureStore.getState().currentLecture?.id;
+        if (lectureId && data.text) socialStore.addMessage({ ...data, lectureId });
+        break;
+      }
+
       case 'private_chat_message': {
         const msg = data.message || data;
         if (msg && msg.text) {
@@ -690,12 +697,14 @@ class NetworkManager {
       connectionId: this.connectionId,
       lectureId,
       raised,
+      isHandRaised: raised, // the field the Worker reads
     });
   }
 
   public sendClassroomChat(lectureId: string, text: string) {
+    // The Worker's classroom chat message is 'lecture_chat' (it answers with 'lecture_chat_message').
     this.send({
-      type: 'classroom_chat',
+      type: 'lecture_chat',
       connectionId: this.connectionId,
       lectureId,
       text,

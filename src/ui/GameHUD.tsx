@@ -1,6 +1,6 @@
 import {useHostelStore} from '../stores/hostelStore';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -90,7 +90,9 @@ export const GameHUD: React.FC = () => {
   );
 
   const { balance } = useWalletStore();
-  const { messages } = useSocialStore();
+  // Classroom messages belong to the class chat only.
+  const allMessages = useSocialStore((s) => s.messages);
+  const messages = useMemo(() => allMessages.filter((m) => !m.lectureId), [allMessages]);
   const unreadDmCount = useSocialStore((s) => s.unreadDmCount);
   // Whole metres only, so walking re-renders the HUD at most once per metre.
   const waypointDistance = useGameStore((s) => s.navigationDestination
