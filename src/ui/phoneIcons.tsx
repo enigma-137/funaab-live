@@ -58,6 +58,7 @@ export const APP_GLYPHS: Record<string, React.ReactNode> = {
   feedback: <><rect x="4" y="3.5" width="12.5" height="17" rx="2" fill={W} /><path d="M7 8h6.5M7 11h6.5M7 14h4" stroke="#00000035" strokeWidth="1.5" strokeLinecap="round" /><path d="m14.5 18.5 1-3.6 5.4-5.4a1.6 1.6 0 0 1 2.3 2.3l-5.4 5.4z" fill={W} stroke="#00000045" strokeWidth=".9" strokeLinejoin="round" /><path d="m14.5 18.5 1-3.6 2.6 2.6z" fill="#00000045" /></>,
   soundOn: <><path d="M3.5 9.5v5h3.5l5 4v-13l-5 4z" fill={W} /><path d="M15 9a4.2 4.2 0 0 1 0 6M17.6 6.5a7.8 7.8 0 0 1 0 11" fill="none" stroke={W} strokeWidth="1.9" strokeLinecap="round" /></>,
   soundOff: <><path d="M3.5 9.5v5h3.5l5 4v-13l-5 4z" fill={W} /><path d="m15.5 9.5 5 5m0-5-5 5" stroke={W} strokeWidth="2" strokeLinecap="round" /></>,
+  school: <><path d="M12 4 2.5 9 12 14l9.5-5z" fill={W} /><path d="M6.5 11.2v4.3c0 1.3 2.5 3 5.5 3s5.5-1.7 5.5-3v-4.3L12 14z" fill={W} opacity=".85" /><path d="M20 9.5v5.5" stroke={W} strokeWidth="1.6" strokeLinecap="round" /></>,
   help: <><circle cx="12" cy="12" r="9" fill={W} /><path d="M9.3 9.5a2.8 2.8 0 1 1 3.8 2.6c-.8.3-1.1.9-1.1 1.7v.4" fill="none" stroke="#00000055" strokeWidth="2" strokeLinecap="round" /><circle cx="12" cy="17.2" r="1.2" fill="#00000055" /></>,
   signout: <><path d="M5 4h8v16H5z" fill={W} /><circle cx="11" cy="12" r=".9" fill="#00000050" /><path d="M14.5 12H21m-2.5-3 3 3-3 3" fill="none" stroke={W} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>,
 };

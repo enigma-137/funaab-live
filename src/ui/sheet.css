@@ -17,8 +17,9 @@
 @keyframes campus-fade{from{opacity:0}}
 @keyframes campus-rise{from{transform:translateY(18px);opacity:.6}}
 
-/* One stack for transient notices so they never sit on top of each other. */
-.campus-toasts{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 92px);z-index:10001;
+/* One stack for transient notices so they never sit on top of each other. Below dialogs (9999):
+   an open sheet is never covered; it shows its own result. */
+.campus-toasts{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 92px);z-index:9998;
  display:flex;flex-direction:column;align-items:center;gap:8px;width:min(100% - 24px,440px);pointer-events:none}
 .campus-toasts>*{pointer-events:auto;width:100%}
 .campus-toast{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#020617f2;color:#f8fafc;
@@ -77,3 +78,36 @@
 .campus-plan-error{margin-top:6px;color:#fca5a5}
 @keyframes campus-pulse{50%{box-shadow:0 0 0 6px #4ade8000}}
 .campus-status-streak{flex-shrink:0;color:#fdba74;font-weight:900}
+
+/* Academic record, quiz and exam. */
+.academic-body{padding:14px;display:flex;flex-direction:column;gap:12px;font-size:13px}
+.academic-note{color:#94a3b8;font-size:12px;line-height:1.4}
+.academic-error{color:#fca5a5;font-size:12px}
+.academic-urgent{color:#f87171;font-weight:900}
+.academic-progress-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.academic-progress-head b{font-family:'Outfit',system-ui,sans-serif;font-size:18px}
+.academic-progress-head span{color:#94a3b8;font-size:12px}
+.academic-bar{height:8px;border-radius:999px;background:#1e293b;overflow:hidden;margin-top:6px}
+.academic-bar i{display:block;height:100%;background:linear-gradient(90deg,#2563eb,#22c55e)}
+.academic-card{padding:12px;border-radius:14px;background:#0b1222;border:1px solid #1e293b}
+.academic-card h3,.academic-h{font-family:'Outfit',system-ui,sans-serif;font-weight:800;font-size:14px;margin-bottom:8px}
+.academic-card h3 small{color:#94a3b8;font-weight:600;font-size:11px;margin-left:6px}
+.academic-checks{display:flex;flex-direction:column;gap:6px}
+.academic-checks li.is-done{color:#86efac}
+.academic-primary{min-height:44px;padding:0 16px;border-radius:12px;background:#2563eb;color:#fff;font-weight:900}
+.academic-primary:disabled{opacity:.45}
+.academic-wide{width:100%;margin-top:10px}
+.academic-results{display:flex;flex-direction:column;gap:4px}
+.academic-results li{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:6px 8px;border-radius:9px;background:#0b1222;font-size:12px}
+.academic-results li.is-failed{color:#fca5a5}.academic-results li.is-incomplete{color:#94a3b8}
+.academic-how summary{cursor:pointer;color:#93c5fd;font-weight:700;font-size:12px}
+.academic-how p{color:#94a3b8;font-size:12px;line-height:1.45;margin-top:6px}
+.academic-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.academic-questions{display:flex;flex-direction:column;gap:14px}
+.academic-questions p{margin-bottom:8px;line-height:1.35}
+.academic-questions [role=radiogroup]{display:grid;gap:6px}
+.academic-questions button{min-height:42px;padding:8px 12px;text-align:left;border-radius:10px;background:#0b1222;border:1px solid #1e293b;color:#e2e8f0}
+.academic-questions button.is-chosen{border-color:#60a5fa;background:#172554}
+.academic-questions button.is-correct{border-color:#22c55e;background:#14532d}
+.academic-questions button.is-wrong{border-color:#ef4444;background:#450a0a}
+.campus-status-level{flex-shrink:0;padding:0 6px;border-radius:999px;background:#1d4ed8;color:#fff;font-weight:900}

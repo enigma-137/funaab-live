@@ -7,6 +7,7 @@ import { getLagosTime } from '../utils/lagosTime';
 import { getActiveLectureForTime } from '../config/lectureSchedule';
 import { campusZoneName } from '../config/campusLocations';
 import { useDailyPlanStore } from '../stores/dailyPlanStore';
+import { useAcademicStore, levelLabel } from '../stores/academicStore';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -27,6 +28,8 @@ export function StatusStrip() {
   const owner = useHostelStore((s) => s.owner);
   const balance = useWalletStore((s) => s.balance);
   const streak = useDailyPlanStore((s) => s.plan?.streak.current ?? 0);
+  const academic = useAcademicStore((s) => s.state);
+  useEffect(() => { void useAcademicStore.getState().load(); const t = setInterval(() => void useAcademicStore.getState().load(), 300000); return () => clearInterval(t); }, []);
   const [now, setNow] = useState(Date.now());
   const [delta, setDelta] = useState<{ id: number; amount: number } | null>(null);
   const prev = useRef<number | null>(null);
@@ -56,6 +59,7 @@ export function StatusStrip() {
 
   return (
     <div className="campus-status" role="status" aria-label="Your day">
+      {academic && <span className="campus-status-level">{levelLabel(academic)}</span>}
       <span className="campus-status-time">{DAYS[t.dayOfWeek]} {String(t.hour).padStart(2, '0')}:{String(t.minute).padStart(2, '0')}</span>
       <span className="campus-status-dot" aria-hidden>·</span>
       <span className="campus-status-place">{placeName(roomId, owner, x, z)}</span>

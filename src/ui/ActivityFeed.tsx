@@ -21,8 +21,10 @@ export const ActivityFeed: React.FC = () => {
 
   // Phones: each new campus event goes through the shared toast stack instead of its own pill.
   const lastEventId = activityEvents[activityEvents.length - 1]?.id;
+  const toasted = React.useRef<string | null>(null);
   useEffect(() => {
-    if (!isTouchDevice || !lastEventId || isRidingKeke) return;
+    if (!isTouchDevice || !lastEventId || isRidingKeke || toasted.current === lastEventId) return;
+    toasted.current = lastEventId;
     const event = activityEvents[activityEvents.length - 1];
     toast({ icon: EVENT_ICON[event.type] ?? '🎓', text: event.text, tone: 'info', ms: 4000 });
   }, [lastEventId, isTouchDevice]);

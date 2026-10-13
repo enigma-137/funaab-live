@@ -1,3 +1,4 @@
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useHostelStore } from '../stores/hostelStore';
 import { Sheet } from './Sheet';
 import { openHostel } from './HostelLife';
@@ -8,6 +9,24 @@ import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
 import { BadgeShelf } from './GoalsPanel';
 import { X, UserPlus, VolumeX, ShieldAlert, Flag, MessageSquare, Check } from 'lucide-react';
+
+/** Level for everyone; CGPA only if you're friends (the database decides). */
+function AcademicStanding({ userId }: { userId: string }) {
+  const [info, setInfo] = React.useState<{ level: number; graduated: boolean; class_of_degree: string | null; cgpa: number | null } | null>(null);
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let live = true;
+    supabase.rpc('academic_public', { p_user: userId }).then(({ data }) => { if (live && data) setInfo(data); });
+    return () => { live = false; };
+  }, [userId]);
+  if (!info) return null;
+  return (
+    <div className="mt-2 text-xs font-semibold text-sky-300">
+      {info.graduated ? `🎓 Alumni · ${info.class_of_degree}` : `${info.level} Level`}
+      {info.cgpa != null && <span className="text-slate-300"> · CGPA {Number(info.cgpa).toFixed(2)}</span>}
+    </div>
+  );
+}
 
 export const PlayerInteractionModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -83,6 +102,7 @@ export const PlayerInteractionModal: React.FC = () => {
             {selectedPlayer.college}
           </div>
 
+          <AcademicStanding userId={selectedPlayer.id} />
           {!isReporting && <PublicStudentIdentity player={selectedPlayer} />}
           {!isReporting && <div className="mt-3 text-left"><BadgeShelf userId={selectedPlayer.id} /></div>}
           {!isReporting ? (

@@ -84,6 +84,7 @@ const ADA = { id: '00000000-0000-4000-8000-0000000000f1', username: 'Ada', colle
           await page.evaluate(async (m: string) => (await import('/src/stores/gameStore.ts' as any)).useGameStore.getState().setActiveModal(m), modal);
           const sheet = page.getByRole('dialog', { name: title });
           await sheet.waitFor();
+          await page.waitForTimeout(400); // let the slide-up animation finish
           const b = await sheet.boundingBox();
           assert(b.width <= width - 12 && b.height <= height * 0.9, `${modal} fits (${Math.round(b.width)}×${Math.round(b.height)})`);
           assert(height - (b.y + b.height) < 40, `${modal} sits at the bottom on a phone`);

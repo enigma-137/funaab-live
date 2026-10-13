@@ -36,7 +36,9 @@ export const useDailyPlanStore = create<DailyPlanStore>((set, get) => ({
       try {
         const { data, error } = await supabase.rpc('daily_plan');
         if (error) throw error;
-        set({ plan: data as DailyPlan, error: null });
+        // Only accept a well-formed plan; anything else (old database, proxy error page) hides the card.
+        const plan = data as DailyPlan | null;
+        set({ plan: plan && Array.isArray(plan.goals) && plan.streak ? plan : null, error: null });
       } catch (e) {
         // Older databases without migration 015 just don't show a plan.
         set({ error: (e as Error).message });

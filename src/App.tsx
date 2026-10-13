@@ -45,6 +45,7 @@ import { CollegeVisitTracker } from './ui/CollegeVisitTracker';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
+import { AcademicSheet } from './ui/AcademicSheet';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
 import { CampusBetModal } from './ui/CampusBetModal';
@@ -182,6 +183,7 @@ export const App: React.FC = () => {
       {activeModal === 'food' && <FoodVendorModal />}
       {activeModal === 'ps_match' && <PSPenaltyGame />}
       {activeModal === 'football' && <FootballPanel />}
+      {activeModal === 'academics' && <AcademicSheet />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}

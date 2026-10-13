@@ -100,6 +100,7 @@ interface GameState {
     | 'inbox'
     | 'food_vendor'
     | 'football'
+    | 'academics'
     | null;
 
   // Actions
@@ -170,6 +171,7 @@ interface GameState {
     | 'inbox'
       | 'food_vendor'
       | 'football'
+      | 'academics'
       | null
   ) => void;
   toggleDebugPhysics: () => void;
