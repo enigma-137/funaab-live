@@ -747,7 +747,11 @@ export class WorldRoomDO {
     return { ...(await this.campusBetSync(session.id)), balance: Number(receipt.balance) };
   }
   private setFootball(next: FootballMatchState) {
+    const prev = this.football;
     this.football = next;
+    // College League: a played-out win (not a forfeit) earns the winner's college points, once per match.
+    if (prev.status === 'ACTIVE' && next.status === 'RESULT' && next.endReason === 'complete' && next.winnerUserId && this.env.SUPABASE_SERVICE_ROLE_KEY)
+      void this.dbRpc('league_event_trusted', { p_user: next.winnerUserId, p_kind: 'football_win', p_ref: next.id }).catch(() => {});
     if (this.footballTimer !== null) clearTimeout(this.footballTimer);
     this.footballTimer = null;
     if (next.status === 'ACTIVE' && next.turnDeadline) {

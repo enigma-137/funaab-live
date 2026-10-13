@@ -10,6 +10,7 @@ import { SportsPenaltyArea } from './SportsPenaltyArea';
 import { LoveGarden } from './LoveGarden';
 import { HustleProps } from './HustleProps';
 import { LodgeBuilding } from './LodgeBuilding';
+import { LeagueBanner } from './LeagueBanner';
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { LECTURE_HALLS } from '../../config/lectureHalls';
@@ -47,7 +48,7 @@ export const CampusEnvironment: React.FC = () => {
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
-      <SportsPenaltyArea/><LoveGarden/><HustleProps/><LodgeBuilding/>
+      <SportsPenaltyArea/><LoveGarden/><HustleProps/><LodgeBuilding/><LeagueBanner/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
