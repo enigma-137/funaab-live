@@ -93,6 +93,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const currentRotation = useRef<number>(0);
   const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep'>('idle');
   const stuckTimerRef = useRef<number>(0);
+  const lastSeatExit = useRef<[number, number, number] | null>(null);
   // Camera rig state: damped follow point + lightly smoothed orbit angles.
   const cameraFollow = useRef(new THREE.Vector3());
   const cameraFollowPrevTarget = useRef(new THREE.Vector3());
@@ -207,8 +208,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         case 'restaurant_dining':
         case 'bench':
           useGameStore.getState().sitAtPosition(
-            nearbyInteractable.position,
+            nearbyInteractable.seat ?? nearbyInteractable.position,
             nearbyInteractable.rotation,
+            { animation: nearbyInteractable.pose, exit: nearbyInteractable.exit },
           );
           useInputStore.getState().clearTargetDestination();
           break;
@@ -306,23 +308,30 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
 
     const seatedAt = useGameStore.getState().seatedAt;
+    // Getting up from a bed: step beside it rather than inside its collider.
+    if (!seatedAt && lastSeatExit.current) {
+      useHostelStore.setState({ teleport: lastSeatExit.current });
+      lastSeatExit.current = null;
+    }
     if (seatedAt) {
       if (targetDestination) {
         useGameStore.getState().standUp();
       } else {
-        const [x, , z] = seatedAt.position;
+        const [x, seatY, z] = seatedAt.position;
+        const pose = seatedAt.animation ?? 'sit';
+        lastSeatExit.current = seatedAt.exit ?? null;
         body.setNextKinematicTranslation({
           x,
-          y: PLAYER_CENTER_OFFSET,
+          y: PLAYER_CENTER_OFFSET + seatY,
           z,
         });
         currentRotation.current = seatedAt.rotation;
-        currentAnimation.current = 'sit';
+        currentAnimation.current = pose;
         if (avatarVisualRef.current) avatarVisualRef.current.rotation.y = seatedAt.rotation;
         setMyPosition(seatedAt.position);
         setMyRotation(seatedAt.rotation);
-        setMyAnimation('sit');
-        networkManager.sendMove(seatedAt.position, seatedAt.rotation, 'sit', false);
+        setMyAnimation(pose);
+        networkManager.sendMove(seatedAt.position, seatedAt.rotation, pose, false);
 
         const camDist =
           useHostelStore.getState().roomId === 'world:funaab:library' ? 6 : 8.2;

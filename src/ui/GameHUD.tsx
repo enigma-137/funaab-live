@@ -149,7 +149,7 @@ export const GameHUD: React.FC = () => {
           break;
         case 'restaurant_dining':
         case 'bench':
-          sitAtPosition(nearbyInteractable.position, nearbyInteractable.rotation);
+          sitAtPosition(nearbyInteractable.seat ?? nearbyInteractable.position, nearbyInteractable.rotation, { animation: nearbyInteractable.pose, exit: nearbyInteractable.exit });
           useInputStore.getState().clearTargetDestination();
           break;
         case 'lecture_hall':
@@ -241,7 +241,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (seatedAt) return 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
@@ -275,7 +275,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (seatedAt) return 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';
@@ -286,8 +286,9 @@ export const GameHUD: React.FC = () => {
       case 'food':
         return 'Food';
       case 'restaurant_dining':
-      case 'bench':
         return 'Sit';
+      case 'bench':
+        return nearbyInteractable.pose === 'sleep' ? 'Lie Down' : 'Sit';
       case 'atm':
         return 'Bank';
       case 'job_board':

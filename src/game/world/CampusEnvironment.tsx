@@ -1,4 +1,5 @@
 import { CampusArchitecture } from './CampusArchitecture';
+import { HealthCentre } from './HealthCentre';
 import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
 import { campusMaterials } from './campusVisualGeometry';
 import { locationPosition, locationById } from '../../config/campusLocations';
@@ -448,49 +449,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          8. FUNAAB HEALTH CENTRE (Position: [-28, 0, -16])
+          8. FUNAAB HEALTH CENTRE: walk-in clinic with ward beds and nurses
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={locationPosition('health-centre')}>
-        <RigidBody type="fixed" colliders={false}>
-          {/* Main Clinic Hall (Width 12, Height 5, Depth 8) */}
-          <mesh position={[0, 2.5, 0]} castShadow>
-            <boxGeometry args={[12, 5, 8]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.3} />
-          </mesh>
-          {/* Emerald Roof Trim */}
-          <mesh position={[0, 5.1, 0]} castShadow>
-            <boxGeometry args={[12.4, 0.4, 8.4]} />
-            <meshStandardMaterial color="#166534" />
-          </mesh>
-
-          {/* Red Cross Emblem */}
-          <group position={[0, 3.2, 4.05]}>
-            <mesh>
-              <boxGeometry args={[1.2, 0.35, 0.05]} />
-              <meshStandardMaterial color="#dc2626" />
-            </mesh>
-            <mesh>
-              <boxGeometry args={[0.35, 1.2, 0.05]} />
-              <meshStandardMaterial color="#dc2626" />
-            </mesh>
-          </group>
-
-          {/* Entrance Doorway Canopy */}
-          <mesh position={[0, 2.4, 4.6]} castShadow>
-            <boxGeometry args={[4.2, 0.15, 1.6]} />
-            <meshStandardMaterial color="#15803d" />
-          </mesh>
-
-          {/* Physical Building Collider */}
-          <CuboidCollider args={[6.0, 2.5, 4.0]} position={[0, 2.5, 0]} />
-        </RigidBody>
-
-        <Html position={[0, 4.4, 4.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-          <div className="px-3 py-1 rounded bg-emerald-950/95 border border-emerald-400 text-emerald-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
-            🏥 FUNAAB Health Centre (Clinic & Pharmacy)
-          </div>
-        </Html>
-      </group>
+      <HealthCentre />
 
       {/* ══════════════════════════════════════════════════════════════════════
           9. SENATE BUILDING & 'NIMBE ADEDIPE LIBRARY (Position: [0, 0, -44])

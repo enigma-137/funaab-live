@@ -70,6 +70,18 @@ export const campusMaterials = {
   gravel: mat("#998b6c"),
   concrete: mat("#cfcbc0"),
   engBlue: mat("#3a5f86", 0.7),
+  // Health Centre: pale-yellow render with maroon trim, after the real clinic.
+  clinicWall: mat("#f2df8e"),
+  clinicSkirt: mat("#b49c55"),
+  clinicTrim: mat("#8e2633", 0.7),
+  clinicRoof: mat("#8d8577", 0.8),
+  clinicTile: mat("#dfe3dc", 0.6),
+  clinicTileB: mat("#c9d1ca", 0.6),
+  clinicSheet: mat("#f5f7f8", 0.85),
+  clinicCurtain: mat("#8fc1d4", 0.9),
+  clinicMint: mat("#7cb9a4", 0.8),
+  clinicRed: mat("#c62828", 0.6),
+  clinicSteel: mat("#c5ccd0", 0.35),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

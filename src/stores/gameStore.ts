@@ -40,7 +40,7 @@ interface GameState {
   myPosition: [number, number, number];
   myRotation: number;
   myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
-  seatedAt: { position: [number, number, number]; rotation: number } | null;
+  seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep'; exit?: [number, number, number] } | null;
   isRidingKeke: boolean;
   currentKekeId: string | null;
   targetKekeDestinationId: string | null;
@@ -114,7 +114,7 @@ interface GameState {
   setMyPosition: (pos: [number, number, number]) => void;
   setMyRotation: (rot: number) => void;
   setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer') => void;
-  sitAtPosition: (position: [number, number, number], rotation?: number) => void;
+  sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep'; exit?: [number, number, number] }) => void;
   standUp: () => void;
   setRidingKeke: (isRiding: boolean, kekeId?: string | null, targetDestinationId?: string | null) => void;
   setTargetKekeDestinationId: (id: string | null) => void;
@@ -411,7 +411,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
   setMyRotation: (myRotation) => set((state) => (state.myRotation === myRotation ? state : { myRotation })),
   setMyAnimation: (myAnimation) => set((state) => (state.myAnimation === myAnimation ? state : { myAnimation })),
-  sitAtPosition: (position, rotation = 0) => set({ seatedAt: { position, rotation } }),
+  sitAtPosition: (position, rotation = 0, opts = {}) => set({ seatedAt: { position, rotation, ...opts } }),
   standUp: () => set({ seatedAt: null }),
   setRidingKeke: (isRidingKeke, currentKekeId = null, targetKekeDestinationId = null) =>
     set({ isRidingKeke, currentKekeId, targetKekeDestinationId }),
