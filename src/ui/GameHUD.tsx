@@ -37,6 +37,7 @@ import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedu
 import worldData from '../config/campusWorld';
 import { FOOD_VENDORS, getVendorStatus, type FoodVendorId } from '../config/foodVendors';
 import { openFoodVendor, vendorNow } from '../stores/foodVendorStore';
+import { openFootball } from '../stores/footballStore';
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -174,6 +175,9 @@ export const GameHUD: React.FC = () => {
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
           break;
+        case 'football':
+          openFootball();
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -225,6 +229,10 @@ export const GameHUD: React.FC = () => {
       case 'food':
       case 'restaurant_dining':
         return '🍲';
+      case 'bench':
+        return '🪑';
+      case 'football':
+        return '⚽';
       case 'atm':
         return '🏧';
       case 'job_board':
@@ -262,6 +270,8 @@ export const GameHUD: React.FC = () => {
           return '1v1 PS5 Challenge';
         case 'campus_bet':
           return 'Open Campus Bet';
+        case 'football':
+          return 'Practice Shot / 1v1 Challenge';
         case 'food_vendor':
           return vendorStatus?.isOpen ? `${nearVendor!.actionLabel} · ${vendorStatus.label}` : vendorStatus?.shortLabel ?? 'Closed';
         default:
@@ -297,6 +307,8 @@ export const GameHUD: React.FC = () => {
         return 'Play';
       case 'campus_bet':
         return 'Campus Bet';
+      case 'football':
+        return 'Penalty';
       case 'food_vendor':
         return vendorStatus?.isOpen ? nearVendor!.actionLabel : vendorStatus?.shortLabel ?? 'Closed';
       default:

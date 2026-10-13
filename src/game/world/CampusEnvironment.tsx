@@ -6,6 +6,8 @@ import { locationPosition, locationById } from '../../config/campusLocations';
 import { CampusRoads, CampusExpansion, KekeRouteDebug } from './CampusExpansion';
 import { CampusBetShop, OutsideGateRoad } from './CampusBetShop';
 import { FoodVendorStalls } from './FoodVendorStalls';
+import { SportsPenaltyArea } from './SportsPenaltyArea';
+import { LoveGarden } from './LoveGarden';
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { LECTURE_HALLS } from '../../config/lectureHalls';
@@ -27,6 +29,7 @@ export const CampusEnvironment: React.FC = () => {
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
+      <SportsPenaltyArea/><LoveGarden/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
@@ -307,8 +310,8 @@ export const CampusEnvironment: React.FC = () => {
             <meshStandardMaterial color="#ffffff" />
           </mesh>
 
-          {/* North Goalpost (at Z = -16) */}
-          <group position={[0, 0, -16]}>
+          {/* North Goalpost (at Z = -16): the Penalty Challenge goal */}
+          <group name="sports_goalpost" position={[0, 0, -16]}>
             <mesh position={[-2.4, 1.2, 0]}>
               <cylinderGeometry args={[0.06, 0.06, 2.4, 8]} />
               <meshStandardMaterial color="#ffffff" />

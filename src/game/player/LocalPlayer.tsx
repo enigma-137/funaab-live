@@ -18,6 +18,7 @@ import { InteractableZone } from '../../types/game';
 import { classifyTerrain, lawnEnforcement } from '../rules/lawnSecuritySystem';
 import { useShallow } from 'zustand/react/shallow';
 import { openFoodVendor } from '../../stores/foodVendorStore';
+import { openFootball, useFootballStore, amParticipant } from '../../stores/footballStore';
 import { HOSTEL_COURTYARD_BOUND, HOSTEL_SPAWN } from '../../config/hostelCompound';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 
@@ -236,6 +237,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
           break;
+        case 'football':
+          openFootball();
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -453,6 +457,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if(offCampus) { const bound=roomState.roomId === 'world:funaab:library'?11.4:useHostelStore.getState().owner?3.5:HOSTEL_COURTYARD_BOUND;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
     if(roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
+    const faceRotation=useGameStore.getState().faceRotation;
+    if(faceRotation!==null){currentRotation.current=faceRotation;useGameStore.getState().setFaceRotation(null);}
     // Update Rapier Kinematic Position
     body.setNextKinematicTranslation({ x: nextX, y: nextY, z: nextZ });
 
@@ -544,6 +550,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       bench: 7,
       campus_bet: 1,
       food_vendor: 1,
+      football: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
@@ -555,6 +562,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         closestInteractable !== null &&
         interactionPriority[zone.type] < interactionPriority[closestInteractable.type];
       if (dist <= zone.radius && (isCloser || isPriorityTie)) {
+        // A seat someone is already sitting on is not offered.
+        if ((zone.type === 'bench' || zone.type === 'restaurant_dining') && Object.values(players).some((p) =>
+          p.animation === 'sit' && !p.kekeRiding && Math.hypot(p.position[0] - zone.position[0], p.position[2] - zone.position[2]) < 0.3)) continue;
         minDistance = dist;
         closestInteractable = zone;
       }
@@ -579,6 +589,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         ps_match: ['playstation'],
         campus_bet: ['campus_bet'],
         food_vendor: ['food_vendor'],
+        football: ['football'],
       };
 
       const targetZoneTypes = PROXIMITY_MODAL_ZONES[activeModal];
@@ -586,7 +597,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         const isInClassroom = useLectureStore.getState().isInClassroom;
         const isRiding = isRidingKeke || useGameStore.getState().isRidingKeke;
         const currentMatch = useGameStore.getState().currentMatch;
-        const isPlayingMatch = currentMatch && currentMatch.status === 'in_progress';
+        const pitch = useFootballStore.getState().state;
+        const isPlayingMatch = (currentMatch && currentMatch.status === 'in_progress')
+          || (activeModal === 'football' && pitch.status !== 'LOBBY' && amParticipant(pitch));
 
         if (!isInClassroom && !isRiding && !isPlayingMatch) {
           const HYSTERESIS_BUFFER = 2.0; // 2.0m tolerance buffer outside base radius to prevent boundary jitter

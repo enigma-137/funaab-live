@@ -67,6 +67,8 @@ export const HelpModal: React.FC = () => {
               <li><strong className="text-white">Microfinance ATM:</strong> View your balance & transfer money to other students.</li>
               <li><strong className="text-white">Mama Buka Canteen:</strong> Buy hot Jollof Rice, Suya, Shawarma, and cold drinks.</li>
               <li><strong className="text-white">PS Game Den:</strong> Play 1v1 multiplayer penalty shootout against other online students.</li>
+              <li><strong className="text-white">Sports Centre:</strong> Walk to the penalty spot for practice shots or a 1v1 Penalty Challenge (3 shots each). Drag to aim, hold to power, release to shoot.</li>
+              <li><strong className="text-white">Love Garden:</strong> A shady tree with benches east of the Library. Sit down, gist, relax.</li>
             </ul>
           </div>
         </div>
