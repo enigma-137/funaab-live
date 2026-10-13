@@ -211,6 +211,9 @@ export const GameHUD: React.FC = () => {
         case 'hustle':
           setActiveModal('hustles');
           break;
+        case 'lodge':
+          setActiveModal('lodge');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -266,6 +269,8 @@ export const GameHUD: React.FC = () => {
         return '⚽';
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? '🏧' : '📸';
+      case 'lodge':
+        return '🏘️';
       case 'atm':
         return '🏧';
       case 'job_board':
@@ -307,6 +312,8 @@ export const GameHUD: React.FC = () => {
           return 'Practice Shot / 1v1 Challenge';
         case 'hustle':
           return nearbyInteractable.actionText;
+        case 'lodge':
+          return nearbyInteractable.actionText;
         case 'food_vendor':
           return vendorStatus?.isOpen ? `${nearVendor!.actionLabel} · ${vendorStatus.label}` : vendorStatus?.shortLabel ?? 'Closed';
         default:
@@ -346,6 +353,8 @@ export const GameHUD: React.FC = () => {
         return 'Penalty';
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? 'POS shift' : 'Photos';
+      case 'lodge':
+        return 'Lodge';
       case 'food_vendor':
         return vendorStatus?.isOpen ? nearVendor!.actionLabel : vendorStatus?.shortLabel ?? 'Closed';
       default:

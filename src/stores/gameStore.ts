@@ -103,6 +103,7 @@ interface GameState {
     | 'academics'
     | 'background'
     | 'hustles'
+    | 'lodge'
     | null;
 
   // Actions
@@ -176,6 +177,7 @@ interface GameState {
       | 'academics'
       | 'background'
       | 'hustles'
+      | 'lodge'
       | null
   ) => void;
   toggleDebugPhysics: () => void;

@@ -13,17 +13,20 @@ import { X, UserPlus, VolumeX, ShieldAlert, Flag, MessageSquare, Check } from 'l
 /** Level for everyone; CGPA only if you're friends (the database decides). */
 function AcademicStanding({ userId }: { userId: string }) {
   const [info, setInfo] = React.useState<{ level: number; graduated: boolean; class_of_degree: string | null; cgpa: number | null } | null>(null);
+  const [offCampus, setOffCampus] = React.useState(false);
   React.useEffect(() => {
     if (!isSupabaseConfigured) return;
     let live = true;
     supabase.rpc('academic_public', { p_user: userId }).then(({ data }) => { if (live && data) setInfo(data); });
+    supabase.rpc('lodge_public', { p_user: userId }).then(({ data }) => { if (live) setOffCampus(data === true); });
     return () => { live = false; };
   }, [userId]);
-  if (!info) return null;
+  if (!info) return offCampus ? <div className="mt-2 text-xs font-semibold text-amber-300">🏘️ Lives off campus</div> : null;
   return (
     <div className="mt-2 text-xs font-semibold text-sky-300">
       {info.graduated ? `🎓 Alumni · ${info.class_of_degree}` : `${info.level} Level`}
       {info.cgpa != null && <span className="text-slate-300"> · CGPA {Number(info.cgpa).toFixed(2)}</span>}
+      {offCampus && <span className="text-amber-300"> · 🏘️ off campus</span>}
     </div>
   );
 }

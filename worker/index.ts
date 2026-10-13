@@ -1158,7 +1158,10 @@ export class WorldRoomDO {
             if (room.startsWith('world:funaab:hostel-room:')) {
               const owner = room.split(':')[3];
               const guests = [...this.sessions.values()].filter(s => s.id !== owner).length;
-              if (this.sessions.size >= 5 || (verifiedUserId !== owner && guests >= 4)) { webSocket.close(1008,'Room full: owner + 4 guests'); return; }
+              // Hostel rooms hold the owner + 4; an off-campus lodge holds the owner + 7.
+              const reported = await this.dbRpc('room_capacity_trusted', { p_owner: owner }).catch(() => null);
+              const capacity = Number.isInteger(reported) && reported >= 5 && reported <= 8 ? reported : 5;
+              if (this.sessions.size >= capacity || (verifiedUserId !== owner && guests >= capacity - 1)) { webSocket.close(1008,`Room full: owner + ${capacity - 1} guests`); return; }
             }
             sessionRoom = room;
             // Preserve existing clients' connection IDs, but never let a second

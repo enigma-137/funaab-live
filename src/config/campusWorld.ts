@@ -8,6 +8,7 @@ import { bedSpots, waitingSpots, HC_INTERIOR } from './healthCentre';
 import { FOOTBALL_PITCH } from './football';
 import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
+import { LODGE } from './lodge';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
   const a=l.kekeStop,b=l.entrance,w=l.footprint[0]/2,d=l.footprint[1]/2;
@@ -113,9 +114,11 @@ const outsideGateZones=[
   {id:'gate-road',name:'Gate Road',type:'road',restricted:false,bounds:OUTSIDE_GATE.road},
   {id:'campus-bet-frontage',name:'Campus Bet',type:'plaza',restricted:false,bounds:OUTSIDE_GATE.betFrontage},
   {id:'food-vendor-plaza',name:'Food Court',type:'plaza',restricted:false,bounds:VENDOR_PLAZA},
+  {id:'lodge-frontage',name:LODGE.name,type:'plaza',restricted:false,bounds:LODGE.frontage},
 ];
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,penaltySpot,
+    {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
     {id:'hustle-pos-kiosk',type:'hustle',label:'POS kiosk · Hustle',actionText:'POS kiosk shift',position:POS_KIOSK.serviceSpot,radius:POS_KIOSK.radius,targetId:'pos'},
     ...PHOTO_SPOTS.map(s=>({id:`hustle-${s.id}`,type:'hustle',label:s.title,actionText:'Take photos',position:s.position,radius:s.radius,targetId:s.id})),{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
     ...FOOD_VENDOR_LIST.map(v=>({id:`vendor-${v.id}`,type:'food_vendor',label:v.name,actionText:v.actionLabel,position:vendorCounter(v),radius:2.6,targetId:v.id})),

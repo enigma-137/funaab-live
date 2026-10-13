@@ -29,6 +29,27 @@ function Box({
     </mesh>
   );
 }
+/** Off-campus lodge finishes: tiled floor lines, barred window, ceiling fan, own bathroom door.
+ *  Wall-mounted only, so the furniture area and placement rules are exactly the hostel's. */
+function LodgeDecor() {
+  return (
+    <group name="lodge-decor">
+      {[-3, -1.5, 0, 1.5, 3].map((v) => (
+        <React.Fragment key={v}>
+          <Box pos={[v, 0.003, 0]} size={[0.025, 0.006, 8]} color="#c4ad84" />
+          <Box pos={[0, 0.003, v]} size={[8, 0.006, 0.025]} color="#c4ad84" />
+        </React.Fragment>
+      ))}
+      {[-2.4, -2.1, -1.9, -1.6].map((x) => <Box key={x} pos={[x, 1.9, -3.86]} size={[0.035, 1, 0.03]} color="#475569" />)}
+      <Box pos={[3.92, 1.05, -1.6]} size={[0.06, 2.1, 0.95]} color="#7c4a1e" />
+      <Box pos={[3.88, 1.05, -1.25]} size={[0.04, 0.05, 0.05]} color="#facc15" />
+      <Box pos={[0, 2.9, 1]} size={[0.05, 0.2, 0.05]} color="#e5e7eb" />
+      <Box pos={[0, 2.78, 1]} size={[1.4, 0.03, 0.14]} color="#f8fafc" />
+      <Box pos={[0, 2.78, 1]} size={[0.14, 0.03, 1.4]} color="#f8fafc" />
+    </group>
+  );
+}
+
 export function HostelEnvironment() {
   const { owner, snapshot, preview, travel, selected, pose } = useHostelStore();
   const user = useAuthStore((s) => s.user);
@@ -38,6 +59,7 @@ export function HostelEnvironment() {
     useHostelStore.setState({ selected: id });
   };
   if (!owner) return <HostelCompound myRoom={user ? hostelRoomFor(user.id).room : null} />;
+  const lodge = snapshot?.room.style === "lodge";
   const valid = preview
     ? !placementError(preview, snapshot?.placements || [])
     : true;
@@ -50,10 +72,10 @@ export function HostelEnvironment() {
   return (
     <group>
       <RigidBody type="fixed" colliders="cuboid">
-        <Box pos={[0, -0.15, 0]} size={[8, 0.3, 8]} color="#c7c7b8" />
-        <Box pos={[0, 1.5, -4]} size={[8, 3, 0.15]} color="#e9eddd" />
-        <Box pos={[-4, 1.5, 0]} size={[0.15, 3, 8]} color="#d9e1d3" />
-        <Box pos={[4, 1.5, 0]} size={[0.15, 3, 8]} color="#d9e1d3" />
+        <Box pos={[0, -0.15, 0]} size={[8, 0.3, 8]} color={lodge ? "#d8c39c" : "#c7c7b8"} />
+        <Box pos={[0, 1.5, -4]} size={[8, 3, 0.15]} color={lodge ? "#f3dfb8" : "#e9eddd"} />
+        <Box pos={[-4, 1.5, 0]} size={[0.15, 3, 8]} color={lodge ? "#e8cfa1" : "#d9e1d3"} />
+        <Box pos={[4, 1.5, 0]} size={[0.15, 3, 8]} color={lodge ? "#e8cfa1" : "#d9e1d3"} />
         <Box pos={[-2.5, 0.4, 4]} size={[3, 0.8, 0.15]} color="#b8c4b4" />
         <Box pos={[2.5, 0.4, 4]} size={[3, 0.8, 0.15]} color="#b8c4b4" />
       </RigidBody>
@@ -74,6 +96,7 @@ export function HostelEnvironment() {
           <CuboidCollider args={[0.625, 0.15, 1]} position={[0, 0.15, 0]} />
         </RigidBody>
       </group>
+      {lodge && <LodgeDecor />}
       <mesh position={[0, 2.8, -1]}>
         <sphereGeometry args={[0.12, 8, 8]} />
         <meshBasicMaterial color="#fff4be" />

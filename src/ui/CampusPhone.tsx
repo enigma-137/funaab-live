@@ -54,6 +54,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'goals', label: 'Goals', glyph: 'goals', colors: ['#fbbf24', '#d97706'], open: () => setModal('goals'), badge: goalsReady },
     { id: 'hostel', label: 'Hostel', glyph: 'hostel', colors: ['#fb923c', '#c2410c'], open: () => openHostel() },
     { id: 'friends', label: 'Friends', glyph: 'friends', colors: ['#60a5fa', '#2563eb'], open: () => setModal('friends') },
+    { id: 'lodge', label: 'Lodge', glyph: 'hostel', colors: ['#fbbf24', '#b45309'], open: () => setModal('lodge') },
     { id: 'hustles', label: 'Hustles', glyph: 'hustles', colors: ['#4ade80', '#15803d'], open: () => setModal('hustles') },
     { id: 'jobs', label: 'Jobs', glyph: 'jobs', colors: ['#a78bfa', '#6d28d9'], open: () => setModal('campus_jobs') },
     { id: 'school', label: 'School', glyph: 'school', colors: ['#60a5fa', '#1d4ed8'], open: () => useAcademicStore.getState().open() },

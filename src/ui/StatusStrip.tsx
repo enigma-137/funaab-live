@@ -47,7 +47,8 @@ export function StatusStrip() {
     return () => clearTimeout(t);
   }, [balance]);
 
-  if (!user || activeModal) return null;
+  // Rooms (hostel, lodge, library) have their own top bar with the way back to campus.
+  if (!user || activeModal || roomId !== 'world:funaab:main') return null;
   const t = getLagosTime(now);
   const [x, z] = cell.split(':').map((n) => Number(n) * 4);
   const lecture = getActiveLectureForTime(now);

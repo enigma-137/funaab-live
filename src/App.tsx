@@ -47,6 +47,7 @@ import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
 import { AcademicSheet } from './ui/AcademicSheet';
 import { HustlesSheet } from './ui/HustlesSheet';
+import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
@@ -187,6 +188,8 @@ export const App: React.FC = () => {
       {activeModal === 'football' && <FootballPanel />}
       {activeModal === 'academics' && <AcademicSheet />}
       {activeModal === 'hustles' && <HustlesSheet />}
+      {activeModal === 'lodge' && <LodgeSheet />}
+      {!isInClassroom && <LodgeWatcher />}
       {!isInClassroom && <BackgroundGate />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}
