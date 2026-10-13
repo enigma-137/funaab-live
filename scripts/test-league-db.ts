@@ -1,4 +1,4 @@
-// College League (migration 020): points from server records, per-student cap, fair ranking,
+// College League (migration 021): points from server records, per-student cap, fair ranking,
 // last week's champion, Worker-only football wins, privacy, drift.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npm run test:league:db
 import assert from 'node:assert/strict';
@@ -15,7 +15,7 @@ async function main() {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
-  const sql = fs.readFileSync(path.join(dir, '020_college_league.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(dir, '021_college_league.sql'), 'utf8');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const call = async (user: string | null, q: string, p: unknown[] = []) => {

@@ -22,7 +22,7 @@ export interface RoomSnapshot {
     owner_id: string;
     privacy: string;
     tv_on: boolean;
-    /** 'lodge' while renting an off-campus self-contain (migration 019). */
+    /** 'lodge' while renting an off-campus self-contain (migration 020). */
     style?: string;
     rested_at: string | null;
     security_at: string | null;

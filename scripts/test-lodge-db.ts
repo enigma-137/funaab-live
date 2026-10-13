@@ -1,4 +1,4 @@
-// Off-campus lodge (migration 019): rent, prepay limit, grace, eviction back to the hostel with
+// Off-campus lodge (migration 020): rent, prepay limit, grace, eviction back to the hostel with
 // furniture kept, capacity for the Worker, public flag, drift with src/config/lodge.ts.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npm run test:lodge:db
 import assert from 'node:assert/strict';
@@ -15,7 +15,7 @@ async function main() {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
-  const sql = fs.readFileSync(path.join(dir, '019_off_campus_lodge.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(dir, '020_off_campus_lodge.sql'), 'utf8');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const one = async (q: string, p: unknown[] = []) => (await rows(q, p))[0];

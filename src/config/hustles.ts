@@ -1,4 +1,4 @@
-// Student hustles: five ways to earn beyond campus jobs. The database pays (migration 018), the
+// Student hustles: five ways to earn beyond campus jobs. The database pays (migration 019), the
 // Worker proves presence/time where it matters, and everything shares one daily hustle cap.
 // scripts/test-hustles-db.ts checks these numbers against the migration.
 import type { Point } from './campusLocations';

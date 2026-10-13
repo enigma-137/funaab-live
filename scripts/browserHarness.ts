@@ -57,6 +57,8 @@ export async function openStudent(browser: any, student: Student, opts: {
     window.requestAnimationFrame = (cb) => raf(() => setTimeout(() => cb(performance.now()), 16));
     localStorage.setItem('sb-student-test-auth-token', JSON.stringify(session));
     localStorage.setItem('funaab_mobile_tutorial_seen', 'true');
+    // The first-visit guided tour would cover the page; tests start as returning students.
+    localStorage.setItem(`funaab:tour:v1:${session.user.id}`, 'done');
     // Software-rendered headless Chrome can freeze CSS animations mid-way; check layout at rest.
     addEventListener('DOMContentLoaded', () => {
       const style = document.createElement('style');

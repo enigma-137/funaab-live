@@ -39,9 +39,7 @@ import { ReportUserModal } from './ui/ReportUserModal';
 import { CampusMapModal } from './ui/CampusMapModal';
 import { CampusTourAutoStart } from './ui/CampusTourAutoStart';
 import { EarnPanel } from './ui/EarnPanel';
-import { GoalsPanel } from './ui/GoalsPanel';
 import { MessagesInbox } from './ui/MessagesInbox';
-import { CollegeVisitTracker } from './ui/CollegeVisitTracker';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
@@ -217,9 +215,7 @@ export const App: React.FC = () => {
       {activeModal === 'report_user' && <ReportUserModal />}
       {activeModal === 'campus_map' && <CampusMapModal />}
       {activeModal === 'earn' && <EarnPanel />}
-      {activeModal === 'goals' && <GoalsPanel />}
       {activeModal === 'inbox' && <MessagesInbox />}
-      {hostelRoomId === 'world:funaab:main' && !isInClassroom && <CollegeVisitTracker />}
 
       {/* First-visit guided tour (replaces the old touch-controls popup) */}
       {!isInClassroom && <CampusTourAutoStart userId={user.id} />}

@@ -1,6 +1,6 @@
--- 018 Hustles: room shop, POS kiosk shifts, Library tutoring, photo shoots, player errands.
+-- 019 Hustles: room shop, POS kiosk shifts, Library tutoring, photo shoots, player errands.
 -- Additive only. Values mirror src/config/hustles.ts (scripts/test-hustles-db.ts checks drift).
--- Shop, POS, tutoring and photos pay 'hustle_pay' (earns the 017 hustle bonus) under one daily cap.
+-- Shop, POS, tutoring and photos pay 'hustle_pay' (earns the 018 hustle bonus) under one daily cap.
 -- POS, tutoring and photos are paid only by the Worker (service role) after it proves presence
 -- or time. Errands move escrowed money between students as 'errand_pay', which never earns a
 -- bonus (so two accounts cannot mint money by passing errands back and forth).

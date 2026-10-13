@@ -1,4 +1,4 @@
--- 015 Today's Plan: three daily goals per student, a daily streak and streak badges.
+-- 016 Today's Plan: three daily goals per student, a daily streak and streak badges.
 -- Additive only. Goal values mirror src/config/dailyPlan.ts (scripts/test-daily-plan-db.ts checks drift).
 -- Goals are proven server-side: 'db' goals from existing ledgers, 'worker' goals from counts the
 -- multiplayer Worker reports (service role) from trusted positions and actions. Clients never

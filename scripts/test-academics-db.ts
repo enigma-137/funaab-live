@@ -1,4 +1,4 @@
-// Academic career (migration 016): quizzes, exam rules, lazy semester close, promotion,
+// Academic career (migration 017): quizzes, exam rules, lazy semester close, promotion,
 // carryovers, incompletes, graduation, privacy and drift with src/config/academicCareer.ts.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npm run test:academics:db
 import assert from 'node:assert/strict';

@@ -101,9 +101,3 @@
  .student-entry h1 { margin-top:12px; }
  .student-welcome { padding:24px 0; }
 }
-/* Badges on profiles (own profile and other students'). */
-.badge-shelf { margin-top:12px; }
-.badge-shelf-title { font-size:12px; font-weight:800; letter-spacing:.02em; opacity:.75; margin-bottom:6px; }
-.badge-shelf-row { display:flex; flex-wrap:wrap; gap:6px; }
-.badge-shelf-chip { display:inline-flex; align-items:center; gap:4px; padding:4px 9px; border-radius:999px; font-size:12px; font-weight:700; background:#f59e0b26; border:1px solid #f59e0b66; }
-.badge-shelf-empty { font-size:12px; opacity:.6; margin:0; }

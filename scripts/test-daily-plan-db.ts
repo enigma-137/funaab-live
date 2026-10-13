@@ -1,4 +1,4 @@
-// Today's Plan (migration 015): goal draw, server-proven progress, claims, bonus, streaks, drift.
+// Today's Plan (migration 016): goal draw, server-proven progress, claims, bonus, streaks, drift.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npm run test:daily:db
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -41,7 +41,7 @@ async function main() {
   // Drift: catalog and bonus match the client config.
   const catalog = await rows('select id,title,icon,source,target,reward from daily_goal_catalog order by id');
   assert.deepEqual(catalog, [...DAILY_GOALS].sort((a, b) => a.id.localeCompare(b.id)).map(({ id, title, icon, source, target, reward }) => ({ id, title, icon, source, target, reward })), 'catalog matches src/config/dailyPlan.ts');
-  assert.match(fs.readFileSync(path.join(dir, '015_daily_plan.sql'), 'utf8'), new RegExp(`v_bonus := ${DAILY_PLAN.ALL_DONE_BONUS};`), 'all-done bonus matches');
+  assert.match(fs.readFileSync(path.join(dir, '016_daily_plan.sql'), 'utf8'), new RegExp(`v_bonus := ${DAILY_PLAN.ALL_DONE_BONUS};`), 'all-done bonus matches');
 
   // Auth and privileges.
   await fails(null, 'select daily_plan() r', /permission denied|Authentication/);

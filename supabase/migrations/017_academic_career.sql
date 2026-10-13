@@ -1,4 +1,4 @@
--- 016 Academic career: 100L → 500L → graduation, on real weeks.
+-- 017 Academic career: 100L → 500L → graduation, on real weeks.
 -- Additive only. Mirrors src/config/academicCareer.ts (scripts/test-academics-db.ts checks drift).
 --  * A semester is one Lagos week, Monday–Sunday. The exam window is Saturday–Sunday.
 --  * Coursework: a 3-question quiz right after each attended (allowance-paid) lecture, drawn from

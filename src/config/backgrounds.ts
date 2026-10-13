@@ -1,6 +1,6 @@
 // Home background ("where you're from"): chosen once, private, and a different path, not a rank.
 // Comfortable homes send more money; struggling students earn a bigger hustle bonus on work.
-// Server copy: supabase/migrations/017_home_background.sql (scripts/test-backgrounds-db.ts checks drift).
+// Server copy: supabase/migrations/018_home_background.sql (scripts/test-backgrounds-db.ts checks drift).
 
 export type BackgroundId = 'comfortable' | 'average' | 'struggling';
 export interface BackgroundDef {
@@ -20,5 +20,5 @@ export const BACKGROUNDS: BackgroundDef[] = [
 ];
 
 export const background = (id: string | null | undefined) => BACKGROUNDS.find((b) => b.id === id);
-/** Ledger types that earn the hustle bonus (jobs today; hustles from migration 018). */
+/** Ledger types that earn the hustle bonus (jobs today; hustles from migration 019). */
 export const HUSTLE_LEDGER_TYPES = ['campus_job', 'hustle_pay'] as const;

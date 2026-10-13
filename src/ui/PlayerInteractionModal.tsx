@@ -7,7 +7,6 @@ import { PublicStudentIdentity } from './PublicStudentIdentity';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
-import { BadgeShelf } from './GoalsPanel';
 import { X, UserPlus, VolumeX, ShieldAlert, Flag, MessageSquare, Check } from 'lucide-react';
 
 /** Level for everyone; CGPA only if you're friends (the database decides). */
@@ -107,7 +106,6 @@ export const PlayerInteractionModal: React.FC = () => {
 
           <AcademicStanding userId={selectedPlayer.id} />
           {!isReporting && <PublicStudentIdentity player={selectedPlayer} />}
-          {!isReporting && <div className="mt-3 text-left"><BadgeShelf userId={selectedPlayer.id} /></div>}
           {!isReporting ? (
             /* Action Buttons */
             <div className="mt-6 space-y-2.5">

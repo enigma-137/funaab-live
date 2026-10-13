@@ -1,4 +1,4 @@
-// Home background (migration 017): one-time choice, welcome money, weekly money from home,
+// Home background (migration 018): one-time choice, welcome money, weekly money from home,
 // hustle bonus trigger on job pay, privacy, drift with src/config/backgrounds.ts.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npm run test:backgrounds:db
 import assert from 'node:assert/strict';

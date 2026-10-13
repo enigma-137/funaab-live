@@ -1,4 +1,4 @@
-// Academic career rules (display + drift checks). The database (migration 016) decides everything:
+// Academic career rules (display + drift checks). The database (migration 017) decides everything:
 // questions/answers, scores, promotion and graduation. scripts/test-academics-db.ts checks drift.
 
 export const ACADEMICS = {

@@ -16,6 +16,9 @@ interface DailyPlanStore {
   plan: DailyPlan | null;
   loading: boolean;
   claiming: string | null;
+  /** Card expanded (tapped, or opened from the phone / Earn). */
+  open: boolean;
+  setOpen: (open: boolean) => void;
   error: string | null;
   load: () => Promise<void>;
   claim: (goalId: string) => Promise<void>;
@@ -27,6 +30,8 @@ export const useDailyPlanStore = create<DailyPlanStore>((set, get) => ({
   plan: null,
   loading: false,
   claiming: null,
+  open: false,
+  setOpen: (open) => set({ open }),
   error: null,
   load: () => {
     if (!isSupabaseConfigured) return Promise.resolve();
@@ -40,7 +45,7 @@ export const useDailyPlanStore = create<DailyPlanStore>((set, get) => ({
         const plan = data as DailyPlan | null;
         set({ plan: plan && Array.isArray(plan.goals) && plan.streak ? plan : null, error: null });
       } catch (e) {
-        // Older databases without migration 015 just don't show a plan.
+        // Older databases without migration 016 just don't show a plan.
         set({ error: (e as Error).message });
       } finally { set({ loading: false }); inFlight = null; }
     })();

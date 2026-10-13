@@ -55,7 +55,7 @@ export const useAcademicStore = create<AcademicStore>((set, get) => ({
       // Celebrate promotions/graduation found when a past semester closes.
       if (before && state.level > before.level) toast({ icon: '🎓', text: `Promoted to ${state.level}L!`, tone: 'good', ms: 5000 });
       if (before && !before.graduated && state.graduated) toast({ icon: '🎓', text: `You graduated with ${state.class_of_degree}!`, tone: 'good', ms: 7000 });
-    } catch { /* Older databases without migration 016 just hide academics. */ }
+    } catch { /* Older databases without migration 017 just hide academics. */ }
   },
   open: () => { set({ view: 'record', error: null, result: null, revealed: null }); void get().load(); useGameStore.getState().setActiveModal('academics'); },
   offerQuiz: async (lectureId) => {

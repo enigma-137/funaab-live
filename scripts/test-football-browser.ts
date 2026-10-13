@@ -95,6 +95,7 @@ async function run(width: number, height: number, browsers: { james: any; sarah:
       window.requestAnimationFrame = (cb) => raf(() => setTimeout(() => cb(performance.now()), 16));
       localStorage.setItem('sb-student-test-auth-token', JSON.stringify(session));
       localStorage.setItem('funaab_mobile_tutorial_seen', 'true');
+      localStorage.setItem(`funaab:tour:v1:${session.user.id}`, 'done');
     }, session);
     page.setDefaultNavigationTimeout(300000);
     page.setDefaultTimeout(120000);

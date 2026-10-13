@@ -1,4 +1,4 @@
--- 017 Home background: comfortable / average / struggling. Chosen once, private to the student.
+-- 018 Home background: comfortable / average / struggling. Chosen once, private to the student.
 -- Additive only. Values mirror src/config/backgrounds.ts (scripts/test-backgrounds-db.ts checks drift).
 --  * Choosing pays a one-off welcome from home.
 --  * Money from home arrives every Sunday (Lagos); collect it once any day that Sunday–Saturday week.

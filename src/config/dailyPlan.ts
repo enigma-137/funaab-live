@@ -1,5 +1,5 @@
 // Today's Plan: 3 goals a day per student, drawn from this pool by the database.
-// Server copy: supabase/migrations/015_daily_plan.sql (scripts/test-daily-plan-db.ts fails on drift).
+// Server copy: supabase/migrations/016_daily_plan.sql (scripts/test-daily-plan-db.ts fails on drift).
 // 'db' goals are proven from existing ledgers (lectures, jobs, food, keke, Game Den);
 // 'worker' goals are reported by the Worker from trusted positions/actions.
 

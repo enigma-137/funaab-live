@@ -1,4 +1,4 @@
--- 019 Off-campus lodge: rent a self-contain outside the main gate.
+-- 020 Off-campus lodge: rent a self-contain outside the main gate.
 -- Additive only. Values mirror src/config/lodge.ts (scripts/test-lodge-db.ts checks drift).
 -- The lodge is your existing room restyled (hostel_rooms.style = 'lodge'), so furniture, privacy
 -- and invites carry over unchanged. Rent is ₦2,000 a week, payable up to 2 weeks ahead. Past the

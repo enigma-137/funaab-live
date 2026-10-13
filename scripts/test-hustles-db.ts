@@ -1,4 +1,4 @@
-// Hustles (migration 018): room shop, POS/photo/tutoring payouts, shared daily cap, errand escrow.
+// Hustles (migration 019): room shop, POS/photo/tutoring payouts, shared daily cap, errand escrow.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npm run test:hustles:db
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ async function main() {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
-  const sql018 = fs.readFileSync(path.join(dir, '018_hustles.sql'), 'utf8');
+  const sql018 = fs.readFileSync(path.join(dir, '019_hustles.sql'), 'utf8');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
   const rows = async (sql: string, p: unknown[] = []) => (await db.query(sql, p)).rows as any[];
   const one = async (sql: string, p: unknown[] = []) => (await rows(sql, p))[0];
@@ -76,7 +76,7 @@ async function main() {
   assert.equal((await call(ada, 'select collect_shop() r')).r.paid, 12 * 90, 'capped at 15 sales a day (3 already)');
   assert.equal((await call(ada, 'select shop_state() s')).s.items.find((i: any) => i.item === 'snacks').units, 15, 'unsold stock stays on the shelf');
 
-  // Struggling students get the 017 hustle bonus on shop sales.
+  // Struggling students get the 018 hustle bonus on shop sales.
   const tunde = await student('Tunde', 'struggling');
   await call(tunde, "select restock_shop('data')");
   await db.query("update room_shops set selling_since=now()-interval '41 minutes' where user_id=$1", [tunde]);

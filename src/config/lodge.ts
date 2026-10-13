@@ -1,6 +1,6 @@
 // Off-campus lodge ("self-contain") outside the main gate. Your same room and furniture, restyled,
 // for weekly rent. Miss rent past the grace period and you move back to the free hostel room.
-// Server copy: supabase/migrations/019_off_campus_lodge.sql (scripts/test-lodge-db.ts checks drift).
+// Server copy: supabase/migrations/020_off_campus_lodge.sql (scripts/test-lodge-db.ts checks drift).
 type Point = [number, number, number];
 
 export const LODGE = {

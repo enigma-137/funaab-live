@@ -1,4 +1,4 @@
--- 020 Weekly College League. Additive only; values mirror src/config/collegeLeague.ts
+-- 021 Weekly College League. Additive only; values mirror src/config/collegeLeague.ts
 -- (scripts/test-league-db.ts checks drift). Points come from existing server records:
 --  daily goal claimed 10 · lecture attended 5 · Game Den match 5 · hustle payment 2 ·
 --  penalty challenge win 15 (reported by the Worker). Per-student cap 200 a week.

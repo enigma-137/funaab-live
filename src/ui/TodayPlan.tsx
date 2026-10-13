@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useDailyPlanStore } from '../stores/dailyPlanStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
@@ -10,13 +10,12 @@ const BADGE_LABEL: Record<string, string> = { streak_3: '3-day', streak_7: '7-da
 
 /** Today's Plan: three goals a day + a streak. Shown once orientation is done; tap to expand. */
 export function TodayPlan() {
-  const { plan, claiming, error, load, claim } = useDailyPlanStore();
+  const { plan, claiming, error, load, claim, open, setOpen } = useDailyPlanStore();
   const orientationDone = useStudentStore((s) => !!s.journey?.orientation_completed);
   const modal = useGameStore((s) => s.activeModal);
   const riding = useGameStore((s) => s.isRidingKeke);
   const onCampus = useHostelStore((s) => s.roomId === 'world:funaab:main');
   const balance = useWalletStore((s) => s.balance);
-  const [open, setOpen] = useState(false);
 
   useEffect(() => { void load(); const t = setInterval(() => void load(), 60000); return () => clearInterval(t); }, []);
   // Lectures, food and keke are proven by the ledger, so a wallet change is a good moment to recheck.
