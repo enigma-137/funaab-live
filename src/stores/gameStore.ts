@@ -94,6 +94,7 @@ interface GameState {
     | 'campus_bet'
     | 'feedback'
     | 'earn'
+    | 'goals'
     | 'food_vendor'
     | 'football'
     | null;
@@ -160,6 +161,7 @@ interface GameState {
       | 'campus_bet'
     | 'feedback'
     | 'earn'
+    | 'goals'
       | 'food_vendor'
       | 'football'
       | null

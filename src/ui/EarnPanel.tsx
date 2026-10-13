@@ -6,6 +6,7 @@ import { CAMPUS_JOBS } from '../config/campusJobs';
 import { CAMPUS_BET_SHOP, CAMPUS_BET_STAKE } from '../config/campusBet';
 import { getCampusLocationById } from '../config/campusRegistry';
 import { ModalCloseButton } from './ModalCloseButton';
+import { taskBonusFor } from '../config/goals';
 
 type Way = {
   id: string;
@@ -40,6 +41,12 @@ export function EarnPanel() {
   const den = getCampusLocationById('ps-room');
 
   const ways: Way[] = [
+    {
+      id: 'tasks', icon: '🔥', title: 'Daily tasks',
+      pays: `${formatNaira(3 * 50)} a day + streak bonus up to ${formatNaira(taskBonusFor(7))}`,
+      how: 'Three small tasks every day. Finish all three for a bonus that grows with your streak.',
+      action: 'See today\'s tasks', go: () => setModal('goals'),
+    },
     {
       id: 'jobs', icon: '💼', title: 'Campus jobs',
       pays: `${formatNaira(Math.min(...jobPay))} to ${formatNaira(Math.max(...jobPay))} a job`,

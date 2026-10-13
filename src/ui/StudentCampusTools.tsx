@@ -16,6 +16,7 @@ import { orientationTasks } from '../config/studentJourney';
 import { normalizeAvatar } from '../config/avatar';
 import world from '../config/campusWorld';
 import './student.css';
+import { BadgeShelf } from './GoalsPanel';
 
 const AvatarEditor = lazy(() => import('./AvatarEditor'));
 const AvatarPreview = lazy(() =>
@@ -195,6 +196,7 @@ export function StudentCampusTools() {
                         onChange={(a) => setAvatar(normalizeAvatar(a))}
                       />
                     ) : (
+                      <>
                       <div className="student-avatar-layout">
                         <AvatarPreview config={user.avatarConfig} />
                         <div className="student-id">
@@ -209,6 +211,8 @@ export function StudentCampusTools() {
                           {journey?.orientation_completed && <span>Campus Explorer</span>}
                         </div>
                       </div>
+                      <BadgeShelf userId={user.id} />
+                      </>
                     )}
                   </Suspense>
                   <button
