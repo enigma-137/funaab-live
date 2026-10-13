@@ -13,6 +13,8 @@ import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
+import { useHustleStore } from '../../stores/hustleStore';
+import { toast } from '../../stores/toastStore';
 
 class NetworkManager {
   public room = 'world:funaab:main';
@@ -117,6 +119,16 @@ class NetworkManager {
       const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('The pitch did not answer. If this keeps happening, the multiplayer Worker may need redeploying.'));},10000);
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
       this.send({type:'football',requestId,op,...payload});
+    });
+  }
+  /** Hustles that need proof of place/time (POS, photos, tutoring, errand handover). */
+  public hustle(op:string,payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN)return Promise.reject(new Error('Reconnect to campus first'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('No reply from campus. Try again.'));},12000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'hustle',requestId,op,...payload});
     });
   }
   public roomChanged() { this.send({type:'room_changed'}); }
@@ -230,6 +242,7 @@ class NetworkManager {
       case 'campus_bet_settled': { window.dispatchEvent(new Event('campus-bet-settled')); const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
       case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); return; }
       case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
+      case 'hustle_notice': toast({ icon: data.icon || '💼', text: String(data.text || ''), tone: 'info', ms: 4500 }); void useHustleStore.getState().loadErrands(); return;
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
 
       case 'init':

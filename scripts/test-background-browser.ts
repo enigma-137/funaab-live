@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, openStudent, phonesUnderTest } from './browserHarness';
+import { launch, openStudent, phonesUnderTest, settledBox } from './browserHarness';
 
 const out = path.resolve(process.env.STUDENT_TEST_OUTPUT || 'test-results/background', 'screenshots');
 fs.mkdirSync(out, { recursive: true });
@@ -22,8 +22,7 @@ fs.mkdirSync(out, { recursive: true });
       try {
         const sheet = a.page.getByRole('dialog', { name: 'Where are you from?' });
         await sheet.waitFor();
-        await a.page.waitForTimeout(400);
-        const box = await sheet.boundingBox();
+        const box = await settledBox(a.page, sheet);
         assert(box.y + box.height <= height && box.width <= width - 12, 'chooser fits the phone');
         assert(await sheet.getByRole('button', { name: "That's me" }).isDisabled(), 'must pick first');
         assert.equal(await sheet.getByRole('radio').count(), 3);

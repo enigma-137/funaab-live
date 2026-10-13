@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, openStudent, phonesUnderTest } from './browserHarness';
+import { launch, openStudent, phonesUnderTest, settledBox } from './browserHarness';
 
 const out = path.resolve(process.env.STUDENT_TEST_OUTPUT || 'test-results/academics', 'screenshots');
 fs.mkdirSync(out, { recursive: true });
@@ -47,8 +47,7 @@ const q = (id: string, question: string, options: string[]) => ({ id, question, 
         await page.evaluate(async () => (await import('/src/stores/academicStore.ts' as any)).useAcademicStore.getState().offerQuiz('funaab-phy-201'));
         const quiz = page.getByRole('dialog', { name: 'Quick quiz' });
         await quiz.waitFor();
-        await page.waitForTimeout(400); // let the slide-up animation finish
-        const qb = await quiz.boundingBox();
+        const qb = await settledBox(page, quiz);
         assert(qb.width <= width - 12 && qb.height <= height * 0.9 && qb.y + qb.height <= height, `quiz fits the phone (${JSON.stringify(qb)})`);
         const submit = quiz.getByRole('button', { name: 'Submit' });
         assert(await submit.isDisabled(), 'cannot submit half a quiz');

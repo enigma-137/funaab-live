@@ -245,6 +245,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         case 'football':
           openFootball();
           break;
+        case 'hustle':
+          setActiveModal('hustles');
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -556,6 +559,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       campus_bet: 1,
       food_vendor: 1,
       football: 1,
+      hustle: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {

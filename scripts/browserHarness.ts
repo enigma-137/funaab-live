@@ -1,7 +1,8 @@
 // Shared Playwright harness: a signed-in student on a phone-sized page, with Supabase and the
-// Worker socket mocked. Needs Vite on 127.0.0.1:5178 started fresh with
-// VITE_SUPABASE_URL=https://student-test.supabase.co (hot reload splits store instances), and
-// PLAYWRIGHT_MODULE / CHROMIUM_EXECUTABLE when Playwright's own browser isn't installed.
+// Worker socket mocked. Start Vite with `npm run test:vite` (fresh: hot reload splits store
+// instances). It pins the socket to the local mock and turns analytics off, so a VITE_WS_URL or
+// TraceIQ key in .env can never point test students at the real game. Set PLAYWRIGHT_MODULE /
+// CHROMIUM_EXECUTABLE when Playwright's own browser isn't installed.
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -37,6 +38,8 @@ export async function openStudent(browser: any, student: Student, opts: {
     if (opts.supabase?.[last]) data = opts.supabase[last](body, req.method());
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
+  // Never let a test page reach real analytics.
+  await context.route('https://api.traceiq.run/**', (r: any) => r.abort());
   await context.route('**/campus-summary', (r: any) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ studentsOnline: 2, popular: [] }) }));
   const page = await context.newPage();
   page.on('pageerror', (e: Error) => { errors.push(`${student.username}: ${e.message}`); console.error('PAGE ERROR', e.message); });
@@ -54,10 +57,19 @@ export async function openStudent(browser: any, student: Student, opts: {
     window.requestAnimationFrame = (cb) => raf(() => setTimeout(() => cb(performance.now()), 16));
     localStorage.setItem('sb-student-test-auth-token', JSON.stringify(session));
     localStorage.setItem('funaab_mobile_tutorial_seen', 'true');
+    // Software-rendered headless Chrome can freeze CSS animations mid-way; check layout at rest.
+    addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style');
+      style.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}';
+      document.head.appendChild(style);
+    });
   }, session);
   page.setDefaultNavigationTimeout(300000);
   page.setDefaultTimeout(120000);
   await page.goto('http://127.0.0.1:5178/', { waitUntil: 'commit' });
+  const target = await page.evaluate(async () => (await import('/src/game/multiplayer/networkManager.ts' as any)).networkManager.targetWsUrl);
+  if (!/^ws:\/\/(127\.0\.0\.1|localhost):8787/.test(String(target)))
+    throw new Error(`Refusing to run: the app would connect to ${target}, not the local mock. Start Vite with \`npm run test:vite\`.`);
   await page.getByRole('button', { name: 'Enter Campus', exact: true }).click();
   await page.waitForFunction(async () => (await import('/src/stores/gameStore.ts' as any)).useGameStore.getState().connectionStatus === 'connected');
   return { context, page };
@@ -67,3 +79,16 @@ export async function openStudent(browser: any, student: Student, opts: {
 export const inPage = <T>(page: any, fn: () => Promise<T>) => page.evaluate(fn);
 
 export const overlaps = (a: any, b: any) => !!a && !!b && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/** Bounding box once a dialog has finished animating in (two identical reads 100 ms apart). */
+export async function settledBox(page: any, locator: any) {
+  let last = '';
+  for (let i = 0; i < 40; i++) {
+    const box = await locator.boundingBox();
+    const key = JSON.stringify(box && [Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height)]);
+    if (box && key === last) return box;
+    last = key;
+    await page.waitForTimeout(100);
+  }
+  return locator.boundingBox();
+}

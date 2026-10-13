@@ -102,6 +102,7 @@ interface GameState {
     | 'football'
     | 'academics'
     | 'background'
+    | 'hustles'
     | null;
 
   // Actions
@@ -174,6 +175,7 @@ interface GameState {
       | 'football'
       | 'academics'
       | 'background'
+      | 'hustles'
       | null
   ) => void;
   toggleDebugPhysics: () => void;

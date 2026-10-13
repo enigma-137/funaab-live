@@ -44,6 +44,7 @@
     "test:hostel:compound": "tsx scripts/test-hostel-compound.ts",
     "test:football": "tsx scripts/test-football.ts && tsx scripts/test-football-worker.ts",
     "test:football:browser": "tsx scripts/test-football-browser.ts",
+    "test:vite": "VITE_SUPABASE_URL=https://student-test.supabase.co VITE_SUPABASE_ANON_KEY=test-anon VITE_WS_URL=ws://127.0.0.1:8787 VITE_TRACEIQ_PROJECT_ID= VITE_TRACEIQ_WRITE_KEY= vite --host 127.0.0.1 --port 5178 --strictPort",
     "test:ux:browser": "tsx scripts/test-ux-browser.ts",
     "test:daily": "tsx scripts/test-daily-plan.ts && tsx scripts/test-daily-plan-worker.ts",
     "test:daily:db": "tsx scripts/test-daily-plan-db.ts",
@@ -51,6 +52,9 @@
     "test:academics:browser": "tsx scripts/test-academics-browser.ts",
     "test:backgrounds:db": "tsx scripts/test-backgrounds-db.ts",
     "test:backgrounds:browser": "tsx scripts/test-background-browser.ts",
+    "test:hustles:db": "tsx scripts/test-hustles-db.ts",
+    "test:hustles": "tsx scripts/test-hustles-worker.ts",
+    "test:hustles:browser": "tsx scripts/test-hustles-browser.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
     "sim:economy": "tsx scripts/simulate-economy.ts"
   },

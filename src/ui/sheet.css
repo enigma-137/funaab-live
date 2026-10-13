@@ -121,3 +121,20 @@
 .bg-text b{font-family:'Outfit',system-ui,sans-serif;font-size:15px;color:#fff}
 .bg-stats{color:#fcd34d;font-weight:800}
 .bg-later{min-height:44px;padding:0 12px;color:#94a3b8;font-weight:700}
+
+/* Hustles sheet. */
+.hustle-card{padding:12px;border-radius:14px;background:#0b1222;border:1px solid #1e293b;display:flex;flex-direction:column;gap:8px}
+.hustle-card h3{font-family:'Outfit',system-ui,sans-serif;font-weight:800;font-size:14px}
+.hustle-card h3 small{color:#94a3b8;font-weight:600;font-size:11px;margin-left:6px}
+.hustle-shop{display:flex;flex-direction:column;gap:6px}
+.hustle-shop li,.hustle-errand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:10px;background:#0f172a;border:1px solid #1e293b}
+.hustle-shop li>span,.hustle-errand>span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12px}
+.hustle-shop small,.hustle-errand small{color:#94a3b8;font-size:11px}
+.hustle-errand.is-mine{border-color:#16a34a}
+.hustle-btn{min-height:40px;padding:0 12px;border-radius:10px;background:#134e4a;border:1px solid #2dd4bf55;color:#ecfdf5;font-weight:800;font-size:12px;white-space:nowrap}
+.hustle-btn:disabled{opacity:.45}
+.hustle-btn.is-quiet{background:transparent;border-color:#334155;color:#cbd5e1}
+.hustle-wide{width:100%}
+.hustle-row{display:flex;flex-wrap:wrap;gap:6px}
+.hustle-post{display:grid;grid-template-columns:1fr 84px auto;gap:6px}
+.hustle-post select,.hustle-post input{min-height:40px;min-width:0;padding:0 8px;border-radius:10px;background:#0f172a;border:1px solid #334155;color:#f8fafc;font-size:13px}

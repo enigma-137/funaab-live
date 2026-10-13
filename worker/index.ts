@@ -24,6 +24,7 @@ import {
 } from '../src/config/football';
 import { dailyGoal, isCampusNight, lagosDay } from '../src/config/dailyPlan';
 import { isInLoveGarden } from '../src/config/loveGarden';
+import { POS_KIOSK, PHOTO_SPOTS, PHOTO_RULES, ERRAND_RULES } from '../src/config/hustles';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -64,6 +65,8 @@ interface SessionData {
   footballAt?: number;
   /** Today's Plan progress already reported this session, keyed `${day}:${goal}`. */
   goalSent?: Record<string, number>;
+  /** Open POS kiosk shift (Worker-timed; cancelled if the student walks away). */
+  posShift?: { ref: string; startedAt: number };
 }
 
 interface PlayerState {
@@ -809,6 +812,71 @@ export class WorldRoomDO {
       .then(() => this.sendToConnections([session.connectionId], JSON.stringify({ type: 'daily_plan_refresh' })))
       .catch(() => { if (session.goalSent) session.goalSent[key] = sent; });
   }
+  /**
+   * Hustles that need proof of place or time. Amounts are fixed here or derived from the world;
+   * the database applies caps, cooldowns and idempotency again.
+   */
+  private async hustleCommand(session: SessionData, data: any) {
+    const op = String(data.op || '');
+    const now = Date.now();
+    const near = (p: readonly number[] | undefined, q: readonly number[], r: number) => !!p && Math.hypot(p[0] - q[0], p[2] - q[2]) <= r;
+    if (op === 'tutor_start' || op === 'tutor_submit') {
+      if (session.room !== LIBRARY_ROOM) throw new Error('Tutoring happens in the Library.');
+      if (op === 'tutor_start') return this.dbRpc('tutoring_start_trusted', { p_user: session.id });
+      const answers: Record<string, number> = {};
+      for (const [k, v] of Object.entries(data.answers ?? {})) if (/^[a-z0-9-]{1,32}$/.test(k) && Number.isInteger(v)) answers[k] = Number(v);
+      if (!/^[0-9a-f-]{36}$/i.test(String(data.session))) throw new Error('No tutoring session');
+      const r = await this.dbRpc('tutoring_submit_trusted', { p_user: session.id, p_session: data.session, p_answers: answers });
+      this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+      return r;
+    }
+    if (session.room !== 'world:funaab:main') throw new Error('Return to campus for this hustle.');
+    this.advanceTrustedPosition(session);
+    const pos = session.trustedPosition;
+    switch (op) {
+      case 'pos_start':
+        if (!near(pos, POS_KIOSK.serviceSpot, POS_KIOSK.radius)) throw new Error('Stand at the POS kiosk outside the Microfinance Bank.');
+        session.posShift ??= { ref: crypto.randomUUID(), startedAt: now };
+        return { endsAt: session.posShift.startedAt + POS_KIOSK.shiftSeconds * 1000 };
+      case 'pos_finish': {
+        const shift = session.posShift;
+        if (!shift) throw new Error('Start a shift first.');
+        if (!near(pos, POS_KIOSK.serviceSpot, POS_KIOSK.radius)) { session.posShift = undefined; throw new Error('You left the kiosk, so the shift was cancelled.'); }
+        if (now - shift.startedAt < POS_KIOSK.shiftSeconds * 1000) throw new Error('Finish serving customers first.');
+        session.posShift = undefined;
+        const paid = await this.dbRpc('hustle_pay_trusted', { p_user: session.id, p_hustle: 'pos', p_ref: shift.ref, p_amount: POS_KIOSK.pay });
+        this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+        return { paid };
+      }
+      case 'photo': {
+        const spot = PHOTO_SPOTS.find((p) => p.id === data.spot);
+        if (!spot || !near(pos, spot.position, spot.radius)) throw new Error('Go to a photo spot (Love Garden or Sports Centre).');
+        // Clients: other real students standing near the spot (their trusted positions).
+        const clients = new Set<string>();
+        for (const peer of this.sessions.values())
+          if (peer.id !== session.id && peer.room === session.room && near(peer.trustedPosition, spot.position, PHOTO_RULES.clientRadius)) clients.add(peer.id);
+        const n = Math.min(PHOTO_RULES.maxClients, clients.size);
+        const paid = await this.dbRpc('hustle_pay_trusted', { p_user: session.id, p_hustle: 'photo', p_ref: crypto.randomUUID(), p_amount: PHOTO_RULES.base + PHOTO_RULES.perClient * n });
+        this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+        return { paid, clients: n };
+      }
+      case 'errand_handover': {
+        const id = String(data.errand || '');
+        if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error('Unknown errand');
+        const e = await this.dbRpc('errand_for_trusted', { p_errand: id });
+        if (!e || e.status !== 'accepted' || e.runner !== session.id) throw new Error('This errand is not yours to hand over.');
+        const poster = [...this.sessions.values()].find((p) => p.id === e.poster && p.room === session.room);
+        if (!poster) throw new Error('The student who posted it is not on campus right now.');
+        this.advanceTrustedPosition(poster);
+        if (!pos || !near(poster.trustedPosition, pos, ERRAND_RULES.handoverRadius)) throw new Error('Walk up to them to hand it over.');
+        const r = await this.dbRpc('errand_complete_trusted', { p_errand: id, p_runner: session.id });
+        this.sendToConnections([session.connectionId, poster.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+        this.sendToConnections([poster.connectionId], JSON.stringify({ type: 'hustle_notice', icon: '✅', text: `@${session.username} finished your errand` }));
+        return r;
+      }
+      default: throw new Error('Unknown hustle.');
+    }
+  }
   /** Love Garden goals, from the trusted (speed-limited) position, never the client's claim. */
   private loveGardenGoals(session: SessionData, animation: string) {
     const pos = session.trustedPosition;
@@ -1189,6 +1257,13 @@ export class WorldRoomDO {
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
+          case 'hustle': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: await this.hustleCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
           case 'football': {
             const current = this.sessions.get(webSocket);
             if (!current) return;
@@ -1254,6 +1329,10 @@ export class WorldRoomDO {
               player.rotation = rotation;
               player.animation = animation;
               this.loveGardenGoals(current, animation);
+              if (current.posShift && current.trustedPosition && Math.hypot(current.trustedPosition[0] - POS_KIOSK.serviceSpot[0], current.trustedPosition[2] - POS_KIOSK.serviceSpot[2]) > POS_KIOSK.radius + 1) {
+                current.posShift = undefined;
+                webSocket.send(JSON.stringify({ type: 'hustle_notice', icon: '🏧', text: 'You left the POS kiosk, so the shift ended unpaid.' }));
+              }
 
               player.lastUpdated = Date.now();
               if (this.dirtyPlayerIds.has(sessionConnId)) this.scheduleBatchBroadcast();
@@ -1779,7 +1858,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet', 'trusted_catchup', 'football', 'feedback', 'held_item'],
+          features: ['campus_bet', 'trusted_catchup', 'football', 'daily_plan', 'hustles', 'feedback', 'held_item'],
           timestamp: Date.now(),
         }),
         {

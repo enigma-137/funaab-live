@@ -46,6 +46,7 @@ import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
 import { AcademicSheet } from './ui/AcademicSheet';
+import { HustlesSheet } from './ui/HustlesSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
@@ -185,6 +186,7 @@ export const App: React.FC = () => {
       {activeModal === 'ps_match' && <PSPenaltyGame />}
       {activeModal === 'football' && <FootballPanel />}
       {activeModal === 'academics' && <AcademicSheet />}
+      {activeModal === 'hustles' && <HustlesSheet />}
       {!isInClassroom && <BackgroundGate />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}
