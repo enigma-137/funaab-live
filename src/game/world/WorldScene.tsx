@@ -16,7 +16,6 @@ import { LocalPlayer } from '../player/LocalPlayer';
 import { RemotePlayer } from '../player/RemotePlayer';
 import { KekeVehicle } from '../vehicles/KekeVehicle';
 import { SecurityOfficers } from '../npc/SecurityOfficers';
-import { CampusStudents } from '../npc/CampusStudents';
 import { TouchInputController } from '../controls/TouchInputController';
 import { TapRippleEffect } from '../controls/TapRippleEffect';
 import { useGameStore } from '../../stores/gameStore';
@@ -53,7 +52,6 @@ export const WorldScene: React.FC = () => {
 
             {/* Campus Security Officers (Patrol & Lawn Rule Enforcement) */}
             {!hostel && <SecurityOfficers />}
-            {!hostel && <CampusStudents />}
 
             {/* Local Controlled Player (with Kinematic RigidBody) */}
             <LocalPlayer offCampus={hostel} />

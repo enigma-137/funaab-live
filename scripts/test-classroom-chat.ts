@@ -24,13 +24,19 @@ async function main() {
     const a = await join(1), b = await join(2), outside = await join(3);
     await a.packet({ type: 'lecture_enter', lectureId: 'fst-101', seatNumber: 1 });
     await b.packet({ type: 'lecture_enter', lectureId: 'fst-101', seatNumber: 2 });
+    // Classmates see each other: the second student's snapshot lists the first, the first is told.
+    const snap = b.messages.find((m) => m.type === 'lecture_room_snapshot');
+    assert(Object.values<any>(snap.roomState.activeStudents).some((st) => st.username === 'S1' && st.seatNumber === 1), 'snapshot lists real classmates');
+    assert(a.messages.some((m) => m.type === 'lecture_student_joined' && m.student.username === 'S2' && m.student.seatNumber === 2), 'classmates told who sat down');
+    assert(!outside.messages.some((m) => m.type === 'lecture_student_joined'), 'outsiders are not');
+    assert(client.includes("case 'lecture_room_snapshot'") && client.includes("case 'lecture_student_joined'"), 'client shows real classmates');
     await a.packet({ type: 'lecture_chat', lectureId: 'fst-101', text: 'Good afternoon class' });
     const got = (s: Socket) => s.messages.filter((m) => m.type === 'lecture_chat_message');
     assert.equal(got(b).length, 1, 'classmate receives it');
     assert.equal(got(b)[0].text, 'Good afternoon class');
     assert.equal(got(a).length, 1, 'sender sees their own message');
     assert.equal(got(outside).length, 0, 'students outside the class do not');
-    console.log('CLASSROOM CHAT PASSED: client/Worker message types match, classmates receive, outsiders do not.');
+    console.log('CLASSROOM CHAT PASSED: real classmates listed in seats, client/Worker message types match, classmates receive, outsiders do not.');
   } finally { (globalThis as any).WebSocket = oldWS; (globalThis as any).setInterval = oldInterval; }
 }
 main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });

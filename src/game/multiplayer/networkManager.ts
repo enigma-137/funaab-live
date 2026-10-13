@@ -372,6 +372,31 @@ class NetworkManager {
         break;
       }
 
+      // Real classmates in your lecture (seat, hand raised). The server only sends these to the class.
+      case 'lecture_room_snapshot':
+      case 'lecture_student_joined':
+      case 'lecture_student_left':
+      case 'lecture_hand_raise_sync': {
+        const lecture = useLectureStore.getState();
+        const state = lecture.classroomState;
+        if (!state) break;
+        const students = { ...state.activeStudents };
+        const toSeat = (st: any) => ({ connectionId: st.connectionId, username: st.username, college: st.college, seatNumber: st.seatNumber, handRaised: !!st.isHandRaised });
+        if (data.type === 'lecture_room_snapshot') {
+          if (data.lectureId && data.lectureId !== state.lectureId) break;
+          for (const k of Object.keys(students)) delete students[k];
+          for (const st of Object.values<any>(data.roomState?.activeStudents || {})) if (st.connectionId !== this.connectionId) students[st.connectionId] = toSeat(st);
+        } else if (data.type === 'lecture_student_joined') {
+          if (data.student && data.student.connectionId !== this.connectionId) students[data.student.connectionId] = toSeat(data.student);
+        } else if (data.type === 'lecture_student_left') {
+          delete students[data.connectionId];
+        } else if (students[data.connectionId]) {
+          students[data.connectionId] = { ...students[data.connectionId], handRaised: !!data.isHandRaised };
+        }
+        lecture.syncClassroomState({ ...state, activeStudents: students });
+        break;
+      }
+
       case 'lecture_chat_message': {
         // Classroom chat: tag it with this class so it shows in the class chat, not campus chat.
         const lectureId = data.lectureId || useLectureStore.getState().currentLecture?.id;

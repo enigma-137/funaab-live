@@ -12,7 +12,6 @@ import {
   FACE_BOARD,
   HALL_STANDING_VIEW,
   getLectureHall,
-  hallNpcPopulation,
   hallSeatPositions,
   type HallSeat,
 } from '../../config/lectureHalls';
@@ -61,10 +60,6 @@ export const ClassroomScene: React.FC = () => {
 
   const hall = getLectureHall(currentHallId);
   const seats = useMemo(() => hallSeatPositions(hall), [hall]);
-  // Deterministic per-hall crowd built from the shared NPC appearance system (config memoised so
-  // AvatarBody doesn't rebuild its geometry on every render).
-  const npcs = useMemo(() => hallNpcPopulation(hall).map((n) => ({ ...n, config: npcAppearance(n.id) })), [hall]);
-  const npcBySeat = useMemo(() => new Map(npcs.filter((n) => n.seatNumber).map((n) => [n.seatNumber!, n])), [npcs]);
   const accentMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: hall.accent, roughness: 0.5 }), [hall.accent]);
   const markerMaterial = useMemo(
     () => new THREE.MeshBasicMaterial({ color: hall.accent, transparent: true, opacity: 0.85, side: THREE.DoubleSide }),
@@ -216,9 +211,8 @@ export const ClassroomScene: React.FC = () => {
           ? null
           : Object.values(activeStudentsMap).find((s) => s.seatNumber === seat.seatNumber) ||
             Object.values(players).find((p) => p.currentLectureId === currentLecture?.id && p.seatNumber === seat.seatNumber);
-        // NPCs give their seat up to any real student.
-        const npc = !isMySeat && !realStudent ? npcBySeat.get(seat.seatNumber) : undefined;
-        const isFree = !isMySeat && !realStudent && !npc;
+        // Only real students sit in a hall; every other seat is free.
+        const isFree = !isMySeat && !realStudent;
         const studentHandRaised = isMySeat ? isHandRaised : Boolean((realStudent as { handRaised?: boolean } | null)?.handRaised);
         const selectable = isFree && canPickSeat;
 
@@ -251,11 +245,6 @@ export const ClassroomScene: React.FC = () => {
               </Html>
             )}
 
-            {npc && (
-              <group position={[0, 0, CHAIR_OFFSET_Z]} rotation={[0, npc.rotY, 0]}>
-                <AvatarBody config={npc.config} identity={npc.id} animation="sit" />
-              </group>
-            )}
 
             {(isMySeat || realStudent) && (
               <group position={[0, 0, CHAIR_OFFSET_Z]} rotation={[0, FACE_BOARD, 0]}>
@@ -284,12 +273,6 @@ export const ClassroomScene: React.FC = () => {
         );
       })}
 
-      {/* Standing NPC students in the aisles */}
-      {npcs.filter((n) => !n.seatNumber).map((n) => (
-        <group key={n.id} position={n.pos} rotation={[0, n.rotY, 0]}>
-          <AvatarBody config={n.config} identity={n.id} animation="idle" />
-        </group>
-      ))}
     </group>
   );
 };
