@@ -1,5 +1,5 @@
 import { CAMPUS_SPAWN } from '../../config/campusLocations';
-import { HELD_ITEM_MS, isHeldKind, type HeldKind } from '../../config/heldItems';
+import { TABLE_ITEM_MS, isHeldKind, type HeldKind } from '../../config/heldItems';
 import { useHostelStore } from '../../stores/hostelStore';
 import { useInputStore } from '../../stores/inputStore';
 import { normalizeAvatar } from '../../config/avatar';
@@ -338,7 +338,7 @@ class NetworkManager {
       case 'held_item': {
         // Another student bought food or a drink: show it in their hand.
         if (data.connectionId !== this.connectionId && isHeldKind(data.kind)) {
-          const ms = Math.min(Math.max(Number(data.ms) || 0, 0), HELD_ITEM_MS);
+          const ms = Math.min(Math.max(Number(data.ms) || 0, 0), TABLE_ITEM_MS);
           gameStore.updatePlayer(data.connectionId, { heldItem: { kind: data.kind, until: Date.now() + ms } });
         }
         break;
@@ -759,8 +759,8 @@ class NetworkManager {
   }
 
   /** Tell the room this student is now carrying something they bought. */
-  public holdItem(kind: HeldKind) {
-    this.send({ type: 'held_item', kind });
+  public holdItem(kind: HeldKind, ms: number) {
+    this.send({ type: 'held_item', kind, ms });
   }
 
   public updateAvatar(user: PlayerProfile) {

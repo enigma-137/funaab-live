@@ -4,7 +4,7 @@ import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campus
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, advanceKekeElapsed, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
-import { HELD_ITEM_KINDS, HELD_ITEM_MS } from '../src/config/heldItems';
+import { HELD_ITEM_KINDS, HELD_ITEM_MS, TABLE_ITEM_MS } from '../src/config/heldItems';
 import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
@@ -1181,9 +1181,11 @@ export class WorldRoomDO {
             const session = this.sessions.get(webSocket);
             if (!session || !HELD_ITEM_KINDS.includes(data.kind)) return;
             const now = Date.now();
-            if (session.heldItemAt && now - session.heldItemAt < 1500) return;
+            if (session.heldItemAt && now - session.heldItemAt < 1000) return;
             session.heldItemAt = now;
-            this.broadcastToRoom(session.room, JSON.stringify({ type: 'held_item', connectionId: sessionConnId, kind: data.kind, ms: HELD_ITEM_MS }));
+            // In hand for a minute, on a restaurant table for up to 10, or 0 to put it away.
+            const ms = data.ms === undefined ? HELD_ITEM_MS : Math.min(Math.max(Math.round(Number(data.ms)) || 0, 0), TABLE_ITEM_MS);
+            this.broadcastToRoom(session.room, JSON.stringify({ type: 'held_item', connectionId: sessionConnId, kind: data.kind, ms }));
             break;
           }
           case 'avatar_update': {

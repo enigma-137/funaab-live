@@ -40,6 +40,19 @@ const foodCourtSeats = [-4.5, 4.5].flatMap((x, table) =>
     rotation: side === -1 ? 0 : Math.PI,
   })),
 );
+/** Restaurant seats with a table in front: food bought here is served on the table. */
+export const DINING_SPOTS = [
+  // Floral World: round tables, top at 0.89 m, the table centre 0.8 m in front of each chair.
+  ...restaurantDiningSeats.map((s) => ({ position: s.position, tableTop: 0.89, reach: 0.45 })),
+  // Buka (food court) picnic tables: top at 0.8 m, centre 1.25 m in front of each bench.
+  ...foodCourtSeats.map((s) => ({ position: s.position, tableTop: 0.8, reach: 0.85 })),
+];
+/** The table spot (height and distance in front) for someone sitting at this position, if any. */
+export function diningSpotAt(p: [number, number, number] | undefined) {
+  if (!p) return null;
+  const spot = DINING_SPOTS.find((s) => Math.hypot(s.position[0] - p[0], s.position[2] - p[2]) < 0.4);
+  return spot ? { y: spot.tableTop, z: spot.reach } : null;
+}
 const library = locationById('library');
 const libraryFrontSeats = [-1, 1].map((side) => ({
   id: `library-front-bench-${side === -1 ? 'left' : 'right'}`,

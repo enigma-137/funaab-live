@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { PlayerState } from '../../types/game';
 import { AvatarModel } from './AvatarModel';
+import { diningSpotAt } from '../../config/campusWorld';
 import { useGameStore } from '../../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -73,6 +74,7 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
         avatarConfig={player.avatarConfig}
         animation={player.animation || 'idle'}
         held={player.heldItem}
+        table={player.animation === 'sit' ? diningSpotAt(player.position) : null}
       />
     </group>
   );

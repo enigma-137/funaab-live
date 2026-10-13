@@ -15,6 +15,22 @@ import { LECTURE_SCHEDULE } from '../../config/lectureSchedule';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
+import { useGameStore } from '../../stores/gameStore';
+
+/** Restaurant parasol that turns see-through while you sit at its table, so you can see your food. */
+function Parasol({ table, reach, position, radius, segments, color, castShadow }: {
+  table: [number, number]; reach: number; position: [number, number, number];
+  radius: number; segments: number; color: string; castShadow?: boolean;
+}) {
+  const under = useGameStore((s) => !!s.seatedAt && Math.hypot(s.seatedAt.position[0] - table[0], s.seatedAt.position[2] - table[1]) < reach + 0.2);
+  return (
+    <mesh position={position} castShadow={castShadow && !under}>
+      <coneGeometry args={[radius, 0.6, segments]} />
+      {/* Always transparent: switching it later would need a shader recompile; only opacity changes. */}
+      <meshStandardMaterial color={color} transparent opacity={under ? 0.18 : 1} depthWrite={!under} />
+    </mesh>
+  );
+}
 
 export const CampusEnvironment: React.FC = () => {
   const trees = avenueTrees;
@@ -402,10 +418,7 @@ export const CampusEnvironment: React.FC = () => {
                 <boxGeometry args={[2.4, 0.8, 1.6]} />
                 <meshStandardMaterial color="#78350f" />
               </mesh>
-              <mesh position={[0, 2.2, 0]}>
-                <coneGeometry args={[1.6, 0.6, 8]} />
-                <meshStandardMaterial color="#f59e0b" />
-              </mesh>
+              <Parasol table={[locationPosition('food-court')[0] + x, locationPosition('food-court')[2] + 3]} reach={1.6} position={[0, 2.2, 0]} radius={1.6} segments={8} color="#f59e0b" />
               <mesh position={[0, 1.2, 0]}>
                 <cylinderGeometry args={[0.04, 0.04, 2.2, 8]} />
                 <meshStandardMaterial color="#475569" />
@@ -840,10 +853,7 @@ export const CampusEnvironment: React.FC = () => {
                 <meshStandardMaterial color="#e2e8f0" metalness={0.9} />
               </mesh>
               {/* Parasol Canopy */}
-              <mesh position={[0, 2.7, 0]} castShadow>
-                <coneGeometry args={[1.6, 0.6, 12]} />
-                <meshStandardMaterial color={i === 0 ? '#10b981' : '#f59e0b'} />
-              </mesh>
+              <Parasol table={[locationPosition('floral-world')[0] + x, locationPosition('floral-world')[2] + 1.8]} reach={1.2} position={[0, 2.7, 0]} radius={1.6} segments={12} color={i === 0 ? '#10b981' : '#f59e0b'} castShadow />
               {/* Chairs around table */}
               {[-0.8, 0.8].map((cz, ci) => (
                 <mesh key={ci} position={[0, 0.45, cz]} castShadow>

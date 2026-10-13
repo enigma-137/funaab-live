@@ -1,4 +1,5 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
+import { diningSpotAt } from '../../config/campusWorld';
 import { seatPosition } from '../../config/kekeSimulation';
 import { useHostelStore } from '../../stores/hostelStore';
 import React, { useRef, useEffect } from 'react';
@@ -51,6 +52,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     currentKekeId,
     myAnimation,
     myHeldItem,
+    seatedAt,
     setMyPosition,
     setMyRotation,
     setMyAnimation,
@@ -69,6 +71,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       currentKekeId: s.currentKekeId,
       myAnimation: s.myAnimation,
       myHeldItem: s.myHeldItem,
+      seatedAt: s.seatedAt,
       setMyPosition: s.setMyPosition,
       setMyRotation: s.setMyRotation,
       setMyAnimation: s.setMyAnimation,
@@ -680,6 +683,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           animation={myAnimation}
           isLocal
           held={myHeldItem}
+          table={seatedAt && seatedAt.animation !== 'sleep' ? diningSpotAt(seatedAt.position) : null}
         />
       </group>
     </RigidBody>

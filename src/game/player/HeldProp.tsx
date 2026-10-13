@@ -17,6 +17,9 @@ const M = {
   cap: mat('#1d6fd6'),
   malt: mat('#3b1d0e', { roughness: 0.3 }),
   label: mat('#d8a531', { roughness: 0.5 }),
+  plate: mat('#fafafa', { roughness: 0.3 }),
+  jollof: mat('#d9541e', { roughness: 0.85 }),
+  chicken: mat('#a8571f', { roughness: 0.7 }),
 };
 const G = {
   pack: new THREE.BoxGeometry(0.2, 0.07, 0.15),
@@ -30,9 +33,14 @@ const G = {
   neck: new THREE.CylinderGeometry(0.012, 0.028, 0.045, 12),
   cap: new THREE.CylinderGeometry(0.014, 0.014, 0.018, 10),
   label: new THREE.CylinderGeometry(0.031, 0.031, 0.06, 12),
+  plate: new THREE.CylinderGeometry(0.14, 0.11, 0.018, 20),
+  mound: new THREE.SphereGeometry(0.085, 14, 8),
+  drumstick: new THREE.SphereGeometry(0.04, 10, 6),
 };
 
-export function HeldProp({ kind }: { kind: HeldKind }) {
+/** `served`: standing on a table (origin at the table top) instead of in a hand. */
+export function HeldProp({ kind, served = false }: { kind: HeldKind; served?: boolean }) {
+  if (served) return <group scale={1.35}><ServedProp kind={kind} /></group>;
   switch (kind) {
     case 'pack': // the classic white takeaway pack
       return (
@@ -68,5 +76,40 @@ export function HeldProp({ kind }: { kind: HeldKind }) {
         </group>
       );
     }
+  }
+}
+
+/** Food and drinks on a restaurant table: rice on a plate, everything else standing upright. */
+function ServedProp({ kind }: { kind: HeldKind }) {
+  switch (kind) {
+    case 'pack': // a plate of jollof with chicken
+      return (
+        <group>
+          <mesh geometry={G.plate} material={M.plate} position={[0, 0.009, 0]} castShadow />
+          <mesh geometry={G.mound} material={M.jollof} position={[-0.02, 0.025, 0]} scale={[1, 0.45, 0.9]} />
+          <mesh geometry={G.drumstick} material={M.chicken} position={[0.06, 0.04, 0.02]} scale={[1.4, 0.8, 1]} />
+        </group>
+      );
+    case 'wrap':
+      return (
+        <group>
+          <mesh geometry={G.plate} material={M.plate} position={[0, 0.009, 0]} castShadow />
+          <group position={[0, 0.05, 0]} rotation={[0, 0.5, Math.PI / 2]}>
+            <mesh geometry={G.wrap} material={M.paper} />
+            <mesh geometry={G.wrapTop} material={M.meat} position={[0, 0.098, 0]} />
+          </group>
+        </group>
+      );
+    case 'bowl':
+      return (
+        <group position={[0, 0.033, 0]}>
+          <mesh geometry={G.bowl} material={M.bowl} castShadow />
+          <mesh geometry={G.noodles} material={M.noodles} position={[0, 0.028, 0]} />
+          <mesh geometry={G.egg} material={M.egg} position={[0.025, 0.03, 0.01]} scale={[1, 0.45, 1]} />
+        </group>
+      );
+    default:
+      // Bottles: the hand version already stands upright; lift it so its base sits on the table.
+      return <group position={[0.06, 0.045, -0.035]}><HeldProp kind={kind} /></group>;
   }
 }

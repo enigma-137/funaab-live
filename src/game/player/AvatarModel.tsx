@@ -17,6 +17,8 @@ interface AvatarModelProps {
   animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
   isLocal?: boolean;
   held?: HeldItem | null;
+  /** Table spot when seated at a restaurant (see diningSpotAt). */
+  table?: { y: number; z: number } | null;
 }
 
 export const AvatarModel: React.FC<AvatarModelProps> = ({
@@ -27,6 +29,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   animation = 'idle',
   isLocal = false,
   held,
+  table,
 }) => {
   const { unreadDmsByPartner, openDm } = useSocialStore();
   const riding=useGameStore(s=>s.isRidingKeke);
@@ -85,7 +88,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
         </Html>
       )}
 
-      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement held={held} />
+      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement held={held} table={table} />
     </group>
   );
 };

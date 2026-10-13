@@ -5,8 +5,10 @@ export const HELD_ITEM_KINDS = ['pack', 'wrap', 'bowl', 'water', 'malt'] as cons
 export type HeldKind = (typeof HELD_ITEM_KINDS)[number];
 export type HeldItem = { kind: HeldKind; until: number };
 
-/** How long the item stays in hand. Mirrored in worker/index.ts. */
+/** How long the item stays in hand. */
 export const HELD_ITEM_MS = 60_000;
+/** Food served on a restaurant table stays until the student stands up, at most this long. */
+export const TABLE_ITEM_MS = 10 * 60_000;
 
 export const isHeldKind = (v: unknown): v is HeldKind => HELD_ITEM_KINDS.includes(v as HeldKind);
 

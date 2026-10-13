@@ -20,6 +20,7 @@ export const AvatarBody = memo(
     trackMovement = false,
     accessory,
     held,
+    table,
   }: {
     config: AvatarConfig;
     animation?: string;
@@ -28,6 +29,8 @@ export const AvatarBody = memo(
     accessory?: "security";
     /** Food or drink just bought, carried in the right hand until it expires. */
     held?: HeldItem | null;
+    /** Seated at a restaurant table: serve `held` on the table (height, distance in front). */
+    table?: { y: number; z: number } | null;
   }) => {
     const a = useMemo(() => normalizeAvatar(config), [config]);
     const seed = identitySeed(
@@ -42,7 +45,8 @@ export const AvatarBody = memo(
       knees = useRef<(THREE.Group | null)[]>([]);
     const skirt = useRef<THREE.Group>(null);
     const ankles = useRef<(THREE.Group | null)[]>([]);
-    const heldRef = useRef<THREE.Group>(null);
+    const heldRef = useRef<THREE.Group>(null),
+      servedRef = useRef<THREE.Group>(null);
     const arms = useRef<(THREE.Group | null)[]>([]),
       elbows = useRef<(THREE.Group | null)[]>([]);
     const motion = useRef({
@@ -306,8 +310,11 @@ export const AvatarBody = memo(
       s.phase += moving ? Math.min(speed, 12) * delta * 4.2 : 0;
       const swing = Math.sin(s.phase) * 0.62 * s.blend;
       // Right hand (i = 0) carries a purchase: forearm raised in front, item kept level.
-      const holding = !!held && !sleep && Date.now() < held.until;
+      const has = !!held && !sleep && Date.now() < held.until;
+      const served = has && seated && !!table;
+      const holding = has && !served;
       if (heldRef.current) heldRef.current.visible = holding;
+      if (servedRef.current) servedRef.current.visible = served;
       for (let i = 0; i < 2; i++) {
         const carry = holding && i === 0;
         const sign = i === 0 ? 1 : -1,
@@ -409,6 +416,12 @@ export const AvatarBody = memo(
       />
     );
     return (
+      <>
+      {held && table && (
+        <group ref={servedRef} position={[0, table.y, table.z]} visible={false}>
+          <HeldProp kind={held.kind} served />
+        </group>
+      )}
       <group ref={root} dispose={null}>
         <group ref={far} visible={false}>
           {part("torso", "top")}
@@ -504,6 +517,7 @@ export const AvatarBody = memo(
           ))}
         </group>
       </group>
+      </>
     );
   },
 );
