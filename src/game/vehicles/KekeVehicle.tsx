@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import {useGameStore} from '../../stores/gameStore';
 import {locationById,CAR_PARK_BAY} from '../../config/campusLocations';
 import {renderedKekes} from './kekePresentation';
+import {useDayNight,NIGHT_LIGHTS_FROM} from '../world/dayNight';
+import {glowMap} from '../world/NightLights';
 export function KekeVehicle({id}:{id:string}){
  const initial=useRef(id==='keke-1'?locationById('sports-centre').kekeStop:CAR_PARK_BAY);
  const k=useGameStore(s=>s.kekes[id]);
@@ -22,7 +24,17 @@ export function KekeVehicle({id}:{id:string}){
  return <group ref={kekeRef} position={initial.current} onClick={e=>{e.stopPropagation();book();}}>
    <Html position={[0,2.75,0]} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div style={{whiteSpace:'nowrap',background:'#243c30',color:'#fff6d6',borderRadius:6,padding:'4px 7px',fontSize:10}}>{id==='keke-1'?'Route Keke':k.phase==='IDLE'?'Car Park Keke · Book ride':`${k.currentStopName} · ${3-k.passengers.length} seats`}</div></Html>
       <KekeBody frontWheelRef={frontWheelRef} rearLeftWheelRef={rearLeftWheelRef} rearRightWheelRef={rearRightWheelRef}/>
+      <KekeHeadlights/>
     </group>;
+}
+
+/** After dark: brighter headlamps and a pool of light on the road ahead (no real light, cheap). */
+const beamMat=new THREE.MeshBasicMaterial({color:'#fff1c2',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-4});
+function KekeHeadlights(){
+ const night=useDayNight(s=>s.night);
+ React.useEffect(()=>{M.lamp.emissiveIntensity=1.2+2.4*night;beamMat.map=glowMap();beamMat.opacity=Math.min(1,night*1.1);beamMat.needsUpdate=true;},[night]);
+ if(night<NIGHT_LIGHTS_FROM)return null;
+ return <mesh material={beamMat} position={[0,.08,4.3]} rotation={[-Math.PI/2,0,0]} renderOrder={2}><planeGeometry args={[3,6.5]}/></mesh>;
 }
 
 
