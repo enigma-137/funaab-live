@@ -97,7 +97,8 @@ export const ClassroomHUD: React.FC = () => {
 
   const handleSendClassChat = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || !currentLecture) return;
+    // Only seated students are in the class's chat room on the server.
+    if (!chatInput.trim() || !currentLecture || !isSeated) return;
     networkManager.sendClassroomChat(currentLecture.id, chatInput.trim());
     setChatInput('');
   };
@@ -232,7 +233,8 @@ export const ClassroomHUD: React.FC = () => {
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Whisper in class..."
+                    placeholder={isSeated ? "Whisper in class..." : "Take a seat to chat with your class"}
+                    disabled={!isSeated}
                     maxLength={150}
                     className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500"
                   />
@@ -351,7 +353,8 @@ export const ClassroomHUD: React.FC = () => {
               type="text"
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
-              placeholder="Message classmates"
+              placeholder={isSeated ? "Message classmates" : "Take a seat to chat with your class"}
+              disabled={!isSeated}
               maxLength={150}
               enterKeyHint="send"
               className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-base text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none select-text"

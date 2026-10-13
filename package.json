@@ -16,6 +16,7 @@
     "test:department:db": "node scripts/test-department-db.cjs",
     "test:goals": "tsx scripts/test-goals.ts",
     "test:held-item": "tsx scripts/test-held-item.ts",
+    "test:classroom-chat": "tsx scripts/test-classroom-chat.ts",
     "test:goals:db": "node scripts/test-goals-db.cjs",
     "test:student:db": "node scripts/test-student-db.cjs",
     "test:student:browser": "node scripts/test-student-browser.cjs",

@@ -1,6 +1,6 @@
 import {useHostelStore} from '../stores/hostelStore';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -89,7 +89,9 @@ export const GameHUD: React.FC = () => {
   );
 
   const { balance } = useWalletStore();
-  const { messages } = useSocialStore();
+  // Classroom messages belong to the class chat only.
+  const allMessages = useSocialStore((s) => s.messages);
+  const messages = useMemo(() => allMessages.filter((m) => !m.lectureId), [allMessages]);
   const { activeJob, error: jobError, busy: jobBusy, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
   const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore(
     useShallow((s) => ({ isTouchDevice: s.isTouchDevice, triggerHaptic: s.triggerHaptic, setIsInputFocused: s.setIsInputFocused }))
