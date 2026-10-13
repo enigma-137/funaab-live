@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
 import { networkManager } from '../game/multiplayer/networkManager';
-import { X, Gift, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
+import { ModalCloseButton } from './ModalCloseButton';
 
 export const DailyRewardModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -32,9 +33,17 @@ export const DailyRewardModal: React.FC = () => {
     }
   };
 
+  const close = () => setActiveModal(null);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-sm rounded-3xl bg-slate-900 border-2 border-emerald-500/40 shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans'] text-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in" onClick={close}>
+      <div role="dialog" aria-modal="true" aria-label="Daily allowance" onClick={(e) => e.stopPropagation()} className="relative w-full max-w-sm rounded-3xl bg-slate-900 border-2 border-emerald-500/40 shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans'] text-center">
+        <ModalCloseButton onClose={close} label="Close daily allowance" style={{ position: 'absolute', top: 12, right: 12 }} />
         {/* Header */}
         <div className="px-6 pt-6 pb-2">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-600 to-amber-500 mx-auto flex items-center justify-center text-3xl shadow-xl mb-3 animate-bounce">

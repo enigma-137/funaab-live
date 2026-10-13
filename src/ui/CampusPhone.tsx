@@ -6,6 +6,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { formatNaira } from '../config/economy';
 import { openHostel } from './HostelLife';
 import { AppTile } from './phoneIcons';
+import { ModalCloseButton } from './ModalCloseButton';
 
 type App = { id: string; label: string; glyph: string; colors: [string, string]; open: () => void; badge?: number };
 
@@ -70,6 +71,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
   return (
     <div className="campus-phone-backdrop student-campus-dialog" onClick={onClose}>
       <div className="campus-phone" role="dialog" aria-modal="true" aria-label="Campus phone" onClick={(e) => e.stopPropagation()}>
+        <ModalCloseButton onClose={onClose} label="Close phone" style={{ position: 'absolute', top: -14, right: -14, zIndex: 2, borderRadius: 999, boxShadow: '0 4px 12px #0008' }} />
         <div className="campus-phone-screen">
           <div className="campus-phone-status">
             <span>{time}</span>
