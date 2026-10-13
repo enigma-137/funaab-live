@@ -382,6 +382,7 @@ export const GameHUD: React.FC = () => {
 
             {/* Redesigned Quick ATM / Wallet Badge */}
             <div
+              id="hud-wallet"
               onClick={() => setActiveModal('bank')}
               className="flex shrink-0 items-center gap-1.5 sm:gap-2.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-[20px] bg-[#0c221b]/90 hover:bg-[#0f2a22]/95 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-left transition group pointer-events-auto cursor-pointer"
               title="Open ATM & Bank"
@@ -749,7 +750,7 @@ export const GameHUD: React.FC = () => {
       {/* 3. BOTTOM BAR: PROXIMITY CHAT & LAWN STATUS */}
       <div className="flex items-end justify-between w-full gap-2 sm:gap-4 pointer-events-none">
         {/* Proximity Chat Window (Responsive & Touch-Friendly) */}
-        <div ref={chatBoxRef} className="w-full max-w-md pointer-events-auto">
+        <div ref={chatBoxRef} id="hud-chat" className="w-full max-w-md pointer-events-auto">
           {/* If on mobile and collapsed, show sleek floating chat toggle */}
           {isTouchDevice && !isChatExpanded ? (
             <button

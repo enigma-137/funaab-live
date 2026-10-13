@@ -40,7 +40,8 @@ import { PrivateChatModal } from './ui/PrivateChatModal';
 import { ReportUserModal } from './ui/ReportUserModal';
 import { CampusMapModal } from './ui/CampusMapModal';
 import { DmNotificationToast } from './ui/DmNotificationToast';
-import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
+import { CampusTourAutoStart } from './ui/CampusTourAutoStart';
+import { EarnPanel } from './ui/EarnPanel';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
 import { CampusBetModal } from './ui/CampusBetModal';
@@ -204,9 +205,10 @@ export const App: React.FC = () => {
       {activeModal === 'private_chat' && <PrivateChatModal />}
       {activeModal === 'report_user' && <ReportUserModal />}
       {activeModal === 'campus_map' && <CampusMapModal />}
+      {activeModal === 'earn' && <EarnPanel />}
 
-      {/* First-time Mobile Touch Tutorial Overlay */}
-      <MobileTutorialOverlay />
+      {/* First-visit guided tour (replaces the old touch-controls popup) */}
+      {!isInClassroom && <CampusTourAutoStart userId={user.id} />}
 
       {/* Dev Multiplayer & Physics Diagnostics HUD */}
       <DevDebugPanel />

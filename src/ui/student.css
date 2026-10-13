@@ -51,17 +51,17 @@
 
 /* Campus phone: a phone-shaped home screen of app tiles. */
 .campus-phone-backdrop { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; background:#06110bb3; backdrop-filter:blur(4px); }
-.campus-phone { position:relative; width:min(340px, 100%); height:min(660px, calc(100dvh - 32px)); padding:9px; border-radius:46px; background:linear-gradient(160deg,#2b3640,#10171d); box-shadow:0 30px 80px #000a, inset 0 0 0 1.5px #4a5866; }
+.campus-phone { position:relative; width:min(340px, 100%); height:min(680px, calc(100dvh - 32px)); padding:9px; border-radius:46px; background:linear-gradient(160deg,#2b3640,#10171d); box-shadow:0 30px 80px #000a, inset 0 0 0 1.5px #4a5866; }
 .campus-phone-screen { position:relative; height:100%; display:flex; flex-direction:column; overflow:hidden; border-radius:38px; padding:12px 16px 10px; color:white; font-family:'Plus Jakarta Sans',system-ui,sans-serif;
   background:radial-gradient(120% 70% at 20% 0%, #1fa463 0%, transparent 60%), radial-gradient(90% 60% at 100% 100%, #0e7490 0%, transparent 60%), linear-gradient(170deg,#0d3b2a,#0a2530 70%,#0b1b26); }
 .campus-phone-status { display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:700; padding:2px 8px 0; }
 .campus-phone-notch { width:84px; height:22px; border-radius:12px; background:#05080b; }
 .campus-phone-signal { display:flex; gap:5px; align-items:center; }
-.campus-phone-widget { margin:18px 4px 16px; padding:14px 16px; border-radius:22px; background:#ffffff1c; border:1px solid #ffffff26; backdrop-filter:blur(8px); }
+.campus-phone-widget { margin:12px 4px 12px; padding:12px 16px; border-radius:22px; background:#ffffff1c; border:1px solid #ffffff26; backdrop-filter:blur(8px); }
 .campus-phone-hello { font-family:'Outfit',system-ui,sans-serif; font-size:19px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .campus-phone-where { font-size:12px; opacity:.8; margin-top:2px; }
 .campus-phone-balance { font-family:'Outfit',system-ui,sans-serif; font-size:24px; font-weight:800; margin-top:8px; letter-spacing:-.3px; }
-.campus-phone-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px 6px; padding:0 2px; align-content:start; flex:1; overflow-y:auto; }
+.campus-phone-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 6px; padding:0 2px 4px; align-content:start; flex:1; overflow-y:auto; }
 .campus-phone-dock { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:8px 0 6px; padding:10px 14px 8px; border-radius:26px; background:#ffffff1f; border:1px solid #ffffff1f; }
 .campus-phone-dock .campus-app-label { display:none; }
 .campus-app { display:flex; flex-direction:column; align-items:center; gap:5px; background:none; border:0; color:white; padding:0; min-width:0; cursor:pointer; }

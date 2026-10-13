@@ -8,6 +8,8 @@ import { openHostel } from './HostelLife';
 import { AppTile } from './phoneIcons';
 import { ModalCloseButton } from './ModalCloseButton';
 import { useSoundStore } from '../game/audio/gameAudio';
+import { useInputStore } from '../stores/inputStore';
+import { startCampusTour } from './campusTour';
 
 type App = { id: string; label: string; glyph: string; colors: [string, string]; open: () => void; badge?: number };
 
@@ -42,8 +44,15 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     else setModal('friends');
   };
 
+  const replayTour = () => {
+    onClose();
+    // Let the phone close so the tour can point at the HUD behind it.
+    window.setTimeout(() => startCampusTour(user.id, useInputStore.getState().isTouchDevice), 250);
+  };
+
   const apps: App[] = [
     { id: 'profile', label: 'Profile', glyph: 'profile', colors: ['#34d399', '#059669'], open: onProfile },
+    { id: 'earn', label: 'Earn', glyph: 'earn', colors: ['#4ade80', '#15803d'], open: () => setModal('earn') },
     { id: 'hostel', label: 'Hostel', glyph: 'hostel', colors: ['#fb923c', '#c2410c'], open: () => openHostel() },
     { id: 'friends', label: 'Friends', glyph: 'friends', colors: ['#60a5fa', '#2563eb'], open: () => setModal('friends') },
     { id: 'jobs', label: 'Jobs', glyph: 'jobs', colors: ['#a78bfa', '#6d28d9'], open: () => setModal('campus_jobs') },
@@ -52,6 +61,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'daily', label: 'Allowance', glyph: 'daily', colors: ['#f87171', '#b91c1c'], open: () => setModal('daily_reward') },
     { id: 'feedback', label: 'Feedback', glyph: 'feedback', colors: ['#2dd4bf', '#0f766e'], open: () => setModal('feedback') },
     { id: 'sound', label: soundOn ? 'Sound on' : 'Sound off', glyph: soundOn ? 'soundOn' : 'soundOff', colors: soundOn ? ['#818cf8', '#4338ca'] : ['#94a3b8', '#475569'], open: () => useSoundStore.getState().toggle() },
+    { id: 'tour', label: 'Tour', glyph: 'tour', colors: ['#22d3ee', '#0e7490'], open: replayTour },
     { id: 'help', label: 'Help', glyph: 'help', colors: ['#94a3b8', '#475569'], open: () => setModal('help') },
     { id: 'signout', label: 'Sign out', glyph: 'signout', colors: ['#64748b', '#1e293b'], open: () => useAuthStore.getState().logout() },
   ];

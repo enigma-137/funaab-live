@@ -93,6 +93,7 @@ interface GameState {
     | 'campus_map'
     | 'campus_bet'
     | 'feedback'
+    | 'earn'
     | 'food_vendor'
     | 'football'
     | null;
@@ -158,6 +159,7 @@ interface GameState {
       | 'campus_map'
       | 'campus_bet'
     | 'feedback'
+    | 'earn'
       | 'food_vendor'
       | 'football'
       | null
