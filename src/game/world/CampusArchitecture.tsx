@@ -11,7 +11,10 @@ import {
   type Batch,
 } from "./campusVisualGeometry";
 import { CampusSign } from "./CampusSign";
-export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys";
+// COLBIOS massing shared with its colliders: 18m x 12m, open ground floor (G) under three
+// floors (FL each); the lobby wall sits behind the column line.
+export const COLBIOS = { W: 18, D: 12, G: 3.4, FL: 3.2, top: 3.4 + 3 * 3.2, lobbyFront: 3.4, columns: [-8.6, -4.3, 4.3, 8.6] };
+export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys" | "colbios";
 export function StaticBatches({ batches }: { batches: Batch[] }) {
   return (
     <group dispose={null}>
@@ -76,6 +79,59 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     sideWindows(b, W / 2, [-5, -1.7, 1.7, 5], [2.4, 6.75], 2);
     for (const x of [-9, -6, -3, 3, 6, 9])
       for (const y of [2.4, 6.75]) b.box([x, y, -front - 0.03], [1.2, 2.2, 0.06], "glass");
+  }
+  if (id === "colbios") {
+    // After the College of Biosciences photo: four storeys of pale-yellow render, maroon fins
+    // between the windows, cream floor bands and a maroon top fascia. The ground floor is an
+    // open lobby on maroon columns; the upper floors overhang it. Exported dimensions match
+    // the colliders in CampusExpansion.
+    const { W, D, G, FL, top } = COLBIOS, front = D / 2, back = -D / 2;
+    b.box([0, 0.1, 0], [W + 0.4, 0.2, D + 0.4], "curbDark");
+    // Ground floor: walls set back from the facade, a dark lobby and a stair rising to the right.
+    b.box([0, G / 2, (back + COLBIOS.lobbyFront) / 2], [W - 0.4, G, COLBIOS.lobbyFront - back], "clinicWall");
+    b.box([0, G / 2 - 0.1, COLBIOS.lobbyFront + 0.02], [7, G - 0.2, 0.06], "shadow");
+    for (const x of [-2.4, 0, 2.4]) b.box([x, 1.25, COLBIOS.lobbyFront + 0.07], [2.2, 2.5, 0.05], "glass");
+    b.box([0, 2.85, COLBIOS.lobbyFront + 0.08], [7.2, 0.12, 0.08], "clinicTrim");
+    for (let i = 0; i < 11; i++)
+      b.box([5 + i * 0.3, 0.15 + i * 0.3, COLBIOS.lobbyFront + 0.55], [0.32, 0.3, 1.1], "concrete");
+    b.box([6.6, 1.9, COLBIOS.lobbyFront + 1.12], [3.4, 0.08, 0.05], "metal", [0, 0, 0.78]);
+    // Columns carrying the overhang, on the facade line.
+    for (const x of COLBIOS.columns) b.box([x, G / 2, front - 0.3], [0.45, G, 0.45], "clinicTrim");
+    // Upper floors.
+    b.box([0, (G + top) / 2, 0], [W, top - G, D], "clinicWall");
+    for (let f = 0; f < 3; f++) {
+      const y = G + f * FL;
+      // Floor slab band, proud of the fins, and a cream spandrel band at sill height.
+      b.box([0, y + 0.1, 0.12], [W + 0.5, 0.35, D + 0.25], "ivory");
+      b.box([0, y + 0.75, front + 0.42], [W + 0.3, 0.8, 0.12], "ivory");
+      for (let bay = 0; bay < 12; bay++) {
+        const x = -W / 2 + 0.75 + bay * 1.5;
+        b.box([x, y + 2.05, front + 0.03], [1.05, 1.5, 0.06], "glass");
+        b.box([x, y + 2.05, front + 0.07], [0.04, 1.5, 0.04], "ivory");
+        // Window AC units on a scatter of bays, like the photo.
+        if ((bay * 7 + f * 3) % 5 === 0) b.box([x + 0.15, y + 2.55, front + 0.2], [0.5, 0.32, 0.3], "curb");
+      }
+    }
+    // Full-height maroon fins between bays.
+    for (let i = 0; i <= 12; i++)
+      b.box([-W / 2 + i * 1.5, (G + top) / 2, front + 0.3], [0.22, top - G, 0.6], "clinicTrim");
+    // Maroon fascia and a flat roof.
+    b.box([0, top + 0.45, 0.15], [W + 0.8, 0.9, D + 1.1], "clinicTrim");
+    b.box([0, top + 0.92, 0.15], [W + 0.4, 0.06, D + 0.7], "roofDark");
+    // Ends: fins and windows on both sides, and one cream stair-core strip.
+    for (const s of [-1, 1]) {
+      for (const z of [-4.5, -1.5, 1.5, 4.5]) b.box([s * (W / 2 + 0.2), (G + top) / 2, z], [0.4, top - G, 0.2], "clinicTrim");
+      for (let f = 0; f < 3; f++)
+        for (const z of [-3, 0, 3]) b.box([s * (W / 2 + 0.03), G + f * FL + 2.05, z], [0.06, 1.5, 2.2], "glass");
+    }
+    for (let f = 0; f < 3; f++) b.box([0, G + f * FL + 2, back - 0.04], [W - 1, 1.4, 0.06], "glass");
+    // Globe lamp post and hedges framing the entrance walk.
+    b.pole([7.5, 2.4, front + 3.2], 0.09, 4.8, "metal");
+    b.orb([7.5, 5.05, front + 3.2], [0.42, 0.42, 0.42], "curb");
+    for (const s of [-1, 1]) {
+      b.box([s * 6, 0.45, front + 1.3], [5.6, 0.9, 0.9], "leafDark");
+      for (let k = 0; k < 6; k++) b.orb([s * (3.6 + k * 0.95), 0.95, front + 1.3], [0.55, 0.3, 0.5], "foliage");
+    }
   }
   if (id === "colphys") {
     // Placeholder massing (no reference photograph yet): two storeys, terracotta bands and a
@@ -222,7 +278,7 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     for (const x of [-11.6, 11.6]) b.box([x, 0.55, 6], [0.8, 1.1, 4], "ivory");
   }
   // Modest side-wall windows keep oblique approach views from reading as blank boxes.
-  if (id !== "library" && id !== "coleng" && id !== "colphys") {
+  if (id !== "library" && id !== "coleng" && id !== "colphys" && id !== "colbios") {
     const sideX = id === "colerm" ? 7 : id === "colfhec" ? 10 : 11;
     for (const side of [-1, 1])
       for (const z of [-4, 0, 3]) {
@@ -278,6 +334,13 @@ const signs: Record<
     h: 1,
     title: "COLENG",
     sub: "COLLEGE OF ENGINEERING",
+  },
+  colbios: {
+    p: [0, COLBIOS.G - 0.5, COLBIOS.D / 2 + 0.16],
+    w: 5.4,
+    h: 0.75,
+    title: "COLBIOS",
+    sub: "COLLEGE OF BIOLOGICAL SCIENCES",
   },
   colphys: {
     p: [0, 5, 6.1],

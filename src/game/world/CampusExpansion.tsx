@@ -1,5 +1,5 @@
 import { CampusRoadFinish } from './CampusLandscape';
-import { CampusArchitecture } from './CampusArchitecture';
+import { CampusArchitecture, COLBIOS } from './CampusArchitecture';
 import { CampusSign } from './CampusSign';
 import { campusMaterials } from './campusVisualGeometry';
 import React, { useRef } from 'react';
@@ -43,6 +43,14 @@ export function CampusExpansion(){return <group>
           {/* Body (20m x 12m) plus the entrance pilasters; the dome sits on the roof out of reach. */}
           <CuboidCollider position={[0,4.25,0]} args={[10,4.25,6]}/>
           <CuboidCollider position={[-2.1,2.1,6.3]} args={[.25,2.1,.3]}/><CuboidCollider position={[2.1,2.1,6.3]} args={[.25,2.1,.3]}/>
+        </>:id==='colbios'?<>
+          <CampusArchitecture id="colbios"/>
+          {/* Lobby block behind the open ground floor, the stair, columns and entrance hedges. */}
+          <CuboidCollider position={[0,COLBIOS.G/2,(COLBIOS.lobbyFront-COLBIOS.D/2)/2]} args={[COLBIOS.W/2,COLBIOS.G/2,(COLBIOS.lobbyFront+COLBIOS.D/2)/2]}/>
+          <CuboidCollider position={[6.65,COLBIOS.G/2,COLBIOS.lobbyFront+.55]} args={[1.65,COLBIOS.G/2,.55]}/>
+          {COLBIOS.columns.map(x=><CuboidCollider key={x} position={[x,COLBIOS.G/2,COLBIOS.D/2-.3]} args={[.23,COLBIOS.G/2,.23]}/>)}
+          {[-6,6].map(x=><CuboidCollider key={x} position={[x,.45,COLBIOS.D/2+1.3]} args={[2.8,.45,.45]}/>)}
+          <CuboidCollider position={[7.5,2.4,COLBIOS.D/2+3.2]} args={[.12,2.4,.12]}/>
         </>:id==='library'?<>
           <CampusArchitecture id="library"/>
           <CuboidCollider position={[0,h/2,-2]} args={[w/2,h/2,(d-4)/2]}/>
@@ -54,9 +62,9 @@ export function CampusExpansion(){return <group>
           {id==='colcoms'&&<Block p={[-5,h/2+1,1]} s={[6,h+2,d+1]} m="glass"/>}
           <CuboidCollider position={[0,h/2,0]} args={[w/2,h/2,d/2]}/>
         </>}
-        {!['library','colvet','colphys'].includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
+        {!['library','colvet','colphys','colbios'].includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
       </RigidBody>
-      {!['library','colvet','colphys'].includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
+      {!['library','colvet','colphys','colbios'].includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
       {!['library','colvet'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
     </group>;
   })}
