@@ -13,6 +13,7 @@ import { useHostelStore } from './stores/hostelStore';
 import { useJobStore } from './stores/jobStore';
 import { StudentCampusTools } from './ui/StudentCampusTools';
 import { FeedbackButton } from './ui/FeedbackPanel';
+import { SoundToggle } from './ui/SoundToggle';
 import { CAMPUS_ENTRY_POSITION } from './config/studentJourney';
 import { GameHUD } from './ui/GameHUD';
 import { BankModal } from './ui/BankModal';
@@ -162,6 +163,7 @@ export const App: React.FC = () => {
 
       <StudentCampusTools />
       <FeedbackButton />
+      <SoundToggle />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />
 
       {/* Live Campus Activity Feed */}

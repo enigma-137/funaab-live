@@ -7,6 +7,7 @@ import { formatNaira } from '../config/economy';
 import { openHostel } from './HostelLife';
 import { AppTile } from './phoneIcons';
 import { ModalCloseButton } from './ModalCloseButton';
+import { useSoundStore } from '../game/audio/gameAudio';
 
 type App = { id: string; label: string; glyph: string; colors: [string, string]; open: () => void; badge?: number };
 
@@ -24,6 +25,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
   const setModal = useGameStore((s) => s.setActiveModal);
   const balance = useWalletStore((s) => s.balance);
   const unread = useSocialStore((s) => s.unreadDmCount);
+  const soundOn = useSoundStore((s) => s.enabled);
   const [time, setTime] = useState(lagosTime);
   useEffect(() => {
     const t = window.setInterval(() => setTime(lagosTime()), 15000);
@@ -49,6 +51,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'inventory', label: 'Bag', glyph: 'inventory', colors: ['#fbbf24', '#b45309'], open: () => setModal('inventory') },
     { id: 'daily', label: 'Allowance', glyph: 'daily', colors: ['#f87171', '#b91c1c'], open: () => setModal('daily_reward') },
     { id: 'feedback', label: 'Feedback', glyph: 'feedback', colors: ['#2dd4bf', '#0f766e'], open: () => setModal('feedback') },
+    { id: 'sound', label: soundOn ? 'Sound on' : 'Sound off', glyph: soundOn ? 'soundOn' : 'soundOff', colors: soundOn ? ['#818cf8', '#4338ca'] : ['#94a3b8', '#475569'], open: () => useSoundStore.getState().toggle() },
     { id: 'help', label: 'Help', glyph: 'help', colors: ['#94a3b8', '#475569'], open: () => setModal('help') },
     { id: 'signout', label: 'Sign out', glyph: 'signout', colors: ['#64748b', '#1e293b'], open: () => useAuthStore.getState().logout() },
   ];

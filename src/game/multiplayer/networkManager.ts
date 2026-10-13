@@ -8,6 +8,7 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
+import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
 
@@ -349,6 +350,7 @@ class NetworkManager {
       case 'private_chat_message': {
         const msg = data.message || data;
         if (msg && msg.text) {
+          if (msg.senderId && msg.senderId !== useAuthStore.getState().user?.id) gameSound.chime();
           socialStore.addDirectMessage({
             id: msg.id || `dm-${Date.now()}`,
             senderId: msg.senderId,

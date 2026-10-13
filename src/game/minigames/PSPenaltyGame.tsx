@@ -8,6 +8,7 @@ import { networkManager } from '../multiplayer/networkManager';
 import { X, Play, ArrowLeft, ArrowUp, ArrowRight } from 'lucide-react';
 import type { PSMatchState } from '../../types/game';
 import { PS_KICKS_EACH, type PSDirection, type PSLastRound } from '../../config/psPenalty';
+import { gameSound } from '../audio/gameAudio';
 
 const GAME_DEN = ECONOMY_CONFIG.GAME_DEN;
 
@@ -280,7 +281,12 @@ function MatchView({ match, isHost, isShooter, selectedDirection, onChoice, onEx
     timers.current = [];
     at(40, () => setPhase('shot'));
     if (!kick.goal) at(560, () => setPhase('rebound'));
-    at(700, () => setPhase('result'));
+    at(700, () => {
+      setPhase('result');
+      // Good for me: I scored, or I was in goal and saved it.
+      const mine = kick.shooter === (isHost ? 'host' : 'guest');
+      if (mine === kick.goal) gameSound.success(); else gameSound.soft();
+    });
     at(2100, () => { setPhase('idle'); setShown(null); });
     return () => timers.current.forEach(clearTimeout);
   }, [match.id, kick?.round]);
