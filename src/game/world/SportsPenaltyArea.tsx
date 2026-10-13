@@ -5,6 +5,14 @@ import { Html } from '@react-three/drei';
 import { FOOTBALL_PITCH, shotFlightPath, type FootballMatchState, type FootballShot, type Vec3 } from '../../config/football';
 import { useFootballStore } from '../../stores/footballStore';
 import { CampusSign } from './CampusSign';
+import { AvatarBody } from '../player/AvatarBody';
+import { npcAppearance } from '../../config/npcAppearance';
+
+// The keeper is a proper campus figure in a keeper's kit (bright jersey, dark bottoms).
+const KEEPER_LOOK = npcAppearance('sports-keeper', {
+  bodyType: 'masculine', hairstyle: 'low-cut', topStyle: 't-shirt', topColor: '#facc15',
+  bottomStyle: 'joggers', bottomColor: '#111827', shoeStyle: 'sneakers', shoeColor: '#f8fafc',
+});
 
 // Stable asset keys: Blender models can later replace these procedural meshes one-for-one.
 export const SPORTS_ASSET_KEYS = { football: 'sports_football', goalpost: 'sports_goalpost', fieldProps: 'sports_field_props' } as const;
@@ -84,11 +92,13 @@ export function SportsPenaltyArea() {
       );
     }
     b.rotation.x -= delta * (t <= f.flightT + 0.9 ? 14 : 0);
-    // Keeper: commits just after the strike, sliding and tipping toward the dive side.
+    // Keeper: commits just after the strike and dives - a short spring off the ground, body
+    // stretched out toward the dive side, landing on the turf. A centre 'dive' is a small hop.
     const d = easeOut(Math.min(1, Math.max(0, (t - 0.1) / Math.max(0.3, f.flightT - 0.1))));
     const dive = f.shot.keeperDive;
-    k.position.set(KEEPER_HOME[0] + dive * 1.5 * d, dive ? -0.25 * d : 0, KEEPER_HOME[2]);
-    k.rotation.set(0, 0, -dive * 1.15 * d);
+    const spring = Math.sin(Math.PI * Math.min(1, d * 1.15));
+    k.position.set(KEEPER_HOME[0] + dive * 1.35 * d, dive ? spring * 0.45 : spring * 0.3, KEEPER_HOME[2]);
+    k.rotation.set(0, 0, -dive * 1.3 * d);
   });
 
   const cx = FOOTBALL_PITCH.centre[0], gz = FOOTBALL_PITCH.goalLineZ;
@@ -113,14 +123,12 @@ export function SportsPenaltyArea() {
 
       {/* NPC keeper: randomised dive decided on the server, never player-controlled. */}
       <group ref={keeper} position={KEEPER_HOME}>
-        <mesh position={[0, 0.42, 0]}><boxGeometry args={[0.42, 0.8, 0.26]} /><meshStandardMaterial color="#1e293b" /></mesh>
-        <mesh position={[0, 1.1, 0]} castShadow><boxGeometry args={[0.52, 0.6, 0.3]} /><meshStandardMaterial color="#f97316" /></mesh>
-        <mesh position={[0, 1.2, 0]}><boxGeometry args={[1.25, 0.14, 0.16]} /><meshStandardMaterial color="#f97316" /></mesh>
-        <mesh position={[0, 1.6, 0]}><sphereGeometry args={[0.17, 10, 8]} /><meshStandardMaterial color="#8d5524" /></mesh>
+        <AvatarBody identity="sports-keeper" config={KEEPER_LOOK} animation="idle" />
       </group>
 
-      {/* Sign facing the approach from the Sports Centre entrance. */}
-      <group name="sports_penalty_sign" position={[cx + 5.2, 0, gz + 7.6]} rotation={[0, Math.PI / 4, 0]}>
+      {/* Sign just outside the east touchline (x = ±11) beside the penalty box, facing the
+          approach from the Sports Centre entrance - off the playing area. */}
+      <group name="sports_penalty_sign" position={[cx + 12.4, 0, gz + 5]} rotation={[0, 0.45, 0]}>
         {[-1, 1].map((side) => (
           <mesh key={side} position={[side * 1.05, 0.9, 0]}>
             <cylinderGeometry args={[0.05, 0.06, 1.8, 6]} />
