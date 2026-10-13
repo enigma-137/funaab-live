@@ -877,6 +877,8 @@ export const CampusEnvironment: React.FC = () => {
         <LectureHallEntrance
           key={hall.id}
           position={hall.arch}
+          facing={hall.facing ?? 0}
+          builtInArch={hall.builtInArch}
           title={hall.hallName}
           course={(() => {
             const lecture = LECTURE_SCHEDULE.find((l) => l.locationId === hall.id);
@@ -890,15 +892,15 @@ export const CampusEnvironment: React.FC = () => {
 
 // Shared entrance arch for every lecture hall. The wayfinding label is only shown nearby so ten
 // halls don't keep ten DOM overlays positioned every frame across the whole campus.
-const LectureHallEntrance: React.FC<{ position: [number, number, number]; title: string; course: string }> = ({ position, title, course }) => {
+const LectureHallEntrance: React.FC<{ position: [number, number, number]; facing: number; builtInArch?: boolean; title: string; course: string }> = ({ position, facing, builtInArch, title, course }) => {
   const labelRef = useRef<HTMLDivElement>(null);
   const labelPoint = useMemo(() => new THREE.Vector3(position[0], 4.7, position[2]), [position]);
   useFrame(({ camera }) => {
     if (labelRef.current) labelRef.current.style.visibility = camera.position.distanceToSquared(labelPoint) < 45 * 45 ? 'visible' : 'hidden';
   });
   return (
-    <group position={[position[0], 0, position[2]]}>
-      <RigidBody type="fixed" colliders={false}>
+    <group position={[position[0], 0, position[2]]} rotation={[0, facing, 0]}>
+      {!builtInArch && <RigidBody type="fixed" colliders={false}>
         {/* Entrance Arch Pillars */}
         <mesh position={[-1.6, 2.0, 0]} castShadow geometry={archPillarGeometry} material={archPillarMaterial} />
         <mesh position={[1.6, 2.0, 0]} castShadow geometry={archPillarGeometry} material={archPillarMaterial} />
@@ -910,7 +912,7 @@ const LectureHallEntrance: React.FC<{ position: [number, number, number]; title:
         {/* Physical Colliders for the Doorframe Sides */}
         <CylinderCollider args={[2.0, 0.25]} position={[-1.6, 2.0, 0]} />
         <CylinderCollider args={[2.0, 0.25]} position={[1.6, 2.0, 0]} />
-      </RigidBody>
+      </RigidBody>}
 
       {/* 3D Entrance Wayfinding Sign */}
       <Html position={[0, 4.7, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>

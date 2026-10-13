@@ -81,6 +81,9 @@ export const campusMaterials = {
   clinicCurtain: mat("#8fc1d4", 0.9),
   clinicMint: mat("#7cb9a4", 0.8),
   clinicRed: mat("#c62828", 0.6),
+  // COLANIM: reddish-brown chevron stripes, pilasters and steps.
+  animBrown: mat("#8a4636", 0.8),
+  animCream: mat("#ecdcb8"),
   clinicSteel: mat("#c5ccd0", 0.35),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.

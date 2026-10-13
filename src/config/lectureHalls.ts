@@ -20,11 +20,14 @@ export interface LectureHallConfig {
   npcs: { seated: number; standing: number };
   scheduleOffsetMinutes: number;
   legacyInteractable?: boolean; // interactable already defined in world.json
+  facing?: number; // yaw of the college facade; arch/entrance/exit step out along it
+  builtInArch?: boolean; // the college building's own doorway is the arch; draw only the label
 }
 
 export const HALL_MAX_ROWS = 5;
 export const HALL_MAX_COLS = 6;
-const offset = (p: Point, dz: number): Point => [p[0], 0, p[2] + dz];
+// Step `dz` metres out from a facade that faces `facing` (0 = +Z).
+const offset = (p: Point, dz: number, facing = 0): Point => [p[0] + dz * Math.sin(facing), 0, p[2] + dz * Math.cos(facing)];
 const collegeName = (code: string) => collegeCatalogue.find((c) => c.code === code)?.name ?? code;
 const collegeColor = (code: string) => collegeCatalogue.find((c) => c.code === code)?.color ?? '#16a34a';
 
@@ -61,7 +64,7 @@ const collegeHall = (
   hallName: string,
   rest: Pick<LectureHallConfig, 'seating' | 'npcs' | 'scheduleOffsetMinutes'> & { wall?: string }
 ): LectureHallConfig => {
-  const forecourt = locationById(collegeLocationId).entrance;
+  const { entrance: forecourt, facing } = locationById(collegeLocationId);
   return {
     id: `${collegeLocationId}-lecture-hall`,
     interactableId: `lecture-hall-${collegeLocationId}`,
@@ -69,9 +72,11 @@ const collegeHall = (
     collegeName: collegeName(collegeCode),
     collegeLocationId,
     hallName,
-    arch: offset(forecourt, -1.5),
-    entrance: offset(forecourt, 0.5),
-    exit: offset(forecourt, 2.5),
+    arch: offset(forecourt, -1.5, facing),
+    entrance: offset(forecourt, 0.5, facing),
+    exit: offset(forecourt, 2.5, facing),
+    facing,
+    builtInArch: collegeLocationId === 'colanim',
     accent: collegeColor(collegeCode),
     wall: rest.wall ?? '#f1f5f9',
     seating: rest.seating,

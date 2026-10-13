@@ -1,5 +1,5 @@
 import { CampusRoadFinish } from './CampusLandscape';
-import { CampusArchitecture, COLBIOS } from './CampusArchitecture';
+import { CampusArchitecture, COLBIOS, COLANIM } from './CampusArchitecture';
 import { CampusSign } from './CampusSign';
 import { campusMaterials } from './campusVisualGeometry';
 import React, { useRef } from 'react';
@@ -36,13 +36,20 @@ export function CampusRoads(){return <group><CampusRoadFinish/>
 export function CampusExpansion(){return <group>
   {['colvet','colanim','colplant','colcoms','colbios','colphys','library'].map((id,i)=>{
     const l=locationById(id),[w,d]=l.footprint,h=id==='library'?7:id==='colphys'?8.5:i===0?5:6;
-    return <group key={id} position={l.position} name={l.assetKey}>
+    return <group key={id} position={l.position} rotation={[0,l.facing,0]} name={l.assetKey}>
       <RigidBody type="fixed" colliders={false}>
         {id==='colvet'?<><CampusArchitecture id="colvet"/><CuboidCollider position={[0,h/2,0]} args={[w/2,h/2,d/2]}/></>:id==='colphys'?<>
           <CampusArchitecture id="colphys"/>
           {/* Body (20m x 12m) plus the entrance pilasters; the dome sits on the roof out of reach. */}
           <CuboidCollider position={[0,4.25,0]} args={[10,4.25,6]}/>
           <CuboidCollider position={[-2.1,2.1,6.3]} args={[.25,2.1,.3]}/><CuboidCollider position={[2.1,2.1,6.3]} args={[.25,2.1,.3]}/>
+        </>:id==='colanim'?<>
+          <CampusArchitecture id="colanim"/>
+          {/* Hall, wing, and the steps/ramp block in front of the arched door. */}
+          <CuboidCollider position={[0,COLANIM.apex/2,0]} args={[COLANIM.hallHalf,COLANIM.apex/2,COLANIM.D/2]}/>
+          <CuboidCollider position={[(COLANIM.wing.x0+COLANIM.wing.x1)/2,COLANIM.wing.h/2,0]} args={[(COLANIM.wing.x1-COLANIM.wing.x0)/2,COLANIM.wing.h/2,COLANIM.wing.d/2]}/>
+          <CuboidCollider position={[1.2,COLANIM.floor/2,COLANIM.D/2+1.2]} args={[2.9,COLANIM.floor/2,1.2]}/>
+          <CuboidCollider position={[-6.2,2.3,COLANIM.wing.d/2+2.2]} args={[.12,2.3,.12]}/>
         </>:id==='colbios'?<>
           <CampusArchitecture id="colbios"/>
           {/* Lobby block behind the open ground floor, the stair, columns and entrance hedges. */}
@@ -62,10 +69,10 @@ export function CampusExpansion(){return <group>
           {id==='colcoms'&&<Block p={[-5,h/2+1,1]} s={[6,h+2,d+1]} m="glass"/>}
           <CuboidCollider position={[0,h/2,0]} args={[w/2,h/2,d/2]}/>
         </>}
-        {!['library','colvet','colphys','colbios'].includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
+        {!['library','colvet','colphys','colbios','colanim'].includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
       </RigidBody>
-      {!['library','colvet','colphys','colbios'].includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
-      {!['library','colvet'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
+      {!['library','colvet','colphys','colbios','colanim'].includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
+      {!['library','colvet','colanim'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
     </group>;
   })}
   <NearbyLabel position={[-68,3,55]}>CAMPUS KEKE</NearbyLabel>

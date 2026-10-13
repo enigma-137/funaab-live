@@ -5,6 +5,7 @@ export interface CampusLocation {
   id: string; name: string; shortName: string; type: string; position: Point;
   entrance: Point; kekeStop: Point; interactionRadius: number; mapVisible: boolean;
   assetKey: string; footprint: [number, number]; description: string;
+  facing: number; // yaw of the front facade: 0 faces +Z, PI/2 faces +X
 }
 // Coordinates describe locations, never a scale applied to meshes or avatars.
 const layout: Record<string, [number, number, number, number, number, number, number, number]> = {
@@ -28,7 +29,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'central-lecture-hall': [0,-62, 4,2, 0,-59, 0,-40],
   'colbios-lecture-hall': [30,-62, 4,2, 30,-59, 30,-40],
   'colvet': [-95,-105, 22,16, -95,-93, -55,-85],
-  'colanim': [-100,65, 26,12, -100,75, -55,75],
+  // Faces east onto the campus road (facing below); footprint is world X × Z after that turn.
+  'colanim': [-100,65, 12,28, -90,65, -55,75],
   'colplant': [100,65, 20,14, 100,76, 55,76],
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
@@ -43,13 +45,14 @@ const additions = ['colvet','colanim','colplant','colcoms','colbios','colphys','
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
+const facings: Record<string, number> = { colanim: Math.PI / 2 };
 export const campusLocations: CampusLocation[] = [...base.locations,...additions].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
   const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
-    interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_')};
+    interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};
 });
 export const locationById=(id:string)=>campusLocations.find(l=>l.id===(id==='colerm-colplant'?'colerm':id))!;
 export const locationPosition=(id:string):Point=>locationById(id).position;
