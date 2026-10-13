@@ -1,3 +1,4 @@
+import type { PSLastRound } from '../config/psPenalty';
 export interface AvatarConfig {
   bodyType?: 'masculine' | 'feminine';
   skinTone?: string;
@@ -86,6 +87,8 @@ export interface PSMatchState {
   guestChoice?: 'left' | 'center' | 'right';
   roundResult?: string;
   winnerName?: string;
+  isDraw?: boolean;
+  lastRound?: PSLastRound;
   updatedAt: number;
 }
 

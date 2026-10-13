@@ -1,4 +1,5 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
+import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, seatPosition, exitPosition } from '../src/config/kekeSimulation';
@@ -462,7 +463,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             hostName: player?.username || 'Player 1',
             status: 'waiting',
             currentRound: 1,
-            totalRounds: 3,
+            totalRounds: PS_TOTAL_ROUNDS,
             hostScore: 0,
             guestScore: 0,
             updatedAt: Date.now(),
@@ -493,7 +494,7 @@ wss.on('connection', (ws: WebSocket, req) => {
           const connId = data.connectionId || sessionConnId;
           if (!connId) return;
           const match = psMatches.get(data.matchId);
-          if (!match || match.status !== 'in_progress') return;
+          if (!match || match.status !== 'in_progress' || !PS_DIRECTIONS.includes(data.choice)) return;
 
           if (connId === match.hostConnectionId || connId === match.hostId) {
             match.hostChoice = data.choice;
@@ -502,35 +503,7 @@ wss.on('connection', (ws: WebSocket, req) => {
           }
 
           if (match.hostChoice && match.guestChoice) {
-            const shooterIsHost = match.currentRound % 2 === 1;
-            const shooterChoice = shooterIsHost ? match.hostChoice : match.guestChoice;
-            const keeperChoice = shooterIsHost ? match.guestChoice : match.hostChoice;
-
-            const isGoal = shooterChoice !== keeperChoice;
-            if (isGoal) {
-              if (shooterIsHost) match.hostScore++;
-              else match.guestScore++;
-              match.roundResult = `GOAL! ${shooterIsHost ? match.hostName : match.guestName} scored! (Shot: ${shooterChoice} | Dive: ${keeperChoice})`;
-            } else {
-              match.roundResult = `SAVED! ${shooterIsHost ? match.guestName : match.hostName} saved it! (Both chose ${shooterChoice})`;
-            }
-
-            if (match.currentRound >= match.totalRounds) {
-              if (match.hostScore === match.guestScore) {
-                match.totalRounds += 2;
-                match.roundResult += ' Scores are level; sudden death starts.';
-              } else {
-                match.status = 'finished';
-                match.winnerName = match.hostScore > match.guestScore
-                  ? match.hostName
-                  : match.guestName;
-              }
-            }
-            if (match.status !== 'finished') {
-              match.currentRound++;
-              match.hostChoice = undefined;
-              match.guestChoice = undefined;
-            }
+            resolvePSRound(match);
             match.updatedAt = Date.now();
             broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
           } else {

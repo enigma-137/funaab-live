@@ -1,4 +1,5 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
+import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound, type PSLastRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, advanceKekeElapsed, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
@@ -81,6 +82,8 @@ interface PSMatchState {
   guestChoice?: string;
   roundResult?: string;
   winnerName?: string;
+  isDraw?: boolean;
+  lastRound?: PSLastRound;
   updatedAt: number;
   startedAt?: number;
 }
@@ -1171,7 +1174,7 @@ export class WorldRoomDO {
               hostName: session?.username || 'Player 1',
               status: 'waiting',
               currentRound: 1,
-              totalRounds: 3,
+              totalRounds: PS_TOTAL_ROUNDS,
               hostScore: 0,
               guestScore: 0,
               updatedAt: Date.now(),
@@ -1205,7 +1208,7 @@ export class WorldRoomDO {
           case 'ps_action': {
             if (!sessionConnId) return;
             const match = this.psMatches.get(data.matchId);
-            if (!match || match.status !== 'in_progress' || !['left','center','right'].includes(data.choice)) return;
+            if (!match || match.status !== 'in_progress' || !PS_DIRECTIONS.includes(data.choice)) return;
 
             if (sessionConnId === match.hostConnectionId) {
               if (match.hostChoice) return;
@@ -1218,32 +1221,13 @@ export class WorldRoomDO {
             }
 
             if (match.hostChoice && match.guestChoice) {
-              const shooterIsHost = match.currentRound % 2 === 1;
-              const shooterChoice = shooterIsHost ? match.hostChoice : match.guestChoice;
-              const keeperChoice = shooterIsHost ? match.guestChoice : match.hostChoice;
-
-              const isGoal = shooterChoice !== keeperChoice;
-              if (isGoal) {
-                if (shooterIsHost) match.hostScore++;
-                else match.guestScore++;
-                match.roundResult = `GOAL! ${shooterIsHost ? match.hostName : match.guestName} scored! (Shot: ${shooterChoice} | Dive: ${keeperChoice})`;
-              } else {
-                match.roundResult = `SAVED! ${shooterIsHost ? match.guestName : match.hostName} saved it! (Both picked ${shooterChoice})`;
-              }
-
-              if (match.currentRound >= match.totalRounds) {
-                if (match.hostScore === match.guestScore) {
-                  match.totalRounds += 2;
-                  match.roundResult += ' Scores are level; sudden death starts.';
-                } else {
-                  match.status = 'finished';
-                  match.winnerName = match.hostScore > match.guestScore
-                    ? match.hostName
-                    : match.guestName;
+              // Equal kicks each, early finish once a side can't catch up, level = draw.
+              const outcome = resolvePSRound(match);
+              if (outcome) {
                   // Fixed campus rewards only; home matches never mint passive income.
                   if (sessionRoom==='world:funaab:main') {
                     const rewardBody={p_match:match.id,p_host:match.hostId,p_guest:match.guestId,
-                      p_winner:match.hostScore>match.guestScore?match.hostId:match.guestId};
+                      p_winner:outcome==='draw'?null:outcome==='host'?match.hostId:match.guestId};
                     await this.state.storage.put('ps-reward:'+match.id,rewardBody);
                     await this.state.storage.setAlarm(Date.now()+60000);
                     try {
@@ -1252,12 +1236,6 @@ export class WorldRoomDO {
                       this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'wallet_refresh'}));
                     } catch(e) { this.sendToConnections([match.hostConnectionId,match.guestConnectionId!],JSON.stringify({type:'reward_error',message:'Match finished. Your reward is queued for a safe retry; reopen your wallet shortly.'})); }
                   }
-                }
-              }
-              if (match.status !== 'finished') {
-                match.currentRound++;
-                match.hostChoice = undefined;
-                match.guestChoice = undefined;
               }
               match.updatedAt = Date.now();
               this.broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
