@@ -200,7 +200,7 @@ fs.mkdirSync(root, { recursive: true });
     await page.waitForTimeout(500);
     assert(joined >= 1, 'Campus joins multiplayer');
     await page.getByRole('button', { name: 'Open campus phone' }).click();
-    await page.getByRole('button', { name: 'Profile & Avatar' }).click();
+    await page.getByRole('button', { name: 'Profile', exact: true }).click();
     await page.getByRole('button', { name: 'Edit Avatar' }).click();
     await page.locator('select').nth(1).selectOption('bun');
     await page.getByRole('button', { name: 'Save Avatar', exact: true }).click();

@@ -1,7 +1,9 @@
 import { openHostel } from './HostelLife';
 import { useHostelStore } from '../stores/hostelStore';
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Smartphone, X, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
+import { CampusPhone } from './CampusPhone';
+import { PhoneLauncherArt } from './phoneIcons';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
@@ -30,8 +32,8 @@ export function StudentCampusTools() {
   const setModal = useGameStore((s) => s.setActiveModal);
   const { journey, saving, error } = useStudentStore();
   const friends = useSocialStore((s) => s.friends);
+  const unreadDms = useSocialStore((s) => s.unreadDmCount);
   const [editing, setEditing] = useState(false);
-  const [map, setMap] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
   const [avatar, setAvatar] = useState(() => normalizeAvatar(user.avatarConfig));
   const busy = useRef(false);
@@ -110,14 +112,12 @@ export function StudentCampusTools() {
       {!modal && (
         <button
           className="student-phone-button"
-          aria-label="Open campus phone"
-          onClick={() => {
-            setMap(false);
-            setModal('student_phone');
-          }}
+          aria-label={unreadDms ? `Open campus phone, ${unreadDms} unread messages` : 'Open campus phone'}
+          title="Phone"
+          onClick={() => setModal('student_phone')}
         >
-          <Smartphone size={20} />
-          <span>Phone</span>
+          <PhoneLauncherArt size={30} />
+          {unreadDms > 0 && <span className="student-phone-badge">{unreadDms > 9 ? '9+' : unreadDms}</span>}
         </button>
       )}
       {!riding && !offCampus && !modal && journey && !journey.orientation_completed && (
@@ -154,12 +154,23 @@ export function StudentCampusTools() {
           )}
         </aside>
       )}
-      {showing && (
+      {modal === 'student_phone' && (
+        <CampusPhone
+          status={status}
+          closeRef={closeRef}
+          onClose={() => setModal(null)}
+          onProfile={() => {
+            setAvatar(normalizeAvatar(user.avatarConfig));
+            setModal('student_profile');
+          }}
+        />
+      )}
+      {modal === 'student_profile' && (
         <div
           className="student-entry student-campus-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label={modal === 'student_phone' ? 'Campus phone' : 'Student profile'}
+          aria-label="Student profile"
         >
           <div className="student-shell">
             <section className="student-card">
@@ -174,81 +185,7 @@ export function StudentCampusTools() {
               >
                 <X size={20} />
               </button>
-              {modal === 'student_phone' ? (
-                <>
-                  <h1>Campus phone.</h1>
-                  <p>{status}</p>
-                  <nav className="student-phone-grid">
-                    <button
-                      onClick={() => {
-                        setAvatar(normalizeAvatar(user.avatarConfig));
-                        setModal('student_profile');
-                      }}
-                    >
-                      Profile & Avatar
-                    </button>
-                    <button onClick={() => openHostel()}>Hostel</button>
-                    <button onClick={() => setModal('friends')}>Friends</button>
-                    <button
-                      onClick={() => {
-                        const s = useSocialStore.getState();
-                        if (s.activeDmPartner) setModal('private_chat');
-                        else {
-                          const last = Object.values(s.directMessages)
-                            .flat()
-                            .filter((m) => m.senderId !== user.id)
-                            .sort((a, b) => b.timestamp - a.timestamp)[0];
-                          if (last)
-                            s.openDm({
-                              id: last.senderId,
-                              username: last.senderName,
-                              college: last.college,
-                            });
-                          else setModal('friends');
-                        }
-                      }}
-                    >
-                      Messages
-                    </button>
-                    <button onClick={() => setModal('bank')}>Wallet</button>
-                    <button onClick={() => setModal('campus_jobs')}>Jobs</button>
-                    <button onClick={() => setMap(!map)}>Campus guide</button>
-                    <button onClick={() => setModal('inventory')}>Inventory</button>
-                    <button onClick={() => setModal('lecture_hall')}>Timetable</button>
-                    <button onClick={() => setModal('daily_reward')}>Daily allowance</button>
-                    <button onClick={() => setModal('help')}>Controls & Help</button>
-                    <button onClick={() => useAuthStore.getState().logout()}>Sign out</button>
-                  </nav>
-                  {map && (
-                    <>
-                      <h2>Find your next stop</h2>
-                      <p>Walk using the paths or choose a destination at a Keke stop.</p>
-                      <ul className="student-friends">
-                        {world.locations
-                          .filter((l) =>
-                            ['college', 'food', 'transport', 'restaurant', 'gaming', 'academic', 'sports', 'service', 'lecture_hall', 'landmark'].includes(
-                              l.type,
-                            ),
-                          )
-                          .map((l) => (
-                            <li key={l.id}>
-                              <strong>{l.name}</strong>
-                              <span>
-                                {l.position[0] < 0
-                                  ? 'West'
-                                  : l.position[0] > 0
-                                    ? 'East'
-                                    : 'Central'}{' '}
-                                campus · {l.position[2] < 0 ? 'north' : 'south'}
-                              </span>
-                            </li>
-                          ))}
-                      </ul>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
+              <>
                   <h1>{editing ? 'Make it your look.' : `@${user.username}`}</h1>
                   <Suspense fallback={<p>Opening your student…</p>}>
                     {editing ? (
@@ -296,7 +233,6 @@ export function StudentCampusTools() {
                     Game identity only. Not an official university student card.
                   </p>
                 </>
-              )}
             </section>
           </div>
         </div>

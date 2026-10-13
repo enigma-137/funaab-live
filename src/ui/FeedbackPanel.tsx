@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
+import { AppTile } from './phoneIcons';
 import { useGameStore } from '../stores/gameStore';
 import { useAuthStore } from '../stores/authStore';
 import { networkManager } from '../game/multiplayer/networkManager';
@@ -21,9 +22,9 @@ export function FeedbackButton() {
           onClick={() => setActiveModal('feedback')}
           title="Send feedback"
           aria-label="Send feedback, report a bug or suggest an idea"
-          className="fixed right-[14px] top-[126px] z-[45] flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/40 bg-slate-900/90 text-emerald-300 shadow-lg backdrop-blur-md transition hover:bg-slate-800 active:scale-95"
+          className="campus-launcher-mini fixed right-[17px] top-[128px] z-[45] flex h-10 w-10 items-center justify-center rounded-xl border border-[#c7d6c9] bg-[#f8faf7] shadow-lg transition active:scale-95"
         >
-          <MessageSquarePlus className="h-5 w-5" />
+          <AppTile glyph="feedback" colors={['#2dd4bf', '#0f766e']} />
         </button>
       )}
       {activeModal === 'feedback' && <FeedbackModal onClose={() => setActiveModal(null)} />}

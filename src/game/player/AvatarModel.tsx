@@ -5,6 +5,7 @@ import { Html } from '@react-three/drei';
 import { AvatarConfig } from '../../types/game';
 import { useSocialStore } from '../../stores/socialStore';
 import { useGameStore } from '../../stores/gameStore';
+import { useInputStore } from '../../stores/inputStore';
 import { MessageSquare } from 'lucide-react';
 
 interface AvatarModelProps {
@@ -28,6 +29,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   const riding=useGameStore(s=>s.isRidingKeke);
   const inRoom=useHostelStore(s=>!!s.owner);
   const isModalOpen = useGameStore((s) => s.activeModal !== null);
+  const isTouch = useInputStore((s) => s.isTouchDevice);
   const unreadCount = unreadDmsByPartner[username.toLowerCase()] || 0;
   const hasUnreadDm = unreadCount > 0;
 
@@ -40,7 +42,8 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
         <Html
           position={[0, hasUnreadDm ? 2.45 : 2.25, 0]}
           center
-          distanceFactor={inRoom?4:14}
+          // Smaller on phones, where the camera sits closer and names crowded the screen.
+          distanceFactor={inRoom ? 4 : isTouch ? 8 : 11}
           zIndexRange={[5, 0]}
           style={{ pointerEvents: hasUnreadDm ? 'auto' : 'none' }}
         >
@@ -65,22 +68,15 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-slate-700/60 shadow-md">
-              <span
-                className="w-1.5 h-1.5 rounded-full ring-1 ring-white/20 animate-pulse"
-                style={{ backgroundColor: shirtColor }}
-              />
-              <span className="font-bold text-[11px] text-white tracking-wide font-['Plus_Jakarta_Sans']">
+            {/* One compact tag: colour dot, name, small college code. You get a green outline. */}
+            <div className={`flex items-center gap-1 px-1.5 py-[1px] rounded-full bg-slate-950/75 backdrop-blur-sm border shadow-sm ${isLocal ? 'border-emerald-400/70' : 'border-white/10'}`}>
+              <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: isLocal ? '#34d399' : shirtColor }} />
+              <span className="font-semibold text-[10px] leading-[14px] text-white font-['Plus_Jakarta_Sans'] max-w-[96px] truncate">
                 {username}
               </span>
-              {isLocal && (
-                <span className="text-[9px] uppercase font-black px-1 rounded bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
-                  YOU
-                </span>
-              )}
-            </div>
-            <div className="text-[9px] font-bold tracking-wider px-1.5 py-0.2 rounded bg-black/60 text-slate-300 border border-white/10 uppercase">
-              {college}
+              <span className="text-[7.5px] leading-[14px] font-bold tracking-wide text-slate-400 uppercase">
+                {college}
+              </span>
             </div>
           </div>
         </Html>

@@ -1,4 +1,5 @@
 import { CAMPUS_SPAWN } from '../config/campusLocations';
+import { HostelLauncherArt } from './phoneIcons';
 import { ECONOMY_CONFIG, canBuyOnCredit, formatNaira, hostelCreditDebt } from '../config/economy';
 import { SECURITY_POST, SECURITY_RADIUS } from '../config/hostelCompound';
 import { HostelCompoundHud } from './HostelCompoundHud';
@@ -161,8 +162,8 @@ export function HostelLife() {
         </div>
       )}
       {!away && nearGate && modal === null && (
-        <button className="hostel-gate" onClick={() => openHostel()}>
-          Hostel
+        <button className="hostel-gate" onClick={() => openHostel()} aria-label="Enter hostel" title="Hostel">
+          <HostelLauncherArt size={32} />
         </button>
       )}
       {incoming.length > 0 && modal === null && (
