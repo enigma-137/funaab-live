@@ -96,6 +96,16 @@ class NetworkManager {
       this.send({type:'campus_bet',requestId,op,...payload});
     });
   }
+  /** In-game feedback: the Worker adds the player's identity and place, then forwards it to Telegram. */
+  public sendFeedback(payload:{kind:string;message:string;name:string;contact?:string;device:string}):Promise<{sent:boolean}>{
+    if(this.ws?.readyState!==WebSocket.OPEN)return Promise.reject(new Error('You are offline. Reconnect, then send again.'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('No reply from the game server. Please try again in a minute.'));},15000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'feedback',requestId,...payload});
+    });
+  }
   /** Penalty challenge: only aim + power leave the client; the Worker decides every result. */
   public football(op:string,payload:Record<string,unknown>={}):Promise<any>{
     if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to play football'));

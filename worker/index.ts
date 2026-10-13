@@ -8,6 +8,7 @@ import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
+import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
 import {
   FOOTBALL_PITCH, FOOTBALL_RULES, createLobby, createChallenge, joinChallenge, cancelChallenge, takeMatchShot,
   takePracticeShot, expireTurn, leaveMatch, voteRematch, isFootballError, type FootballMatchState,
@@ -22,6 +23,9 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   ENABLE_GUEST_MODE?: string;
   ENVIRONMENT?: string;
+  /** In-game feedback goes to this Telegram bot/chat (Cloudflare secrets). */
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_CHAT_ID?: string;
 }
 
 interface SessionData {
@@ -767,6 +771,36 @@ export class WorldRoomDO {
     if (next !== this.football) this.setFootball(next);
     return this.football;
   }
+  /** In-game feedback → the team's Telegram chat. Identity and place come from the session, not the client. */
+  private async feedbackCommand(session: SessionData, data: any) {
+    const token = this.env.TELEGRAM_BOT_TOKEN, chat = this.env.TELEGRAM_CHAT_ID;
+    if (!token || !chat) throw new Error('Feedback is not switched on yet. Please try again later.');
+    const input = parseFeedback(data);
+    if ('error' in input) throw new Error(input.error);
+    const now = Date.now(), key = 'feedback-rate:' + session.id;
+    const recent = ((await this.state.storage.get<number[]>(key)) || []).filter((t) => now - t < 3600_000);
+    if (recent.length && now - recent[recent.length - 1] < FEEDBACK_LIMITS.gapMs) throw new Error('Thanks! Give it a few seconds before sending another.');
+    if (recent.length >= FEEDBACK_LIMITS.perHour) throw new Error('You have sent a lot this hour. Please try again a bit later.');
+    this.advanceTrustedPosition(session);
+    const pos = session.trustedPosition;
+    const place = session.room === 'world:funaab:main' ? (pos ? campusZoneName(pos[0], pos[2]) : 'Campus')
+      : session.room === LIBRARY_ROOM ? 'Library' : session.room.includes('hostel') ? 'Hostel' : 'Off campus';
+    const text = formatFeedbackMessage(input, { username: session.username, college: session.college, place }, new Date(now));
+    let ok = false;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+      });
+      ok = res.ok;
+      if (!ok) console.error('[FEEDBACK] Telegram rejected the message', res.status, (await res.text()).slice(0, 200));
+    } catch (e) { console.error('[FEEDBACK] Telegram unreachable', e); }
+    // Failed sends don't count against the player's limit.
+    if (!ok) throw new Error("Couldn't send right now. Please try again in a minute.");
+    await this.state.storage.put(key, [...recent, now]);
+    return { sent: true };
+  }
   private footballDisconnect(connectionId: string, userId?: string) {
     const f = this.football;
     if (!userId || ![f.player1, f.player2].some((p) => p?.connectionId === connectionId)) return;
@@ -1046,6 +1080,13 @@ export class WorldRoomDO {
             const current = this.sessions.get(webSocket);
             if (!current) return;
             try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: await this.campusBetCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
+          case 'feedback': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: await this.feedbackCommand(current, data) })); }
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
@@ -1609,7 +1650,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet', 'trusted_catchup', 'football'],
+          features: ['campus_bet', 'trusted_catchup', 'football', 'feedback'],
           timestamp: Date.now(),
         }),
         {
