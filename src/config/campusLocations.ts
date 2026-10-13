@@ -31,7 +31,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'colvet': [-95,-105, 22,16, -95,-93, -55,-85],
   // Faces east onto the campus road (facing below); footprint is world X × Z after that turn.
   'colanim': [-100,65, 12,28, -90,65, -55,75],
-  'colplant': [100,65, 20,14, 100,76, 55,76],
+  // Faces west onto the campus road (facing below); footprint is world X × Z after that turn.
+  'colplant': [100,65, 14,26, 89,65, 55,76],
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
@@ -45,7 +46,7 @@ const additions = ['colvet','colanim','colplant','colcoms','colbios','colphys','
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
-const facings: Record<string, number> = { colanim: Math.PI / 2 };
+const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2 };
 export const campusLocations: CampusLocation[] = [...base.locations,...additions].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;

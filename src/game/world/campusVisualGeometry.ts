@@ -84,6 +84,10 @@ export const campusMaterials = {
   // COLANIM: reddish-brown chevron stripes, pilasters and steps.
   animBrown: mat("#8a4636", 0.8),
   animCream: mat("#ecdcb8"),
+  // COLPLANT: pale corrugated roofs, black water tanks and blue gas cylinders.
+  plantRoof: mat("#b9b19c", 0.85),
+  tankBlack: mat("#1c1d1f", 0.6),
+  gasBlue: mat("#2453c9", 0.5),
   clinicSteel: mat("#c5ccd0", 0.35),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.

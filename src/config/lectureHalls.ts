@@ -76,7 +76,7 @@ const collegeHall = (
     entrance: offset(forecourt, 0.5, facing),
     exit: offset(forecourt, 2.5, facing),
     facing,
-    builtInArch: collegeLocationId === 'colanim',
+    builtInArch: collegeLocationId === 'colanim' || collegeLocationId === 'colplant',
     accent: collegeColor(collegeCode),
     wall: rest.wall ?? '#f1f5f9',
     seating: rest.seating,
