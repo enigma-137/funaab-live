@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 import { getLagosTime } from '../utils/lagosTime';
 import { getActiveLectureForTime } from '../config/lectureSchedule';
 import { campusZoneName } from '../config/campusLocations';
+import { useDailyPlanStore } from '../stores/dailyPlanStore';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -25,6 +26,7 @@ export function StatusStrip() {
   const roomId = useHostelStore((s) => s.roomId);
   const owner = useHostelStore((s) => s.owner);
   const balance = useWalletStore((s) => s.balance);
+  const streak = useDailyPlanStore((s) => s.plan?.streak.current ?? 0);
   const [now, setNow] = useState(Date.now());
   const [delta, setDelta] = useState<{ id: number; amount: number } | null>(null);
   const prev = useRef<number | null>(null);
@@ -59,6 +61,7 @@ export function StatusStrip() {
       <span className="campus-status-place">{placeName(roomId, owner, x, z)}</span>
       <span className="campus-status-dot" aria-hidden>·</span>
       <span className={`campus-status-class${lecture.status === 'active' ? ' is-live' : ''}`}>🎓 {lectureText}</span>
+      {streak > 0 && <span className="campus-status-streak" title={`${streak}-day streak`}>🔥{streak}</span>}
       {delta && (
         <span key={delta.id} className={`campus-status-delta ${delta.amount > 0 ? 'is-up' : 'is-down'}`}>
           {delta.amount > 0 ? '+' : '−'}₦{Math.abs(delta.amount).toLocaleString()}

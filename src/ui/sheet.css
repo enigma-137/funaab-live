@@ -48,3 +48,32 @@
 .campus-status-class.is-live{color:#fbbf24}
 .campus-status-delta{flex-shrink:0;margin-left:2px;padding:0 6px;border-radius:999px;font-family:'Outfit',system-ui,sans-serif;font-weight:900;animation:campus-rise .2s ease-out}
 .campus-status-delta.is-up{background:#14532d;color:#4ade80}.campus-status-delta.is-down{background:#7f1d1d;color:#fca5a5}
+
+/* Today's Plan card (left column, same slot orientation used). */
+.campus-plan{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:35;width:min(270px,calc(100vw - 88px));
+ color:#f8fafc;background:#020617e6;border:1px solid #334155;border-radius:16px;font-size:12px;backdrop-filter:blur(8px);overflow:hidden}
+.campus-plan-head{width:100%;min-height:36px;display:flex;align-items:center;gap:6px;padding:6px 10px;text-align:left}
+.campus-plan-head b{font-family:'Outfit',system-ui,sans-serif;font-weight:800}
+.campus-plan-count{color:#94a3b8;font-weight:700;font-variant-numeric:tabular-nums}
+.campus-plan-streak{color:#fdba74;font-weight:900}
+.campus-plan-ready{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px #4ade8040;animation:campus-pulse 1.4s infinite}
+.campus-plan-chevron{margin-left:auto;color:#94a3b8;font-weight:900}
+.campus-plan-body{padding:0 10px 10px}
+.campus-plan-body ul{display:flex;flex-direction:column;gap:6px}
+.campus-plan-body li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:#0f172a;border:1px solid #1e293b}
+.campus-plan-body li.is-ready{border-color:#34d399}
+.campus-plan-body li.is-claimed{opacity:.6}
+.campus-plan-icon{font-size:16px}
+.campus-plan-title{flex:1;min-width:0;line-height:1.25}
+.campus-plan-title small{color:#94a3b8}
+.campus-plan-body li button{min-height:32px;padding:0 10px;border-radius:9px;background:#059669;color:#fff;font-weight:900}
+.campus-plan-body li button:disabled{opacity:.5}
+.campus-plan-reward{color:#94a3b8;font-weight:700}
+.campus-plan-done{color:#4ade80;font-weight:900}
+.campus-plan-note,.campus-plan-hint{margin-top:8px;color:#cbd5e1;line-height:1.35}
+.campus-plan-hint{color:#64748b;font-size:10.5px}
+.campus-plan-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.campus-plan-badges span{padding:2px 8px;border-radius:999px;background:#422006;color:#fde68a;font-weight:800;font-size:11px}
+.campus-plan-error{margin-top:6px;color:#fca5a5}
+@keyframes campus-pulse{50%{box-shadow:0 0 0 6px #4ade8000}}
+.campus-status-streak{flex-shrink:0;color:#fdba74;font-weight:900}

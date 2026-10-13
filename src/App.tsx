@@ -44,6 +44,7 @@ import { MessagesInbox } from './ui/MessagesInbox';
 import { CollegeVisitTracker } from './ui/CollegeVisitTracker';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
+import { TodayPlan } from './ui/TodayPlan';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
 import { CampusBetModal } from './ui/CampusBetModal';
@@ -166,6 +167,7 @@ export const App: React.FC = () => {
 
       <StudentCampusTools />
       {!isInClassroom && <StatusStrip />}
+      {!isInClassroom && <TodayPlan />}
       <FeedbackButton />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />
 

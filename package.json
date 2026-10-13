@@ -45,6 +45,8 @@
     "test:football": "tsx scripts/test-football.ts && tsx scripts/test-football-worker.ts",
     "test:football:browser": "tsx scripts/test-football-browser.ts",
     "test:ux:browser": "tsx scripts/test-ux-browser.ts",
+    "test:daily": "tsx scripts/test-daily-plan.ts && tsx scripts/test-daily-plan-worker.ts",
+    "test:daily:db": "tsx scripts/test-daily-plan-db.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
     "sim:economy": "tsx scripts/simulate-economy.ts"
   },

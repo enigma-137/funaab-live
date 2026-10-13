@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
+import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 
 class NetworkManager {
   public room = 'world:funaab:main';
@@ -227,7 +228,8 @@ class NetworkManager {
       }
       case 'room_changed': window.dispatchEvent(new Event('hostel-room-changed')); return;
       case 'campus_bet_settled': { window.dispatchEvent(new Event('campus-bet-settled')); const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
-      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
+      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); return; }
+      case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
 
       case 'init':

@@ -14,7 +14,22 @@ const ADA = { id: '00000000-0000-4000-8000-0000000000f1', username: 'Ada', colle
   try {
     for (const [width, height] of phonesUnderTest()) {
       const errors: string[] = [];
-      const { context, page } = await openStudent(browser, ADA, { width, height, errors });
+      // Today's Plan: one goal ready to claim, a 2-day streak.
+      let plan: any = { day: '2026-10-14', all_done_bonus: 150, streak: { current: 2, best: 4, badges: [], done_today: false }, goals: [
+        { id: 'buy_food', title: 'Buy something to eat', icon: '🍲', target: 1, reward: 100, progress: 1, claimed: false },
+        { id: 'take_penalties', title: 'Take 3 penalties at the Sports Centre', icon: '⚽', target: 3, reward: 100, progress: 1, claimed: false },
+        { id: 'campus_night', title: 'Show up for Campus Night (8–9pm, Love Garden)', icon: '🌙', target: 1, reward: 100, progress: 0, claimed: false },
+      ] };
+      const claims: string[] = [];
+      const supabase = {
+        daily_plan: () => plan,
+        claim_daily_goal: (body: any) => {
+          claims.push(body.p_goal);
+          plan = { ...plan, goals: plan.goals.map((g: any) => g.id === body.p_goal ? { ...g, claimed: true } : g) };
+          return { ...plan, balance: 7600, paid: 100 };
+        },
+      };
+      const { context, page } = await openStudent(browser, ADA, { width, height, errors, supabase });
       try {
         // Status strip: visible, on screen, clear of the launcher column.
         const strip = page.getByRole('status', { name: 'Your day' });
@@ -28,9 +43,29 @@ const ADA = { id: '00000000-0000-4000-8000-0000000000f1', username: 'Ada', colle
         assert(!overlaps(phone, feedback) && !overlaps(feedback, sound), 'launchers stack without overlapping');
         assert(feedback.y > phone.y && sound.y > feedback.y, 'phone → feedback → sound, top to bottom');
 
-        // Toasts stack instead of overlapping.
+        // Today's Plan card: collapsed summary with streak, expands, claims through the server.
+        const card = page.getByRole('complementary', { name: "Today's Plan" });
+        await card.waitFor();
+        assert.match(await card.innerText(), /Today's Plan\s*0\/3\s*🔥2/);
+        assert.match(await strip.innerText(), /🔥2/, 'streak in the status strip');
+        const cardBox = await card.boundingBox();
+        assert(!overlaps(cardBox, stripBox) && !overlaps(cardBox, phone) && cardBox.x + cardBox.width <= width, 'card clear of strip and launchers');
+        await card.getByRole('button', { name: /Today's Plan/ }).click();
+        await card.getByText('Take 3 penalties at the Sports Centre').waitFor();
+        assert.match(await card.innerText(), /1\/3/, 'multi-step progress shown');
+        assert(((await card.boundingBox()).y + (await card.boundingBox()).height) < height - 120, 'expanded card leaves the interact/chat area free');
+        await page.screenshot({ path: path.join(out, `ux-${width}-plan.png`) });
+        await card.getByRole('button', { name: '+₦100' }).click();
+        await card.getByLabel('Claimed').waitFor();
+        assert.deepEqual(claims, ['buy_food'], 'only the goal id is sent');
+        await page.locator('.campus-toast', { hasText: 'Buy something to eat done' }).waitFor();
+        assert.equal(await card.getByRole('button', { name: '+₦100' }).count(), 0, 'nothing else claimable yet');
+        await card.getByRole('button', { name: /Today's Plan/ }).click();
+
+        // Toasts stack instead of overlapping (start from an empty stack: the claim toast may linger).
         await page.evaluate(async () => {
-          const { toast } = await import('/src/stores/toastStore.ts' as any);
+          const { toast, useToastStore } = await import('/src/stores/toastStore.ts' as any);
+          useToastStore.setState({ toasts: [] });
           toast({ icon: '🎉', text: 'Job complete', amount: 500, tone: 'good', ms: 8000 });
           toast({ icon: '🛍️', text: 'Suya bought', amount: -400, tone: 'good', ms: 8000 });
           const { useGameStore } = await import('/src/stores/gameStore.ts' as any);

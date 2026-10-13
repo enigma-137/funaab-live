@@ -22,6 +22,8 @@ import {
   FOOTBALL_PITCH, FOOTBALL_RULES, createLobby, createChallenge, joinChallenge, cancelChallenge, takeMatchShot,
   takePracticeShot, expireTurn, leaveMatch, voteRematch, isFootballError, type FootballMatchState,
 } from '../src/config/football';
+import { dailyGoal, isCampusNight, lagosDay } from '../src/config/dailyPlan';
+import { isInLoveGarden } from '../src/config/loveGarden';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -60,6 +62,8 @@ interface SessionData {
   /** Last time this session showed a held item (rate limit). */
   heldItemAt?: number;
   footballAt?: number;
+  /** Today's Plan progress already reported this session, keyed `${day}:${goal}`. */
+  goalSent?: Record<string, number>;
 }
 
 interface PlayerState {
@@ -787,7 +791,32 @@ export class WorldRoomDO {
     }
     if (isFootballError(next)) throw new Error(next.error);
     if (next !== this.football) this.setFootball(next);
+    if (op === 'practice' || op === 'shoot') this.dailyGoalEvent(session, 'take_penalties');
     return this.football;
+  }
+  /**
+   * Today's Plan: report progress the database cannot see (positions, shots, visits). Each
+   * session reports a goal at most up to its target per Lagos day; the database caps it again.
+   */
+  private dailyGoalEvent(session: SessionData, kind: string) {
+    const goal = dailyGoal(kind);
+    if (!goal || goal.source !== 'worker' || !this.env.SUPABASE_SERVICE_ROLE_KEY) return;
+    const key = `${lagosDay(Date.now())}:${kind}`;
+    const sent = (session.goalSent ??= {})[key] ?? 0;
+    if (sent >= goal.target) return;
+    session.goalSent[key] = sent + 1;
+    void this.dbRpc('daily_goal_event_trusted', { p_user: session.id, p_kind: kind, p_amount: 1 })
+      .then(() => this.sendToConnections([session.connectionId], JSON.stringify({ type: 'daily_plan_refresh' })))
+      .catch(() => { if (session.goalSent) session.goalSent[key] = sent; });
+  }
+  /** Love Garden goals, from the trusted (speed-limited) position, never the client's claim. */
+  private loveGardenGoals(session: SessionData, animation: string) {
+    const pos = session.trustedPosition;
+    if (session.room !== 'world:funaab:main' || !pos || !isInLoveGarden(pos[0], pos[2])) return;
+    this.dailyGoalEvent(session, 'visit_love_garden');
+    if (isCampusNight(Date.now())) this.dailyGoalEvent(session, 'campus_night');
+    if (animation === 'sit' && [...this.players.values()].some((p) => p.connectionId !== session.connectionId && p.id !== session.id
+      && p.animation === 'sit' && !p.kekeRiding && isInLoveGarden(p.position[0], p.position[2]))) this.dailyGoalEvent(session, 'garden_hangout');
   }
   /** In-game feedback → the team's Telegram chat. Identity and place come from the session, not the client. */
   private async feedbackCommand(session: SessionData, data: any) {
@@ -1056,6 +1085,7 @@ export class WorldRoomDO {
             }
 
             if (!(await this.checkRoom(room, verifiedUserId))) { webSocket.close(1008,'Room is private or invite expired'); return; }
+            const visitingFriend = room.startsWith('world:funaab:hostel-room:') && room.split(':')[3] !== verifiedUserId;
             if (room === 'world:funaab:main') await this.restoreAutonomousKeke();
             if (room.startsWith('world:funaab:hostel-room:')) {
               const owner = room.split(':')[3];
@@ -1084,6 +1114,7 @@ export class WorldRoomDO {
             };
 
             this.sessions.set(webSocket, sessionData);
+            if (visitingFriend) this.dailyGoalEvent(sessionData, 'visit_friend_room');
 
             const playerState: PlayerState = {
               id: verifiedUserId,
@@ -1222,6 +1253,7 @@ export class WorldRoomDO {
               player.position = data.position;
               player.rotation = rotation;
               player.animation = animation;
+              this.loveGardenGoals(current, animation);
 
               player.lastUpdated = Date.now();
               if (this.dirtyPlayerIds.has(sessionConnId)) this.scheduleBatchBroadcast();
