@@ -12,12 +12,14 @@ export const CAMPUS_BET_STAKE = { min: 50, max: 500, step: 10, default: 100, pre
 
 /**
  * Payout multiplier of the stake, indexed by number of correct picks (0–5).
- * Mirrored in SQL (campus_bet_payout). Tuned by scripts/test-campus-bet.ts so that
- * no simple strategy, including always backing the favourite, is profitable long-run.
+ * Mirrored in SQL (campus_bet_payout, latest in 013). Tuned by scripts/test-campus-bet.ts so that
+ * no simple strategy, including always backing the favourite, is profitable long-run, while
+ * 3/5 is a real win: a typical player profits on about one ticket in five.
  */
-export const CAMPUS_BET_MULTIPLIERS = [0, 0, 0.5, 1, 3, 5] as const;
+export const CAMPUS_BET_MULTIPLIERS = [0, 0, 0.5, 1.3, 2.5, 4] as const;
+// The epsilon keeps binary-float products like 70 × 1.3 from flooring below SQL's exact numeric.
 export const campusBetPayout = (stake: number, correct: number) =>
-  Math.floor(stake * (CAMPUS_BET_MULTIPLIERS[correct] ?? 0));
+  Math.floor(stake * (CAMPUS_BET_MULTIPLIERS[correct] ?? 0) + 1e-9);
 
 /** 20-minute matchday slots: betting open for 15, then results until the next slot. Mirrored in SQL. */
 export const CAMPUS_BET_SLOT_SECONDS = 20 * 60;
