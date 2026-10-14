@@ -22,6 +22,15 @@ import {
   Check,
 } from 'lucide-react';
 
+// Short names for the zoomed-out whole-campus view; null hides the label (the pin stays).
+const OVERVIEW_LABELS: Record<string, string | null> = {
+  'main-gate': 'Main Gate', 'w-landmark': 'W Landmark', 'car-park': 'Car Park', 'food-court': 'Buka',
+  'bank-atm': 'Bank', 'senate-library': 'Senate', agromet: 'Agromet', 'ps-room': 'Game Den',
+  'floral-world': 'Floral World', 'health-centre': 'Clinic', 'sports-centre': 'Sports',
+  'colfhec-lecture-hall': null, 'central-lecture-hall': 'CLT', 'colbios-lecture-hall': null,
+};
+const overviewLabel = (loc: CampusRegistryLocation) => (loc.id in OVERVIEW_LABELS ? OVERVIEW_LABELS[loc.id] : loc.shortName);
+
 const SVG_WIDTH = 1000;
 const SVG_HEIGHT = 880;
 const MARGIN = 45;
@@ -44,6 +53,22 @@ export const CampusMapModal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const containerRef = useRef<HTMLDivElement>(null);
+  // How many screen pixels one map unit takes at zoom 1 (the SVG is fitted into the viewport).
+  const [fitScale, setFitScale] = useState(1);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setFitScale(Math.min(el.clientWidth / SVG_WIDTH, el.clientHeight / SVG_HEIGHT) || 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // Pins, labels and "YOU" keep a readable on-screen size at any zoom: on a phone the whole campus
+  // fits on screen and stays legible; zooming in shrinks them back to normal.
+  const markerScale = Math.min(2.4, Math.max(1, 0.85 / (fitScale * zoom)));
+  /** Zoomed out far enough that full names would collide. */
+  const overview = markerScale > 1.4;
   const isDragging = useRef(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
   const touchStartDist = useRef<number | null>(null);
@@ -519,7 +544,7 @@ export const CampusMapModal: React.FC = () => {
                   return (
                     <g
                       key={`pin-${loc.id}`}
-                      transform={`translate(${svgX}, ${svgY})`}
+                      transform={`translate(${svgX}, ${svgY}) scale(${markerScale})`}
                       className="cursor-pointer transition-transform group"
                       onClick={() => setSelectedLocation(loc)}
                       onMouseEnter={() => setHoveredLocationId(loc.id)}
@@ -566,12 +591,16 @@ export const CampusMapModal: React.FC = () => {
                         {loc.icon}
                       </text>
 
-                      {/* Building Name Pill Label */}
+                      {/* Building Name Pill Label (short names when the whole campus is in view) */}
+                      {(() => {
+                        const label = overview && !isSelected && !isHovered ? overviewLabel(loc) : loc.shortName;
+                        if (!label) return null;
+                        return (
                       <g transform={`translate(0, ${isSelected ? 26 : 22})`}>
                         <rect
-                          x={-(loc.shortName.length * 4.2 + 10)}
+                          x={-(label.length * 4.2 + 10)}
                           y="-9"
-                          width={loc.shortName.length * 8.4 + 20}
+                          width={label.length * 8.4 + 20}
                           height="18"
                           rx="9"
                           fill={isSelected ? '#042f2e' : '#091c16'}
@@ -587,16 +616,18 @@ export const CampusMapModal: React.FC = () => {
                           fill={isSelected ? '#a7f3d0' : '#e2e8f0'}
                           className="font-['Outfit'] tracking-wider"
                         >
-                          {loc.shortName}
+                          {label}
                         </text>
                       </g>
+                        );
+                      })()}
                     </g>
                   );
                 })}
               </g>
 
               {/* ─── E. LIVE PLAYER POSITION MARKER ─── */}
-              <g transform={`translate(${playerSvg.svgX}, ${playerSvg.svgY})`}>
+              <g transform={`translate(${playerSvg.svgX}, ${playerSvg.svgY}) scale(${markerScale})`}>
                 {/* Radar Waves */}
                 <circle r="32" fill="none" stroke="#38bdf8" strokeWidth="1.5" className="animate-ping opacity-40" />
                 <circle r="18" fill="rgba(56, 189, 248, 0.25)" stroke="#38bdf8" strokeWidth="2" />
