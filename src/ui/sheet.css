@@ -178,6 +178,8 @@
 
 /* Controls: joystick and the chooser */
 .campus-joystick{position:fixed;left:84px;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);z-index:44;width:108px;height:108px;border-radius:50%;background:#0f172a8c;border:2px solid #ffffff3d;backdrop-filter:blur(4px);touch-action:none;display:grid;place-items:center}
+/* The hostel room bar sits along the bottom edge; lift the stick above it so it never covers the buttons. */
+body:has(.hostel-dock) .campus-joystick{bottom:calc(env(safe-area-inset-bottom,0px) + 214px)}
 .campus-joystick i{display:block;width:46px;height:46px;border-radius:50%;background:#34d399d9;border:2px solid #ecfdf5;box-shadow:0 4px 12px #0006;transition:transform 40ms linear}
 .controls-option{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:12px;margin-bottom:8px;border-radius:14px;background:#0f172a;border:2px solid #1e293b;color:#f1f5f9}
 .controls-option>span:first-child{font-size:26px}
