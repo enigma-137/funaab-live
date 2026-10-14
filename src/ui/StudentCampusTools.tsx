@@ -18,6 +18,7 @@ import { networkManager } from '../game/multiplayer/networkManager';
 import { orientationTasks } from '../config/studentJourney';
 import { normalizeAvatar } from '../config/avatar';
 import world from '../config/campusWorld';
+import { locationById } from '../config/campusLocations';
 import './student.css';
 
 const AvatarEditor = lazy(() => import('./AvatarEditor'));
@@ -25,6 +26,16 @@ const AvatarPreview = lazy(() =>
   import('./AvatarEditor').then((m) => ({ default: m.AvatarPreview })),
 );
 const collegePoint = (college: string) => world.locations.find(l=>l.id===college.toLowerCase()) || world.locations.find(l=>l.id==='central-lecture-hall')!;
+/** Where each orientation task is done, for its Go button (meeting a student has no fixed place). */
+const orientationGo = (key: string, college?: string): { name: string; at: [number, number, number]; icon: string } | null => {
+  switch (key) {
+    case 'car-park': return { name: 'Car Park', at: locationById('car-park').position, icon: '🅿️' };
+    case 'keke': return { name: 'Car Park Keke stop', at: locationById('car-park').kekeStop, icon: '🛺' };
+    case 'food': return { name: 'Food Court', at: locationById('food-court').entrance, icon: '🍲' };
+    case 'college': return college ? { name: `${college} welcome point`, at: collegePoint(college).position as [number, number, number], icon: '🎓' } : null;
+    default: return null;
+  }
+};
 const near = (p: number[], target: number[], distance: number) =>
   Math.hypot(p[0] - target[0], p[2] - target[2]) < distance;
 
@@ -64,7 +75,8 @@ export function StudentCampusTools() {
       );
       if (busy.current || !student.journey || student.journey.orientation_completed) return;
       const steps: string[] = [];
-      if (near(game.myPosition, [-30, 0, 26], 13)) steps.push('car-park');
+      // The Car Park location moved once; follow the campus config instead of a copied coordinate.
+      if (near(game.myPosition, locationById('car-park').position, 16)) steps.push('car-park');
       if (game.isRidingKeke) steps.push('keke');
       if (near(game.myPosition, collegePoint(user.college).position, 15)) steps.push('college');
       if (useWalletStore.getState().transactions.some((t) => t.type === 'food_purchase'))
@@ -145,6 +157,13 @@ export function StudentCampusTools() {
                       <span className="orientation-dot" />
                     )}
                     {label}
+                    {!journey.orientation_steps.includes(key) && orientationGo(key, user.college) && (
+                      <button className="orientation-go" onClick={() => {
+                        const t = orientationGo(key, user.college)!;
+                        useGameStore.getState().setNavigationDestination({ id: `orientation-${key}`, name: t.name, shortName: t.name, position: t.at, icon: t.icon });
+                        setCollapsed(true);
+                      }}>Go</button>
+                    )}
                   </li>
                 ))}
               </ol>
