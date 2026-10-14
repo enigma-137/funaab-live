@@ -12,6 +12,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useGameStore } from "../stores/gameStore";
 import { useWalletStore } from "../stores/walletStore";
 import { useSocialStore } from "../stores/socialStore";
+import { toast } from "../stores/toastStore";
 import { HOSTEL_SHOP, hostelItem } from "../config/hostelShop";
 import { FLOORS, PAINTS, ROOM_EXPANSION_PRICE, floorById, paintById, roomSizeOf } from "../config/roomMakeover";
 import "./hostel.css";
@@ -64,6 +65,13 @@ export function HostelLife() {
   }, [s.roomId, nearSecurity, s.debts.length]);
   const mine = !!user && s.owner === user.id,
     away = s.roomId !== "world:funaab:main";
+  // Sleeping happens in your own room, on the mattress; say so the first time you walk in.
+  const sleepHint = useRef("");
+  useEffect(() => {
+    if (!away || !mine || sleepHint.current === s.roomId) return;
+    sleepHint.current = s.roomId;
+    toast({ icon: "🛏️", text: "Want to sleep? Walk to your mattress and tap Lie Down.", tone: "info", ms: 6000 });
+  }, [away, mine, s.roomId]);
   useEffect(() => {
     if (!user) return;
     s.load();

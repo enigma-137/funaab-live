@@ -5,7 +5,11 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { networkManager } from '../game/multiplayer/networkManager';
 import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
-import type { ErrandKind, ShopStockId } from '../config/hustles';
+import { HUSTLE_RULES, POS_KIOSK, PHOTO_RULES, TUTORING, type ErrandKind, type ShopStockId } from '../config/hustles';
+
+/** Hustle pay shares one daily cap, so the last shift of the day can pay less than listed. Say so. */
+const capNote = (paid: number | undefined, expected: number) =>
+  paid != null && paid < expected ? ` · daily hustle limit (₦${HUSTLE_RULES.DAILY_CAP.toLocaleString()}) reached, paid ₦${Math.max(0, paid).toLocaleString()} of ₦${expected.toLocaleString()}` : '';
 
 export interface ShopItem { item: ShopStockId; title: string; cost: number; units_per_restock: number; unit_price: number; units: number; ready: number }
 export interface ShopState { items: ShopItem[]; earned_today: number; sales_today: number; max_sales_per_day: number; hustle_today: number; daily_cap: number }
@@ -86,7 +90,7 @@ export const useHustleStore = create<HustleStore>((set, get) => {
     finishPos: () => run('pos', async () => {
       try {
         const r = await networkManager.hustle('pos_finish');
-        toast({ icon: '🏧', text: 'POS shift done', amount: r.paid, tone: 'good' });
+        toast({ icon: '🏧', text: `POS shift done${capNote(r.paid, POS_KIOSK.pay)}`, amount: r.paid || undefined, tone: r.paid ? 'good' : 'info', ms: 5000 });
       } finally { set({ posEndsAt: null }); void get().loadShop(); }
     }),
     startFarm: () => run('farm', async () => {
@@ -116,7 +120,7 @@ export const useHustleStore = create<HustleStore>((set, get) => {
         if (r.paid != null || r.step >= FARM_STEPS.length) {
           set({ farm: null });
           useGameStore.getState().setNavigationDestination(null);
-          toast({ icon: '🧺', text: 'Farm shift done — good work!', amount: r.paid, tone: 'good' });
+          toast({ icon: '🧺', text: `Farm shift done — good work!${capNote(r.paid, FARM_SHIFT.pay)}`, amount: r.paid || undefined, tone: r.paid ? 'good' : 'info', ms: 5000 });
           void get().loadShop();
           return;
         }
@@ -132,7 +136,7 @@ export const useHustleStore = create<HustleStore>((set, get) => {
     },
     photo: (spot) => run('photo', async () => {
       const r = await networkManager.hustle('photo', { spot });
-      toast({ icon: '📸', text: r.clients ? `Shoot done · ${r.clients} student${r.clients === 1 ? '' : 's'} paid for photos` : 'Shoot done · bring friends for bigger jobs', amount: r.paid, tone: 'good' });
+      toast({ icon: '📸', text: `${r.clients ? `Shoot done · ${r.clients} student${r.clients === 1 ? '' : 's'} paid for photos` : 'Shoot done · bring friends for bigger jobs'}${capNote(r.paid, PHOTO_RULES.base + PHOTO_RULES.perClient * (r.clients || 0))}`, amount: r.paid || undefined, tone: r.paid ? 'good' : 'info', ms: 5000 });
       void get().loadShop();
     }),
     startTutor: () => run('tutor', async () => {
@@ -144,7 +148,8 @@ export const useHustleStore = create<HustleStore>((set, get) => {
       const t = get().tutor; if (!t) return;
       const r = await networkManager.hustle('tutor_submit', { session: t.session, answers: get().tutorAnswers });
       set({ tutorResult: r });
-      if (r.paid > 0) toast({ icon: '📚', text: `Tutoring: ${r.score}/${r.total} right`, amount: r.paid, tone: 'good' });
+      const due = TUTORING.payPerCorrect * r.score;
+      if (r.paid > 0 || due > 0) toast({ icon: '📚', text: `Tutoring: ${r.score}/${r.total} right${capNote(r.paid, due)}`, amount: r.paid || undefined, tone: r.paid ? 'good' : 'info', ms: 5000 });
       void get().loadShop();
     }),
     postErrand: (kind, reward) => run('post', async () => {
