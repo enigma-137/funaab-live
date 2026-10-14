@@ -29,13 +29,15 @@ function Candidate({ c, me, mine, onVote, canVote, showVotes, top }: {
 export function SugSheet() {
   const setModal = useGameStore((s) => s.setActiveModal);
   const me = useAuthStore((s) => s.user?.id);
-  const { state: s, busy, error, run, load } = useSugStore();
+  const { state: s, busy, error, run, load, loadError } = useSugStore();
   const [manifesto, setManifesto] = useState('');
   const [note, setNote] = useState('');
   useEffect(() => { void load(); }, [load]);
   const problem = manifesto ? sugTextProblem(manifesto, SUG.MANIFESTO_MAX) : null;
   const noteProblem = note ? sugTextProblem(note, SUG.ANNOUNCEMENT_MAX) : null;
-  if (!s) return <Sheet title="SUG Elections" icon="🗳️" accent="#0ea5e9" onClose={() => setModal(null)}><p className="academic-body academic-note">Loading the ballot…</p></Sheet>;
+  if (!s) return <Sheet title="SUG Elections" icon="🗳️" accent="#0ea5e9" onClose={() => setModal(null)}>{loadError
+      ? <><p className="academic-error" role="alert">{loadError}</p><button type="button" className="academic-primary" onClick={() => void load()}>Try again</button></>
+      : <p className="academic-body academic-note">Loading the ballot…</p>}</Sheet>;
   const results = s.phase === 'results';
   const maxVotes = Math.max(0, ...s.candidates.map((c) => Number(c.votes ?? 0)));
   const lastMax = Math.max(0, ...(s.last_results ?? []).map((c) => Number(c.votes ?? 0)));

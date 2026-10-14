@@ -24,6 +24,7 @@ interface SugStore {
   state: SugState | null;
   busy: boolean;
   error: string | null;
+  loadError: string | null;
   load: () => Promise<void>;
   open: () => void;
   run: (fn: string, args?: Record<string, unknown>, done?: string) => Promise<boolean>;
@@ -31,14 +32,16 @@ interface SugStore {
 
 export const useSugStore = create<SugStore>((set, get) => ({
   state: null,
+  loadError: null,
   busy: false,
   error: null,
   load: async () => {
     if (!isSupabaseConfigured) return;
     try {
       const { data, error } = await supabase.rpc('sug_state');
-      if (!error && data && Array.isArray(data.candidates)) set({ state: data as SugState });
-    } catch { /* Older databases without migration 034 just hide the election. */ }
+      if (!error && data && Array.isArray(data.candidates)) set({ state: data as SugState, loadError: null });
+      else set({ loadError: error?.message || 'The election could not be loaded.' });
+    } catch (e) { set({ loadError: (e as Error).message || 'The election could not be loaded.' }); }
   },
   open: () => { set({ error: null }); void get().load(); useGameStore.getState().setActiveModal('sug'); },
   run: async (fn, args, done) => {
