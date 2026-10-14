@@ -12,6 +12,11 @@ export const courses = [
   ['NTD', 'Nutrition and Dietetics', 'COLFHEC', 58],
   ['HSM', 'Home Science and Management', 'COLFHEC', 0],
   ['HTM', 'Hospitality and Tourism Management', 'COLFHEC', 55],
+  // COLERM (migration 025).
+  ['AQFM', 'Aquaculture and Fisheries Management', 'COLERM', 50],
+  ['EMT', 'Environmental Management and Toxicology', 'COLERM', 55],
+  ['FWM', 'Forestry and Wildlife Management', 'COLERM', 48],
+  ['WMA', 'Water Resources Management and Agrometeorology', 'COLERM', 50],
   ['AEC', 'Agricultural Economics', 'COLAMRUD', 50],
   ['ARD', 'Agricultural Extension and Rural Development', 'COLAMRUD', 0],
   ['CPT', 'Crop Protection', 'COLPLANT', 0],
