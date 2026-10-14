@@ -5,6 +5,7 @@ import { networkManager } from '../game/multiplayer/networkManager';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
+import { useGameStore } from './gameStore';
 // paid/bonus are only present on the delivery that completed the run (server amounts).
 interface Run {id:string;job_id:string;status:string;reward_claimed:boolean;paid?:number;bonus?:number}
 interface JobState {
@@ -14,6 +15,13 @@ interface JobState {
  pickupDeliveryPackage:()=>Promise<boolean>; completeActiveJob:(id:string)=>Promise<{success:boolean;reward:number;bonus:number}>;
  checkJobProximity:(pos:[number,number,number])=>{canPickup:boolean;canDeliver:boolean;targetName:string;distance:number};
 }
+// The route arrow always points at the current stop, so students never have to hunt for it.
+const guide = (job:CampusJob|null) => {
+ const game=useGameStore.getState(),cur=game.navigationDestination;
+ if(!job){if(cur?.id.startsWith('job-'))game.setNavigationDestination(null);return;}
+ const pickup=job.status==='accepted',name=pickup?job.source:job.destination;
+ game.setNavigationDestination({id:`job-${job.id}-${pickup?'pickup':'drop'}`,name,shortName:name,position:pickup?job.sourcePos:job.destinationPos,icon:job.icon});
+};
 const active = (run:Run|null):CampusJob|null => {
  const job=CAMPUS_JOBS.find(j=>j.id===run?.job_id);
  return job && run && ['accepted','picked_up'].includes(run.status)? {...job,status:run.status as CampusJob['status']}:null;
@@ -26,7 +34,7 @@ export const useJobStore=create<JobState>((set,get)=>{
    try {
      const run:Run=await networkManager.action(name,job,get().run?.id);
      if(useAuthStore.getState().user?.id!==owner)return null;
-     set({run,activeJob:active(run)});return run;
+     set({run,activeJob:active(run)});guide(active(run));return run;
    } catch(e) {set({error:(e as Error).message});return null;}
    finally {set({busy:false});}
  };
@@ -37,7 +45,7 @@ export const useJobStore=create<JobState>((set,get)=>{
    const {data,error}=await supabase.from('job_runs').select('*').eq('user_id',id).in('status',['accepted','picked_up']).maybeSingle();
    if(useAuthStore.getState().user?.id!==id)return;
    if(error) {set({error:'Jobs unavailable. Please retry after setup.'});return;}
-   set({run:data,activeJob:active(data),error:null});
+   set({run:data,activeJob:active(data),error:null});guide(active(data));
  },
  acceptJob:async id=>!!(await action('accept',id)),
  cancelJob:async()=>{await action('cancel');},
