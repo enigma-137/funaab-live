@@ -6,6 +6,8 @@ import { normalizeAvatar } from "../../config/avatar";
 import type { HeldItem } from "../../config/heldItems";
 import { HeldProp } from "./HeldProp";
 import { identitySeed } from "./avatarGeometry";
+import { QUALITY } from "../../config/quality";
+import { useGraphicsStore } from "../../stores/graphicsStore";
 import {
   buildAvatarGeometry,
   HEAD_SCALE,
@@ -121,8 +123,9 @@ export const AvatarBody = memo(
         delta = Math.min(dt, 0.05),
         t = clock.elapsedTime + (seed % 100);
       root.current.getWorldPosition(s.world);
+      const nearLimit = QUALITY[useGraphicsStore.getState().tier].avatarNear;
       const distant =
-        s.world.distanceToSquared(camera.position) > 24 * 24 &&
+        s.world.distanceToSquared(camera.position) > nearLimit * nearLimit &&
         animation !== "sit" &&
         animation !== "sleep";
       if (near.current) near.current.visible = !distant;
@@ -267,12 +270,13 @@ export const AvatarBody = memo(
       root.current.scale.setScalar(sleep ? 0.9 : 1);
     });
     const m = resources.materials;
+    const shadows = useGraphicsStore((s) => QUALITY[s.tier].avatarShadows);
     const part = (geometry: string, material: keyof typeof m) =>
       resources.g[geometry] ? (
         <mesh
           geometry={resources.g[geometry]}
           material={m[material]}
-          castShadow
+          castShadow={shadows}
         />
       ) : null;
     const legMaterial = look.legMaterial;

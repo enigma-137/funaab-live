@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import { QUALITY } from '../../config/quality';
+import { useGraphicsStore } from '../../stores/graphicsStore';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useDayNight, NIGHT_LIGHTS_FROM } from './dayNight';
@@ -145,6 +147,8 @@ function GroundPools({ pools, night }: { pools: Source[]; night: number }) {
 
 /** Four real point lights that follow the light sources nearest the student, plus a viewer fill light. */
 function NearestLights({ sources, night }: { sources: Source[]; night: number }) {
+  // Every real light costs on every surface, so slower phones get fewer.
+  const count = QUALITY[useGraphicsStore((s) => s.tier)].nightLights;
   const lights = useRef<(THREE.PointLight | null)[]>([]);
   const fill = useRef<THREE.PointLight>(null);
   const clock = useRef(0);
@@ -155,7 +159,7 @@ function NearestLights({ sources, night }: { sources: Source[]; night: number })
     if (clock.current > 0) return;
     clock.current = 0.4;
     const [x, , z] = useGameStore.getState().myPosition;
-    const nearest = [...sources].sort((a, b) => Math.hypot(a.p[0] - x, a.p[2] - z) - Math.hypot(b.p[0] - x, b.p[2] - z)).slice(0, 4);
+    const nearest = [...sources].sort((a, b) => Math.hypot(a.p[0] - x, a.p[2] - z) - Math.hypot(b.p[0] - x, b.p[2] - z)).slice(0, count);
     nearest.forEach((s, i) => {
       const l = lights.current[i];
       if (!l) return;
@@ -167,7 +171,7 @@ function NearestLights({ sources, night }: { sources: Source[]; night: number })
   });
   return (
     <>
-      {[0, 1, 2, 3].map((i) => <pointLight key={i} ref={(el) => { lights.current[i] = el; }} decay={1.6} intensity={0} />)}
+      {Array.from({ length: count }, (_, i) => i).map((i) => <pointLight key={i} ref={(el) => { lights.current[i] = el; }} decay={1.6} intensity={0} />)}
       <pointLight ref={fill} color="#dbe4ff" intensity={14 * night} distance={22} decay={1.4} />
     </>
   );

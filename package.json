@@ -65,6 +65,7 @@
     "test:party:worker": "tsx scripts/test-party-worker.ts",
     "test:sug:db": "tsx scripts/test-sug-db.ts",
     "test:broadcast": "tsx scripts/test-broadcast.ts",
+    "test:quality": "tsx scripts/test-quality.ts",
     "test:league": "tsx scripts/test-league-worker.ts",
     "test:league:browser": "tsx scripts/test-league-browser.ts",
     "test:lodge:browser": "tsx scripts/test-lodge-browser.ts",

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { QUALITY } from '../../config/quality';
+import { useGraphicsStore } from '../../stores/graphicsStore';
 import { useFrame } from '@react-three/fiber';
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -128,7 +130,7 @@ function PartyLights() {
           </group>
         ))}
       </group>
-      <pointLight ref={light} position={[0, H - 1.5, 0]} intensity={14} distance={16} decay={1.6} />
+      {QUALITY[useGraphicsStore.getState().tier].nightLights > 1 && <pointLight ref={light} position={[0, H - 1.5, 0]} intensity={14} distance={16} decay={1.6} />}
     </group>
   );
 }

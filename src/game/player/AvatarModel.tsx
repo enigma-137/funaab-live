@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { QUALITY } from '../../config/quality';
+import { useGraphicsStore } from '../../stores/graphicsStore';
 import {useHostelStore} from '../../stores/hostelStore';
 import { AvatarBody } from './AvatarBody';
 import type { HeldItem } from '../../config/heldItems';
@@ -43,10 +47,23 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
 
   const shirtColor = avatarConfig?.shirtColor || '#16a34a';
 
+  // Other students' name tags only exist while they're close enough to read.
+  const here = useRef<THREE.Group>(null);
+  const [tagNear, setTagNear] = useState(true);
+  const since = useRef(0);
+  const _p = useRef(new THREE.Vector3());
+  useFrame(({ camera, clock }) => {
+    if (isLocal || !here.current || clock.elapsedTime - since.current < 0.4) return;
+    since.current = clock.elapsedTime;
+    const limit = QUALITY[useGraphicsStore.getState().tier].nameTagNear;
+    const near = here.current.getWorldPosition(_p.current).distanceToSquared(camera.position) < limit * limit;
+    setTagNear((was) => (was === near ? was : near));
+  });
+
   return (
-    <group>
+    <group ref={here}>
       {/* Floating Username & College Badge & Unread DM Alert (Hidden when any modal is open) */}
-      {!isModalOpen && !(isLocal&&(inRoom||riding)) && (
+      {!isModalOpen && (isLocal || tagNear) && !(isLocal&&(inRoom||riding)) && (
         <Html
           position={[0, hasUnreadDm ? 2.45 : 2.25, 0]}
           center

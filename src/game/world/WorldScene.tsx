@@ -5,7 +5,7 @@ import { JobMarkers } from './JobMarkers';
 import { NavigationMarker } from './NavigationMarker';
 import { useHostelStore } from '../../stores/hostelStore';
 import React, { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useDayNight } from './dayNight';
@@ -19,6 +19,10 @@ import { SecurityOfficers } from '../npc/SecurityOfficers';
 import { TouchInputController } from '../controls/TouchInputController';
 import { TapRippleEffect } from '../controls/TapRippleEffect';
 import { useGameStore } from '../../stores/gameStore';
+import { PerfProbe } from './PerfProbe';
+import { PerformanceMonitor } from '@react-three/drei';
+import { useGraphicsStore } from '../../stores/graphicsStore';
+import { QUALITY, effectiveDpr } from '../../config/quality';
 
 export const WorldScene: React.FC = () => {
   const roomId=useHostelStore(s=>s.roomId);
@@ -28,19 +32,30 @@ export const WorldScene: React.FC = () => {
   const myConnectionId = useGameStore((s) => s.myConnectionId);
   const debugPhysics = useGameStore((s) => s.debugPhysics);
   const night = useDayNight((s) => s.night);
+  const tier = useGraphicsStore((s) => s.tier);
+  const auto = useGraphicsStore((s) => s.pref === 'auto');
+  const q = QUALITY[tier];
+  // Antialiasing can only be chosen when the canvas is made, so it follows the tier at start-up.
+  const [antialias] = React.useState(q.antialias);
+  // Loading the campus stutters once; only judge the frame rate after it has settled.
+  const mountedAt = React.useRef(Date.now());
+  const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
 
   return (
     <div className="w-full h-full relative select-none">
       <Canvas
-        shadows
-        dpr={[1, Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 1.75)]}
-        camera={{ position: [0, 5, 14], fov: 50, near: 0.1, far: 300 }}
-        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+        shadows={q.shadows}
+        dpr={effectiveDpr(tier, deviceDpr)}
+        camera={{ position: [0, 5, 14], fov: 50, near: 0.1, far: q.far }}
+        gl={{ antialias, alpha: false, powerPreference: 'high-performance' }}
         className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
       >
+        {/* In Auto, a stretch of poor frame rates lowers the tier by one (never raises it again). */}
+        {auto && <PerformanceMonitor ms={250} iterations={8} bounds={() => [38, 120]} flipflops={2} onDecline={() => { if (Date.now() - mountedAt.current > 15000) useGraphicsStore.getState().decline(); }} />}
         {/* Hostel courtyard and rooms share campus day/night; the library interior stays lit. */}
-        <SkyAndLight night={roomId === LIBRARY_ROOM ? 0 : night} indoor={roomId.startsWith('world:funaab:hostel-room:')} />
+        <SkyAndLight night={roomId === LIBRARY_ROOM ? 0 : night} indoor={roomId.startsWith('world:funaab:hostel-room:')} tier={tier} />
 
+        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('perf') === '1' && <PerfProbe />}
         <Suspense fallback={null}>
           {/* timeStep="vary": one physics step per rendered frame, so the kinematic player, its mesh and
               the follow camera stay in lock-step on 60/90/120Hz and variable-rate mobile displays. */}
@@ -76,14 +91,30 @@ export const WorldScene: React.FC = () => {
   );
 };
 
+/** Half-width of the area (metres around the student) that receives shadows. */
+const SHADOW_HALF = 42;
 const mix = (a: string, b: string, t: number) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** Sky, fog and the sun/moon, blended from bright tropical day (0) to campus night (1). */
 /** `indoor` (your room): little moonlight gets in after dark, so the ceiling bulb and lamps light it. */
-function SkyAndLight({ night: n, indoor = false }: { night: number; indoor?: boolean }) {
+function SkyAndLight({ night: n, indoor = false, tier }: { night: number; indoor?: boolean; tier: import('../../config/quality').QualityTier }) {
+  const q = QUALITY[tier];
+  const sunLight = React.useRef<THREE.DirectionalLight>(null);
+  // The shadow map only covers the area around the student, so it is sharper and much cheaper
+  // than one stretched over the whole campus; it slides along as they walk.
+  useFrame(() => {
+    const l = sunLight.current;
+    if (!l || !q.shadows) return;
+    const [x, , z] = useGameStore.getState().myPosition;
+    const snap = (v: number) => Math.round(v / 4) * 4; // whole steps, so shadows don't shimmer
+    l.target.position.set(snap(x), 0, snap(z));
+    l.position.set(snap(x) + sunDir[0], sunDir[1], snap(z) + sunDir[2]);
+    l.target.updateMatrixWorld();
+  });
   // Moonlight comes from the opposite side so shadows swing round after dark.
   const sun: [number, number, number] = n < 0.5 ? [30, 45, 25] : [-30, 50, -20];
+  const sunDir = sun;
   return (
     <>
       <color attach="background" args={[mix('#7dd3fc', '#0b1430', n)]} />
@@ -92,23 +123,24 @@ function SkyAndLight({ night: n, indoor = false }: { night: number; indoor?: boo
       {/* Ambient & Warm Tropical Sunlight, cooling to moonlight at night */}
       <ambientLight intensity={lerp(0.65, indoor ? 0.16 : 0.5, n)} color={mix('#fef08a', '#8d9fd6', n)} />
       <directionalLight
+        ref={sunLight}
         position={sun}
         intensity={lerp(1.2, indoor ? 0.08 : 0.38, n)}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        castShadow={q.shadows}
+        shadow-mapSize-width={q.shadowMapSize}
+        shadow-mapSize-height={q.shadowMapSize}
         shadow-camera-near={0.5}
-        shadow-camera-far={120}
-        shadow-camera-left={-60}
-        shadow-camera-right={60}
-        shadow-camera-top={60}
-        shadow-camera-bottom={-60}
+        shadow-camera-far={140}
+        shadow-camera-left={-SHADOW_HALF}
+        shadow-camera-right={SHADOW_HALF}
+        shadow-camera-top={SHADOW_HALF}
+        shadow-camera-bottom={-SHADOW_HALF}
         color={mix('#fffbeb', '#a9bbff', n)}
       />
       <hemisphereLight groundColor={mix('#1e3a1e', '#0a1410', n)} color={mix('#60a5fa', '#29407a', n)} intensity={lerp(0.4, indoor ? 0.1 : 0.32, n)} />
 
       {/* Atmospheric Sky by day, stars by night */}
-      {n < 0.7 && (
+      {n < 0.7 && q.sky && (
         <Sky
           distance={450000}
           sunPosition={n < 0.4 ? [30, 45, 25] : [30, lerp(45, -4, Math.min(1, n * 1.4)), 25]}
@@ -118,7 +150,7 @@ function SkyAndLight({ night: n, indoor = false }: { night: number; indoor?: boo
           rayleigh={lerp(0.5, 2.5, n)}
         />
       )}
-      {n >= 0.45 && <Stars radius={160} depth={40} count={1400} factor={4} saturation={0} fade speed={0.4} />}
+      {n >= 0.45 && <Stars radius={Math.min(160, q.far)} depth={40} count={q.stars} factor={4} saturation={0} fade speed={0.4} />}
     </>
   );
 }
