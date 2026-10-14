@@ -10,6 +10,7 @@ import world, { COURT_ZONES } from '../src/config/campusWorld';
 import { campusLocations } from '../src/config/campusLocations';
 import { classifyTerrain } from '../src/game/rules/lawnSecuritySystem';
 import { FOOTBALL_PITCH } from '../src/config/football';
+import { COURT_BENCHES, BENCH_LENGTH, courtBenchSeats } from '../src/config/courtBenches';
 
 const fixed = (...v: number[]) => { let i = 0; return () => v[i++ % v.length]; };
 const mid = () => 0.5; // zero noise
@@ -74,6 +75,25 @@ assert(!overlaps(COURT_ZONES.basketball, COURT_ZONES.volleyball), 'courts side b
 // Walking there is legal: the free-throw line, the courtside, Acad's front and the walk from the pitch.
 for (const [x, z] of [[BASKETBALL_COURT.shooterSpot[0], BASKETBALL_COURT.shooterSpot[2]], [VOLLEYBALL_COURT.centre[0], VOLLEYBALL_COURT.centre[2]], [-100, 20], [-100, 40], [-80, 42], [-108, -21], [-108, -18.5], [-70, -22]])
   assert.equal(classifyTerrain(x, z).restricted, false, `(${x}, ${z}) is walkable`);
+
+// Courtside benches: every bench has two sit spots, sits on walkable ground off the playing
+// surface, faces its court, and no two benches overlap.
+assert.equal(courtBenchSeats.length, COURT_BENCHES.length * 2);
+for (const seat of courtBenchSeats) {
+  assert(world.interactables.some((i) => i.id === seat.id && i.type === 'bench'), `${seat.id} is a sit spot`);
+  assert.equal(classifyTerrain(seat.position[0], seat.position[2]).restricted, false, `${seat.id} is walkable`);
+}
+const inside = (p: number[], z: { minX: number; maxX: number; minZ: number; maxZ: number }, pad = 0) => p[0] > z.minX + pad && p[0] < z.maxX - pad && p[2] > z.minZ + pad && p[2] < z.maxZ - pad;
+const surface = (c: { centre: number[] }, w: number, d: number) => ({ minX: c.centre[0] - w / 2, maxX: c.centre[0] + w / 2, minZ: c.centre[2] - d / 2, maxZ: c.centre[2] + d / 2 });
+const playing = [surface(BASKETBALL_COURT, BASKETBALL_COURT.length, BASKETBALL_COURT.width), surface(VOLLEYBALL_COURT, VOLLEYBALL_COURT.width, VOLLEYBALL_COURT.length)];
+for (const b of COURT_BENCHES) {
+  assert(!playing.some((z) => inside(b.position, z, -0.6)), `${b.id} is off the playing surface`);
+  const court = b.court === 'basketball' ? BASKETBALL_COURT.centre : VOLLEYBALL_COURT.centre;
+  const facing = [Math.sin(b.rotation), Math.cos(b.rotation)];
+  const toCourt = [court[0] - b.position[0], court[2] - b.position[2]];
+  assert(facing[0] * toCourt[0] + facing[1] * toCourt[1] > 0, `${b.id} faces its court`);
+  for (const o of COURT_BENCHES) if (o !== b) assert(Math.hypot(o.position[0] - b.position[0], o.position[2] - b.position[2]) > BENCH_LENGTH + 0.3, `${b.id} / ${o.id} apart`);
+}
 
 // ── Worker authority ──
 class Socket { static OPEN = 1; readyState = 1; messages: any[] = []; handlers: Record<string, Function> = {}; accept() {} addEventListener(e: string, f: Function) { this.handlers[e] = f; } send(m: string) { this.messages.push(JSON.parse(m)); } close() { this.readyState = 3; this.handlers.close?.(); } async packet(p: object) { await this.handlers.message({ data: JSON.stringify(p) }); } }

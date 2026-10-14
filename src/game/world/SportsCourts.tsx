@@ -9,6 +9,7 @@ import { serveSpot as rallyServeSpot, slotSpot, teamFacing, type RallyState } fr
 import { useRallyStore } from '../../stores/rallyStore';
 import { BASKETBALL_COURT, hoopFlightPath, isBasket, type BasketballShot, type Vec3 } from '../../config/basketball';
 import { COURT_ZONES } from '../../config/campusWorld';
+import { BENCH_LENGTH, COURT_BENCHES, benchLocal } from '../../config/courtBenches';
 import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
 import { AvatarBody } from '../player/AvatarBody';
 import { npcAppearance } from '../../config/npcAppearance';
@@ -71,10 +72,16 @@ function buildCourts() {
   for (const dz of [-3, 3]) b.box([vx, Y_LINE, vz + dz], [VOLLEYBALL_COURT.width, 0.01, LINE], 'courtLine'); // attack lines
   for (const side of [-1, 1]) b.pole([vx + side * (VOLLEYBALL_COURT.width / 2 + 0.5), 1.25, vz], 0.06, 2.5, 'metal');
   b.box([vx, 2.4, vz], [VOLLEYBALL_COURT.width + 1, 0.06, 0.03], 'courtLine'); // net tape
-  // Courtside benches.
-  for (const dx of [-6, 6]) {
-    b.box([CX + dx, 0.45, CZ + HALF_W + 1.3], [2.6, 0.08, 0.45], 'wood');
-    for (const lx of [-1.1, 1.1]) b.box([CX + dx + lx, 0.22, CZ + HALF_W + 1.3], [0.08, 0.44, 0.4], 'metal');
+  // Courtside benches with backrests (every one has sit spots: config/courtBenches).
+  for (const bench of COURT_BENCHES) {
+    const at = (along: number, ahead: number, y: number): Vec3 => { const p = benchLocal(bench, along, ahead); return [p[0], y, p[2]]; };
+    const r: Vec3 = [0, bench.rotation, 0];
+    b.box(at(0, 0, 0.45), [BENCH_LENGTH, 0.08, 0.45], 'wood', r);
+    b.box(at(0, -0.24, 0.78), [BENCH_LENGTH, 0.32, 0.06], 'wood', r);
+    for (const along of [-1.1, 1.1]) {
+      b.box(at(along, 0, 0.22), [0.08, 0.44, 0.4], 'metal', r);
+      b.box(at(along, -0.24, 0.6), [0.06, 0.6, 0.06], 'metal', r);
+    }
   }
   return b.finish();
 }
@@ -339,8 +346,8 @@ export function SportsCourts() {
           <CylinderCollider key={`v${side}`} args={[1.25, 0.1]} position={[vx + side * (VOLLEYBALL_COURT.width / 2 + 0.5), 1.25, vz]} />
         ))}
         {/* Benches */}
-        {[-6, 6].map((dx) => (
-          <CuboidCollider key={`b${dx}`} args={[1.3, 0.25, 0.22]} position={[CX + dx, 0.25, CZ + HALF_W + 1.3]} />
+        {COURT_BENCHES.map((bench) => (
+          <CuboidCollider key={bench.id} args={[BENCH_LENGTH / 2, 0.25, 0.22]} position={[bench.position[0], 0.25, bench.position[2]]} rotation={[0, bench.rotation, 0]} />
         ))}
       </RigidBody>
       <ChallengeBall />
