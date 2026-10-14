@@ -261,6 +261,14 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
         ['Which part of the triad does a strong password protect? Raise your hand.', 'Defences: MFA • Strong passwords • Updates • Backups'],
         ['Right. Turn on two-factor authentication on your student email today. Dismissed!', 'Class Dismissed!\nTask: Enable MFA'],
       ]),
+    collegeLecture('collend', 'funaab-ets-201', 'ETS 201', 'Introduction to Entrepreneurship', 'Dr. Olabisi', 'Senior Lecturer, Accounting', '#78350f', '#663c28',
+      'Spotting opportunities, testing an idea cheaply and keeping clean books from day one.', [
+        ['Good day, everyone. ETS 201 — Introduction to Entrepreneurship.', 'ETS 201: Introduction to Entrepreneurship\nTopic: From Idea to Business'],
+        ['Every business starts with a problem people will pay to solve.', 'Problem → Solution → Customer → Price'],
+        ['Test small first: sell ten before you build a hundred.', 'Validate: Ask • Pre-sell • Pilot • Learn'],
+        ['Why should you separate your business money from your pocket money? Raise your hand.', 'Bookkeeping: Income − Expenses = Profit'],
+        ['Exactly — or you will never know if you made profit. Write your idea in one sentence before next class. Dismissed!', 'Class Dismissed!\nTask: One-line business idea'],
+      ]),
     collegeLecture('colphys', 'funaab-phy-201', 'PHY 201', 'Mechanics & Properties of Matter', 'Dr. Akinola', 'Senior Lecturer, Physics', '#4c1d95', '#6b4423',
       'Newton\'s laws, momentum and the elastic properties of solids and fluids.', [
         ['Good afternoon, physicists. PHY 201 — Mechanics and Properties of Matter.', 'PHY 201: Mechanics & Properties of Matter\nTopic: Newton\'s Laws & Momentum'],

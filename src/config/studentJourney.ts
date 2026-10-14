@@ -46,7 +46,7 @@ export function simulateUtme(courseId: string, random = Math.random): AdmissionR
     'Use of English',
     'Mathematics',
     'Chemistry',
-    ['COLENG', 'COLPHYS', 'COLCOMS'].includes(course?.college ?? '') ? 'Physics' : 'Biology',
+    course?.college === 'COLLEND' ? 'Economics' : ['COLENG', 'COLPHYS', 'COLCOMS'].includes(course?.college ?? '') ? 'Physics' : 'Biology',
   ].map((name) => ({
     name,
     score: 42 + Math.floor(Math.max(0, Math.min(0.999999, random())) * 40),

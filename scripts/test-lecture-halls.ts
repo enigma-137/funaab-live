@@ -23,7 +23,7 @@ const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const physicalColleges = campusLocations.filter((l) => l.type === "college").map((l) => l.id).sort();
 assert.deepEqual(
   physicalColleges,
-  ["colanim", "colbios", "coleng", "colerm", "colfhec", "colphys", "colplant", "colvet", "colcoms"].sort(),
+  ["colanim", "colbios", "coleng", "colerm", "colfhec", "colphys", "colplant", "colvet", "colcoms", "collend"].sort(),
   "college locations",
 );
 for (const id of physicalColleges) {

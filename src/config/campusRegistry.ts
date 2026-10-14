@@ -191,6 +191,13 @@ const locationMetadata: Record<
     description: 'College of Computing Sciences: Computer Science, Cyber Security, Software Engineering labs, and IT halls. Lecture hall entrance at the college forecourt.',
     interactiveModal: 'lecture_hall',
   },
+  collend: {
+    category: 'college',
+    categoryLabel: 'College / Faculty',
+    icon: '🏛️',
+    color: '#b45309',
+    description: 'College of Entrepreneurial and Development Studies: Accounting, Entrepreneurial Studies, and Library and Information Studies.',
+  },
   colphys: {
     category: 'college',
     categoryLabel: 'College / Faculty',

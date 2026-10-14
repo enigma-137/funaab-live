@@ -36,6 +36,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   // Faces west onto the campus road (facing below); footprint is world X × Z after that turn.
   'colplant': [100,65, 14,26, 89,65, 55,76],
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
+  // Inside the ring road between Floral World and the car park, facing the z=45 road.
+  'collend': [-30,18, 20,12, -30,28, -30,45],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
   'colphys': [-35,-108, 22,14, -35,-97, -35,-85],
@@ -46,8 +48,9 @@ const layout: Record<string, [number, number, number, number, number, number, nu
 export const collegeCatalogue = [...base.colleges,
   {code:'COLERM', name:'College of Environmental Resources Management',color:'#0d9488'},
   {code:'COLCOMS', name:'College of Computing Sciences',color:'#4f46e5'},
+  {code:'COLLEND', name:'College of Entrepreneurial and Development Studies',color:'#b45309'},
 ];
-const additions = ['colvet','colanim','colplant','colcoms','colbios','colphys','library'].map(id => ({
+const additions = ['colvet','colanim','colplant','colcoms','collend','colbios','colphys','library'].map(id => ({
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));

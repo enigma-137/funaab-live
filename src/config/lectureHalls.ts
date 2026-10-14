@@ -100,6 +100,7 @@ export const LECTURE_HALLS: LectureHallConfig[] = [
   collegeHall('colplant', 'COLPLANT', 'COLPLANT Lecture Hall', { seating: { rows: 4, cols: 6 }, scheduleOffsetMinutes: 3, wall: '#f3f8ec' }),
   collegeHall('colerm', 'COLERM', 'COLERM Lecture Hall', { seating: { rows: 5, cols: 6 }, scheduleOffsetMinutes: 8, wall: '#eefaf7' }),
   collegeHall('colcoms', 'COLCOMS', 'COLCOMS Lecture Hall', { seating: { rows: 5, cols: 6 }, scheduleOffsetMinutes: 13, wall: '#eef0fb' }),
+  collegeHall('collend', 'COLLEND', 'COLLEND Lecture Hall', { seating: { rows: 4, cols: 6 }, scheduleOffsetMinutes: 9, wall: '#fbf3e6' }),
   collegeHall('colphys', 'COLPHYS', 'COLPHYS Lecture Hall', { seating: { rows: 5, cols: 6 }, scheduleOffsetMinutes: 4, wall: '#f4f0fb' }),
 ];
 

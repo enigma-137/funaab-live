@@ -33,6 +33,10 @@ export const courses = [
   ['ICT', 'Information Technology and Information Communication Technology', 'COLCOMS', 58],
   ['SEI', 'Software Engineering and Information Systems', 'COLCOMS', 63],
   ['CDS', 'Cyber Security and Data Science', 'COLCOMS', 62],
+  // COLLEND (migration 030).
+  ['ACC', 'Accounting', 'COLLEND', 58],
+  ['ETS', 'Entrepreneurial Studies', 'COLLEND', 50],
+  ['LIS', 'Library and Information Studies', 'COLLEND', 48],
   ['MTH', 'Mathematics', 'COLPHYS', 0],
   ['PHY', 'Physics', 'COLPHYS', 48],
 ].map(([id, name, college, cutoff]) => ({
