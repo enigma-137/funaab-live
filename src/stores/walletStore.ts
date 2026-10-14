@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { WalletTransaction, InventoryItem, FoodItem } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
+import { holdPurchasedItem } from '../game/player/holdItem';
 
 interface WalletState {
   balance: number;
@@ -234,6 +235,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
           inventory: currentInventory,
           error: null,
         });
+        holdPurchasedItem(item.id, item.type);
         return { success: true, balance: newBalance };
       } catch (e: any) {
         console.error('Supabase food purchase sync error:', e);
@@ -280,6 +282,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     local.transactions = newTransactions;
     local.inventory = currentInventory;
     localDB.saveWallet(userId, local);
+    holdPurchasedItem(item.id, item.type);
 
     return { success: true, balance: newBalance };
   },

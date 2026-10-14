@@ -1,4 +1,5 @@
 import { openHostel } from './HostelLife';
+import { Sheet } from './Sheet';
 import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
@@ -35,26 +36,8 @@ export const BankModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-md bg-slate-900 border-2 border-blue-500/40 rounded-3xl shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 border-b border-blue-500/30">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <Landmark className="w-5 h-5" />
-            </div>
-            <div>
-              <button onClick={() => openHostel('debts')}>Iya Ibeji Debts</button><h2 className="text-base font-bold text-white font-['Outfit']">FUNAAB Microfinance ATM</h2>
-              <p className="text-[11px] text-blue-300">Virtual Campus Banking & Cash Ledger</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveModal(null)}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Sheet title={'FUNAAB Microfinance ATM'} subtitle={'Virtual campus banking & cash ledger'} icon={<Landmark className="w-5 h-5" />} accent="#2563eb" onClose={() => setActiveModal(null)}>
+      <div className="px-6 pt-3"><button className="text-xs font-bold text-amber-300 underline underline-offset-2" onClick={() => openHostel('debts')}>Iya Ibeji debts</button></div>
 
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-800 px-6 pt-3 gap-4 text-xs font-semibold">
@@ -229,7 +212,6 @@ export const BankModal: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };

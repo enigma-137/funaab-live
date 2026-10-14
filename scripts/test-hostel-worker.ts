@@ -94,7 +94,7 @@ await join(world,'guest4');await join(world,'guest5');
     await student.packet({type:'ps_action',matchId:match.id,choice:'center'});
     await opponent.packet({type:'ps_action',matchId:match.id,choice:'center'});
   }
-  assert.equal(match.status,'in_progress');assert.equal(match.currentRound,4);assert.equal(match.totalRounds,5);assert.equal(match.winnerName,undefined);assert.equal(pending.size,0);
+  assert.equal(match.status,'in_progress');assert.equal(match.currentRound,4);assert.equal(match.totalRounds,6);assert.equal(match.winnerName,undefined);assert.equal(pending.size,0);
   await student.packet({type:'ps_action',matchId:match.id,choice:'right'});
   await opponent.packet({type:'ps_action',matchId:match.id,choice:'left'});
   await student.packet({type:'ps_action',matchId:match.id,choice:'left'});

@@ -1,38 +1,27 @@
 import React from 'react';
+import { Sheet } from './Sheet';
 import { useAuthStore } from '../stores/authStore';
-import { useSocialStore } from '../stores/socialStore';
+import { useShallow } from 'zustand/react/shallow';
+import { useSocialStore, listConversations } from '../stores/socialStore';
 import { useGameStore } from '../stores/gameStore';
-import { X, Users, UserMinus, Send, MessageSquare } from 'lucide-react';
+import { X, Users, UserMinus, UserPlus, Send, MessageSquare } from 'lucide-react';
 
 export const FriendsModal: React.FC = () => {
   const { user } = useAuthStore();
-  const { friends, removeFriend } = useSocialStore();
+  const { friends, removeFriend, addFriend } = useSocialStore();
   const { players, setActiveModal, setSendMoneyRecipient } = useGameStore();
+  // Students you've chatted with lately who aren't friends yet, so they're easy to find and add.
+  const dmParts = useSocialStore(useShallow((s) => ({ directMessages: s.directMessages, dmPartners: s.dmPartners, unreadDmsByPartner: s.unreadDmsByPartner })));
+  const recent = React.useMemo(
+    () => listConversations(dmParts).filter((c) => !friends.some((f) => f.username.toLowerCase() === c.partner.username.toLowerCase())),
+    [dmParts.directMessages, dmParts.dmPartners, dmParts.unreadDmsByPartner, friends],
+  );
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-md bg-slate-900 border-2 border-slate-700 rounded-3xl shadow-2xl overflow-hidden font-['Plus_Jakarta_Sans']">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-sm">
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white font-['Outfit']">Campus Friends</h2>
-              <p className="text-[11px] text-slate-400">{friends.length} Students Connected</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveModal(null)}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Sheet title={'Campus Friends'} subtitle={`${friends.length} students connected`} icon={<Users className="w-4 h-4" />} accent="#059669" onClose={() => setActiveModal(null)}>
 
         {/* Friends List */}
-        <div className="p-6 space-y-2.5 max-h-96 overflow-y-auto">
+        <div className="p-6 space-y-2.5">
           {friends.length === 0 ? (
             <div className="text-center py-8 text-xs text-slate-400 space-y-2">
               <div className="text-3xl">👋</div>
@@ -125,8 +114,35 @@ export const FriendsModal: React.FC = () => {
               );
             })
           )}
+          {recent.length > 0 && (
+            <>
+              <div className="pt-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Recently messaged</div>
+              {recent.map((c) => (
+                <div key={c.key} className="flex items-center justify-between p-3 rounded-2xl bg-slate-950/50 border border-slate-800/60">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-slate-300 text-sm font-['Outfit']">
+                      {c.partner.username[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-white truncate">@{c.partner.username}</div>
+                      <div className="text-[11px] text-slate-500">{c.partner.college || 'CAMPUS'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => useSocialStore.getState().openDm(c.partner)}
+                      className="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-bold border border-indigo-500/30 flex items-center gap-1 transition" title="Direct Message">
+                      <MessageSquare className="w-3 h-3" /> DM
+                    </button>
+                    <button onClick={() => { if (user) addFriend(user.id, { id: c.partner.id, username: c.partner.username, college: c.partner.college || 'CAMPUS' }); }}
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition" title="Add Friend">
+                      <UserPlus className="w-3 h-3" /> Add
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };

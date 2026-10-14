@@ -10,6 +10,7 @@ import { getLectureHall, hallSeatPositions } from '../config/lectureHalls';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { formatCountdown } from '../utils/lagosTime';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface LectureHallModalProps {
   isOpen: boolean;
@@ -70,8 +71,11 @@ export const LectureHallModal: React.FC<LectureHallModalProps> = ({
             <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '2px', color: '#68d391', textTransform: 'uppercase' }}>
               FUNAAB Academic Timetable Board
             </div>
-            <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 700 }}>
-              🕒 {hallSchedule.lagosTimeString}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace', fontWeight: 700 }}>
+                🕒 {hallSchedule.lagosTimeString}
+              </div>
+              <ModalCloseButton onClose={onClose} label="Close timetable" />
             </div>
           </div>
           <h2 style={{ margin: '6px 0 0 0', fontSize: '21px', fontWeight: 900, color: '#ffffff' }}>

@@ -25,6 +25,8 @@ interface StudentState {
   accept: (courseId: string) => Promise<boolean>;
   markSteps: (steps: string[]) => Promise<void>;
   claimBadge: () => Promise<void>;
+  changeDepartment: (courseId: string) => Promise<boolean>;
+  changeUsername: (username: string) => Promise<boolean>;
 }
 const row = <T>(data: T | T[]): T => (Array.isArray(data) ? data[0] : data);
 const message = (e: unknown) =>
@@ -139,6 +141,41 @@ export const useStudentStore = create<StudentState>((set, get) => ({
       .eq('user_id', owner);
     if (get().owner === owner && !error)
       set({ journey: { ...get().journey!, orientation_steps: merged } });
+  },
+  /** Switch department (and its college) after admission; the database allows once a day. */
+  changeDepartment: async (courseId) => {
+    const id = get().owner;
+    if (!id || get().saving) return false;
+    set({ saving: true, error: null });
+    const { data, error } = await supabase.rpc('change_game_department', { p_course_id: courseId });
+    if (get().owner !== id || useAuthStore.getState().user?.id !== id) return false;
+    if (error || !row(data)) {
+      set({ saving: false, error: message(error) });
+      return false;
+    }
+    const profile = row(data);
+    useAuthStore.setState((s) => ({
+      user: s.user ? { ...s.user, college: profile.college, courseId: profile.course_id, gameMatricNumber: profile.game_matric_number } : null,
+    }));
+    set({ saving: false });
+    return true;
+  },
+  changeUsername: async (username) => {
+    const id = get().owner;
+    if (!id || get().saving) return false;
+    set({ saving: true, error: null });
+    const { data, error } = await supabase.rpc('change_username', { p_username: username.trim() });
+    if (get().owner !== id || useAuthStore.getState().user?.id !== id) return false;
+    if (error || !row(data)) {
+      set({ saving: false, error: message(error) });
+      return false;
+    }
+    const profile = row(data);
+    useAuthStore.setState((s) => ({ user: s.user ? { ...s.user, username: profile.username } : null }));
+    // Keep the sign-in metadata in step (only used as a fallback before the profile loads).
+    void supabase.auth.updateUser({ data: { username: profile.username } }).catch(() => {});
+    set({ saving: false });
+    return true;
   },
   claimBadge: async () => {
     if (get().saving) return;

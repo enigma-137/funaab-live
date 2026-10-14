@@ -142,3 +142,29 @@ Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or pull
 ## License
 
 This project is licensed under the [MIT License](./LICENSE).
+
+## Announcements from Telegram
+
+Send a message to the feedback bot and it appears for every player (live for people online, on next
+open or within 3 minutes for everyone else). Only the Telegram ids in `TELEGRAM_ADMIN_IDS` can do it.
+
+```
+/notification Maintenance at 9 PM        shows for 24 hours
+/notification 6h New joystick controls!  shows for 6 hours (m, h or d; up to 7d)
+/notification off                        takes it down
+/status    /myid    /help
+```
+
+One-time setup (Worker secrets, then point Telegram at the Worker):
+
+```
+npx wrangler secret put TELEGRAM_WEBHOOK_SECRET     # any long random string
+npx wrangler secret put TELEGRAM_ADMIN_IDS          # your id(s), comma separated (message the bot /myid)
+npm run worker:deploy
+curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
+  --data-urlencode "url=https://<your-worker-host>/telegram/webhook" \
+  --data-urlencode "secret_token=<the same TELEGRAM_WEBHOOK_SECRET>"
+```
+
+Players on an old copy of the game also get a "new version is ready — Refresh" prompt after each
+deploy (the site publishes `/version.json` with every build).

@@ -1,5 +1,7 @@
 import { CampusRoadFinish } from './CampusLandscape';
-import { CampusArchitecture } from './CampusArchitecture';
+import { CampusArchitecture, COLBIOS, COLANIM, COLPLANT, COLAMRUD } from './CampusArchitecture';
+// Photo-matched buildings draw their own signs, windows and planting.
+const LANDMARKS=['library','colvet','colphys','colbios','colanim','colplant','colamrud'];
 import { CampusSign } from './CampusSign';
 import { campusMaterials } from './campusVisualGeometry';
 import React, { useRef } from 'react';
@@ -34,15 +36,53 @@ export function CampusRoads(){return <group><CampusRoadFinish/>
   {campusLocations.filter(l=>l.mapVisible).map(l=><group key={l.id} position={l.kekeStop}><mesh rotation={[-Math.PI/2,0,0]} position={[3,.04,0]}><planeGeometry args={[1,3]}/><meshBasicMaterial color="#e9bc37"/></mesh></group>)}
   </group>;}
 export function CampusExpansion(){return <group>
-  {['colvet','colanim','colplant','colcoms','colbios','colphys','library'].map((id,i)=>{
+  {['colvet','colanim','colplant','colcoms','collend','colamrud','colbios','colphys','library'].map((id,i)=>{
     const l=locationById(id),[w,d]=l.footprint,h=id==='library'?7:id==='colphys'?8.5:i===0?5:6;
-    return <group key={id} position={l.position} name={l.assetKey}>
+    return <group key={id} position={l.position} rotation={[0,l.facing,0]} name={l.assetKey}>
       <RigidBody type="fixed" colliders={false}>
         {id==='colvet'?<><CampusArchitecture id="colvet"/><CuboidCollider position={[0,h/2,0]} args={[w/2,h/2,d/2]}/></>:id==='colphys'?<>
           <CampusArchitecture id="colphys"/>
           {/* Body (20m x 12m) plus the entrance pilasters; the dome sits on the roof out of reach. */}
           <CuboidCollider position={[0,4.25,0]} args={[10,4.25,6]}/>
           <CuboidCollider position={[-2.1,2.1,6.3]} args={[.25,2.1,.3]}/><CuboidCollider position={[2.1,2.1,6.3]} args={[.25,2.1,.3]}/>
+        </>:id==='colplant'?<>
+          <CampusArchitecture id="colplant"/>
+          {/* West wing, east block, the porch's back wall and side piers (its slab is overhead),
+              the centre column, hedges and lamps. */}
+          {(()=>{const {front:F,D,porch:P,west:W,east:E}=COLPLANT,zc=F-D/2;return <>
+            <CuboidCollider position={[(W.x0+P.x0)/2-.4,W.h/2,zc]} args={[(P.x0-W.x0)/2+.4,W.h/2,D/2]}/>
+            <CuboidCollider position={[(P.x1+E.x1)/2,E.h/2,zc]} args={[(E.x1-P.x1)/2,E.h/2,D/2]}/>
+            <CuboidCollider position={[(P.x0+P.x1)/2,P.h/2,(P.back+F-D)/2]} args={[(P.x1-P.x0)/2,P.h/2,(P.back-F+D)/2]}/>
+            {[P.x0+.2,P.x1-.2].map(x=><CuboidCollider key={x} position={[x,P.open/2,(P.front+P.back)/2]} args={[.2,P.open/2,(P.front-P.back)/2]}/>)}
+            <CuboidCollider position={[(P.x0+P.x1)/2+.3,P.open/2,P.front-.3]} args={[.23,P.open/2,.23]}/>
+            <CuboidCollider position={[(W.x0+P.x0-.4)/2,.4,F+1.4]} args={[(P.x0-.4-W.x0)/2,.4,.75]}/>
+            <CuboidCollider position={[(P.x1+.5+E.x1)/2,.4,F+1.4]} args={[(E.x1-P.x1-.5)/2,.4,.75]}/>
+          </>;})()}
+        </>:id==='colanim'?<>
+          <CampusArchitecture id="colanim"/>
+          {/* Hall, wing, and the steps/ramp block in front of the arched door. */}
+          <CuboidCollider position={[0,COLANIM.apex/2,0]} args={[COLANIM.hallHalf,COLANIM.apex/2,COLANIM.D/2]}/>
+          <CuboidCollider position={[(COLANIM.wing.x0+COLANIM.wing.x1)/2,COLANIM.wing.h/2,0]} args={[(COLANIM.wing.x1-COLANIM.wing.x0)/2,COLANIM.wing.h/2,COLANIM.wing.d/2]}/>
+          <CuboidCollider position={[1.2,COLANIM.floor/2,COLANIM.D/2+1.2]} args={[2.9,COLANIM.floor/2,1.2]}/>
+          <CuboidCollider position={[-6.2,2.3,COLANIM.wing.d/2+2.2]} args={[.12,2.3,.12]}/>
+        </>:id==='colamrud'?<>
+          <CampusArchitecture id="colamrud"/>
+          {/* Main block, the maroon wing, the entrance surround and steps, and the lamp post. */}
+          {(()=>{const {L,D,h,wingX0,entrance:E,steps}=COLAMRUD;return <>
+            <CuboidCollider position={[0,h/2,0]} args={[L/2,h/2,D/2]}/>
+            <CuboidCollider position={[(wingX0+L/2+.3)/2,h/2,.5]} args={[(L/2+.3-wingX0)/2,h/2,(D+1)/2]}/>
+            <CuboidCollider position={[0,h/2,D/2+E.project/2]} args={[E.half,h/2,E.project/2]}/>
+            <CuboidCollider position={[0,.3,D/2+E.project+steps/2]} args={[2.1,.3,steps/2]}/>
+            <CuboidCollider position={[5.2,2.6,D/2+2.6]} args={[.15,2.6,.15]}/>
+          </>;})()}
+        </>:id==='colbios'?<>
+          <CampusArchitecture id="colbios"/>
+          {/* Lobby block behind the open ground floor, the stair, columns and entrance hedges. */}
+          <CuboidCollider position={[0,COLBIOS.G/2,(COLBIOS.lobbyFront-COLBIOS.D/2)/2]} args={[COLBIOS.W/2,COLBIOS.G/2,(COLBIOS.lobbyFront+COLBIOS.D/2)/2]}/>
+          <CuboidCollider position={[6.65,COLBIOS.G/2,COLBIOS.lobbyFront+.55]} args={[1.65,COLBIOS.G/2,.55]}/>
+          {COLBIOS.columns.map(x=><CuboidCollider key={x} position={[x,COLBIOS.G/2,COLBIOS.D/2-.3]} args={[.23,COLBIOS.G/2,.23]}/>)}
+          {[-6,6].map(x=><CuboidCollider key={x} position={[x,.45,COLBIOS.D/2+1.3]} args={[2.8,.45,.45]}/>)}
+          <CuboidCollider position={[7.5,2.4,COLBIOS.D/2+3.2]} args={[.12,2.4,.12]}/>
         </>:id==='library'?<>
           <CampusArchitecture id="library"/>
           <CuboidCollider position={[0,h/2,-2]} args={[w/2,h/2,(d-4)/2]}/>
@@ -50,14 +90,13 @@ export function CampusExpansion(){return <group>
           <Block p={[0,h/2,0]} s={[w,h,d]}/>
           <Block p={[0,h+.3,0]} s={[w+1,.6,d+1]} m="roof"/>
           {id==='colanim'&&<mesh position={[0,h+1,0]} rotation={[0,Math.PI/4,0]}><coneGeometry args={[w*.58,3,4]}/><meshStandardMaterial color="#95694f"/></mesh>}
-          {id==='colplant'&&<Block p={[0,h/2,0]} s={[5,h+2,d+1]} m="glass"/>}
           {id==='colcoms'&&<Block p={[-5,h/2+1,1]} s={[6,h+2,d+1]} m="glass"/>}
           <CuboidCollider position={[0,h/2,0]} args={[w/2,h/2,d/2]}/>
         </>}
-        {!['library','colvet','colphys'].includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
+        {!LANDMARKS.includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
       </RigidBody>
-      {!['library','colvet','colphys'].includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
-      {!['library','colvet'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
+      {!LANDMARKS.includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
+      {!['library','colvet','colanim','colplant','colamrud'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
     </group>;
   })}
   <NearbyLabel position={[-68,3,55]}>CAMPUS KEKE</NearbyLabel>

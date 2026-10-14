@@ -1,4 +1,6 @@
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useHostelStore } from '../stores/hostelStore';
+import { Sheet } from './Sheet';
 import { openHostel } from './HostelLife';
 import React, { useState } from 'react';
 import { PublicStudentIdentity } from './PublicStudentIdentity';
@@ -6,6 +8,26 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
 import { X, UserPlus, VolumeX, ShieldAlert, Flag, MessageSquare, Check } from 'lucide-react';
+
+/** Every student's activity level is public; how they earned it is not. */
+function PlayerStanding({ userId }: { userId: string }) {
+  const [level, setLevel] = React.useState<number | null>(null);
+  const [offCampus, setOffCampus] = React.useState(false);
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let live = true;
+    supabase.rpc('level_public', { p_user: userId }).then(({ data }) => { if (live && typeof data?.level === 'number') setLevel(data.level); });
+    supabase.rpc('lodge_public', { p_user: userId }).then(({ data }) => { if (live) setOffCampus(data === true); });
+    return () => { live = false; };
+  }, [userId]);
+  if (level == null) return offCampus ? <div className="mt-2 text-xs font-semibold text-amber-300">🏘️ Lives off campus</div> : null;
+  return (
+    <div className="mt-2 text-xs font-semibold text-amber-300">
+      ⭐ Level {level}
+      {offCampus && <span> · 🏘️ off campus</span>}
+    </div>
+  );
+}
 
 export const PlayerInteractionModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -69,23 +91,7 @@ export const PlayerInteractionModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-slate-900 border-2 border-emerald-500/40 rounded-3xl shadow-2xl font-['Plus_Jakarta_Sans']">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
-          <h2 className="text-sm font-bold text-slate-300 font-['Outfit'] uppercase tracking-wider">
-            Student Profile
-          </h2>
-          <button
-            onClick={() => {
-              setSelectedPlayer(null);
-              setActiveModal(null);
-            }}
-            className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Sheet title={'Student Profile'} icon={'🎓'} accent="#059669" onClose={() => { setSelectedPlayer(null); setActiveModal(null); }}>
 
         {/* Profile Details */}
         <div className="p-6 text-center">
@@ -97,6 +103,7 @@ export const PlayerInteractionModal: React.FC = () => {
             {selectedPlayer.college}
           </div>
 
+          <PlayerStanding userId={selectedPlayer.id} />
           {!isReporting && <PublicStudentIdentity player={selectedPlayer} />}
           {!isReporting ? (
             /* Action Buttons */
@@ -225,7 +232,6 @@ export const PlayerInteractionModal: React.FC = () => {
             </form>
           )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 };

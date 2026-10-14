@@ -116,7 +116,7 @@ export const HOSTEL_ASSET_REGISTRY: Record<string, Builder> = {
   hostel_lamp: (g) => {
     disc(g, 0.14, 0.05, [0, 0.025, 0]);
     box(g, [0.035, 0.36, 0.035], [0, 0.2, 0]);
-    part(g, [0.17, 0.1, 0.17], [0, 0.42, 0], "#fff0ae", sphere);
+    part(g, [0.17, 0.1, 0.17], [0, 0.42, 0], "#fff0ae", sphere).name = "lampBulb";
   },
   hostel_generator_small: (g) => {
     box(g, [0.8, 0.5, 0.55], [0, 0.28, 0], "#c56d51");
@@ -141,6 +141,132 @@ export const HOSTEL_ASSET_REGISTRY: Record<string, Builder> = {
   },
   hostel_plate: (g) => {
     disc(g, 0.2, 0.025, [0, 0.02, 0], cream);
+  },
+  // ── Migration 024: room makeover ──
+  hostel_tv_stand: (g) => {
+    // Long low entertainment unit: top 0.55 m, open shelf, two cupboard doors, short legs.
+    box(g, [2.5, 0.05, 0.5], [0, 0.525, 0], "#6b4a2f");
+    box(g, [2.46, 0.4, 0.46], [0, 0.3, 0], "#7d5838");
+    box(g, [1.2, 0.18, 0.02], [0, 0.32, 0.235], "#2a2119");
+    for (const x of [-0.92, 0.92]) {
+      box(g, [0.56, 0.32, 0.02], [x, 0.3, 0.235], "#8e6743");
+      box(g, [0.04, 0.12, 0.02], [x + (x < 0 ? 0.22 : -0.22), 0.3, 0.25], "#d9c08a");
+    }
+    for (const x of [-1.15, 1.15]) for (const z of [-0.18, 0.18]) box(g, [0.05, 0.1, 0.05], [x, 0.05, z], dark);
+  },
+  hostel_wardrobe: (g) => {
+    box(g, [1.2, 2, 0.6], [0, 1, 0], "#8b6440");
+    box(g, [0.02, 1.9, 0.02], [0, 1, 0.305], "#5a3f27");
+    for (const x of [-0.08, 0.08]) box(g, [0.03, 0.22, 0.03], [x, 1.05, 0.32], "#d9c08a");
+    box(g, [1.24, 0.06, 0.64], [0, 2.02, 0], "#6b4a2f");
+  },
+  hostel_bookshelf: (g) => {
+    const w = 0.9, d = 0.35;
+    for (const x of [-w / 2 + 0.02, w / 2 - 0.02]) box(g, [0.04, 1.6, d], [x, 0.8, 0], wood);
+    box(g, [w, 1.6, 0.02], [0, 0.8, -d / 2 + 0.01], "#8a6640");
+    const colors = ["#c0392b", "#2e86c1", "#f4d03f", "#27ae60", "#8e44ad", "#e67e22"];
+    [0.05, 0.45, 0.85, 1.25, 1.58].forEach((y, row) => {
+      box(g, [w, 0.035, d], [0, y, 0], wood);
+      if (row < 4) for (let k = 0; k < 7; k++) box(g, [0.075, 0.26 - (k % 3) * 0.03, 0.22], [-0.33 + k * 0.105, y + 0.15, 0.02], colors[(k + row) % colors.length]);
+    });
+  },
+  hostel_bean_bag: (g) => {
+    part(g, [0.42, 0.28, 0.42], [0, 0.26, 0], "#e0663d", sphere);
+    part(g, [0.36, 0.26, 0.2], [0, 0.42, -0.2], "#d45a32", sphere);
+  },
+  hostel_mirror: (g) => {
+    box(g, [0.6, 0.95, 0.04], [0, 0, 0], "#c9a25d");
+    const glass = box(g, [0.52, 0.87, 0.012], [0, 0, 0.026], "#cfe3ea");
+    (glass.material as T.MeshStandardMaterial) = new T.MeshStandardMaterial({ color: "#d6e8ef", roughness: 0.05, metalness: 0.85 });
+  },
+  hostel_wall_clock: (g) => {
+    const face = disc(g, 0.22, 0.04, [0, 0, 0], "#f8f5ea");
+    face.rotation.x = Math.PI / 2;
+    const rim = disc(g, 0.235, 0.03, [0, 0, -0.008], dark);
+    rim.rotation.x = Math.PI / 2;
+    const hour = box(g, [0.025, 0.11, 0.01], [0.03, 0.04, 0.028], dark);
+    hour.rotation.z = -0.8;
+    const minute = box(g, [0.018, 0.17, 0.01], [-0.05, 0.06, 0.03], dark);
+    minute.rotation.z = 0.6;
+  },
+  hostel_led_strip: (g) => {
+    box(g, [2, 0.03, 0.03], [0, 0.95, 0], "#2a2a2a");
+    const strip = box(g, [1.96, 0.02, 0.02], [0, 0.95, 0.02], "#5b5b78");
+    strip.material = new T.MeshStandardMaterial({ color: "#5b5b78", emissive: "#000000" });
+    strip.name = "ledStrip";
+  },
+  hostel_plant_pot: (g) => {
+    disc(g, 0.18, 0.3, [0, 0.15, 0], "#b4643d");
+    disc(g, 0.2, 0.04, [0, 0.3, 0], "#9c5432");
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2;
+      const leaf = part(g, [0.08, 0.26, 0.04], [Math.cos(a) * 0.1, 0.55, Math.sin(a) * 0.1], k % 2 ? "#3f8f4a" : "#57a85f", sphere);
+      leaf.rotation.set(Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6);
+    }
+  },
+  hostel_palm: (g) => {
+    disc(g, 0.24, 0.4, [0, 0.2, 0], "#e8e2d4");
+    box(g, [0.06, 1.1, 0.06], [0, 0.95, 0], "#7a5a36");
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const frond = box(g, [0.1, 0.03, 0.62], [Math.cos(a) * 0.28, 1.45, Math.sin(a) * 0.28], k % 2 ? "#2f7d3c" : "#3e9a4c");
+      frond.rotation.set(0, -a + Math.PI / 2, 0);
+      frond.rotateX(0.45);
+    }
+  },
+  hostel_flower_vase: (g) => {
+    disc(g, 0.08, 0.22, [0, 0.11, 0], "#4f7fbf");
+    const flowers = ["#e84a5f", "#f7c548", "#ffffff", "#ff8fb1", "#b56ee8"];
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2, r = 0.05;
+      box(g, [0.01, 0.2, 0.01], [Math.cos(a) * r, 0.31, Math.sin(a) * r], "#3f8f4a");
+      part(g, [0.045, 0.035, 0.045], [Math.cos(a) * r * 1.6, 0.42, Math.sin(a) * r * 1.6], flowers[k], sphere);
+    }
+  },
+  hostel_hanging_plant: (g) => {
+    box(g, [0.04, 0.3, 0.04], [0, 0.1, 0], dark);
+    disc(g, 0.13, 0.15, [0, -0.1, 0.06], "#b4643d");
+    for (let k = 0; k < 6; k++) part(g, [0.05, 0.22 + (k % 3) * 0.08, 0.04], [-0.12 + k * 0.05, -0.33 - (k % 3) * 0.05, 0.08], k % 2 ? "#3f8f4a" : "#57a85f", sphere);
+  },
+  hostel_washing_machine: (g) => {
+    box(g, [0.7, 0.85, 0.65], [0, 0.425, 0], "#f2f2ee");
+    box(g, [0.66, 0.1, 0.02], [0, 0.78, 0.33], "#d8d8d2");
+    const door = disc(g, 0.21, 0.04, [0, 0.4, 0.33], "#9aa3a8");
+    door.rotation.x = Math.PI / 2;
+    const drum = new T.Group();
+    drum.name = "drum";
+    drum.position.set(0, 0.4, 0.34);
+    g.add(drum);
+    const glass = disc(drum, 0.16, 0.02, [0, 0, 0.012], "#33505a");
+    glass.rotation.x = Math.PI / 2;
+    box(drum, [0.24, 0.04, 0.01], [0, 0, 0.026], "#6d8f9a");
+    part(g, [0.03, 0.03, 0.02], [0.24, 0.78, 0.345], "#2e86c1", sphere);
+  },
+  hostel_cooker: (g) => {
+    box(g, [0.75, 0.82, 0.6], [0, 0.41, 0], "#e7e7e2");
+    box(g, [0.75, 0.04, 0.6], [0, 0.84, 0], dark);
+    box(g, [0.55, 0.35, 0.02], [0, 0.4, 0.305], "#2a2a2a");
+    for (const x of [-0.18, 0.18]) {
+      disc(g, 0.11, 0.025, [x, 0.87, 0], "#3a3a3a");
+      const flame = part(g, [0.09, 0.05, 0.09], [x, 0.9, 0], "#4aa3ff", cylinder);
+      flame.material = new T.MeshStandardMaterial({ color: "#4aa3ff", emissive: "#2f7bff", emissiveIntensity: 1.2, transparent: true, opacity: 0.85 });
+      flame.name = "flame";
+      flame.visible = false;
+      part(g, [0.03, 0.03, 0.03], [x, 0.7, 0.315], dark, sphere);
+    }
+  },
+  hostel_fridge: (g) => {
+    box(g, [0.6, 0.9, 0.6], [0, 0.45, 0], "#f4f4f0");
+    box(g, [0.02, 0.85, 0.02], [0, 0.46, 0.305], "#d0d0ca");
+    box(g, [0.04, 0.25, 0.04], [0.24, 0.55, 0.32], "#9aa3a8");
+    const light = part(g, [0.025, 0.025, 0.015], [-0.22, 0.82, 0.31], "#3a3a3a", sphere);
+    light.material = new T.MeshStandardMaterial({ color: "#3a3a3a" });
+    light.name = "fridgeLight";
+  },
+  hostel_microwave: (g) => {
+    box(g, [0.5, 0.3, 0.38], [0, 0.15, 0], "#e9e9e4");
+    box(g, [0.32, 0.22, 0.015], [-0.06, 0.15, 0.19], "#2a3438");
+    box(g, [0.1, 0.24, 0.015], [0.19, 0.15, 0.19], "#c8c8c2");
   },
 };
 // Non-furniture catalogue previews are still generated from geometry, never external photography.

@@ -3,26 +3,33 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 
 // Unit primitives are shared; each rigid body part is baked into one draw per material.
 const sphere = new THREE.SphereGeometry(1, 12, 8);
+// Smoother sphere for the face, where facets read as creases.
+const fineSphere = new THREE.SphereGeometry(1, 24, 16);
 const matrix = new THREE.Matrix4();
 const quaternion = new THREE.Quaternion();
-export type Part = [number, number, number, number, number, number];
-export function ellipsoids(parts: Part[]) {
-  const pieces = parts.map(([x, y, z, sx, sy, sz]) => {
+const euler = new THREE.Euler();
+/** Centre, radii and an optional tilt (radians about x, y, z). */
+export type Part =
+  | [number, number, number, number, number, number]
+  | [number, number, number, number, number, number, number, number, number];
+export function ellipsoids(parts: Part[], fine = false) {
+  const pieces = parts.map(([x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0]) => {
+    quaternion.setFromEuler(euler.set(rx, ry, rz));
     matrix.compose(
       new THREE.Vector3(x, y, z),
       quaternion,
       new THREE.Vector3(sx, sy, sz),
     );
-    return sphere.clone().applyMatrix4(matrix);
+    return (fine ? fineSphere : sphere).clone().applyMatrix4(matrix);
   });
   const result = mergeGeometries(pieces);
   pieces.forEach((p) => p.dispose());
   return result;
 }
-export function silhouette(rings: [number, number][], depth = 0.64) {
+export function silhouette(rings: [number, number][], depth = 0.64, segments = 16) {
   const mesh = new THREE.LatheGeometry(
     rings.map(([r, y]) => new THREE.Vector2(r, y)),
-    16,
+    segments,
   );
   mesh.scale(1, 1, depth);
   return mesh;

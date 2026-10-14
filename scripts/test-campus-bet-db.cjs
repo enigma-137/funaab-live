@@ -122,7 +122,7 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   }
   const ticketA = await one('select * from campus_bet_tickets where user_id=$1', [A]);
   const expectCorrect = picksA.filter((p, i) => p === results[i].result).length;
-  const table = [0, 0, 0.5, 1, 3, 5];
+  const table = [0, 0, 0.5, 1.3, 2.5, 4];
   assert.equal(ticketA.correct_count, expectCorrect);
   assert.equal(ticketA.payout, Math.floor(100 * table[expectCorrect]));
   assert.equal(await balance(A), 900 + ticketA.payout, 'payout credited');
@@ -143,7 +143,7 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   assert.equal(viewA.history[0].fixtures.length, 5);
   assert.equal(Object.keys(viewA.form).length, 10, 'form for all clubs');
 
-  // ---------- Spec scenario: ₦1,000 → stake ₦100 → 4/5 → ₦1,200 ----------
+  // ---------- Spec scenario: ₦1,000 → stake ₦100 → 4/5 → ₦1,150 ----------
   await db.query('update wallets set balance=1000 where user_id=$1', [A]);
   const needs = await sync(A, null);
   assert.equal(needs.needs_round, true);
@@ -159,15 +159,15 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   await sync(null, null);
   const t2 = await one('select * from campus_bet_tickets where user_id=$1 and round_id=$2', [A, round2.id]);
   assert.equal(t2.correct_count, 4);
-  assert.equal(t2.payout, 300, '4/5 pays 3× stake');
-  assert.equal(await balance(A), 1200, '₦900 → ₦1,200');
+  assert.equal(t2.payout, 250, '4/5 pays 2.5× stake');
+  assert.equal(await balance(A), 1150, '₦900 → ₦1,150');
   const payoutRow = (await ledger(A)).at(-1);
-  assert.equal(Number(payoutRow.amount), 300);
-  assert.equal(Number(payoutRow.balance_after), 1200);
+  assert.equal(Number(payoutRow.amount), 250);
+  assert.equal(Number(payoutRow.balance_after), 1150);
   assert.match(payoutRow.description, /Campus Bet Matchday 2 — 4\/5 correct/);
   await sync(null, null);
-  assert.equal(await balance(A), 1200, 'settlement run again: no additional payout');
+  assert.equal(await balance(A), 1150, 'settlement run again: no additional payout');
 
-  console.log('CAMPUS BET DATABASE PASSED: lazy matchday creation, candidate validation, one matchday per slot, hidden probabilities, atomic stake debit, one ticket per round, input validation, RLS, close/lock, single settlement, consistent scorelines, idempotent payouts, identical results for all users and the ₦1,000→₦1,200 4/5 scenario.');
+  console.log('CAMPUS BET DATABASE PASSED: lazy matchday creation, candidate validation, one matchday per slot, hidden probabilities, atomic stake debit, one ticket per round, input validation, RLS, close/lock, single settlement, consistent scorelines, idempotent payouts, identical results for all users and the ₦1,000→₦1,150 4/5 scenario.');
   await db.close();
 })().catch((e) => { console.error(e); process.exit(1); });

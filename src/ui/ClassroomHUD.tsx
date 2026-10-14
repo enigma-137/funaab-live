@@ -64,7 +64,8 @@ export const ClassroomHUD: React.FC = () => {
     return () => clearInterval(interval);
   }, [attendanceStartedAt]);
 
-  const activeStudentsCount = Object.keys(classroomState?.activeStudents || {}).length || 1;
+  // Real classmates (from the server) plus you.
+  const activeStudentsCount = Object.keys(classroomState?.activeStudents || {}).length + 1;
 
   // Filter classroom messages
   const classMessages = messages.filter(
@@ -97,7 +98,8 @@ export const ClassroomHUD: React.FC = () => {
 
   const handleSendClassChat = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || !currentLecture) return;
+    // Only seated students are in the class's chat room on the server.
+    if (!chatInput.trim() || !currentLecture || !isSeated) return;
     networkManager.sendClassroomChat(currentLecture.id, chatInput.trim());
     setChatInput('');
   };
@@ -232,7 +234,8 @@ export const ClassroomHUD: React.FC = () => {
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Whisper in class..."
+                    placeholder={isSeated ? "Whisper in class..." : "Take a seat to chat with your class"}
+                    disabled={!isSeated}
                     maxLength={150}
                     className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500"
                   />
@@ -298,7 +301,7 @@ export const ClassroomHUD: React.FC = () => {
       >
         <div className="min-w-0 max-w-[72%] rounded-lg border border-white/15 bg-slate-950/85 px-3 py-2 text-white shadow-lg backdrop-blur-md">
           <div className="truncate text-xs font-bold">{currentLecture.courseCode} · {currentLecture.title}</div>
-          <div className="text-[11px] text-slate-300">{activeStudentsCount} students</div>
+          <div className="text-[11px] text-slate-300">{activeStudentsCount} {activeStudentsCount === 1 ? "student" : "students"}</div>
         </div>
         <div className="shrink-0 rounded-lg border border-white/15 bg-slate-950/85 px-3 py-2 text-xs font-semibold text-amber-200 shadow-lg backdrop-blur-md">
           {Math.max(0, currentLecture.durationMinutes - Math.floor(attendanceDuration / 60))}m left
@@ -351,7 +354,8 @@ export const ClassroomHUD: React.FC = () => {
               type="text"
               value={chatInput}
               onChange={(event) => setChatInput(event.target.value)}
-              placeholder="Message classmates"
+              placeholder={isSeated ? "Message classmates" : "Take a seat to chat with your class"}
+              disabled={!isSeated}
               maxLength={150}
               enterKeyHint="send"
               className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-base text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none select-text"

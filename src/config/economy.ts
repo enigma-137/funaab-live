@@ -29,7 +29,7 @@ export const ECONOMY_CONFIG = {
   // Granted once, when a student's wallet is first created. Existing wallets are never topped up.
   STARTER_BALANCE: 7500,
   // Claimable once per 20 hours.
-  DAILY_RESUMPTION_ALLOWANCE: 300,
+  DAILY_RESUMPTION_ALLOWANCE: 500,
   // Extra pay for the first campus job completed each Africa/Lagos calendar day.
   FIRST_JOB_DAILY_BONUS: 200,
   // Lecture attendance: small, once per lecture per hour, at most this many paid lectures a day.

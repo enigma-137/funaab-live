@@ -67,16 +67,16 @@ async function main() {
   assert.equal(await balance(early), E.STARTER_BALANCE + E.DAILY_RESUMPTION_ALLOWANCE);
   assert.equal(Number((await one("select count(*) n from wallet_transactions where user_id=$1 and type='starter_bonus'", [early])).n), 1);
 
-  // ---------- Daily reward: ₦300 once per 20 hours ----------
+  // ---------- Daily reward: ₦500 once per 20 hours ----------
   const d1 = (await call(fresh, 'select claim_daily_reward() r')).r;
   assert.equal(Number(d1.reward), E.DAILY_RESUMPTION_ALLOWANCE);
-  assert.equal(await balance(fresh), E.STARTER_BALANCE + 300);
+  assert.equal(await balance(fresh), E.STARTER_BALANCE + E.DAILY_RESUMPTION_ALLOWANCE);
   assert.equal((await call(fresh, 'select claim_daily_reward() r')).r.success, false, 'replay rejected');
   assert.equal((await call(fresh, 'select claim_daily_reward($1) r', [veteran])).r.success, false, 'p_user_id cannot redirect a claim');
   assert.equal(await balance(veteran), 3210.5);
   await db.query("update wallets set last_daily_reward_at=now()-interval '21 hours' where user_id=$1", [fresh]);
   assert.equal((await call(fresh, 'select claim_daily_reward() r')).r.success, true, 'claimable again the next day');
-  let expected = E.STARTER_BALANCE + 600;
+  let expected = E.STARTER_BALANCE + 2 * E.DAILY_RESUMPTION_ALLOWANCE;
   assert.equal(await balance(fresh), expected);
 
   // ---------- Anonymous callers can no longer move money for a named student ----------
@@ -136,6 +136,7 @@ async function main() {
   // ---------- Jobs: config = database, server pay, first-job bonus once per Lagos day ----------
   for (const j of CAMPUS_JOBS) {
     const row = await one('select reward,source_x,source_z,dest_x,dest_z from job_catalog where id=$1', [j.id]);
+    assert.equal(Number((await one('select dest_radius from job_catalog where id=$1', [j.id])).dest_radius), j.destRadius ?? 5, `${j.id} radius drift`);
     assert.deepEqual([row.reward, ...['source_x', 'source_z', 'dest_x', 'dest_z'].map((k) => Number(row[k]))],
       [j.reward, j.sourcePos[0], j.sourcePos[2], j.destinationPos[0], j.destinationPos[2]], `${j.id} drift`);
   }
@@ -150,10 +151,11 @@ async function main() {
   const worker = await student('Worker');
   await call(worker, 'select ensure_player_wallet()');
   const delivery = CAMPUS_JOBS[0];
-  // The old COLENG drop-off point is no longer accepted; the forecourt the client shows is.
-  await assert.rejects(() => doJob(worker, delivery, [80, 0, -57]), /correct destination/);
+  // COLENG drop-off (027): too far out on the forecourt is refused…
+  await assert.rejects(() => doJob(worker, delivery, [80, 0, -45]), /correct destination/);
   await db.query("update job_runs set status='cancelled' where user_id=$1 and status='picked_up'", [worker]);
-  const first = await doJob(worker, delivery);
+  // …but standing right at COLENG's door (where students stop) delivers.
+  const first = await doJob(worker, delivery, [80, 0, -57.1]);
   assert.equal(first.done.paid, 500); assert.equal(first.done.bonus, E.FIRST_JOB_DAILY_BONUS);
   assert.equal(await balance(worker), E.STARTER_BALANCE + 500 + 200, 'job pay + first job bonus');
   const replay = (await one("select job_action_trusted($1,'deliver',null,$2,$3,$4) r", [worker, first.id, delivery.destinationPos[0], delivery.destinationPos[2]])).r;

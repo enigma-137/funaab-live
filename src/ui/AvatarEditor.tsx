@@ -2,7 +2,14 @@ import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { AvatarBody } from '../game/player/AvatarBody';
-import { avatarOptions, normalizeAvatar, skinTones, stylePresets } from '../config/avatar';
+import {
+  avatarOptions,
+  normalizeAvatar,
+  optionLabels,
+  presetBodyType,
+  skinTones,
+  stylePresets,
+} from '../config/avatar';
 import type { AvatarConfig } from '../types/game';
 
 export function AvatarPreview({ config }: { config: AvatarConfig }) {
@@ -51,7 +58,9 @@ export default function AvatarEditor({
       <AvatarPreview config={a} />
       <div>
         <div className="student-presets">
-          {Object.entries(stylePresets).map(([name, preset]) => (
+          {Object.entries(stylePresets)
+            .filter(([name]) => !presetBodyType[name] || presetBodyType[name] === a.bodyType)
+            .map(([name, preset]) => (
             <button type="button" key={name} onClick={() => change(preset)}>
               {name}
             </button>
@@ -94,7 +103,7 @@ export default function AvatarEditor({
               >
                 {options.map((o) => (
                   <option key={o} value={o}>
-                    {o.replaceAll('-', ' ')}
+                    {optionLabels[o] ?? o.replaceAll('-', ' ')}
                   </option>
                 ))}
               </select>

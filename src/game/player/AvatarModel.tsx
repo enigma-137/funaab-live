@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { QUALITY } from '../../config/quality';
+import { useGraphicsStore } from '../../stores/graphicsStore';
 import {useHostelStore} from '../../stores/hostelStore';
 import { AvatarBody } from './AvatarBody';
+import type { HeldItem } from '../../config/heldItems';
 import { Html } from '@react-three/drei';
 import { AvatarConfig } from '../../types/game';
 import { useSocialStore } from '../../stores/socialStore';
 import { useGameStore } from '../../stores/gameStore';
+import { useInputStore } from '../../stores/inputStore';
+import { useSugStore } from '../../stores/sugStore';
 import { MessageSquare } from 'lucide-react';
 
 interface AvatarModelProps {
@@ -12,8 +19,11 @@ interface AvatarModelProps {
   username: string;
   college: string;
   avatarConfig: AvatarConfig;
-  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
+  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
   isLocal?: boolean;
+  held?: HeldItem | null;
+  /** Table spot when seated at a restaurant (see diningSpotAt). */
+  table?: { y: number; z: number } | null;
 }
 
 export const AvatarModel: React.FC<AvatarModelProps> = ({
@@ -23,24 +33,42 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   avatarConfig,
   animation = 'idle',
   isLocal = false,
+  held,
+  table,
 }) => {
   const { unreadDmsByPartner, openDm } = useSocialStore();
   const riding=useGameStore(s=>s.isRidingKeke);
   const inRoom=useHostelStore(s=>!!s.owner);
   const isModalOpen = useGameStore((s) => s.activeModal !== null);
+  const isTouch = useInputStore((s) => s.isTouchDevice);
+  const isPresident = useSugStore((s) => !!userId && s.state?.president?.user_id === userId);
   const unreadCount = unreadDmsByPartner[username.toLowerCase()] || 0;
   const hasUnreadDm = unreadCount > 0;
 
   const shirtColor = avatarConfig?.shirtColor || '#16a34a';
 
+  // Other students' name tags only exist while they're close enough to read.
+  const here = useRef<THREE.Group>(null);
+  const [tagNear, setTagNear] = useState(true);
+  const since = useRef(0);
+  const _p = useRef(new THREE.Vector3());
+  useFrame(({ camera, clock }) => {
+    if (isLocal || !here.current || clock.elapsedTime - since.current < 0.4) return;
+    since.current = clock.elapsedTime;
+    const limit = QUALITY[useGraphicsStore.getState().tier].nameTagNear;
+    const near = here.current.getWorldPosition(_p.current).distanceToSquared(camera.position) < limit * limit;
+    setTagNear((was) => (was === near ? was : near));
+  });
+
   return (
-    <group>
+    <group ref={here}>
       {/* Floating Username & College Badge & Unread DM Alert (Hidden when any modal is open) */}
-      {!isModalOpen && !(isLocal&&(inRoom||riding)) && (
+      {!isModalOpen && (isLocal || tagNear) && !(isLocal&&(inRoom||riding)) && (
         <Html
           position={[0, hasUnreadDm ? 2.45 : 2.25, 0]}
           center
-          distanceFactor={inRoom?4:14}
+          // Smaller on phones, where the camera sits closer and names crowded the screen.
+          distanceFactor={inRoom ? 4 : isTouch ? 8 : 11}
           zIndexRange={[5, 0]}
           style={{ pointerEvents: hasUnreadDm ? 'auto' : 'none' }}
         >
@@ -65,28 +93,22 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-slate-700/60 shadow-md">
-              <span
-                className="w-1.5 h-1.5 rounded-full ring-1 ring-white/20 animate-pulse"
-                style={{ backgroundColor: shirtColor }}
-              />
-              <span className="font-bold text-[11px] text-white tracking-wide font-['Plus_Jakarta_Sans']">
+            {/* One compact tag: colour dot, name, small college code. You get a green outline. */}
+            <div className={`flex items-center gap-1 px-1.5 py-[1px] rounded-full bg-slate-950/75 backdrop-blur-sm border shadow-sm ${isLocal ? 'border-emerald-400/70' : 'border-white/10'}`}>
+              <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: isLocal ? '#34d399' : shirtColor }} />
+              <span className="font-semibold text-[10px] leading-[14px] text-white font-['Plus_Jakarta_Sans'] max-w-[96px] truncate">
                 {username}
               </span>
-              {isLocal && (
-                <span className="text-[9px] uppercase font-black px-1 rounded bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
-                  YOU
-                </span>
-              )}
-            </div>
-            <div className="text-[9px] font-bold tracking-wider px-1.5 py-0.2 rounded bg-black/60 text-slate-300 border border-white/10 uppercase">
-              {college}
+              <span className="text-[7.5px] leading-[14px] font-bold tracking-wide text-slate-400 uppercase">
+                {college}
+              </span>
+              {isPresident && <span className="text-[7.5px] leading-[14px] font-black text-amber-300 whitespace-nowrap shrink-0" title="SUG President">👑 SUG</span>}
             </div>
           </div>
         </Html>
       )}
 
-      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement />
+      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement held={held} table={table} />
     </group>
   );
 };

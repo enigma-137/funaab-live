@@ -1,14 +1,20 @@
+import { FeedbackLauncher } from './FeedbackPanel';
+import { SoundToggle } from './SoundToggle';
 import { openHostel } from './HostelLife';
 import { useHostelStore } from '../stores/hostelStore';
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Smartphone, X, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
+import { CampusPhone } from './CampusPhone';
+import { PhoneLauncherArt } from './phoneIcons';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useStudentStore } from '../stores/studentStore';
+import { useInputStore } from '../stores/inputStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useLectureStore } from '../stores/lectureStore';
-import { courseById } from '../config/academics';
+import { courseById, courses, colleges } from '../config/academics';
+import { networkManager } from '../game/multiplayer/networkManager';
 import { orientationTasks } from '../config/studentJourney';
 import { normalizeAvatar } from '../config/avatar';
 import world from '../config/campusWorld';
@@ -30,8 +36,8 @@ export function StudentCampusTools() {
   const setModal = useGameStore((s) => s.setActiveModal);
   const { journey, saving, error } = useStudentStore();
   const friends = useSocialStore((s) => s.friends);
+  const unreadDms = useSocialStore((s) => s.unreadDmCount);
   const [editing, setEditing] = useState(false);
-  const [map, setMap] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
   const [avatar, setAvatar] = useState(() => normalizeAvatar(user.avatarConfig));
   const busy = useRef(false);
@@ -107,19 +113,21 @@ export function StudentCampusTools() {
   }, [showing, setModal]);
   return (
     <>
+      <div className="campus-launchers">
       {!modal && (
         <button
           className="student-phone-button"
-          aria-label="Open campus phone"
-          onClick={() => {
-            setMap(false);
-            setModal('student_phone');
-          }}
+          aria-label={unreadDms ? `Open campus phone, ${unreadDms} unread messages` : 'Open campus phone'}
+          title="Phone"
+          onClick={() => setModal('student_phone')}
         >
-          <Smartphone size={20} />
-          <span>Phone</span>
+          <PhoneLauncherArt size={30} />
+          {unreadDms > 0 && <span className="student-phone-badge">{unreadDms > 9 ? '9+' : unreadDms}</span>}
         </button>
       )}
+      <FeedbackLauncher />
+      <SoundToggle />
+      </div>
       {!riding && !offCampus && !modal && journey && !journey.orientation_completed && (
         <aside className="student-orientation">
           <button onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed}>
@@ -154,12 +162,23 @@ export function StudentCampusTools() {
           )}
         </aside>
       )}
-      {showing && (
+      {modal === 'student_phone' && (
+        <CampusPhone
+          status={status}
+          closeRef={closeRef}
+          onClose={() => setModal(null)}
+          onProfile={() => {
+            setAvatar(normalizeAvatar(user.avatarConfig));
+            setModal('student_profile');
+          }}
+        />
+      )}
+      {modal === 'student_profile' && (
         <div
           className="student-entry student-campus-dialog"
           role="dialog"
           aria-modal="true"
-          aria-label={modal === 'student_phone' ? 'Campus phone' : 'Student profile'}
+          aria-label="Student profile"
         >
           <div className="student-shell">
             <section className="student-card">
@@ -174,81 +193,7 @@ export function StudentCampusTools() {
               >
                 <X size={20} />
               </button>
-              {modal === 'student_phone' ? (
-                <>
-                  <h1>Campus phone.</h1>
-                  <p>{status}</p>
-                  <nav className="student-phone-grid">
-                    <button
-                      onClick={() => {
-                        setAvatar(normalizeAvatar(user.avatarConfig));
-                        setModal('student_profile');
-                      }}
-                    >
-                      Profile & Avatar
-                    </button>
-                    <button onClick={() => openHostel()}>Hostel</button>
-                    <button onClick={() => setModal('friends')}>Friends</button>
-                    <button
-                      onClick={() => {
-                        const s = useSocialStore.getState();
-                        if (s.activeDmPartner) setModal('private_chat');
-                        else {
-                          const last = Object.values(s.directMessages)
-                            .flat()
-                            .filter((m) => m.senderId !== user.id)
-                            .sort((a, b) => b.timestamp - a.timestamp)[0];
-                          if (last)
-                            s.openDm({
-                              id: last.senderId,
-                              username: last.senderName,
-                              college: last.college,
-                            });
-                          else setModal('friends');
-                        }
-                      }}
-                    >
-                      Messages
-                    </button>
-                    <button onClick={() => setModal('bank')}>Wallet</button>
-                    <button onClick={() => setModal('campus_jobs')}>Jobs</button>
-                    <button onClick={() => setMap(!map)}>Campus guide</button>
-                    <button onClick={() => setModal('inventory')}>Inventory</button>
-                    <button onClick={() => setModal('lecture_hall')}>Timetable</button>
-                    <button onClick={() => setModal('daily_reward')}>Daily allowance</button>
-                    <button onClick={() => setModal('help')}>Controls & Help</button>
-                    <button onClick={() => useAuthStore.getState().logout()}>Sign out</button>
-                  </nav>
-                  {map && (
-                    <>
-                      <h2>Find your next stop</h2>
-                      <p>Walk using the paths or choose a destination at a Keke stop.</p>
-                      <ul className="student-friends">
-                        {world.locations
-                          .filter((l) =>
-                            ['college', 'food', 'transport', 'restaurant', 'gaming', 'academic', 'sports', 'service', 'lecture_hall', 'landmark'].includes(
-                              l.type,
-                            ),
-                          )
-                          .map((l) => (
-                            <li key={l.id}>
-                              <strong>{l.name}</strong>
-                              <span>
-                                {l.position[0] < 0
-                                  ? 'West'
-                                  : l.position[0] > 0
-                                    ? 'East'
-                                    : 'Central'}{' '}
-                                campus · {l.position[2] < 0 ? 'north' : 'south'}
-                              </span>
-                            </li>
-                          ))}
-                      </ul>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
+              <>
                   <h1>{editing ? 'Make it your look.' : `@${user.username}`}</h1>
                   <Suspense fallback={<p>Opening your student…</p>}>
                     {editing ? (
@@ -257,11 +202,14 @@ export function StudentCampusTools() {
                         onChange={(a) => setAvatar(normalizeAvatar(a))}
                       />
                     ) : (
+                      <>
                       <div className="student-avatar-layout">
                         <AvatarPreview config={user.avatarConfig} />
                         <div className="student-id">
+                          <UsernameChanger />
                           <strong>{user.college}</strong>
                           <span>{courseById(user.courseId)?.name}</span>
+                          <DepartmentChanger />
                           <span>Game matric: {user.gameMatricNumber}</span>
                           <span>{status}</span>
                           <span>
@@ -270,6 +218,7 @@ export function StudentCampusTools() {
                           {journey?.orientation_completed && <span>Campus Explorer</span>}
                         </div>
                       </div>
+                      </>
                     )}
                   </Suspense>
                   <button
@@ -296,11 +245,105 @@ export function StudentCampusTools() {
                     Game identity only. Not an official university student card.
                   </p>
                 </>
-              )}
             </section>
           </div>
         </div>
       )}
     </>
+  );
+}
+
+/** Rejoin the room so other players see the new name / college on your name tag. */
+function rejoinAfterProfileChange() {
+  const room = useHostelStore.getState().roomId;
+  const updated = useAuthStore.getState().user;
+  // Campus only (as before): elsewhere the new tag shows the next time you enter a room.
+  if (updated && room === 'world:funaab:main') void networkManager.switchRoom(room, updated);
+}
+
+/** Change username from the profile. The database checks the rules and allows one change a week. */
+function UsernameChanger() {
+  const user = useAuthStore((s) => s.user)!;
+  const saving = useStudentStore((s) => s.saving);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(user.username);
+  const [done, setDone] = useState('');
+  const clean = name.trim();
+  const valid = /^[A-Za-z0-9_]{3,20}$/.test(clean);
+  if (!open)
+    return (
+      <span>
+        <button className="student-link" onClick={() => { setName(user.username); setDone(''); setOpen(true); }}>
+          Change username
+        </button>
+        {done && <em> · {done}</em>}
+      </span>
+    );
+  const save = async () => {
+    if (clean === user.username) return setOpen(false);
+    if (await useStudentStore.getState().changeUsername(clean)) {
+      setOpen(false);
+      setDone(`You are now @${useAuthStore.getState().user?.username}`);
+      rejoinAfterProfileChange();
+    }
+  };
+  return (
+    <span className="student-dept-change">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && valid) void save(); }}
+        aria-label="New username"
+        maxLength={20}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onFocus={() => useInputStore.getState().setIsInputFocused(true)}
+        onBlur={() => useInputStore.getState().setIsInputFocused(false)}
+      />
+      <button className="student-primary" disabled={saving || !valid || clean === user.username} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+      <button className="student-link" onClick={() => setOpen(false)}>Cancel</button>
+      <small>{valid || !clean ? '3–20 letters, numbers or underscores. You can change it once a week.' : 'Use 3–20 letters, numbers or underscores only.'}</small>
+    </span>
+  );
+}
+
+/** Change department from the profile. The database allows one change a day; the college follows. */
+function DepartmentChanger() {
+  const user = useAuthStore((s) => s.user)!;
+  const saving = useStudentStore((s) => s.saving);
+  const [open, setOpen] = useState(false);
+  const [choice, setChoice] = useState(user.courseId || '');
+  const [done, setDone] = useState('');
+  if (!open)
+    return (
+      <span>
+        <button className="student-link" onClick={() => { setChoice(user.courseId || ''); setDone(''); setOpen(true); }}>
+          Change department
+        </button>
+        {done && <em> · {done}</em>}
+      </span>
+    );
+  const save = async () => {
+    if (!choice || choice === user.courseId) return setOpen(false);
+    if (await useStudentStore.getState().changeDepartment(choice)) {
+      setOpen(false);
+      setDone(`Now in ${courseById(choice)?.name}`);
+      rejoinAfterProfileChange();
+    }
+  };
+  return (
+    <span className="student-dept-change">
+      <select value={choice} onChange={(e) => setChoice(e.target.value)} aria-label="Department">
+        {colleges.map((c) => (
+          <optgroup key={c.code} label={c.code}>
+            {courses.filter((d) => d.college === c.code).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      <button className="student-primary" disabled={saving || choice === user.courseId} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+      <button className="student-link" onClick={() => setOpen(false)}>Cancel</button>
+      <small>You can change department once a day.</small>
+    </span>
   );
 }

@@ -1,10 +1,21 @@
 import { CampusArchitecture } from './CampusArchitecture';
+import { FpyFarm } from './FpyFarm';
+import { PartyHall } from './PartyHall';
+import { HealthCentre } from './HealthCentre';
 import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
 import { campusMaterials } from './campusVisualGeometry';
 import { locationPosition, locationById } from '../../config/campusLocations';
 import { CampusRoads, CampusExpansion, KekeRouteDebug } from './CampusExpansion';
 import { CampusBetShop, OutsideGateRoad } from './CampusBetShop';
 import { FoodVendorStalls } from './FoodVendorStalls';
+import { SportsPenaltyArea } from './SportsPenaltyArea';
+import { LoveGarden } from './LoveGarden';
+import { HustleProps } from './HustleProps';
+import { LodgeBuilding } from './LodgeBuilding';
+import { LeagueBanner } from './LeagueBanner';
+import { SportsCourts } from './SportsCourts';
+import { AcadBuilding } from './AcadBuilding';
+import { CampusDirectionPosts } from './DirectionPost';
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { LECTURE_HALLS } from '../../config/lectureHalls';
@@ -12,6 +23,22 @@ import { LECTURE_SCHEDULE } from '../../config/lectureSchedule';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
+import { useGameStore } from '../../stores/gameStore';
+
+/** Restaurant parasol that turns see-through while you sit at its table, so you can see your food. */
+function Parasol({ table, reach, position, radius, segments, color, castShadow }: {
+  table: [number, number]; reach: number; position: [number, number, number];
+  radius: number; segments: number; color: string; castShadow?: boolean;
+}) {
+  const under = useGameStore((s) => !!s.seatedAt && Math.hypot(s.seatedAt.position[0] - table[0], s.seatedAt.position[2] - table[1]) < reach + 0.2);
+  return (
+    <mesh position={position} castShadow={castShadow && !under}>
+      <coneGeometry args={[radius, 0.6, segments]} />
+      {/* Always transparent: switching it later would need a shader recompile; only opacity changes. */}
+      <meshStandardMaterial color={color} transparent opacity={under ? 0.18 : 1} depthWrite={!under} />
+    </mesh>
+  );
+}
 
 export const CampusEnvironment: React.FC = () => {
   const trees = avenueTrees;
@@ -26,6 +53,7 @@ export const CampusEnvironment: React.FC = () => {
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
+      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><HustleProps/><LodgeBuilding/><LeagueBanner/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
@@ -306,8 +334,8 @@ export const CampusEnvironment: React.FC = () => {
             <meshStandardMaterial color="#ffffff" />
           </mesh>
 
-          {/* North Goalpost (at Z = -16) */}
-          <group position={[0, 0, -16]}>
+          {/* North Goalpost (at Z = -16): the Penalty Challenge goal */}
+          <group name="sports_goalpost" position={[0, 0, -16]}>
             <mesh position={[-2.4, 1.2, 0]}>
               <cylinderGeometry args={[0.06, 0.06, 2.4, 8]} />
               <meshStandardMaterial color="#ffffff" />
@@ -398,10 +426,7 @@ export const CampusEnvironment: React.FC = () => {
                 <boxGeometry args={[2.4, 0.8, 1.6]} />
                 <meshStandardMaterial color="#78350f" />
               </mesh>
-              <mesh position={[0, 2.2, 0]}>
-                <coneGeometry args={[1.6, 0.6, 8]} />
-                <meshStandardMaterial color="#f59e0b" />
-              </mesh>
+              <Parasol table={[locationPosition('food-court')[0] + x, locationPosition('food-court')[2] + 3]} reach={1.6} position={[0, 2.2, 0]} radius={1.6} segments={8} color="#f59e0b" />
               <mesh position={[0, 1.2, 0]}>
                 <cylinderGeometry args={[0.04, 0.04, 2.2, 8]} />
                 <meshStandardMaterial color="#475569" />
@@ -448,49 +473,9 @@ export const CampusEnvironment: React.FC = () => {
       </group>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          8. FUNAAB HEALTH CENTRE (Position: [-28, 0, -16])
+          8. FUNAAB HEALTH CENTRE: walk-in clinic with ward beds and nurses
       ══════════════════════════════════════════════════════════════════════ */}
-      <group position={locationPosition('health-centre')}>
-        <RigidBody type="fixed" colliders={false}>
-          {/* Main Clinic Hall (Width 12, Height 5, Depth 8) */}
-          <mesh position={[0, 2.5, 0]} castShadow>
-            <boxGeometry args={[12, 5, 8]} />
-            <meshStandardMaterial color="#f8fafc" roughness={0.3} />
-          </mesh>
-          {/* Emerald Roof Trim */}
-          <mesh position={[0, 5.1, 0]} castShadow>
-            <boxGeometry args={[12.4, 0.4, 8.4]} />
-            <meshStandardMaterial color="#166534" />
-          </mesh>
-
-          {/* Red Cross Emblem */}
-          <group position={[0, 3.2, 4.05]}>
-            <mesh>
-              <boxGeometry args={[1.2, 0.35, 0.05]} />
-              <meshStandardMaterial color="#dc2626" />
-            </mesh>
-            <mesh>
-              <boxGeometry args={[0.35, 1.2, 0.05]} />
-              <meshStandardMaterial color="#dc2626" />
-            </mesh>
-          </group>
-
-          {/* Entrance Doorway Canopy */}
-          <mesh position={[0, 2.4, 4.6]} castShadow>
-            <boxGeometry args={[4.2, 0.15, 1.6]} />
-            <meshStandardMaterial color="#15803d" />
-          </mesh>
-
-          {/* Physical Building Collider */}
-          <CuboidCollider args={[6.0, 2.5, 4.0]} position={[0, 2.5, 0]} />
-        </RigidBody>
-
-        <Html position={[0, 4.4, 4.2]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-          <div className="px-3 py-1 rounded bg-emerald-950/95 border border-emerald-400 text-emerald-300 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">
-            🏥 FUNAAB Health Centre (Clinic & Pharmacy)
-          </div>
-        </Html>
-      </group>
+      <HealthCentre />
 
       {/* ══════════════════════════════════════════════════════════════════════
           9. SENATE BUILDING & 'NIMBE ADEDIPE LIBRARY (Position: [0, 0, -44])
@@ -876,10 +861,7 @@ export const CampusEnvironment: React.FC = () => {
                 <meshStandardMaterial color="#e2e8f0" metalness={0.9} />
               </mesh>
               {/* Parasol Canopy */}
-              <mesh position={[0, 2.7, 0]} castShadow>
-                <coneGeometry args={[1.6, 0.6, 12]} />
-                <meshStandardMaterial color={i === 0 ? '#10b981' : '#f59e0b'} />
-              </mesh>
+              <Parasol table={[locationPosition('floral-world')[0] + x, locationPosition('floral-world')[2] + 1.8]} reach={1.2} position={[0, 2.7, 0]} radius={1.6} segments={12} color={i === 0 ? '#10b981' : '#f59e0b'} castShadow />
               {/* Chairs around table */}
               {[-0.8, 0.8].map((cz, ci) => (
                 <mesh key={ci} position={[0, 0.45, cz]} castShadow>
@@ -916,6 +898,8 @@ export const CampusEnvironment: React.FC = () => {
         <LectureHallEntrance
           key={hall.id}
           position={hall.arch}
+          facing={hall.facing ?? 0}
+          builtInArch={hall.builtInArch}
           title={hall.hallName}
           course={(() => {
             const lecture = LECTURE_SCHEDULE.find((l) => l.locationId === hall.id);
@@ -929,15 +913,15 @@ export const CampusEnvironment: React.FC = () => {
 
 // Shared entrance arch for every lecture hall. The wayfinding label is only shown nearby so ten
 // halls don't keep ten DOM overlays positioned every frame across the whole campus.
-const LectureHallEntrance: React.FC<{ position: [number, number, number]; title: string; course: string }> = ({ position, title, course }) => {
+const LectureHallEntrance: React.FC<{ position: [number, number, number]; facing: number; builtInArch?: boolean; title: string; course: string }> = ({ position, facing, builtInArch, title, course }) => {
   const labelRef = useRef<HTMLDivElement>(null);
   const labelPoint = useMemo(() => new THREE.Vector3(position[0], 4.7, position[2]), [position]);
   useFrame(({ camera }) => {
     if (labelRef.current) labelRef.current.style.visibility = camera.position.distanceToSquared(labelPoint) < 45 * 45 ? 'visible' : 'hidden';
   });
   return (
-    <group position={[position[0], 0, position[2]]}>
-      <RigidBody type="fixed" colliders={false}>
+    <group position={[position[0], 0, position[2]]} rotation={[0, facing, 0]}>
+      {!builtInArch && <RigidBody type="fixed" colliders={false}>
         {/* Entrance Arch Pillars */}
         <mesh position={[-1.6, 2.0, 0]} castShadow geometry={archPillarGeometry} material={archPillarMaterial} />
         <mesh position={[1.6, 2.0, 0]} castShadow geometry={archPillarGeometry} material={archPillarMaterial} />
@@ -949,7 +933,7 @@ const LectureHallEntrance: React.FC<{ position: [number, number, number]; title:
         {/* Physical Colliders for the Doorframe Sides */}
         <CylinderCollider args={[2.0, 0.25]} position={[-1.6, 2.0, 0]} />
         <CylinderCollider args={[2.0, 0.25]} position={[1.6, 2.0, 0]} />
-      </RigidBody>
+      </RigidBody>}
 
       {/* 3D Entrance Wayfinding Sign */}
       <Html position={[0, 4.7, 0]} center distanceFactor={10} style={{ pointerEvents: 'none' }}>

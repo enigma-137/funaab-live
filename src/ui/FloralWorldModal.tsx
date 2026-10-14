@@ -3,6 +3,7 @@ import { ECONOMY_CONFIG } from '../config/economy';
 import { useWalletStore } from '../stores/walletStore';
 import { useAuthStore } from '../stores/authStore';
 import { useSocialStore } from '../stores/socialStore';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface FloralWorldModalProps {
   isOpen: boolean;
@@ -83,8 +84,11 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
               </h2>
             </div>
           </div>
-          <div style={walletChipStyle}>
-            Wallet: <strong style={{ color: '#48bb78', marginLeft: '4px' }}>₦{balance.toLocaleString()}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={walletChipStyle}>
+              Wallet: <strong style={{ color: '#48bb78', marginLeft: '4px' }}>₦{balance.toLocaleString()}</strong>
+            </div>
+            <ModalCloseButton onClose={onClose} label="Close Floral World" />
           </div>
         </div>
 

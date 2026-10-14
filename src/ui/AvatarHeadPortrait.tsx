@@ -12,8 +12,8 @@ function PortraitScene({ config }: PortraitSceneProps) {
 
   useLayoutEffect(() => {
     // Frames the character's head and upper chest in a subtle three-quarter studio portrait angle
-    camera.position.set(0.08, 1.835, 0.74);
-    camera.lookAt(0, 1.81, 0);
+    camera.position.set(0.07, 1.79, 0.68);
+    camera.lookAt(0, 1.76, 0);
     camera.updateProjectionMatrix();
     invalidate();
   }, [camera, invalidate, config]);
@@ -73,7 +73,7 @@ export const AvatarHeadPortrait = memo(({ config, username = 'U', className = ''
     >
       <PortraitErrorBoundary fallback={fallback}>
         <Canvas
-          camera={{ position: [0.08, 1.835, 0.74], fov: 32 }}
+          camera={{ position: [0.07, 1.79, 0.68], fov: 32 }}
           dpr={[1, 2]}
           gl={{ antialias: true, alpha: true }}
           frameloop="demand"

@@ -1,6 +1,10 @@
 import {useHostelStore} from '../stores/hostelStore';
+import { usePartyStore } from '../stores/partyStore';
+import type { ArcadeTableId } from '../config/partyHall';
+import { useHustleStore } from '../stores/hustleStore';
+import { FARM_STEPS } from '../config/fpyFarm';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -37,6 +41,10 @@ import { getActiveLectureForTime, getNextLecture } from '../config/lectureSchedu
 import worldData from '../config/campusWorld';
 import { FOOD_VENDORS, getVendorStatus, type FoodVendorId } from '../config/foodVendors';
 import { openFoodVendor, vendorNow } from '../stores/foodVendorStore';
+import { openFootball } from '../stores/footballStore';
+import { openCourtGame } from '../stores/courtGameStore';
+import { toast } from '../stores/toastStore';
+import { NavigationArrow } from './NavigationArrow';
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -88,7 +96,14 @@ export const GameHUD: React.FC = () => {
   );
 
   const { balance } = useWalletStore();
-  const { messages } = useSocialStore();
+  // Classroom messages belong to the class chat only.
+  const allMessages = useSocialStore((s) => s.messages);
+  const messages = useMemo(() => allMessages.filter((m) => !m.lectureId), [allMessages]);
+  const unreadDmCount = useSocialStore((s) => s.unreadDmCount);
+  // Whole metres only, so walking re-renders the HUD at most once per metre.
+  const waypointDistance = useGameStore((s) => s.navigationDestination
+    ? Math.round(Math.hypot(s.myPosition[0] - s.navigationDestination.position[0], s.myPosition[2] - s.navigationDestination.position[2]))
+    : 0);
   const { activeJob, error: jobError, busy: jobBusy, cancelJob, pickupDeliveryPackage, completeActiveJob, checkJobProximity } = useJobStore();
   const { isTouchDevice, triggerHaptic, setIsInputFocused } = useInputStore(
     useShallow((s) => ({ isTouchDevice: s.isTouchDevice, triggerHaptic: s.triggerHaptic, setIsInputFocused: s.setIsInputFocused }))
@@ -96,7 +111,6 @@ export const GameHUD: React.FC = () => {
 
   const [chatInput, setChatInput] = useState('');
   const [isChatExpanded, setIsChatExpanded] = useState(!isTouchDevice);
-  const [jobNotice, setJobNotice] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const activeKeke = currentKekeId ? kekes[currentKekeId] : undefined;
@@ -112,6 +126,31 @@ export const GameHUD: React.FC = () => {
   const destinationName = targetKekeDestinationId
     ? worldData.kekeDestinations.find((destination) => destination.id === targetKekeDestinationId)?.name
     : undefined;
+
+  // Keep seat/interaction controls clear of the chat box so you can sit and talk. The height the
+  // chat occupies above the bottom edge is also published as --hud-chat-clearance for other
+  // overlays (e.g. the hostel's Sitting bar).
+  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const [chatClearance, setChatClearance] = useState(0);
+  const [narrowDesktop, setNarrowDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1200);
+  useEffect(() => {
+    const el = chatBoxRef.current;
+    const measure = () => {
+      setNarrowDesktop(window.innerWidth < 1200);
+      const c = el ? Math.max(0, Math.round(window.innerHeight - el.getBoundingClientRect().top)) : 0;
+      setChatClearance(c);
+      document.documentElement.style.setProperty('--hud-chat-clearance', `${c}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver !== 'undefined' && el ? new ResizeObserver(measure) : null;
+    if (observer && el) observer.observe(el);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      document.documentElement.style.removeProperty('--hud-chat-clearance');
+    };
+  }, [isChatExpanded]);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -149,7 +188,7 @@ export const GameHUD: React.FC = () => {
           break;
         case 'restaurant_dining':
         case 'bench':
-          sitAtPosition(nearbyInteractable.position, nearbyInteractable.rotation);
+          sitAtPosition(nearbyInteractable.seat ?? nearbyInteractable.position, nearbyInteractable.rotation, { animation: nearbyInteractable.pose, exit: nearbyInteractable.exit });
           useInputStore.getState().clearTargetDestination();
           break;
         case 'lecture_hall':
@@ -174,6 +213,27 @@ export const GameHUD: React.FC = () => {
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
           break;
+        case 'football':
+          openFootball();
+          break;
+        case 'basketball':
+        case 'volleyball':
+          openCourtGame(nearbyInteractable.type);
+          break;
+        case 'hustle':
+          // Farm plots do the job right there; everything else opens Hustles.
+          if (nearbyInteractable.targetId?.startsWith('farm-')) void useHustleStore.getState().farmAt(nearbyInteractable.targetId);
+          else setActiveModal('hustles');
+          break;
+        case 'lodge':
+          setActiveModal('lodge');
+          break;
+        case 'party':
+          setActiveModal('party');
+          break;
+        case 'arcade':
+          usePartyStore.getState().openTable(nearbyInteractable.targetId as ArcadeTableId);
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -183,8 +243,7 @@ export const GameHUD: React.FC = () => {
   const handlePickup = async () => {
     triggerHaptic(20);
     if (!(await pickupDeliveryPackage())) return;
-    setJobNotice('📦 Package/Document picked up! Head to destination.');
-    setTimeout(() => setJobNotice(null), 3500);
+    toast({ icon: '📦', text: 'Picked up! Head to the destination.', tone: 'info' });
   };
 
   const handleDeliver = async () => {
@@ -192,8 +251,7 @@ export const GameHUD: React.FC = () => {
     triggerHaptic(30);
     const res = await completeActiveJob(user.id);
     if (res.success) {
-      setJobNotice(`🎉 Job Complete! +₦${res.reward.toLocaleString()}${res.bonus ? ` (+₦${res.bonus.toLocaleString()} first job today)` : ''}`);
-      setTimeout(() => setJobNotice(null), 4000);
+      toast({ icon: '🎉', text: res.bonus ? `Job complete · includes ₦${res.bonus.toLocaleString()} first-job bonus` : 'Job complete', amount: res.reward + (res.bonus || 0), tone: 'good', ms: 4000 });
     }
   };
 
@@ -225,6 +283,22 @@ export const GameHUD: React.FC = () => {
       case 'food':
       case 'restaurant_dining':
         return '🍲';
+      case 'bench':
+        return '🪑';
+      case 'football':
+        return '⚽';
+      case 'basketball':
+        return '🏀';
+      case 'volleyball':
+        return '🏐';
+      case 'hustle':
+        return nearbyInteractable.targetId === 'pos' ? '🏧' : nearbyInteractable.targetId?.startsWith('farm') ? FARM_STEPS.find((s) => `farm-${s.id}` === nearbyInteractable.targetId)?.icon ?? '🌱' : '📸';
+      case 'lodge':
+        return '🏘️';
+      case 'party':
+        return '🪩';
+      case 'arcade':
+        return nearbyInteractable.targetId === 'pool' ? '🎱' : '⭕';
       case 'atm':
         return '🏧';
       case 'job_board':
@@ -241,7 +315,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (seatedAt) return 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
@@ -262,6 +336,16 @@ export const GameHUD: React.FC = () => {
           return '1v1 PS5 Challenge';
         case 'campus_bet':
           return 'Open Campus Bet';
+        case 'football':
+          return 'Practice Shot / 1v1 Challenge';
+        case 'basketball':
+          return 'Free Throws / 1v1 Shootout';
+        case 'volleyball':
+          return 'Practice Serves / 1v1 Serve-off';
+        case 'hustle':
+          return nearbyInteractable.actionText;
+        case 'lodge':
+          return nearbyInteractable.actionText;
         case 'food_vendor':
           return vendorStatus?.isOpen ? `${nearVendor!.actionLabel} · ${vendorStatus.label}` : vendorStatus?.shortLabel ?? 'Closed';
         default:
@@ -275,7 +359,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (seatedAt) return 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';
@@ -286,8 +370,9 @@ export const GameHUD: React.FC = () => {
       case 'food':
         return 'Food';
       case 'restaurant_dining':
-      case 'bench':
         return 'Sit';
+      case 'bench':
+        return nearbyInteractable.pose === 'sleep' ? 'Lie Down' : 'Sit';
       case 'atm':
         return 'Bank';
       case 'job_board':
@@ -296,6 +381,23 @@ export const GameHUD: React.FC = () => {
         return 'Play';
       case 'campus_bet':
         return 'Campus Bet';
+      case 'football':
+        return 'Penalty';
+      case 'basketball':
+        return 'Hoops';
+      case 'volleyball':
+        return 'Serve';
+      case 'hustle':
+        return nearbyInteractable.targetId === 'pos' ? 'POS shift'
+          : nearbyInteractable.targetId === 'farm' ? 'Farm shift'
+          : nearbyInteractable.targetId?.startsWith('farm-') ? nearbyInteractable.actionText.replace(' here', '')
+          : 'Photos';
+      case 'lodge':
+        return 'Lodge';
+      case 'party':
+        return 'Arena';
+      case 'arcade':
+        return nearbyInteractable.targetId === 'pool' ? 'Pool' : 'Tic-tac-toe';
       case 'food_vendor':
         return vendorStatus?.isOpen ? nearVendor!.actionLabel : vendorStatus?.shortLabel ?? 'Closed';
       default:
@@ -344,6 +446,7 @@ export const GameHUD: React.FC = () => {
 
             {/* Redesigned Quick ATM / Wallet Badge */}
             <div
+              id="hud-wallet"
               onClick={() => setActiveModal('bank')}
               className="flex shrink-0 items-center gap-1.5 sm:gap-2.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-[20px] bg-[#0c221b]/90 hover:bg-[#0f2a22]/95 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-left transition group pointer-events-auto cursor-pointer"
               title="Open ATM & Bank"
@@ -415,7 +518,7 @@ export const GameHUD: React.FC = () => {
             return (
               <button
                 id="btn-hud-lecture-timetable"
-                onClick={() => setActiveModal('lecture_hall')}
+                onClick={() => setActiveModal('timetable')}
                 className={`hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
                   } shadow-xl text-xs transition group`}
                 title={liveLecture ? `Live Class: ${liveLecture.courseCode}` : 'Lecture Timetable'}
@@ -449,35 +552,14 @@ export const GameHUD: React.FC = () => {
           {/* Direct Messages (DMs) Modal Button with Red Unread Badge */}
           <button
             id="btn-hud-dms"
-            onClick={() => {
-              const { directMessages, openDm, activeDmPartner, friends } = useSocialStore.getState();
-              const partners = Object.keys(directMessages);
-              if (activeDmPartner) {
-                setActiveModal('private_chat');
-              } else if (partners.length > 0) {
-                const latestPartner = partners[0];
-                openDm({
-                  id: latestPartner,
-                  username: latestPartner,
-                  college: 'STUDENT',
-                });
-              } else if (friends.length > 0) {
-                openDm({
-                  id: friends[0].id,
-                  username: friends[0].username,
-                  college: friends[0].college,
-                });
-              } else {
-                setActiveModal('friends');
-              }
-            }}
+            onClick={() => setActiveModal('inbox')}
             className="relative p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Direct Messages (DMs)"
           >
             <MessageSquare className="w-4 h-4" />
-            {useSocialStore.getState().unreadDmCount > 0 && (
+            {unreadDmCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white font-extrabold text-[10px] flex items-center justify-center border-2 border-slate-950 animate-pulse shadow-md">
-                {useSocialStore.getState().unreadDmCount}
+                {unreadDmCount}
               </span>
             )}
           </button>
@@ -521,7 +603,7 @@ export const GameHUD: React.FC = () => {
 
           {/* Logout Button */}
           <button
-            onClick={logout}
+            onClick={() => { if (window.confirm('Leave campus and sign out?')) logout(); }}
             className="p-2 sm:p-2.5 rounded-xl bg-slate-900/90 hover:bg-red-950/60 text-slate-400 hover:text-red-400 backdrop-blur-md border border-slate-700/60 shadow-lg transition"
             title="Leave Campus"
           >
@@ -554,11 +636,13 @@ export const GameHUD: React.FC = () => {
                 <div className="text-xs font-black text-white font-['Outfit'] truncate flex items-center gap-1.5">
                   <span>{navigationDestination.shortName}</span>
                   <span className="text-[10px] text-emerald-400 font-mono font-bold">
-                    ({Math.round(Math.hypot(useGameStore.getState().myPosition[0] - navigationDestination.position[0], useGameStore.getState().myPosition[2] - navigationDestination.position[2]))}m)
+                    ({waypointDistance}m)
                   </span>
                 </div>
               </div>
             </div>
+
+            <NavigationArrow />
 
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -580,11 +664,6 @@ export const GameHUD: React.FC = () => {
       )}
 
       {/* ACTIVE JOB BANNER & NOTICES */}
-      {jobNotice && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-4 py-2.5 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-white font-black text-xs sm:text-sm shadow-2xl animate-bounce flex items-center gap-2">
-          <span>{jobNotice}</span>
-        </div>
-      )}
       {!inRoom && jobError && <div role="alert" className="hostel-notice">{jobError}</div>}
       {!inRoom && activeJob && (
         <div className="mx-auto my-1 pointer-events-auto max-w-md w-full animate-in slide-in-from-top-4">
@@ -654,20 +733,16 @@ export const GameHUD: React.FC = () => {
         </div>
       )}
 
-      {!inRoom && jobNotice && (
-        <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-bounce">
-          <div className="p-2.5 rounded-2xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold text-center shadow-2xl backdrop-blur-md">
-            {jobNotice}
-          </div>
-        </div>
-      )}
 
       {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
       <div
         className={isTouchDevice
           ? 'pointer-events-none fixed right-4 z-[60]'
           : 'pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-0 z-30 w-full max-w-[100vw] px-3 sm:px-4'}
-        style={isTouchDevice ? { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' } : undefined}
+        style={isTouchDevice
+          ? { bottom: `calc(env(safe-area-inset-bottom, 0px) + ${Math.max(90, chatClearance + 10)}px)` }
+          // On narrower desktops the centred button would sit on the chat input; lift it above.
+          : narrowDesktop ? { bottom: `${chatClearance + 8}px` } : undefined}
       >
         {!activeModal && (nearbyInteractable || selectedPlayer || isRidingKeke) && (
           <div className="pointer-events-auto flex justify-center">
@@ -708,7 +783,7 @@ export const GameHUD: React.FC = () => {
       {/* 3. BOTTOM BAR: PROXIMITY CHAT & LAWN STATUS */}
       <div className="flex items-end justify-between w-full gap-2 sm:gap-4 pointer-events-none">
         {/* Proximity Chat Window (Responsive & Touch-Friendly) */}
-        <div className="w-full max-w-md pointer-events-auto">
+        <div ref={chatBoxRef} id="hud-chat" className="w-full max-w-md pointer-events-auto">
           {/* If on mobile and collapsed, show sleek floating chat toggle */}
           {isTouchDevice && !isChatExpanded ? (
             <button

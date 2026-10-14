@@ -1,4 +1,6 @@
+import { useLevelStore } from '../../stores/levelStore';
 import { CAMPUS_SPAWN } from '../../config/campusLocations';
+import { TABLE_ITEM_MS, isHeldKind, type HeldKind } from '../../config/heldItems';
 import { useHostelStore } from '../../stores/hostelStore';
 import { useInputStore } from '../../stores/inputStore';
 import { normalizeAvatar } from '../../config/avatar';
@@ -8,7 +10,16 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
+import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
+import { useFootballStore } from '../../stores/footballStore';
+import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
+import { useRallyStore } from '../../stores/rallyStore';
+import { usePartyStore } from '../../stores/partyStore';
+import { useNoticeStore } from '../../stores/noticeStore';
+import { useDailyPlanStore } from '../../stores/dailyPlanStore';
+import { useHustleStore } from '../../stores/hustleStore';
+import { toast } from '../../stores/toastStore';
 
 class NetworkManager {
   public room = 'world:funaab:main';
@@ -44,6 +55,17 @@ class NetworkManager {
     const response = await fetch(url, { signal });
     if (!response.ok) throw new Error('Campus activity unavailable');
     return response.json() as Promise<import('../../config/campusSummary').CampusSummary>;
+  }
+
+  /** The campus announcement the owner sent from Telegram, or null. */
+  public async announcement(signal?: AbortSignal) {
+    const url = new URL(this.targetWsUrl, window.location.href);
+    url.protocol = ['wss:', 'https:'].includes(url.protocol) ? 'https:' : 'http:';
+    url.pathname = '/announcement';
+    url.search = '';
+    const response = await fetch(url, { signal, cache: 'no-store' });
+    if (!response.ok) throw new Error('No announcement feed');
+    return (await response.json()).announcement as import('../../config/broadcast').Announcement | null;
   }
 
   private resolveTargetUrl() {
@@ -93,6 +115,46 @@ class NetworkManager {
       const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('Campus Bet got no reply from the game server. If this keeps happening, the multiplayer Worker may need redeploying.'));},15000);
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);if(typeof v?.balance==='number')useWalletStore.setState({balance:v.balance});resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
       this.send({type:'campus_bet',requestId,op,...payload});
+    });
+  }
+  /** In-game feedback: the Worker adds the player's identity and place, then forwards it to Telegram. */
+  public sendFeedback(payload:{kind:string;message:string;name:string;contact?:string;device:string}):Promise<{sent:boolean}>{
+    if(this.ws?.readyState!==WebSocket.OPEN)return Promise.reject(new Error('You are offline. Reconnect, then send again.'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('No reply from the game server. Please try again in a minute.'));},15000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'feedback',requestId,...payload});
+    });
+  }
+  /** Penalty challenge: only aim + power leave the client; the Worker decides every result. */
+  public football(op:string,payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to play football'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('The pitch did not answer. If this keeps happening, the multiplayer Worker may need redeploying.'));},10000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'football',requestId,op,...payload});
+    });
+  }
+  /** Court games (basketball free throws, volleyball serves): aim + power out, verdict back. */
+  public court(game:'basketball'|'volleyball'|'volleyball_rally'|'party'|'arcade',op:string,payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error(`Reconnect to campus to play ${game}`));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('The court did not answer. If this keeps happening, the multiplayer Worker may need redeploying.'));},10000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:game,requestId,op,...payload});
+    });
+  }
+  /** Hustles that need proof of place/time (POS, photos, tutoring, errand handover). */
+  public hustle(op:string,payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN)return Promise.reject(new Error('Reconnect to campus first'));
+    const requestId=crypto.randomUUID();
+    return new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('No reply from campus. Try again.'));},12000);
+      this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
+      this.send({type:'hustle',requestId,op,...payload});
     });
   }
   public roomChanged() { this.send({type:'room_changed'}); }
@@ -204,7 +266,11 @@ class NetworkManager {
       }
       case 'room_changed': window.dispatchEvent(new Event('hostel-room-changed')); return;
       case 'campus_bet_settled': { window.dispatchEvent(new Event('campus-bet-settled')); const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
-      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
+      case 'announcement': useNoticeStore.getState().receive(data.announcement ?? null); return;
+      case 'level_refresh': void useLevelStore.getState().load(); return;
+      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); void useLevelStore.getState().load(); return; }
+      case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
+      case 'hustle_notice': toast({ icon: data.icon || '💼', text: String(data.text || ''), tone: 'info', ms: 4500 }); void useHustleStore.getState().loadErrands(); return;
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
 
       case 'init':
@@ -236,6 +302,11 @@ class NetworkManager {
         if (data.kekes) gameStore.setKekes(data.kekes);
         gameStore.setRidingKeke(false,null,null);
         if (data.activeMatches) gameStore.setMatches(data.activeMatches);
+        if (data.football) useFootballStore.getState().receive(data.football, true);
+        if (data.basketball) useBasketballStore.getState().receive(data.basketball, true);
+        if (data.volleyball) useVolleyballStore.getState().receive(data.volleyball, true);
+        if (data.rally) useRallyStore.getState().receive(data.rally, true);
+        if (data.arcade) usePartyStore.getState().receive(data.arcade);
 
         const account=useAuthStore.getState().user;if(account)void useWalletStore.getState().loadWallet(account.id);
         console.log(`[WS] joined ${this.room}`);
@@ -311,6 +382,15 @@ class NetworkManager {
         break;
       }
 
+      case 'held_item': {
+        // Another student bought food or a drink: show it in their hand.
+        if (data.connectionId !== this.connectionId && isHeldKind(data.kind)) {
+          const ms = Math.min(Math.max(Number(data.ms) || 0, 0), TABLE_ITEM_MS);
+          gameStore.updatePlayer(data.connectionId, { heldItem: { kind: data.kind, until: Date.now() + ms } });
+        }
+        break;
+      }
+
       case 'player_state': {
         const pConnId = data.connectionId || data.id;
         if (pConnId && pConnId !== this.connectionId) {
@@ -324,9 +404,42 @@ class NetworkManager {
         break;
       }
 
+      // Real classmates in your lecture (seat, hand raised). The server only sends these to the class.
+      case 'lecture_room_snapshot':
+      case 'lecture_student_joined':
+      case 'lecture_student_left':
+      case 'lecture_hand_raise_sync': {
+        const lecture = useLectureStore.getState();
+        const state = lecture.classroomState;
+        if (!state) break;
+        const students = { ...state.activeStudents };
+        const toSeat = (st: any) => ({ connectionId: st.connectionId, username: st.username, college: st.college, seatNumber: st.seatNumber, handRaised: !!st.isHandRaised });
+        if (data.type === 'lecture_room_snapshot') {
+          if (data.lectureId && data.lectureId !== state.lectureId) break;
+          for (const k of Object.keys(students)) delete students[k];
+          for (const st of Object.values<any>(data.roomState?.activeStudents || {})) if (st.connectionId !== this.connectionId) students[st.connectionId] = toSeat(st);
+        } else if (data.type === 'lecture_student_joined') {
+          if (data.student && data.student.connectionId !== this.connectionId) students[data.student.connectionId] = toSeat(data.student);
+        } else if (data.type === 'lecture_student_left') {
+          delete students[data.connectionId];
+        } else if (students[data.connectionId]) {
+          students[data.connectionId] = { ...students[data.connectionId], handRaised: !!data.isHandRaised };
+        }
+        lecture.syncClassroomState({ ...state, activeStudents: students });
+        break;
+      }
+
+      case 'lecture_chat_message': {
+        // Classroom chat: tag it with this class so it shows in the class chat, not campus chat.
+        const lectureId = data.lectureId || useLectureStore.getState().currentLecture?.id;
+        if (lectureId && data.text) socialStore.addMessage({ ...data, lectureId });
+        break;
+      }
+
       case 'private_chat_message': {
         const msg = data.message || data;
         if (msg && msg.text) {
+          if (msg.senderId && msg.senderId !== useAuthStore.getState().user?.id) gameSound.chime();
           socialStore.addDirectMessage({
             id: msg.id || `dm-${Date.now()}`,
             senderId: msg.senderId,
@@ -387,6 +500,24 @@ class NetworkManager {
             currentStopName: data.currentStopName,
           });
         }
+        break;
+      }
+
+      case 'football_state': {
+        if (data.football) useFootballStore.getState().receive(data.football);
+        break;
+      }
+      case 'basketball_state': {
+        if (data.basketball) useBasketballStore.getState().receive(data.basketball);
+        break;
+      }
+      case 'volleyball_state': {
+        if (data.volleyball) useVolleyballStore.getState().receive(data.volleyball);
+        break;
+      }
+      case 'arcade_state': usePartyStore.getState().receive(data); return;
+      case 'volleyball_rally_state': {
+        if (data.rally) useRallyStore.getState().receive(data.rally);
         break;
       }
 
@@ -599,6 +730,11 @@ class NetworkManager {
     });
   }
 
+  /** Withdraw your Game Den challenge, or forfeit the match you're in. */
+  public leavePSMatch() {
+    this.send({ type: 'ps_leave' });
+  }
+
   public sendPSAction(matchId: string, choice: 'left' | 'center' | 'right') {
     this.send({
       type: 'ps_action',
@@ -631,12 +767,14 @@ class NetworkManager {
       connectionId: this.connectionId,
       lectureId,
       raised,
+      isHandRaised: raised, // the field the Worker reads
     });
   }
 
   public sendClassroomChat(lectureId: string, text: string) {
+    // The Worker's classroom chat message is 'lecture_chat' (it answers with 'lecture_chat_message').
     this.send({
-      type: 'classroom_chat',
+      type: 'lecture_chat',
       connectionId: this.connectionId,
       lectureId,
       text,
@@ -712,6 +850,11 @@ class NetworkManager {
         this.connect(this.currentUser);
       }
     }, 2500);
+  }
+
+  /** Tell the room this student is now carrying something they bought. */
+  public holdItem(kind: HeldKind, ms: number) {
+    this.send({ type: 'held_item', kind, ms });
   }
 
   public updateAvatar(user: PlayerProfile) {

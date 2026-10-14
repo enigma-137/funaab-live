@@ -3,7 +3,8 @@ import { useSocialStore } from '../stores/socialStore';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { networkManager } from '../game/multiplayer/networkManager';
-import { Send, DollarSign, ShieldAlert, Ban, X, CheckCircle2 } from 'lucide-react';
+import { Send, DollarSign, ShieldAlert, Ban, X, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { useGameStore } from '../stores/gameStore';
 
 export const PrivateChatModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -98,13 +99,21 @@ export const PrivateChatModal: React.FC = () => {
       <div style={modalStyle}>
         {/* Header */}
         <div style={headerStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <button
+              onClick={() => { useSocialStore.setState({ activeDmPartner: null }); useGameStore.getState().setActiveModal('inbox'); }}
+              style={btnSafetyActionStyle}
+              title="All messages"
+              aria-label="Back to all messages"
+            >
+              <ArrowLeft style={{ width: '16px', height: '16px' }} />
+            </button>
             <div style={avatarCircleStyle}>
               {activeDmPartner.username[0].toUpperCase()}
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 800, fontSize: '15px', color: '#ffffff' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                <span style={{ fontWeight: 800, fontSize: '15px', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   @{activeDmPartner.username}
                 </span>
                 <span style={collegeBadgeStyle}>
@@ -117,7 +126,8 @@ export const PrivateChatModal: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Icon-only safety actions keep the close button on screen on narrow phones. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             {/* Safety Menu Actions */}
             {isBlocked ? (
               <button
@@ -131,23 +141,23 @@ export const PrivateChatModal: React.FC = () => {
               <button
                 onClick={() => blockUser(user.id, activeDmPartner.id)}
                 style={btnSafetyActionStyle}
-                title="Block User"
+                title="Block user"
+                aria-label="Block user"
               >
-                <Ban style={{ width: '13px', height: '13px' }} />
-                <span>Block</span>
+                <Ban style={{ width: '15px', height: '15px' }} />
               </button>
             )}
 
             <button
               onClick={() => openReportModal(activeDmPartner)}
               style={btnSafetyActionStyle}
-              title="Report User"
+              title="Report user"
+              aria-label="Report user"
             >
-              <ShieldAlert style={{ width: '13px', height: '13px', color: '#f87171' }} />
-              <span style={{ color: '#fca5a5' }}>Report</span>
+              <ShieldAlert style={{ width: '15px', height: '15px', color: '#f87171' }} />
             </button>
 
-            <button onClick={closeDm} style={btnCloseCircleStyle}>
+            <button onClick={closeDm} style={btnCloseCircleStyle} title="Close chat" aria-label="Close chat">
               <X style={{ width: '16px', height: '16px' }} />
             </button>
           </div>
@@ -371,11 +381,13 @@ const headerStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
+  gap: '8px',
 };
 
 const avatarCircleStyle: React.CSSProperties = {
   width: '34px',
   height: '34px',
+  flexShrink: 0,
   borderRadius: '10px',
   backgroundColor: '#16a34a',
   color: '#ffffff',
@@ -394,15 +406,18 @@ const collegeBadgeStyle: React.CSSProperties = {
   padding: '1px 6px',
   borderRadius: '4px',
   border: '1px solid #334155',
+  flexShrink: 0,
 };
 
 const btnSafetyActionStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '4px',
+  justifyContent: 'center',
+  width: '30px',
+  height: '30px',
   backgroundColor: '#0f172a',
   border: '1px solid #334155',
-  padding: '4px 8px',
+  padding: 0,
   borderRadius: '6px',
   fontSize: '11px',
   fontWeight: 700,

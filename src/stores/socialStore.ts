@@ -32,6 +32,10 @@ interface SocialState {
 
   // Direct Messaging
   directMessages: Record<string, ChatMessage[]>; // Keyed by partner's username (case-insensitive)
+  /** Who each chat is with (id, name, college), keyed like directMessages. */
+  dmPartners: Record<string, DmPartner>;
+  /** Signed-in student whose messages are loaded (storage owner). */
+  dmOwnerId: string | null;
   unreadDmsByPartner: Record<string, number>; // Unread count per partner username
   activeDmPartner: DmPartner | null;
   unreadDmCount: number;
@@ -61,22 +65,59 @@ interface SocialState {
   resetUnread: () => void;
 }
 
-const loadInitialDms = (): Record<string, ChatMessage[]> => {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = sessionStorage.getItem('funaab_session_dms');
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    return {};
-  }
-};
+// Private messages are kept on this device only, for one day, per signed-in student.
+export const DM_KEEP_MS = 24 * 60 * 60 * 1000;
+const DM_PER_CHAT = 50;
+const DM_CHATS = 20;
+const dmKey = (userId: string) => `funaab:dms:v1:${userId}`;
+type StoredDms = { messages: Record<string, ChatMessage[]>; partners: Record<string, DmPartner> };
 
-const saveDmsToSession = (dms: Record<string, ChatMessage[]>) => {
-  if (typeof window === 'undefined') return;
+/** Drop messages older than a day and keep the most recent chats only. */
+function pruneDms(d: StoredDms, now = Date.now()): StoredDms {
+  const entries = Object.entries(d.messages)
+    .map(([k, list]) => [k, list.filter((m) => now - m.timestamp < DM_KEEP_MS).slice(-DM_PER_CHAT)] as const)
+    .filter(([, list]) => list.length > 0)
+    .sort((a, b) => b[1][b[1].length - 1].timestamp - a[1][a[1].length - 1].timestamp)
+    .slice(0, DM_CHATS);
+  const messages = Object.fromEntries(entries);
+  const partners = Object.fromEntries(Object.entries(d.partners).filter(([k]) => k in messages));
+  return { messages, partners };
+}
+
+function loadDms(userId: string): StoredDms {
   try {
-    sessionStorage.setItem('funaab_session_dms', JSON.stringify(dms));
-  } catch (e) {}
-};
+    const raw = localStorage.getItem(dmKey(userId));
+    if (raw) return pruneDms(JSON.parse(raw));
+  } catch { /* storage blocked or corrupt: start empty */ }
+  return { messages: {}, partners: {} };
+}
+
+function saveDms(userId: string | null, d: StoredDms) {
+  if (!userId) return;
+  try { localStorage.setItem(dmKey(userId), JSON.stringify(d)); } catch { /* private mode */ }
+}
+
+export type Conversation = { key: string; partner: DmPartner; last: ChatMessage; unread: number };
+
+/** Chats newest first, for the Messages inbox. */
+export function listConversations(s: Pick<SocialState, 'directMessages' | 'dmPartners' | 'unreadDmsByPartner'>): Conversation[] {
+  const now = Date.now();
+  return Object.entries(s.directMessages)
+    .map(([key, list]) => {
+      const recent = list.filter((m) => now - m.timestamp < DM_KEEP_MS);
+      const last = recent[recent.length - 1];
+      if (!last) return null;
+      const incoming = recent.find((m) => m.senderName.toLowerCase() === key);
+      const partner = s.dmPartners[key] ?? {
+        id: incoming?.senderId ?? key,
+        username: incoming?.senderName ?? last.recipientUsername ?? key,
+        college: incoming?.college ?? 'STUDENT',
+      };
+      return { key, partner, last, unread: s.unreadDmsByPartner[key] ?? 0 };
+    })
+    .filter((c): c is Conversation => !!c)
+    .sort((a, b) => b.last.timestamp - a.last.timestamp);
+}
 
 export const useSocialStore = create<SocialState>((set, get) => ({
   friends: [],
@@ -95,7 +136,9 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   ],
   unreadCount: 0,
 
-  directMessages: loadInitialDms(),
+  directMessages: {},
+  dmPartners: {},
+  dmOwnerId: null,
   unreadDmsByPartner: {},
   activeDmPartner: null,
   unreadDmCount: 0,
@@ -106,10 +149,12 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     const friends = localDB.getFriends(userId);
     const mutes = localDB.getMutes(userId);
     const blocks = localDB.getBlocks(userId);
+    const dms = get().dmOwnerId === userId ? null : loadDms(userId);
     set({
       friends: friends || [],
       mutedUserIds: mutes || [],
       blockedUserIds: blocks || [],
+      ...(dms && { directMessages: dms.messages, dmPartners: dms.partners, dmOwnerId: userId, unreadDmsByPartner: {}, unreadDmCount: 0, activeDmPartner: null }),
     });
   },
 
@@ -165,14 +210,19 @@ export const useSocialStore = create<SocialState>((set, get) => ({
 
       const totalUnread = Object.values(updatedUnreadByPartner).reduce((acc, c) => acc + c, 0);
 
-      const updatedDms = {
-        ...state.directMessages,
-        [key]: updatedList,
-      };
-      saveDmsToSession(updatedDms);
+      const known = state.dmPartners[key];
+      const partner: DmPartner = isFromSelf
+        ? { id: msg.recipientId || known?.id || key, username: msg.recipientUsername || known?.username || key, college: known?.college || 'STUDENT' }
+        : { id: msg.senderId, username: msg.senderName, college: msg.college || known?.college || 'STUDENT' };
+      const stored = pruneDms({
+        messages: { ...state.directMessages, [key]: updatedList },
+        partners: { ...state.dmPartners, [key]: partner },
+      });
+      saveDms(state.dmOwnerId, stored);
 
       return {
-        directMessages: updatedDms,
+        directMessages: stored.messages,
+        dmPartners: stored.partners,
         unreadDmsByPartner: updatedUnreadByPartner,
         unreadDmCount: totalUnread,
         lastIncomingDm: (!isCurrentlyViewing && !isFromSelf) ? msg : state.lastIncomingDm,
@@ -193,8 +243,11 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       };
       const totalUnread = Object.values(updatedUnreadByPartner).reduce((acc, c) => acc + c, 0);
 
+      // Remember who this chat is with, so the inbox can show it even before anyone writes.
+      const dmPartners = { ...state.dmPartners, [partnerKey]: { ...state.dmPartners[partnerKey], ...partner } };
       return {
         activeDmPartner: partner,
+        dmPartners,
         unreadDmsByPartner: updatedUnreadByPartner,
         unreadDmCount: totalUnread,
         lastIncomingDm: state.lastIncomingDm?.senderName.toLowerCase() === partnerKey ? null : state.lastIncomingDm,

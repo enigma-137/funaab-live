@@ -55,9 +55,12 @@ assert.notEqual(validateMatchday(badP), null, 'rejects uncapped probabilities');
 }
 
 // ---------- Payout + stake rules ----------
-assert.deepEqual([0, 1, 2, 3, 4, 5].map((k) => campusBetPayout(100, k)), [0, 0, 50, 100, 300, 500]);
-assert.equal(campusBetPayout(100, 4), 300, '4/5 pays 3× stake');
-assert.equal(campusBetPayout(500, 5), 2500, 'max possible payout is ₦2,500');
+assert.deepEqual([0, 1, 2, 3, 4, 5].map((k) => campusBetPayout(100, k)), [0, 0, 50, 130, 250, 400]);
+assert.equal(campusBetPayout(100, 3), 130, '3/5 is a real win');
+assert.equal(campusBetPayout(100, 4), 250, '4/5 pays 2.5× stake');
+assert.equal(campusBetPayout(500, 5), 2000, 'max possible payout is ₦2,000');
+for (let s = CAMPUS_BET_STAKE.min; s <= CAMPUS_BET_STAKE.max; s += CAMPUS_BET_STAKE.step)
+  for (let k = 0; k <= 5; k++) assert.equal(campusBetPayout(s, k), Math.round(s * CAMPUS_BET_MULTIPLIERS[k]), `whole-Naira payout ${s}/${k}`);
 for (const ok of [50, 100, 130, 500]) assert(isValidCampusBetStake(ok));
 for (const bad of [49, 137, 501, 0, -100, 100.5, NaN, '100', null]) assert(!isValidCampusBetStake(bad));
 assert.equal(campusBetPayout(130, 2), 65, 'half-stake payouts stay whole Naira');

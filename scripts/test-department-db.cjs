@@ -1,0 +1,40 @@
+// Department change (migration 014): all five COLENG departments exist, a student can switch
+// department once a day, the college follows and the matric keeps its serial.
+const { PGlite } = require(process.env.PGLITE_MODULE || '@electric-sql/pglite');
+const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
+(async () => {
+  const db = new PGlite();
+  await db.exec(`create role anon; create role authenticated; create role service_role;
+ create schema auth; create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+ grant usage on schema public,auth to anon,authenticated; grant execute on function auth.uid() to anon,authenticated;`);
+  const dir = path.join(__dirname, '../supabase/migrations');
+  for (const file of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, file), 'utf8'));
+  await db.exec('grant all on all tables in schema public to anon,authenticated;');
+  const coleng = (await db.query("select id from game_courses where college='COLENG' order by id")).rows.map((r) => r.id);
+  assert.deepEqual(coleng, ['AGE', 'CVE', 'EEE', 'MCE', 'MEE'], 'five COLENG departments');
+  const me = '00000000-0000-4000-8000-0000000000d1';
+  await db.query('insert into auth.users values($1)', [me]);
+  await db.query("insert into profiles(id,username,college) values($1,'Dept','COLFHEC')", [me]);
+  const as = async (id) => { await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]); await db.exec('set role authenticated'); };
+  await as(me);
+  const admitted = (await db.query('select * from accept_game_admission($1)', ['FST'])).rows[0];
+  const serial = admitted.game_matric_number.slice(admitted.game_matric_number.indexOf('/'));
+  const changed = (await db.query('select * from change_game_department($1)', ['EEE'])).rows[0];
+  assert.equal(changed.course_id, 'EEE');
+  assert.equal(changed.college, 'COLENG', 'college follows the department');
+  assert.equal(changed.game_matric_number, 'EEE' + serial, 'matric keeps year and serial');
+  await assert.rejects(() => db.query('select * from change_game_department($1)', ['MCE']), /once a day/);
+  const same = (await db.query('select * from change_game_department($1)', ['EEE'])).rows[0];
+  assert.equal(same.course_id, 'EEE', 'choosing the current department is a no-op');
+  await assert.rejects(() => db.query('select * from change_game_department($1)', ['NOPE']), /Choose a department/);
+  await db.exec('reset role');
+  await db.query("update profiles set course_changed_at = now() - interval '25 hours' where id=$1", [me]);
+  await as(me);
+  assert.equal((await db.query('select * from change_game_department($1)', ['MCE'])).rows[0].course_id, 'MCE', 'allowed again after a day');
+  await db.exec('reset role');
+  await db.query("select set_config('request.jwt.claim.sub','',false)");
+  await db.exec('set role anon');
+  await assert.rejects(() => db.query('select * from change_game_department($1)', ['CVE']), /permission denied|Authentication required/);
+  console.log('DEPARTMENT DB PASSED: five COLENG departments, change with college + matric update, once a day, no-op, invalid, anon blocked.');
+})().catch((e) => { console.error(e); process.exit(1); });

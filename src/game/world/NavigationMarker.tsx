@@ -1,8 +1,53 @@
 import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { CanvasLabel } from './CanvasLabel';
 import * as THREE from 'three';
 import { useGameStore } from '../../stores/gameStore';
+import { bearingTo } from './navigationMath';
+
+// Flat chevron lying on the ground, tip pointing +Z before it is turned toward the waypoint.
+const chevron = (() => {
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0.95);
+  shape.lineTo(0.62, -0.25);
+  shape.lineTo(0.2, -0.05);
+  shape.lineTo(0.2, -0.7);
+  shape.lineTo(-0.2, -0.7);
+  shape.lineTo(-0.2, -0.05);
+  shape.lineTo(-0.62, -0.25);
+  shape.closePath();
+  const g = new THREE.ShapeGeometry(shape);
+  g.rotateX(-Math.PI / 2); // shape +Y becomes world -Z ...
+  g.rotateY(Math.PI); // ... then flip so the tip points +Z (heading 0)
+  return g;
+})();
+
+/** Ground arrow circling the student, always pointing at the waypoint (hidden on arrival or in a keke). */
+const GuideArrow: React.FC = () => {
+  const ref = useRef<THREE.Group>(null);
+  const mat = useRef<THREE.MeshBasicMaterial>(null);
+  useFrame(({ clock }) => {
+    const g = ref.current;
+    if (!g) return;
+    const { myPosition, navigationDestination, isRidingKeke } = useGameStore.getState();
+    const dest = navigationDestination?.position;
+    const far = !!dest && Math.hypot(dest[0] - myPosition[0], dest[2] - myPosition[2]) > 6;
+    g.visible = far && !isRidingKeke;
+    if (!g.visible || !dest) return;
+    const heading = bearingTo(myPosition, dest);
+    const reach = 1.7 + Math.sin(clock.getElapsedTime() * 4) * 0.15;
+    g.position.set(myPosition[0] + Math.sin(heading) * reach, myPosition[1] + 0.08, myPosition[2] + Math.cos(heading) * reach);
+    g.rotation.y = heading;
+    if (mat.current) mat.current.opacity = 0.7 + Math.sin(clock.getElapsedTime() * 4) * 0.2;
+  });
+  return (
+    <group ref={ref} visible={false}>
+      <mesh geometry={chevron} renderOrder={2}>
+        <meshBasicMaterial ref={mat} color="#34d399" transparent opacity={0.8} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+};
 
 export const NavigationMarker: React.FC = () => {
   const navigationDestination = useGameStore((s) => s.navigationDestination);
@@ -55,6 +100,8 @@ export const NavigationMarker: React.FC = () => {
   const pos = navigationDestination.position;
 
   return (
+    <>
+    <GuideArrow />
     <group position={[pos[0], 0.05, pos[2]]}>
       {/* Ground Navigation Beacon Ring */}
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
@@ -62,39 +109,21 @@ export const NavigationMarker: React.FC = () => {
         <meshBasicMaterial color="#34d399" transparent opacity={0.85} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Vertical Light Pillar / Beam */}
-      <mesh ref={beaconRef} position={[0, 6, 0]}>
-        <cylinderGeometry args={[0.25, 1.2, 12, 16, 1, true]} />
+      {/* Vertical light pillar, tall enough to spot over the buildings from across campus */}
+      <mesh ref={beaconRef} position={[0, 15, 0]}>
+        <cylinderGeometry args={[0.35, 1.2, 30, 16, 1, true]} />
         <meshBasicMaterial color="#6ee7b7" transparent opacity={0.25} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Floating 3D Waypoint Label & Live Distance */}
-      <group position={[0, 3.2, 0]}>
-        <Text
-          position={[0, 0.45, 0]}
-          fontSize={0.65}
-          color="#ffffff"
-          outlineColor="#064e3b"
-          outlineWidth={0.06}
-          textAlign="center"
-          anchorX="center"
-          anchorY="middle"
-        >
-          {`📍 ${navigationDestination.shortName}`}
-        </Text>
-        <Text
-          position={[0, -0.2, 0]}
-          fontSize={0.38}
-          color="#a7f3d0"
-          outlineColor="#064e3b"
-          outlineWidth={0.04}
-          textAlign="center"
-          anchorX="center"
-          anchorY="middle"
-        >
-          {`${dist}m ahead`}
-        </Text>
-      </group>
+      {/* Floating waypoint label & live distance (canvas lettering: no font download). */}
+      <CanvasLabel
+        position={[0, 3.2, 0]}
+        lines={[
+          { text: `📍 ${navigationDestination.shortName}`, size: 0.65, color: '#ffffff' },
+          { text: `${dist}m ahead`, size: 0.38, color: '#a7f3d0' },
+        ]}
+      />
     </group>
+    </>
   );
 };

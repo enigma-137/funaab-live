@@ -70,6 +70,41 @@ export const campusMaterials = {
   gravel: mat("#998b6c"),
   concrete: mat("#cfcbc0"),
   engBlue: mat("#3a5f86", 0.7),
+  // Health Centre: pale-yellow render with maroon trim, after the real clinic.
+  clinicWall: mat("#f2df8e"),
+  clinicSkirt: mat("#b49c55"),
+  clinicTrim: mat("#8e2633", 0.7),
+  clinicRoof: mat("#8d8577", 0.8),
+  clinicTile: mat("#dfe3dc", 0.6),
+  clinicTileB: mat("#c9d1ca", 0.6),
+  clinicSheet: mat("#f5f7f8", 0.85),
+  clinicCurtain: mat("#8fc1d4", 0.9),
+  clinicMint: mat("#7cb9a4", 0.8),
+  clinicRed: mat("#c62828", 0.6),
+  // COLANIM: reddish-brown chevron stripes, pilasters and steps.
+  animBrown: mat("#8a4636", 0.8),
+  animCream: mat("#ecdcb8"),
+  // COLPLANT: pale corrugated roofs, black water tanks and blue gas cylinders.
+  plantRoof: mat("#b9b19c", 0.85),
+  tankBlack: mat("#1c1d1f", 0.6),
+  gasBlue: mat("#2453c9", 0.5),
+  clinicSteel: mat("#c5ccd0", 0.35),
+  // Acad (Academic Building): white render, magenta-pink bays, painted red and face-brick towers.
+  acadWhite: mat("#eceeec"),
+  acadPink: mat("#cf3f7c", 0.8),
+  acadRed: mat("#b23a3a", 0.85),
+  // Sports courts: blue hard court, orange key, white lines, orange rims.
+  courtBlue: mat("#2e6a86", 0.8),
+  courtGreen: mat("#2f7a52", 0.85),
+  courtKey: mat("#b7542a", 0.8),
+  courtLine: mat("#f4f6f2", 0.7),
+  hoopOrange: mat("#ea580c", 0.5),
+  soil: mat("#6b4a2f"),
+  tomato: mat("#d93a2b", 0.6),
+  maize: mat("#c9b23a"),
+  arenaWall: mat("#2b1d3f"),
+  arenaFloor: mat("#17131d"),
+  felt: mat("#15803d"),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

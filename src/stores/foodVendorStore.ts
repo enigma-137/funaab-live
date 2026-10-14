@@ -4,16 +4,16 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStore';
 import { useGameStore } from './gameStore';
-import { getVendorStatus, nextVendorTransition, type FoodVendorId, type VendorStatus } from '../config/foodVendors';
+import { holdPurchasedItem } from '../game/player/holdItem';
+import { toast as pushToast } from './toastStore';
+import { FOOD_VENDORS, getVendorStatus, nextVendorTransition, type FoodVendorId, type VendorStatus } from '../config/foodVendors';
 
-interface Toast { id: number; text: string; amount: number }
 interface FoodVendorStore {
   /** server − device clock (ms). Display uses the server clock, so a wrong phone clock can't fake hours. */
   clockOffset: number;
   activeVendor: FoodVendorId | null;
   buying: string | null;
   error: string | null;
-  toast: Toast | null;
   syncClock: () => Promise<void>;
   open: (vendor: FoodVendorId) => void;
   buy: (vendor: FoodVendorId, itemId: string) => Promise<boolean>;
@@ -23,14 +23,15 @@ export const vendorNow = () => Date.now() + useFoodVendorStore.getState().clockO
 
 /** Opens the menu only while the vendor is open (server clock). A closed stall just shows its hours. */
 export function openFoodVendor(vendorId: string | undefined) {
-  if (vendorId !== 'mai_suya' && vendorId !== 'indomie_egg') return;
-  if (!getVendorStatus(vendorId, vendorNow()).isOpen) return;
-  useFoodVendorStore.getState().open(vendorId);
+  if (!vendorId || !(vendorId in FOOD_VENDORS)) return;
+  const id = vendorId as FoodVendorId;
+  if (!getVendorStatus(id, vendorNow()).isOpen) return;
+  useFoodVendorStore.getState().open(id);
   useGameStore.getState().setActiveModal('food_vendor');
 }
 
 export const useFoodVendorStore = create<FoodVendorStore>((set, get) => ({
-  clockOffset: 0, activeVendor: null, buying: null, error: null, toast: null,
+  clockOffset: 0, activeVendor: null, buying: null, error: null,
   syncClock: async () => {
     if (!isSupabaseConfigured) return;
     const sent = Date.now();
@@ -50,7 +51,8 @@ export const useFoodVendorStore = create<FoodVendorStore>((set, get) => ({
       const { data, error } = await supabase.rpc('food_vendor_purchase', { p_vendor: vendor, p_item: itemId, p_request: crypto.randomUUID() });
       if (error) throw new Error(error.message);
       useWalletStore.setState({ balance: Number(data.balance) });
-      set({ toast: { id: Date.now(), text: `${data.name} bought`, amount: Number(data.price) } });
+      pushToast({ icon: '🛍️', text: `${data.name} bought`, amount: -Number(data.price), tone: 'good' });
+      holdPurchasedItem(itemId);
       void useWalletStore.getState().loadWallet(user.id); // ledger + inventory
       return true;
     } catch (e) {

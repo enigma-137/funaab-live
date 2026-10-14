@@ -1,4 +1,5 @@
 import {
+  CircleGeometry,
   CylinderGeometry,
   SphereGeometry,
   BufferGeometry,
@@ -11,8 +12,20 @@ import {
   type Batch,
 } from "./campusVisualGeometry";
 import { CampusSign } from "./CampusSign";
-export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys";
-export function StaticBatches({ batches }: { batches: Batch[] }) {
+// COLBIOS massing shared with its colliders: 18m x 12m, open ground floor (G) under three
+// floors (FL each); the lobby wall sits behind the column line.
+export const COLBIOS = { W: 18, D: 12, G: 3.4, FL: 3.2, top: 3.4 + 3 * 3.2, lobbyFront: 3.4, columns: [-8.6, -4.3, 4.3, 8.6] };
+// COLANIM, in its own front-facing (+Z) frame: gabled hall centred on the origin, two-storey
+// wing to its left. The campus group turns it to face the road (campusLocations facing).
+export const COLANIM = { hallHalf: 5, D: 12, eave: 7, apex: 9.6, floor: 1.2, wing: { x0: -14, x1: -5, d: 10, h: 6.6 } };
+// COLPLANT, front-facing (+Z) frame: single-storey west wing, open entrance porch in the
+// middle (walkable under its slab), two-storey east block. Shared with its colliders.
+export const COLPLANT = { front: 5, D: 11, porch: { x0: -3, x1: 3.5, front: 6.5, back: 3, h: 4.2, open: 3 }, west: { x0: -12, h: 4 }, east: { x1: 12, h: 7.2 } };
+// COLAMRUD, front-facing (+Z) frame: long two-storey block (L along X), maroon vent-block wing at
+// the +X end, arched entrance in the middle with steps. The campus group turns it to face the road.
+export const COLAMRUD = { L: 26, D: 11, h: 6.9, wingX0: 8, entrance: { half: 3.4, project: 1.2 }, steps: 1.8 };
+export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys" | "colbios" | "colanim" | "colplant" | "colamrud";
+export function StaticBatches({ batches, interior = false }: { batches: Batch[]; interior?: boolean }) {
   return (
     <group dispose={null}>
       {batches.map((b) => (
@@ -76,6 +89,289 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     sideWindows(b, W / 2, [-5, -1.7, 1.7, 5], [2.4, 6.75], 2);
     for (const x of [-9, -6, -3, 3, 6, 9])
       for (const y of [2.4, 6.75]) b.box([x, y, -front - 0.03], [1.2, 2.2, 0.06], "glass");
+  }
+  if (id === "colamrud") {
+    // After the COLAMRUD photo: long pale block under a grey corrugated hip roof, tan louvred
+    // window bays with split AC units, a central arched entrance with steps and railings under a
+    // green name board, a maroon wing with white ventilation blocks, and a white lamp post.
+    const { L, D, h, wingX0 } = COLAMRUD, front = D / 2, E = COLAMRUD.entrance;
+    b.box([0, 0.15, 0], [L + 0.6, 0.3, D + 0.6], "curbDark");
+    b.box([0, 0.3 + (h - 0.3) / 2, 0], [L, h - 0.3, D], "ivory");
+    b.box([0, 3.6, 0], [L + 0.3, 0.22, D + 0.3], "cream"); // first-floor band
+    b.box([0, h - 0.05, 0], [L + 0.5, 0.35, D + 0.5], "cream"); // eaves band
+    // Grey corrugated hip roof with a ridge cap and rib lines along the slope.
+    b.roof(L + 1.6, D + 1.6, h + 0.1, 2.3, "clinicRoof", [0, 0, 0]);
+    b.box([0, h + 2.42, 0], [L - D * 1.2 + 1.2, 0.18, 0.5], "roofDark");
+    // Louvred bays: two floors left of the entrance (4) and right of it (2), tan frames with slats.
+    const bays = [-11.6, -9.2, -6.8, -4.4, 4.4, 6.0];
+    for (const x of bays)
+      for (const [fi, y] of [2.1, 5.3].entries()) {
+        b.box([x, y, front + 0.05], [1.9, 2.1, 0.1], "terracotta");
+        b.box([x, y, front + 0.11], [1.6, 1.8, 0.05], "glass");
+        for (let k = 0; k < 6; k++) b.box([x, y - 0.8 + k * 0.32, front + 0.17], [1.6, 0.1, 0.07], "wood", [0.4, 0, 0]);
+        if ((Math.round(x * 5) + fi * 3) % 3 === 0) {
+          b.box([x + 0.1, y - 1.3, front + 0.35], [0.65, 0.4, 0.35], "clinicSheet"); // AC unit
+          b.box([x + 0.1, y - 1.1, front + 0.3], [0.65, 0.05, 0.4], "metal");
+        }
+      }
+    // Maroon wing at the right end, proud of the facade, with white ventilation blocks.
+    const wx = (wingX0 + L / 2 + 0.3) / 2, ww = L / 2 + 0.3 - wingX0;
+    b.box([wx, 0.3 + (h - 0.3) / 2, 0.5], [ww, h - 0.3, D + 1], "clinicTrim");
+    b.box([wx, h - 0.05, 0.5], [ww + 0.3, 0.35, D + 1.3], "cream");
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < 4; c++) {
+        const x = wingX0 + 0.85 + c * 1.15, y = 1.4 + r * 1.05;
+        b.box([x, y, front + 1.02], [0.9, 0.85, 0.06], "ivory");
+        b.box([x, y, front + 1.06], [0.5, 0.45, 0.04], "shadow");
+      }
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < 6; c++) {
+        const z = -4.2 + c * 1.5, y = 1.4 + r * 1.05;
+        b.box([L / 2 + 0.33, y, z], [0.06, 0.85, 0.9], "ivory");
+        b.box([L / 2 + 0.37, y, z], [0.04, 0.45, 0.5], "shadow");
+      }
+    // Central entrance: ivory surround, arched dark opening with glazed doors, name-board plinth.
+    b.box([0, 3.3, front + E.project / 2], [E.half * 2, 6, E.project], "ivory");
+    b.box([0, 6.45, front + E.project / 2], [E.half * 2 + 0.6, 0.4, E.project + 0.4], "cream");
+    b.box([0, 1.7, front + E.project + 0.03], [2.8, 3.1, 0.06], "shadow");
+    b.add(new CylinderGeometry(1.4, 1.4, 0.06, 16), "shadow", [0, 3.25, front + E.project + 0.03], [1, 1, 1], [Math.PI / 2, 0, 0]);
+    for (const x of [-0.7, 0.7]) b.box([x, 1.5, front + E.project + 0.07], [1.2, 2.7, 0.04], "glass");
+    b.box([0, 1.5, front + E.project + 0.1], [0.06, 2.7, 0.04], "metal");
+    b.box([0, 5.3, front + E.project + 0.04], [E.half * 2 - 0.6, 1.4, 0.06], "green"); // name-board backing
+    // Steps up to the door with railings either side.
+    for (let i = 0; i < 3; i++) {
+      const dz = COLAMRUD.steps * (1 - i / 3);
+      b.box([0, 0.14 + i * 0.16, front + E.project + dz / 2], [4.2, 0.28 + i * 0.16, dz], "concrete");
+    }
+    for (const x of [-2.2, 2.2]) {
+      b.box([x, 0.95, front + E.project + 0.9], [0.06, 0.06, 1.8], "metal");
+      b.box([x, 0.55, front + E.project + 0.9], [0.05, 0.05, 1.8], "metal");
+      for (const z of [0.1, 0.9, 1.7]) b.box([x, 0.5, front + E.project + z], [0.05, 1, 0.05], "metal");
+    }
+    // White lamp post beside the entrance (right of the steps, as in the photo).
+    b.pole([5.2, 2.6, front + 2.6], 0.1, 5.2, "ivory");
+    b.orb([5.2, 5.35, front + 2.6], [0.28, 0.28, 0.28], "ivory");
+    // Plain back wall windows.
+    for (const x of [-10, -6, -2, 2, 6, 10]) for (const y of [2.1, 5.3]) b.box([x, y, -front - 0.03], [1.4, 1.6, 0.06], "glass");
+  }
+  if (id === "colbios") {
+    // After the College of Biosciences photo: four storeys of pale-yellow render, maroon fins
+    // between the windows, cream floor bands and a maroon top fascia. The ground floor is an
+    // open lobby on maroon columns; the upper floors overhang it. Exported dimensions match
+    // the colliders in CampusExpansion.
+    const { W, D, G, FL, top } = COLBIOS, front = D / 2, back = -D / 2;
+    b.box([0, 0.1, 0], [W + 0.4, 0.2, D + 0.4], "curbDark");
+    // Ground floor: walls set back from the facade, a dark lobby and a stair rising to the right.
+    b.box([0, G / 2, (back + COLBIOS.lobbyFront) / 2], [W - 0.4, G, COLBIOS.lobbyFront - back], "clinicWall");
+    b.box([0, G / 2 - 0.1, COLBIOS.lobbyFront + 0.02], [7, G - 0.2, 0.06], "shadow");
+    for (const x of [-2.4, 0, 2.4]) b.box([x, 1.25, COLBIOS.lobbyFront + 0.07], [2.2, 2.5, 0.05], "glass");
+    b.box([0, 2.85, COLBIOS.lobbyFront + 0.08], [7.2, 0.12, 0.08], "clinicTrim");
+    for (let i = 0; i < 11; i++)
+      b.box([5 + i * 0.3, 0.15 + i * 0.3, COLBIOS.lobbyFront + 0.55], [0.32, 0.3, 1.1], "concrete");
+    b.box([6.6, 1.9, COLBIOS.lobbyFront + 1.12], [3.4, 0.08, 0.05], "metal", [0, 0, 0.78]);
+    // Columns carrying the overhang, on the facade line.
+    for (const x of COLBIOS.columns) b.box([x, G / 2, front - 0.3], [0.45, G, 0.45], "clinicTrim");
+    // Upper floors.
+    b.box([0, (G + top) / 2, 0], [W, top - G, D], "clinicWall");
+    for (let f = 0; f < 3; f++) {
+      const y = G + f * FL;
+      // Floor slab band, proud of the fins, and a cream spandrel band at sill height.
+      b.box([0, y + 0.1, 0.12], [W + 0.5, 0.35, D + 0.25], "ivory");
+      b.box([0, y + 0.75, front + 0.42], [W + 0.3, 0.8, 0.12], "ivory");
+      for (let bay = 0; bay < 12; bay++) {
+        const x = -W / 2 + 0.75 + bay * 1.5;
+        b.box([x, y + 2.05, front + 0.03], [1.05, 1.5, 0.06], "glass");
+        b.box([x, y + 2.05, front + 0.07], [0.04, 1.5, 0.04], "ivory");
+        // Window AC units on a scatter of bays, like the photo.
+        if ((bay * 7 + f * 3) % 5 === 0) b.box([x + 0.15, y + 2.55, front + 0.2], [0.5, 0.32, 0.3], "curb");
+      }
+    }
+    // Full-height maroon fins between bays.
+    for (let i = 0; i <= 12; i++)
+      b.box([-W / 2 + i * 1.5, (G + top) / 2, front + 0.3], [0.22, top - G, 0.6], "clinicTrim");
+    // Maroon fascia and a flat roof.
+    b.box([0, top + 0.45, 0.15], [W + 0.8, 0.9, D + 1.1], "clinicTrim");
+    b.box([0, top + 0.92, 0.15], [W + 0.4, 0.06, D + 0.7], "roofDark");
+    // Ends: fins and windows on both sides, and one cream stair-core strip.
+    for (const s of [-1, 1]) {
+      for (const z of [-4.5, -1.5, 1.5, 4.5]) b.box([s * (W / 2 + 0.2), (G + top) / 2, z], [0.4, top - G, 0.2], "clinicTrim");
+      for (let f = 0; f < 3; f++)
+        for (const z of [-3, 0, 3]) b.box([s * (W / 2 + 0.03), G + f * FL + 2.05, z], [0.06, 1.5, 2.2], "glass");
+    }
+    for (let f = 0; f < 3; f++) b.box([0, G + f * FL + 2, back - 0.04], [W - 1, 1.4, 0.06], "glass");
+    // Globe lamp post and hedges framing the entrance walk.
+    b.pole([7.5, 2.4, front + 3.2], 0.09, 4.8, "metal");
+    b.orb([7.5, 5.05, front + 3.2], [0.42, 0.42, 0.42], "curb");
+    for (const s of [-1, 1]) {
+      b.box([s * 6, 0.45, front + 1.3], [5.6, 0.9, 0.9], "leafDark");
+      for (let k = 0; k < 6; k++) b.orb([s * (3.6 + k * 0.95), 0.95, front + 1.3], [0.55, 0.3, 0.5], "foliage");
+    }
+  }
+  if (id === "colanim") {
+    // After the College of Animal Science photo: a cream gabled hall whose front carries a
+    // brown-striped chevron around a tall arched doorway up a flight of red steps, beside a
+    // two-storey wing of barred windows between brown pilasters.
+    const { hallHalf: H, D, eave, apex, floor, wing } = COLANIM, front = D / 2;
+    const tri = (pts: number[], m: Parameters<VisualBuilder["box"]>[2]) => {
+      const g = new BufferGeometry().setAttribute("position", new Float32BufferAttribute(pts, 3));
+      g.computeVertexNormals();
+      b.add(g, m);
+    };
+    // Hall walls and gables.
+    b.box([0, 0.15, 0.2], [2 * H + 0.6, 0.3, D + 0.8], "curbDark");
+    b.box([0, eave / 2, 0], [2 * H, eave, D], "animCream");
+    tri([-H, eave, front, H, eave, front, 0, apex, front], "animCream");
+    tri([H, eave, -front, -H, eave, -front, 0, apex, -front], "animCream");
+    // Gable roof: two slopes with eaves, ridge running front to back.
+    const run = H + 0.6, rise = apex - eave + 0.15, slope = Math.atan2(rise, run), len = Math.hypot(run, rise);
+    for (const s of [-1, 1]) {
+      b.box([s * run / 2, eave + rise / 2 + 0.05, 0], [len, 0.18, D + 0.9], "roofDark", [0, 0, -s * slope]);
+      b.box([s * (run - 0.05), eave - 0.05, 0], [0.12, 0.3, D + 0.9], "shadow");
+    }
+    // Chevron: cream panel with brown stripes and brown edge bands.
+    const cy0 = 2.6, cy1 = 6.8, cw = 4.6, zf = front + 0.03;
+    tri([-cw, cy0, zf, cw, cy0, zf, 0, cy1, zf], "ivory");
+    for (let y = cy0 + 0.25; y < cy1 - 0.3; y += 0.45) {
+      const hw = cw * (cy1 - y) / (cy1 - cy0);
+      b.box([0, y, zf + 0.02], [2 * hw - 0.3, 0.13, 0.04], "animBrown");
+    }
+    const edge = Math.hypot(cw, cy1 - cy0), tilt = Math.atan2(cy1 - cy0, cw);
+    for (const s of [-1, 1]) b.box([s * cw / 2, (cy0 + cy1) / 2, zf + 0.04], [edge + 0.3, 0.28, 0.08], "animBrown", [0, 0, -s * tilt]);
+    b.box([0, cy0 - 0.05, zf + 0.03], [2 * cw + 0.3, 0.2, 0.06], "animBrown");
+    // Arched doorway: cream reveal, dark opening, doors and a notice board.
+    b.add(new CircleGeometry(1.85, 24, 0, Math.PI), "animCream", [0, 3.9, zf + 0.06]);
+    b.box([0, (floor + 3.9) / 2, zf + 0.06], [3.7, 3.9 - floor, 0.04], "animCream");
+    b.add(new CircleGeometry(1.6, 24, 0, Math.PI), "shadow", [0, 3.9, zf + 0.08]);
+    b.box([0, (floor + 3.9) / 2, zf + 0.08], [3.2, 3.9 - floor, 0.04], "shadow");
+    b.box([0.25, floor + 1.15, zf + 0.1], [1.3, 2.3, 0.03], "curbDark");
+    b.box([0.25, floor + 2.75, zf + 0.1], [1.4, 0.6, 0.03], "green");
+    // Upper windows (barred) and an AC unit, either side of the chevron.
+    for (const x of [-3.4, 3.4]) {
+      b.box([x, 6.1, front + 0.03], [1.9, 1.05, 0.05], "animBrown");
+      b.box([x, 6.1, front + 0.06], [1.7, 0.85, 0.04], "glass");
+      for (let k = 1; k < 7; k++) b.box([x - 0.85 + k * 0.243, 6.1, front + 0.09], [0.03, 0.85, 0.03], "clinicSteel");
+    }
+    b.box([3.9, 5.35, front + 0.2], [0.75, 0.42, 0.35], "curb");
+    // Red steps up to the door, a side ramp and a brown planter wall.
+    for (let i = 0; i < 6; i++) {
+      const h = floor - i * 0.2;
+      b.box([0, h / 2, front + 0.2 + i * 0.34], [3.4, h, 0.34], "flower");
+    }
+    b.box([3.1, floor / 2 - 0.3, front + 1.6], [1.6, 0.25, 3.4], "concrete", [0.33, 0, 0]);
+    b.box([3.1, floor / 2 - 0.05, front + 0.7], [1.6, floor, 1.4], "concrete");
+    b.box([3.9, floor + 0.3, front + 0.25], [2.2, 0.6, 0.5], "animBrown");
+    for (const x of [-1.8, 1.8]) {
+      b.pole([x, floor / 2 + 0.6, front + 1.1], 0.03, floor + 1.2, "metal");
+      b.box([x, floor * 0.55 + 0.9, front + 1.1], [0.05, 0.05, 2.2], "metal", [0.5, 0, 0]);
+    }
+    // Hall side windows on the open (right) side and the back.
+    for (const z of [-3.5, 0, 3.5]) for (const y of [2.3, 5.2]) {
+      b.box([H + 0.03, y, z], [0.05, 1.1, 1.8], "animBrown");
+      b.box([H + 0.06, y, z], [0.04, 0.9, 1.6], "glass");
+    }
+    for (const x of [-2.5, 2.5]) b.box([x, 4, -front - 0.03], [2, 1.1, 0.06], "glass");
+    // Two-storey wing: cream block, floor band, low roof, brown pilasters, barred windows.
+    const wx = (wing.x0 + wing.x1) / 2, ww = wing.x1 - wing.x0, wf = wing.d / 2;
+    b.box([wx, wing.h / 2, 0], [ww, wing.h, wing.d], "animCream");
+    b.box([wx, 3.3, 0.05], [ww + 0.1, 0.3, wing.d + 0.3], "ivory");
+    b.box([wx, wing.h + 0.1, 0], [ww + 0.9, 0.25, wing.d + 0.9], "shadow");
+    b.roof(ww + 0.8, wing.d + 0.8, wing.h + 0.2, 0.7, "roofDark", [wx, 0, 0]);
+    for (let i = 0; i <= 3; i++) b.box([wing.x0 + i * 3, wing.h / 2, wf + 0.12], [0.45, wing.h, 0.3], "animBrown");
+    for (let bay = 0; bay < 3; bay++)
+      for (const y of [1.75, 4.95]) {
+        const x = wing.x0 + 1.5 + bay * 3;
+        b.box([x, y, wf + 0.04], [2.3, 1.35, 0.06], "glass");
+        for (let k = 1; k < 8; k++) b.box([x - 1.15 + k * 0.29, y, wf + 0.08], [0.03, 1.35, 0.03], "clinicSteel");
+        b.box([x, y + 0.72, wf + 0.08], [2.4, 0.08, 0.08], "ivory");
+        if ((bay + (y > 3 ? 1 : 0)) % 2 === 0) b.box([x - 0.6, y - 0.95, wf + 0.25], [0.7, 0.4, 0.35], "curb");
+      }
+    for (const z of [-2.5, 2.5]) for (const y of [1.75, 4.95]) b.box([wing.x0 - 0.03, y, z], [0.06, 1.3, 2], "glass");
+    // Globe lamp in front of the wing.
+    b.pole([-6.2, 2.3, wf + 2.2], 0.08, 4.6, "metal");
+    b.orb([-6.2, 4.85, wf + 2.2], [0.35, 0.35, 0.35], "curb");
+  }
+  if (id === "colplant") {
+    // After the College of Plant Science photo: cream render with deep fascia bands, stone
+    // cladding either side of an open entrance porch, black water tanks on the porch roof,
+    // a two-storey east block under a big corrugated roof, and painted kerbs with hedges.
+    const { front: F, D, porch: P, west: Wg, east: E } = COLPLANT, back = F - D;
+    b.box([0, 0.1, (F + back) / 2 + 0.6], [E.x1 - Wg.x0 + 0.6, 0.2, D + 1.6], "curbDark");
+    // West wing: single storey, ribbon windows under a deep fascia, hip roof behind.
+    const wx = (Wg.x0 + P.x0) / 2, ww = P.x0 - Wg.x0;
+    b.box([wx, Wg.h / 2, (F + back) / 2], [ww, Wg.h, D], "cream");
+    b.box([wx, Wg.h - 0.45, F + 0.25], [ww, 0.9, 0.5], "cream");
+    b.box([wx, Wg.h - 1.0, F + 0.35], [ww, 0.12, 0.3], "ivory");
+    for (let i = 0; i < 4; i++) {
+      const x = Wg.x0 + 1.3 + i * 2.05;
+      b.box([x, 1.75, F + 0.03], [1.85, 1.25, 0.06], "ivory");
+      b.box([x, 1.75, F + 0.07], [1.7, 1.1, 0.04], "glass");
+      b.box([x, 1.75, F + 0.1], [0.05, 1.1, 0.03], "ivory");
+    }
+    b.roof(ww + 0.6, D + 0.6, Wg.h, 1.5, "plantRoof", [wx - 0.2, 0, (F + back) / 2 - 0.5]);
+    // Stone cladding flanking the porch.
+    b.box([P.x0 - 0.8, Wg.h / 2, F + 0.15], [1.6, Wg.h, 0.3], "stone");
+    // Entrance porch: slab and fascia over an open, dark-backed recess with a centre column.
+    const pw = P.x1 - P.x0, pc = (P.x0 + P.x1) / 2;
+    b.box([pc, (P.open + P.h) / 2, (P.front + back) / 2], [pw, P.h - P.open, P.front - back], "cream");
+    b.box([pc, P.h + 0.15, (P.front + back) / 2], [pw + 0.3, 0.3, P.front - back + 0.3], "ivory");
+    b.box([pc, P.open / 2, (P.back + back) / 2], [pw, P.open, P.back - back], "cream");
+    b.box([pc, P.open / 2, P.back + 0.02], [pw - 0.6, P.open - 0.1, 0.04], "shadow");
+    for (const x of [pc - 1.6, pc + 1.6]) b.box([x, 1.15, P.back + 0.05], [1.2, 2.3, 0.03], "glass");
+    for (const x of [P.x0 + 0.2, P.x1 - 0.2]) b.box([x, P.open / 2, (P.front + P.back) / 2], [0.4, P.open, P.front - P.back], "cream");
+    b.box([pc + 0.3, P.open / 2, P.front - 0.3], [0.45, P.open, 0.45], "ivory");
+    b.box([pc, 0.06, (P.front + P.back) / 2 + 1], [pw, 0.12, P.front - P.back + 2], "concrete");
+    b.box([P.x0 - 0.1, P.open + 0.5, P.front + 0.3], [0.9, 0.12, 0.5], "metal", [0, 0, -0.3]);
+    // Water tanks on the porch roof.
+    for (const x of [pc - 0.7, pc + 0.7]) {
+      b.add(new CylinderGeometry(0.55, 0.55, 1.3, 14), "tankBlack", [x, P.h + 0.95, back + 1.5]);
+      b.box([x, P.h + 0.4, back + 1.5], [1.1, 0.2, 1.1], "metal");
+    }
+    // East block: stone-clad bay with small windows, cream bays with ribbon windows, sill bands.
+    const ex0 = P.x1, ex = (ex0 + E.x1) / 2, ew = E.x1 - ex0;
+    b.box([ex, E.h / 2, (F + back) / 2], [ew, E.h, D], "cream");
+    b.box([ex0 + 1.8, E.h / 2, F + 0.15], [3.6, E.h, 0.3], "stone");
+    for (const y of [2, 5.6]) {
+      b.box([ex0 + 1.8, y, F + 0.32], [1.1, 0.8, 0.04], "shadow");
+      for (let k = 1; k < 5; k++) b.box([ex0 + 1.25 + k * 0.22, y, F + 0.35], [0.03, 0.8, 0.03], "metal");
+    }
+    for (const y of [3.4, 0.45]) b.box([ex + 1.8, y + 0.1, F + 0.25], [ew - 3.6, 0.35, 0.5], "ivory");
+    b.box([ex + 1.8, E.h - 0.35, F + 0.25], [ew - 3.6, 0.7, 0.5], "ivory");
+    // Two cream bays east of the stone, split by a pilaster.
+    const bay = (E.x1 - ex0 - 3.6) / 2;
+    for (let i = 0; i < 2; i++)
+      for (const y of [1.95, 5.3]) {
+        const x = ex0 + 3.6 + bay * (i + 0.5);
+        b.box([x, y, F + 0.03], [bay - 0.5, 1.0, 0.06], "shadow");
+        for (let k = 1; k < 8; k++) b.box([x - (bay - 0.5) / 2 + k * (bay - 0.5) / 8, y, F + 0.07], [0.03, 1.0, 0.03], "metal");
+      }
+    b.box([ex0 + 3.6 + bay, E.h / 2, F + 0.12], [0.35, E.h, 0.25], "cream");
+    b.box([ex, E.h + 0.12, (F + back) / 2 + 0.2], [ew + 1.4, 0.24, D + 1.6], "shadow");
+    b.roof(ew + 1.2, D + 1.4, E.h + 0.2, 2.2, "plantRoof", [ex, 0, (F + back) / 2 + 0.2]);
+    // AC units and blue gas cylinders on the east block.
+    for (const x of [ex0 + 4.6, ex0 + 6.4]) b.box([x, 0.75, F + 0.3], [0.85, 0.6, 0.4], "curb");
+    for (const x of [E.x1 - 2.6, E.x1 - 2.05]) b.add(new CylinderGeometry(0.22, 0.22, 1.2, 10), "gasBlue", [x, 0.8, F + 0.4]);
+    // Hedges and flowers behind black-and-white kerbs, with globe lamps.
+    for (const [x0, x1] of [[Wg.x0, P.x0 - 0.4], [P.x1 + 0.5, E.x1]] as const) {
+      const len = x1 - x0, cx = (x0 + x1) / 2;
+      b.box([cx, 0.35, F + 1.2], [len, 0.7, 1.1], "leafDark");
+      for (let x = x0 + 0.5; x < x1; x += 1.1) b.orb([x, 0.75, F + 1.2], [0.5, 0.35, 0.5], (Math.round(x * 3) % 3) ? "foliage" : "flower");
+      for (let k = 0; k < Math.floor(len / 0.9); k++)
+        b.box([x0 + 0.45 + k * 0.9, 0.12, F + 1.95], [0.9, 0.24, 0.22], k % 2 ? "curbDark" : "curb");
+    }
+    for (const x of [P.x0 - 1.2, P.x1 + 1.3]) {
+      b.pole([x, 1.6, F + 2.2], 0.06, 3.2, "metal");
+      b.orb([x, 3.35, F + 2.2], [0.28, 0.28, 0.28], "curb");
+    }
+    // A spiky palm shrub in the west bed.
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * Math.PI * 2;
+      b.box([Wg.x0 + 7.5 + Math.cos(a) * 0.4, 1.1, F + 1.2 + Math.sin(a) * 0.4], [0.12, 1.5, 0.12], "leafLight", [Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5]);
+    }
+    // Sides and back: plain window rows.
+    for (const z of [-3, 1]) {
+      b.box([Wg.x0 - 0.03, 1.75, z], [0.06, 1.1, 2], "glass");
+      for (const y of [1.95, 5.3]) b.box([E.x1 + 0.03, y, z], [0.06, 1.0, 2], "glass");
+    }
   }
   if (id === "colphys") {
     // Placeholder massing (no reference photograph yet): two storeys, terracotta bands and a
@@ -222,7 +518,7 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     for (const x of [-11.6, 11.6]) b.box([x, 0.55, 6], [0.8, 1.1, 4], "ivory");
   }
   // Modest side-wall windows keep oblique approach views from reading as blank boxes.
-  if (id !== "library" && id !== "coleng" && id !== "colphys") {
+  if (id !== "library" && id !== "coleng" && id !== "colphys" && id !== "colbios" && id !== "colanim" && id !== "colplant" && id !== "colamrud") {
     const sideX = id === "colerm" ? 7 : id === "colfhec" ? 10 : 11;
     for (const side of [-1, 1])
       for (const z of [-4, 0, 3]) {
@@ -278,6 +574,34 @@ const signs: Record<
     h: 1,
     title: "COLENG",
     sub: "COLLEGE OF ENGINEERING",
+  },
+  colplant: {
+    p: [COLPLANT.porch.x0 / 2 + COLPLANT.porch.x1 / 2, 3.62, COLPLANT.porch.front + 0.16],
+    w: 3.4,
+    h: 0.72,
+    title: "COLPLANT",
+    sub: "PLANT SCIENCE & CROP PRODUCTION",
+  },
+  colanim: {
+    p: [0, 6.05, COLANIM.D / 2 + 0.16],
+    w: 3.6,
+    h: 0.78,
+    title: "COLANIM",
+    sub: "ANIMAL SCIENCE & LIVESTOCK PRODUCTION",
+  },
+  colamrud: {
+    p: [0, 5.3, COLAMRUD.D / 2 + COLAMRUD.entrance.project + 0.1],
+    w: 5.8,
+    h: 1.1,
+    title: "COLAMRUD",
+    sub: "AGRICULTURAL MANAGEMENT & RURAL DEVELOPMENT",
+  },
+  colbios: {
+    p: [0, COLBIOS.G - 0.5, COLBIOS.D / 2 + 0.16],
+    w: 5.4,
+    h: 0.75,
+    title: "COLBIOS",
+    sub: "COLLEGE OF BIOLOGICAL SCIENCES",
   },
   colphys: {
     p: [0, 5, 6.1],

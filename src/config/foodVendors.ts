@@ -3,10 +3,11 @@
 // food_vendor_items; prices updated by 012_economy_rebalance.sql); scripts/test-food-vendors-db.ts fails if the two drift apart.
 // The server (database clock, Africa/Lagos) is authoritative for purchases.
 import type { Point } from './campusLocations';
+import { BAR } from './partyHall';
 
 export const VENDOR_TIMEZONE = 'Africa/Lagos';
 
-export type FoodVendorId = 'mai_suya' | 'indomie_egg';
+export type FoodVendorId = 'mai_suya' | 'indomie_egg' | 'party_bar';
 /** Minutes after local midnight; `close` is exclusive (open at 19:00:00, closed at 23:00:00). */
 export interface ServiceWindow { open: number; close: number; label: string }
 export interface VendorItem { id: string; name: string; price: number }
@@ -62,7 +63,30 @@ export const FOOD_VENDORS: Record<FoodVendorId, FoodVendor> = {
     rotation: Math.PI,
     models: { stall: 'vendor_indomie_stall', npc: 'vendor_indomie_npc', equipment: 'vendor_indomie_cooker' },
   },
+  // Inside The Arena (party hall); drawn by PartyHall, not as a stall. Open across midnight.
+  party_bar: {
+    id: 'party_bar',
+    name: 'Arena Bar',
+    icon: '🍹',
+    actionLabel: 'Bar',
+    closedMessage: 'The Arena bar opens at 7 PM.',
+    windows: [
+      { open: hm(0), close: hm(5), label: 'Late night' },
+      { open: hm(19), close: hm(24), label: 'Night' },
+    ],
+    items: [
+      { id: 'vendor_party_zobo', name: 'Chilled Zobo', price: 300 },
+      { id: 'vendor_party_soda', name: 'Soft drink', price: 250 },
+      { id: 'vendor_party_malt', name: 'Malt', price: 400 },
+      { id: 'vendor_party_chapman', name: 'Chapman', price: 500 },
+      { id: 'vendor_party_energy', name: 'Energy drink', price: 450 },
+    ],
+    position: BAR.centre,
+    rotation: 0,
+    models: { stall: 'party_bar_counter', npc: 'party_bartender', equipment: 'party_bar_fridge' },
+  },
 };
+
 export const FOOD_VENDOR_LIST = Object.values(FOOD_VENDORS);
 export const vendorItem = (vendorId: FoodVendorId, itemId: string) => FOOD_VENDORS[vendorId]?.items.find((i) => i.id === itemId);
 
@@ -118,8 +142,11 @@ export function getVendorStatus(vendorId: FoodVendorId, now: number = Date.now()
   const minute = Math.floor((now - midnight) / 60000);
   const current = vendor.windows.find((w) => minute >= w.open && minute < w.close) ?? null;
   if (current) {
-    const label = `Open until ${clockLabel(current.close, false)}`;
-    return { isOpen: true, currentWindow: current, closesAt: midnight + current.close * 60000, nextOpensAt: null, label, shortLabel: label };
+    // A window ending at midnight that carries on in an early-morning window closes then instead.
+    const carry = current.close === 1440 ? vendor.windows.find((w) => w.open === 0) : undefined;
+    const closesAt = carry ? lagosMidnight(midnight + DAY_MS + 3600000) + carry.close * 60000 : midnight + current.close * 60000;
+    const label = `Open until ${clockLabel(carry ? carry.close : current.close, false)}`;
+    return { isOpen: true, currentWindow: current, closesAt, nextOpensAt: null, label, shortLabel: label };
   }
   const today = vendor.windows.find((w) => w.open > minute);
   const next = today ?? vendor.windows[0];

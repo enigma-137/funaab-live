@@ -11,7 +11,6 @@ import {
   HALL_STANDING_VIEW,
   LECTURE_HALLS,
   freeHallSeats,
-  hallNpcPopulation,
   hallSeatPositions,
   lectureHallForCollege,
 } from "../src/config/lectureHalls";
@@ -24,7 +23,7 @@ const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const physicalColleges = campusLocations.filter((l) => l.type === "college").map((l) => l.id).sort();
 assert.deepEqual(
   physicalColleges,
-  ["colanim", "colbios", "coleng", "colerm", "colfhec", "colphys", "colplant", "colvet", "colcoms"].sort(),
+  ["colanim", "colbios", "coleng", "colerm", "colfhec", "colphys", "colplant", "colvet", "colcoms", "collend", "colamrud"].sort(),
   "college locations",
 );
 for (const id of physicalColleges) {
@@ -74,46 +73,19 @@ for (const hall of LECTURE_HALLS) {
   // Arches don't collide with each other.
   for (const other of LECTURE_HALLS) if (other !== hall) assert(dist(other.arch, hall.arch) > 8, `${hall.id} vs ${other.id} arches`);
 
-  // --- Interior: seats, NPCs, free seats -------------------------------------------------
+  // --- Interior: seats and free seats -------------------------------------------------
   const seats = hallSeatPositions(hall);
   assert.equal(seats.length, hall.seating.rows * hall.seating.cols);
   for (const s of seats) assert(Math.abs(s.pos[0]) < 5 && s.pos[2] > -4.5 && s.pos[2] < 4, `${hall.id} seat ${s.seatNumber} inside room, off the stage`);
 
-  const npcs = hallNpcPopulation(hall);
-  assert.deepEqual(npcs, hallNpcPopulation(hall), `${hall.id} NPC crowd is deterministic`);
-  const seated = npcs.filter((n) => n.seatNumber);
-  const standing = npcs.filter((n) => !n.seatNumber);
-  assert.equal(new Set(seated.map((n) => n.seatNumber)).size, seated.length, `${hall.id} one NPC per seat`);
-  assert(seated.length >= 8, `${hall.id} is visibly occupied`);
-  assert(npcs.length <= 20, `${hall.id} NPC count stays mobile-friendly`);
-  assert.equal(new Set(npcs.map((n) => n.id)).size, npcs.length);
-  for (const n of standing) {
-    assert(Math.abs(n.pos[0]) < 6.4 && Math.abs(n.pos[2]) < 7.4, `${hall.id} standing NPC inside walls`);
-    assert(n.pos[2] > -5, `${hall.id} standing NPC off the stage`);
-    for (const s of seats) {
-      // Desk spans ±0.55 in x and z -0.3; the chair back reaches CHAIR_BACK_Z behind the desk.
-      const dx = Math.abs(n.pos[0] - s.pos[0]) - 0.55;
-      const dz = Math.max(s.pos[2] - 0.3 - n.pos[2], n.pos[2] - (s.pos[2] + CHAIR_BACK_Z + 0.05));
-      assert(Math.max(dx, dz) > 0.6, `${hall.id} standing NPC clear of seat ${s.seatNumber}`);
-    }
-    for (const m of standing) if (m !== n) assert(dist(m.pos, n.pos) > 1.2, `${hall.id} standing NPCs don't overlap`);
-    assert(dist(n.pos, HALL_STANDING_VIEW) > 1.5, `${hall.id} standing NPC clear of the player's entry spot`);
-  }
-  // Seated students face the board, sit behind their desk and clear the row behind.
-  assert(seated.every((n) => n.rotY === FACE_BOARD), `${hall.id} seated NPCs face the board`);
-  assert(standing.every((n) => Math.cos(n.rotY) <= 0.01), `${hall.id} standing NPCs face the front or the class, not the back wall`);
   const rowGap = hall.seating.rows > 1 ? seats[hall.seating.cols].pos[2] - seats[0].pos[2] : 2;
   assert(CHAIR_OFFSET_Z - 0.21 > 0.3 - 0.2, "chair front edge leaves knee room under the 0.3m-deep desk half");
   assert(CHAIR_BACK_Z + 0.05 < rowGap - 0.3, `${hall.id} chair back clears the next row's desk`);
+  // Only real students sit in a hall: with nobody in, every seat is free.
   const free = freeHallSeats(hall);
-  assert(free.length >= 6, `${hall.id} leaves free seats for players`);
-  assert(free.every((s) => !seated.some((n) => n.seatNumber === s.seatNumber)), `${hall.id} free seats exclude NPCs`);
+  assert.equal(free.length, seats.length, `${hall.id} has no fake students: every seat is free`);
   assert(!freeHallSeats(hall, [free[0].seatNumber]).some((s) => s.seatNumber === free[0].seatNumber), "taken seats excluded");
 }
-// Different colleges get different crowds.
-const signatures = LECTURE_HALLS.map((h) => hallNpcPopulation(h).filter((n) => n.seatNumber).map((n) => n.seatNumber).join(","));
-assert(new Set(signatures).size >= LECTURE_HALLS.length - 1, "halls have different seating crowds");
-
 // Legacy aliases used by old links and the existing world.json interactables still resolve.
 assert.equal(normalizeHallLocationId("funaab-fst-201"), "colfhec-lecture-hall");
 assert.equal(normalizeHallLocationId("funaab-eng-203"), "central-lecture-hall");

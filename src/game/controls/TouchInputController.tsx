@@ -72,6 +72,8 @@ export const TouchInputController: React.FC = () => {
       const result = tracker.up(sample(e));
       if (!tracker.active && useInputStore.getState().isDraggingCamera) input.setIsDraggingCamera(false);
       if (result.kind !== 'tap' || gameplayInputBlocked()) return;
+      // With the joystick on, walking is the stick's job: a tap just selects things.
+      if (useInputStore.getState().controlMode === 'joystick' && e.pointerType !== 'mouse') return;
 
       const rect = el.getBoundingClientRect();
       _ndc.set(((result.x - rect.left) / rect.width) * 2 - 1, -((result.y - rect.top) / rect.height) * 2 + 1);
@@ -80,10 +82,16 @@ export const TouchInputController: React.FC = () => {
       if (Math.abs(_hit.x) > GROUND_HALF_EXTENT || Math.abs(_hit.z) > GROUND_HALF_EXTENT) return;
 
       const dest: [number, number, number] = [_hit.x, 0, _hit.z];
-      const store = useInputStore.getState();
-      store.triggerHaptic(18);
-      store.setTapRipple(dest);
-      store.setTargetDestination(dest);
+      // Scene objects (a player, a keke, a sign) react on the DOM 'click' that follows this
+      // pointerup. Decide after it: if the tap opened something, it was not a walk order.
+      // Otherwise tapping someone to message them would stand you up and walk you over.
+      window.setTimeout(() => {
+        if (gameplayInputBlocked()) return;
+        const store = useInputStore.getState();
+        store.triggerHaptic(18);
+        store.setTapRipple(dest);
+        store.setTargetDestination(dest);
+      }, 0);
     };
 
     const onCancel = (e: PointerEvent) => {

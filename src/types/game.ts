@@ -1,3 +1,4 @@
+import type { PSLastRound } from '../config/psPenalty';
 export interface AvatarConfig {
   bodyType?: 'masculine' | 'feminine';
   skinTone?: string;
@@ -35,7 +36,7 @@ export interface PlayerState {
   avatarConfig: AvatarConfig;
   position: [number, number, number];
   rotation: number;
-  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
+  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
   kekeRiding?: boolean;
   kekeId?: string;
   seatIndex?: number;
@@ -44,6 +45,8 @@ export interface PlayerState {
   seatNumber?: number;
   handRaised?: boolean;
   isDining?: boolean;
+  /** Food or drink they just bought, shown in hand until `until` (local clock). */
+  heldItem?: { kind: 'pack' | 'wrap' | 'bowl' | 'water' | 'malt'; until: number };
   lastUpdated: number;
 }
 
@@ -86,6 +89,12 @@ export interface PSMatchState {
   guestChoice?: 'left' | 'center' | 'right';
   roundResult?: string;
   winnerName?: string;
+  isDraw?: boolean;
+  lastRound?: PSLastRound;
+  /** Ended because a player left, disconnected, walked away or went idle (no rewards). */
+  forfeit?: boolean;
+  /** A waiting challenge withdrawn before anyone joined. */
+  cancelled?: boolean;
   updatedAt: number;
 }
 
@@ -99,13 +108,18 @@ export interface WorldLocation {
 
 export interface InteractableZone {
   id: string;
-  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'campus_bet' | 'food_vendor';
+  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade';
   label: string;
   actionText: string;
   position: [number, number, number];
   radius: number;
   rotation?: number;
   targetId?: string;
+  // Seat pose for 'bench' zones: where the hips/feet go when it differs from the trigger spot,
+  // and where to stand on getting up (a bed's collider would otherwise trap the player).
+  pose?: 'sit' | 'sleep';
+  seat?: [number, number, number];
+  exit?: [number, number, number];
 }
 
 export interface FoodItem {
@@ -194,6 +208,8 @@ export interface CampusJob {
   sourcePos: [number, number, number];
   destination: string;
   destinationPos: [number, number, number];
+  /** Server delivery radius in metres (job_catalog.dest_radius, default 5). */
+  destRadius?: number;
   description: string;
   status: 'available' | 'accepted' | 'picked_up' | 'completed';
   progress?: number;

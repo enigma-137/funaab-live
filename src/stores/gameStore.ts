@@ -10,6 +10,8 @@ import {
   ActivityFeedItem,
 } from '../types/game';
 
+import type { HeldItem } from '../config/heldItems';
+
 export interface NavigationDestination {
   id: string;
   name: string;
@@ -39,8 +41,10 @@ interface GameState {
   // Local player state
   myPosition: [number, number, number];
   myRotation: number;
-  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
-  seatedAt: { position: [number, number, number]; rotation: number } | null;
+  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
+  seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep'; exit?: [number, number, number] } | null;
+  /** One-shot facing request (e.g. turn to face the goal); LocalPlayer applies then clears it. */
+  faceRotation: number | null;
   isRidingKeke: boolean;
   currentKekeId: string | null;
   targetKekeDestinationId: string | null;
@@ -85,12 +89,29 @@ interface GameState {
     | 'send_money'
     | 'daily_reward'
     | 'lecture_hall'
+    | 'timetable'
     | 'floral_world'
     | 'private_chat'
     | 'report_user'
     | 'campus_map'
     | 'campus_bet'
+    | 'feedback'
+    | 'earn'
+    | 'inbox'
     | 'food_vendor'
+    | 'football'
+    | 'basketball'
+    | 'volleyball'
+    | 'volleyball_rally'
+    | 'level'
+    | 'party'
+    | 'arcade'
+    | 'sug'
+    | 'controls'
+    | 'background'
+    | 'hustles'
+    | 'lodge'
+    | 'league'
     | null;
 
   // Actions
@@ -112,10 +133,13 @@ interface GameState {
   setPlayerRef: (ref: React.RefObject<any> | null) => void;
 
   setMyPosition: (pos: [number, number, number]) => void;
+  myHeldItem: HeldItem | null;
+  setMyHeldItem: (item: HeldItem | null) => void;
   setMyRotation: (rot: number) => void;
-  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer') => void;
-  sitAtPosition: (position: [number, number, number], rotation?: number) => void;
+  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance') => void;
+  sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep'; exit?: [number, number, number] }) => void;
   standUp: () => void;
+  setFaceRotation: (rotation: number | null) => void;
   setRidingKeke: (isRiding: boolean, kekeId?: string | null, targetDestinationId?: string | null) => void;
   setTargetKekeDestinationId: (id: string | null) => void;
 
@@ -147,12 +171,35 @@ interface GameState {
       | 'send_money'
       | 'daily_reward'
       | 'lecture_hall'
+      | 'timetable'
       | 'floral_world'
       | 'private_chat'
       | 'report_user'
       | 'campus_map'
       | 'campus_bet'
+    | 'feedback'
+    | 'earn'
+    | 'inbox'
       | 'food_vendor'
+      | 'football'
+      | 'basketball'
+      | 'volleyball'
+      | 'volleyball_rally'
+    | 'volleyball_rally'
+    | 'volleyball'
+    | 'volleyball_rally'
+    | 'basketball'
+    | 'volleyball'
+    | 'volleyball_rally'
+      | 'level'
+    | 'party'
+    | 'arcade'
+    | 'sug'
+    | 'controls'
+      | 'background'
+      | 'hustles'
+      | 'lodge'
+      | 'league'
       | null
   ) => void;
   toggleDebugPhysics: () => void;
@@ -180,9 +227,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   debugNet: initialDebugNet,
 
   myPosition: [0, 0, 8],
+  myHeldItem: null,
+  setMyHeldItem: (myHeldItem) => set({ myHeldItem }),
   myRotation: 0,
   myAnimation: 'idle',
   seatedAt: null,
+  faceRotation: null,
   isRidingKeke: false,
   currentKekeId: null,
   targetKekeDestinationId: null,
@@ -346,6 +396,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => {
       const currentUser = useAuthStore.getState().user;
       const current = state.currentMatch;
+      // A withdrawn challenge disappears for everyone; its host goes back to the lobby.
+      if (match.cancelled) {
+        const { [match.id]: _gone, ...rest } = state.activeMatches;
+        const wasMine = current?.id === match.id;
+        return {
+          activeMatches: rest,
+          currentMatch: wasMine ? null : current,
+          activeChallengeId: wasMine ? null : state.activeChallengeId,
+          psViewState: wasMine ? 'lobby' : state.psViewState,
+        };
+      }
       const isMyMatch =
         (!!currentUser && (match.hostId === currentUser.id || match.guestId === currentUser.id)) ||
         match.hostId === state.myConnectionId ||
@@ -411,8 +472,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
   setMyRotation: (myRotation) => set((state) => (state.myRotation === myRotation ? state : { myRotation })),
   setMyAnimation: (myAnimation) => set((state) => (state.myAnimation === myAnimation ? state : { myAnimation })),
-  sitAtPosition: (position, rotation = 0) => set({ seatedAt: { position, rotation } }),
+  sitAtPosition: (position, rotation = 0, opts = {}) => set({ seatedAt: { position, rotation, ...opts } }),
   standUp: () => set({ seatedAt: null }),
+  setFaceRotation: (faceRotation) => set({ faceRotation }),
   setRidingKeke: (isRidingKeke, currentKekeId = null, targetKekeDestinationId = null) =>
     set({ isRidingKeke, currentKekeId, targetKekeDestinationId }),
   setTargetKekeDestinationId: (targetKekeDestinationId) => set({ targetKekeDestinationId }),

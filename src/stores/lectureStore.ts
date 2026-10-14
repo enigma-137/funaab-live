@@ -1,3 +1,4 @@
+import { useLevelStore } from './levelStore';
 import { create } from 'zustand';
 import { LectureDefinition, ClassroomState } from '../types/game';
 import { useWalletStore } from './walletStore';
@@ -236,6 +237,8 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         }));
 
         set({ attendanceRewardClaimed: true });
+        // Attending earns XP (database trigger); refresh the level badge.
+        void useLevelStore.getState().load();
         return true;
       } catch (e) {
         console.error('Attendance allowance RPC error:', e);

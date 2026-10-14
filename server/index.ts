@@ -1,10 +1,15 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
+import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
 import { createKeke, bookRide, tickKeke, seatPosition, exitPosition } from '../src/config/kekeSimulation';
 import { ECONOMY_CONFIG } from '../src/config/economy';
 import { normalizeAvatar } from '../src/config/avatar';
 import { summarizeCampus } from '../src/config/campusSummary';
+import {
+  createLobby, createChallenge, joinChallenge, cancelChallenge, takeMatchShot, takePracticeShot, leaveMatch, voteRematch,
+  isFootballError, type FootballMatchState,
+} from '../src/config/football';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 
@@ -55,6 +60,8 @@ const players = new Map<string, any>();
 const kekes = new Map<string, any>();
 const psMatches = new Map<string, any>();
 const lectureRooms = new Map<string, any>();
+// Penalty challenge: same shared rules as the Worker (no proximity or turn clock in the mock).
+let football: FootballMatchState = createLobby(Date.now());
 
 // In-memory mock wallet ledger for local dev
 const localWallets = new Map<string, { balance: number; transactions: any[]; inventory: any[] }>();
@@ -258,6 +265,7 @@ wss.on('connection', (ws: WebSocket, req) => {
               players: roomPlayers,
               kekes: Object.fromEntries(kekes),
               activeMatches: Object.fromEntries(psMatches),
+              football,
             })
           );
 
@@ -449,6 +457,26 @@ wss.on('connection', (ws: WebSocket, req) => {
           const k=[...kekes.values()].find(k=>k.passengers.includes(sessionConnId));if(k?.isStopped)devDrop(k,sessionConnId!,k.id===PARKED_KEKE_ID&&k.phase==='BOARDING');break;
         }
 
+        case 'football': {
+          const session = sessions.get(ws);
+          if (!session || session.room !== 'world:funaab:main') return;
+          const me = { userId: session.id, connectionId: session.connectionId, name: session.username };
+          const now = Date.now(), shot = { aim: data.aim, power: data.power };
+          const next =
+            data.op === 'practice' ? takePracticeShot(football, me, shot, Math.random, now)
+            : data.op === 'create' ? createChallenge(football, me, `fb-${now}`, now)
+            : data.op === 'join' ? joinChallenge(football, me, String(data.matchId || ''), now)
+            : data.op === 'cancel' ? cancelChallenge(football, me.userId, now)
+            : data.op === 'shoot' ? takeMatchShot(football, me.userId, shot, Math.random, now)
+            : data.op === 'rematch' ? voteRematch(football, me.userId, now, `fb-${now}`)
+            : data.op === 'leave' ? leaveMatch(football, me.userId, now) ?? football
+            : football;
+          if (isFootballError(next)) { ws.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: next.error })); return; }
+          if (next !== football) { football = next; broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'football_state', football })); }
+          ws.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: football }));
+          break;
+        }
+
         case 'ps_challenge_create': {
           const connId = data.connectionId || sessionConnId;
           if (!connId) return;
@@ -462,7 +490,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             hostName: player?.username || 'Player 1',
             status: 'waiting',
             currentRound: 1,
-            totalRounds: 3,
+            totalRounds: PS_TOTAL_ROUNDS,
             hostScore: 0,
             guestScore: 0,
             updatedAt: Date.now(),
@@ -489,11 +517,31 @@ wss.on('connection', (ws: WebSocket, req) => {
           break;
         }
 
+        // Local mock parity with the Worker: withdraw a waiting challenge or forfeit a running match.
+        case 'ps_leave': {
+          const me = sessionConnId;
+          for (const match of [...psMatches.values()]) {
+            if (match.status === 'finished') continue;
+            const isHost = match.hostConnectionId === me, isGuest = match.guestConnectionId === me;
+            if (!isHost && !isGuest) continue;
+            match.status = 'finished';
+            match.updatedAt = Date.now();
+            if (!match.guestId) { match.cancelled = true; psMatches.delete(match.id); }
+            else {
+              match.forfeit = true;
+              match.winnerName = isHost ? match.guestName : match.hostName;
+              match.roundResult = `${isHost ? match.hostName : match.guestName} left the match.`;
+            }
+            broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
+          }
+          break;
+        }
+
         case 'ps_action': {
           const connId = data.connectionId || sessionConnId;
           if (!connId) return;
           const match = psMatches.get(data.matchId);
-          if (!match || match.status !== 'in_progress') return;
+          if (!match || match.status !== 'in_progress' || !PS_DIRECTIONS.includes(data.choice)) return;
 
           if (connId === match.hostConnectionId || connId === match.hostId) {
             match.hostChoice = data.choice;
@@ -502,35 +550,7 @@ wss.on('connection', (ws: WebSocket, req) => {
           }
 
           if (match.hostChoice && match.guestChoice) {
-            const shooterIsHost = match.currentRound % 2 === 1;
-            const shooterChoice = shooterIsHost ? match.hostChoice : match.guestChoice;
-            const keeperChoice = shooterIsHost ? match.guestChoice : match.hostChoice;
-
-            const isGoal = shooterChoice !== keeperChoice;
-            if (isGoal) {
-              if (shooterIsHost) match.hostScore++;
-              else match.guestScore++;
-              match.roundResult = `GOAL! ${shooterIsHost ? match.hostName : match.guestName} scored! (Shot: ${shooterChoice} | Dive: ${keeperChoice})`;
-            } else {
-              match.roundResult = `SAVED! ${shooterIsHost ? match.guestName : match.hostName} saved it! (Both chose ${shooterChoice})`;
-            }
-
-            if (match.currentRound >= match.totalRounds) {
-              if (match.hostScore === match.guestScore) {
-                match.totalRounds += 2;
-                match.roundResult += ' Scores are level; sudden death starts.';
-              } else {
-                match.status = 'finished';
-                match.winnerName = match.hostScore > match.guestScore
-                  ? match.hostName
-                  : match.guestName;
-              }
-            }
-            if (match.status !== 'finished') {
-              match.currentRound++;
-              match.hostChoice = undefined;
-              match.guestChoice = undefined;
-            }
+            resolvePSRound(match);
             match.updatedAt = Date.now();
             broadcastToRoom(sessionRoom, JSON.stringify({ type: 'ps_match_update', match }));
           } else {
@@ -986,6 +1006,10 @@ wss.on('connection', (ws: WebSocket, req) => {
       kekes.forEach((keke) => {
         if(keke.passengers.includes(sessionConnId))devDrop(keke,sessionConnId!,true);
       });
+      if (exitingPlayer && [football.player1, football.player2].some((p) => p?.connectionId === sessionConnId)) {
+        const next = leaveMatch(football, exitingPlayer.id, Date.now());
+        if (next) { football = next; broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'football_state', football })); }
+      }
       console.log(`[WS] player left: @${exitingPlayer?.username || 'user'} (${sessionConnId})`);
       console.log(`[WS] players online: ${players.size}`);
 

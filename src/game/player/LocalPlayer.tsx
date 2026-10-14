@@ -1,6 +1,9 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
+import { onDanceFloor, partyOpen } from '../../config/partyHall';
+import { diningSpotAt } from '../../config/campusWorld';
 import { seatPosition } from '../../config/kekeSimulation';
-import { useHostelStore } from '../../stores/hostelStore';
+import { roomSizeNow, useHostelStore } from '../../stores/hostelStore';
+import { ROOM_SIZES } from '../../config/roomMakeover';
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -18,6 +21,8 @@ import { InteractableZone } from '../../types/game';
 import { classifyTerrain, lawnEnforcement } from '../rules/lawnSecuritySystem';
 import { useShallow } from 'zustand/react/shallow';
 import { openFoodVendor } from '../../stores/foodVendorStore';
+import { openFootball, useFootballStore, amParticipant } from '../../stores/footballStore';
+import { openCourtGame, courtStores, onCourt } from '../../stores/courtGameStore';
 import { HOSTEL_COURTYARD_BOUND, HOSTEL_SPAWN } from '../../config/hostelCompound';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 
@@ -49,6 +54,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     isRidingKeke,
     currentKekeId,
     myAnimation,
+    myHeldItem,
+    seatedAt,
     setMyPosition,
     setMyRotation,
     setMyAnimation,
@@ -66,6 +73,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       isRidingKeke: s.isRidingKeke,
       currentKekeId: s.currentKekeId,
       myAnimation: s.myAnimation,
+      myHeldItem: s.myHeldItem,
+      seatedAt: s.seatedAt,
       setMyPosition: s.setMyPosition,
       setMyRotation: s.setMyRotation,
       setMyAnimation: s.setMyAnimation,
@@ -91,8 +100,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const characterControllerRef = useRef<any>(null);
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const currentRotation = useRef<number>(0);
-  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep'>('idle');
+  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'dance'>('idle');
   const stuckTimerRef = useRef<number>(0);
+  const lastSeatExit = useRef<[number, number, number] | null>(null);
   // Camera rig state: damped follow point + lightly smoothed orbit angles.
   const cameraFollow = useRef(new THREE.Vector3());
   const cameraFollowPrevTarget = useRef(new THREE.Vector3());
@@ -207,8 +217,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         case 'restaurant_dining':
         case 'bench':
           useGameStore.getState().sitAtPosition(
-            nearbyInteractable.position,
+            nearbyInteractable.seat ?? nearbyInteractable.position,
             nearbyInteractable.rotation,
+            { animation: nearbyInteractable.pose, exit: nearbyInteractable.exit },
           );
           useInputStore.getState().clearTargetDestination();
           break;
@@ -233,6 +244,19 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           break;
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
+          break;
+        case 'football':
+          openFootball();
+          break;
+        case 'basketball':
+        case 'volleyball':
+          openCourtGame(nearbyInteractable.type);
+          break;
+        case 'hustle':
+          setActiveModal('hustles');
+          break;
+        case 'lodge':
+          setActiveModal('lodge');
           break;
       }
     } else if (selectedPlayer) {
@@ -306,23 +330,30 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
 
     const seatedAt = useGameStore.getState().seatedAt;
+    // Getting up from a bed: step beside it rather than inside its collider.
+    if (!seatedAt && lastSeatExit.current) {
+      useHostelStore.setState({ teleport: lastSeatExit.current });
+      lastSeatExit.current = null;
+    }
     if (seatedAt) {
       if (targetDestination) {
         useGameStore.getState().standUp();
       } else {
-        const [x, , z] = seatedAt.position;
+        const [x, seatY, z] = seatedAt.position;
+        const pose = seatedAt.animation ?? 'sit';
+        lastSeatExit.current = seatedAt.exit ?? null;
         body.setNextKinematicTranslation({
           x,
-          y: PLAYER_CENTER_OFFSET,
+          y: PLAYER_CENTER_OFFSET + seatY,
           z,
         });
         currentRotation.current = seatedAt.rotation;
-        currentAnimation.current = 'sit';
+        currentAnimation.current = pose;
         if (avatarVisualRef.current) avatarVisualRef.current.rotation.y = seatedAt.rotation;
         setMyPosition(seatedAt.position);
         setMyRotation(seatedAt.rotation);
-        setMyAnimation('sit');
-        networkManager.sendMove(seatedAt.position, seatedAt.rotation, 'sit', false);
+        setMyAnimation(pose);
+        networkManager.sendMove(seatedAt.position, seatedAt.rotation, pose, false);
 
         const camDist =
           useHostelStore.getState().roomId === 'world:funaab:library' ? 6 : 8.2;
@@ -341,11 +372,15 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     const backward = !isModalOpen && (keysPressed.current['s'] || keysPressed.current['arrowdown']) ? 1 : 0;
     const left = !isModalOpen && (keysPressed.current['a'] || keysPressed.current['arrowleft']) ? 1 : 0;
     const right = !isModalOpen && (keysPressed.current['d'] || keysPressed.current['arrowright']) ? 1 : 0;
-    const isSprinting = !isModalOpen && Boolean(keysPressed.current['shift']);
+    const isSprinting = !isModalOpen && (Boolean(keysPressed.current['shift']) || Math.hypot(...useInputStore.getState().joystick) > 0.92);
 
-    const moveZ = backward - forward;
-    const moveX = right - left;
-    const isKeyboardMoving = moveX !== 0 || moveZ !== 0;
+    // On-screen joystick (touch): a dead zone, then walk; pushed all the way, jog.
+    const [jx, jy] = isModalOpen ? [0, 0] : useInputStore.getState().joystick;
+    const stick = Math.hypot(jx, jy);
+    const stickOn = stick > 0.18;
+    const moveZ = stickOn ? jy / stick : backward - forward;
+    const moveX = stickOn ? jx / stick : right - left;
+    const isKeyboardMoving = stickOn || moveX !== 0 || moveZ !== 0;
 
     // If keyboard is touched, clear any tap destination immediately
     if (isKeyboardMoving && targetDestination) {
@@ -434,16 +469,21 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         const computedMovement = controller.computedMovement();
         nextY = Math.max(PLAYER_CENTER_OFFSET, currentTranslation.y + computedMovement.y);
       }
-      currentAnimation.current = 'idle';
+      // Standing on The Arena's dance floor while the party is on: dance.
+      currentAnimation.current = onDanceFloor([currentTranslation.x, 0, currentTranslation.z]) && partyOpen(Date.now()) ? 'dance' : 'idle';
     }
 
     // World Boundary Clamping
     nextX = Math.max(worldData.bounds.minX + 0.5, Math.min(worldData.bounds.maxX - 0.5, nextX));
     nextZ = Math.max(worldData.bounds.minZ + 0.5, Math.min(worldData.bounds.maxZ - 0.5, nextZ));
 
-    if(offCampus) { const bound=roomState.roomId === 'world:funaab:library'?11.4:useHostelStore.getState().owner?3.5:HOSTEL_COURTYARD_BOUND;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
+    if(offCampus) { const inRoom=!!useHostelStore.getState().owner, bound=roomState.roomId === 'world:funaab:library'?11.4:inRoom?3.5:HOSTEL_COURTYARD_BOUND;
+      // An expanded room (migration 024) is wider along X.
+      const boundX=inRoom?ROOM_SIZES[roomSizeNow()].halfX-0.5:bound;nextX=Math.max(-boundX,Math.min(boundX,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
     if(roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
+    const faceRotation=useGameStore.getState().faceRotation;
+    if(faceRotation!==null){currentRotation.current=faceRotation;useGameStore.getState().setFaceRotation(null);}
     // Update Rapier Kinematic Position
     body.setNextKinematicTranslation({ x: nextX, y: nextY, z: nextZ });
 
@@ -478,12 +518,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if(lens.view?.enabled)lens.clearViewOffset();
     const fov=hostelState.owner?(size.width<650&&!decorating?65:55):50;if(lens.fov!==fov){lens.fov=fov;lens.updateProjectionMatrix();}
     if(decorating){
-      const height=size.width<650?12:9;
-      camera.position.lerp(_camTarget.set(0,height,7),roomCamK);camera.lookAt(0,0,-.3);
+      const big=roomSizeNow()==='large', height=(size.width<650?12:9)*(big?1.45:1);
+      camera.position.lerp(_camTarget.set(0,height,big?9.5:7),roomCamK);camera.lookAt(0,0,-.3);
     }else if(offCampus&&hostelState.owner){
       // Clamp the orbit eye inside the room walls; no camera can pass through masonry.
-      const clamp=(n:number)=>Math.max(-3.65,Math.min(3.65,n));
-      camera.position.lerp(_camTarget.set(clamp(nextX*.25+Math.sin(cameraYaw)*3.2),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),roomCamK);
+      const clamp=(n:number,r=3.65)=>Math.max(-r,Math.min(r,n)), wide=ROOM_SIZES[roomSizeNow()].halfX-0.35;
+      camera.position.lerp(_camTarget.set(clamp(nextX*.25+Math.sin(cameraYaw)*3.2,wide),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),roomCamK);
       camera.lookAt(nextX*.25,.65,nextZ*.25-.8);
     }else{
       updateOrbitCamera(_camTarget.set(nextX,nextY,nextZ),cameraYaw,cameraPitch,camDist,camHeight,0.6,0.8,delta);
@@ -535,6 +575,13 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       bench: 7,
       campus_bet: 1,
       food_vendor: 1,
+      football: 1,
+      basketball: 1,
+      volleyball: 1,
+      hustle: 1,
+      lodge: 1,
+      party: 1,
+      arcade: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
@@ -546,6 +593,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         closestInteractable !== null &&
         interactionPriority[zone.type] < interactionPriority[closestInteractable.type];
       if (dist <= zone.radius && (isCloser || isPriorityTie)) {
+        // A seat someone is already sitting on is not offered.
+        if ((zone.type === 'bench' || zone.type === 'restaurant_dining') && Object.values(players).some((p) =>
+          p.animation === 'sit' && !p.kekeRiding && Math.hypot(p.position[0] - zone.position[0], p.position[2] - zone.position[2]) < 0.3)) continue;
         minDistance = dist;
         closestInteractable = zone;
       }
@@ -559,17 +609,18 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     // Auto-close proximity modals when walking outside interaction radius + hysteresis buffer
     const activeModal = useGameStore.getState().activeModal;
     if (activeModal) {
+      // Only counter-style dialogs close when you walk away. Wallet (bank) and Jobs are phone
+      // apps opened from anywhere, so they must not snap shut when you're away from an ATM/board.
       const PROXIMITY_MODAL_ZONES: Record<string, string[]> = {
-        bank: ['atm'],
         food: ['food', 'restaurant_dining'],
         floral_world: ['food', 'restaurant_dining'],
         lecture_hall: ['lecture_hall'],
-
-        campus_jobs: ['job_board'],
-        jobs: ['job_board'],
         ps_match: ['playstation'],
         campus_bet: ['campus_bet'],
         food_vendor: ['food_vendor'],
+        football: ['football'],
+        basketball: ['basketball'],
+        volleyball: ['volleyball'],
       };
 
       const targetZoneTypes = PROXIMITY_MODAL_ZONES[activeModal];
@@ -577,7 +628,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         const isInClassroom = useLectureStore.getState().isInClassroom;
         const isRiding = isRidingKeke || useGameStore.getState().isRidingKeke;
         const currentMatch = useGameStore.getState().currentMatch;
-        const isPlayingMatch = currentMatch && currentMatch.status === 'in_progress';
+        const pitch = useFootballStore.getState().state;
+        const court = activeModal === 'basketball' || activeModal === 'volleyball' ? courtStores[activeModal].getState().state : null;
+        const isPlayingMatch = (currentMatch && currentMatch.status === 'in_progress')
+          || (activeModal === 'football' && pitch.status !== 'LOBBY' && amParticipant(pitch))
+          || (!!court && court.status !== 'LOBBY' && onCourt(court));
 
         if (!isInClassroom && !isRiding && !isPlayingMatch) {
           const HYSTERESIS_BUFFER = 2.0; // 2.0m tolerance buffer outside base radius to prevent boundary jitter
@@ -650,11 +705,14 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       {/* Visual Avatar Mesh attached to physics body with offset to match feet level */}
       <group ref={avatarVisualRef} position={[0, -PLAYER_CENTER_OFFSET, 0]}>
         <AvatarModel
+          userId={user.id}
           username={user.username}
           college={user.college}
           avatarConfig={user.avatarConfig}
           animation={myAnimation}
           isLocal
+          held={myHeldItem}
+          table={seatedAt && seatedAt.animation !== 'sleep' ? diningSpotAt(seatedAt.position) : null}
         />
       </group>
     </RigidBody>

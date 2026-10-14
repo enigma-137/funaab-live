@@ -12,17 +12,20 @@ import { HostelLife } from './ui/HostelLife';
 import { useHostelStore } from './stores/hostelStore';
 import { useJobStore } from './stores/jobStore';
 import { StudentCampusTools } from './ui/StudentCampusTools';
+import { FeedbackButton } from './ui/FeedbackPanel';
 import { CAMPUS_ENTRY_POSITION } from './config/studentJourney';
 import { GameHUD } from './ui/GameHUD';
 import { BankModal } from './ui/BankModal';
 import { FoodVendorModal } from './ui/FoodVendorModal';
 import { PSPenaltyGame } from './game/minigames/PSPenaltyGame';
+import { FootballPanel } from './ui/FootballPanel';
+import { CourtGamePanel } from './ui/CourtGamePanel';
+import { RallyPanel } from './ui/RallyPanel';
 import { PlayerInteractionModal } from './ui/PlayerInteractionModal';
 import { FriendsModal } from './ui/FriendsModal';
 import { InventoryModal } from './ui/InventoryModal';
 import { HelpModal } from './ui/HelpModal';
 import { KekeDestinationModal } from './ui/KekeDestinationModal';
-import { LawnViolationToast } from './ui/LawnViolationToast';
 import { CampusJobsModal } from './ui/CampusJobsModal';
 import { SendMoneyModal } from './ui/SendMoneyModal';
 import { DailyRewardModal } from './ui/DailyRewardModal';
@@ -32,16 +35,32 @@ import { DevDebugPanel } from './ui/DevDebugPanel';
 import { ClassroomView } from './game/world/ClassroomScene';
 import { ClassroomHUD } from './ui/ClassroomHUD';
 import { LectureHallModal } from './ui/LectureHallModal';
+import { MyTimetable } from './ui/MyTimetable';
 import { FloralWorldModal } from './ui/FloralWorldModal';
 import { PrivateChatModal } from './ui/PrivateChatModal';
 import { ReportUserModal } from './ui/ReportUserModal';
 import { CampusMapModal } from './ui/CampusMapModal';
-import { DmNotificationToast } from './ui/DmNotificationToast';
-import { MobileTutorialOverlay } from './ui/MobileTutorialOverlay';
+import { CampusTourAutoStart } from './ui/CampusTourAutoStart';
+import { EarnPanel } from './ui/EarnPanel';
+import { MessagesInbox } from './ui/MessagesInbox';
+import { ToastStack } from './ui/ToastStack';
+import { StatusStrip } from './ui/StatusStrip';
+import { TodayPlan } from './ui/TodayPlan';
+import { LevelSheet } from './ui/LevelSheet';
+import { PartySheet } from './ui/PartySheet';
+import { ArcadeSheet } from './ui/ArcadeSheet';
+import { SugSheet } from './ui/SugSheet';
+import { ControlsSheet } from './ui/ControlsSheet';
+import { NoticeBanner } from './ui/NoticeBanner';
+import { Joystick } from './ui/Joystick';
+import { HustlesSheet } from './ui/HustlesSheet';
+import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
+import { LeagueSheet } from './ui/LeagueSheet';
+import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
 import { CampusBetModal } from './ui/CampusBetModal';
-import { FoodVendorSheet, FoodVendorToast } from './ui/FoodVendorSheet';
+import { FoodVendorSheet } from './ui/FoodVendorSheet';
 import { LIBRARY_ROOM } from './config/library';
 import { identifyTraceIQUser, trackTraceIQEvent } from './lib/traceiq';
 
@@ -159,21 +178,36 @@ export const App: React.FC = () => {
       )}
 
       <StudentCampusTools />
+      {!isInClassroom && <StatusStrip />}
+      {!isInClassroom && <NoticeBanner />}
+      {!isInClassroom && <TodayPlan />}
+      <FeedbackButton />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />
 
       {/* Live Campus Activity Feed */}
       {hostelRoomId==='world:funaab:main'&&<ActivityFeed />}
 
       {/* Incoming Private DM Notification Toast */}
-      <DmNotificationToast />
-
-      {/* Lawn Rule Security Fine Toast */}
-      <LawnViolationToast />
+      <ToastStack />
 
       {/* Dynamic Interaction & Feature Modals */}
       {activeModal === 'bank' && <BankModal />}
       {activeModal === 'food' && <FoodVendorModal />}
       {activeModal === 'ps_match' && <PSPenaltyGame />}
+      {activeModal === 'football' && <FootballPanel />}
+      {(activeModal === 'basketball' || activeModal === 'volleyball') && <CourtGamePanel key={activeModal} game={activeModal} />}
+      {activeModal === 'volleyball_rally' && <RallyPanel />}
+      {activeModal === 'level' && <LevelSheet />}
+      {activeModal === 'party' && <PartySheet />}
+      {activeModal === 'arcade' && <ArcadeSheet />}
+      {activeModal === 'sug' && <SugSheet />}
+      {activeModal === 'controls' && <ControlsSheet />}
+      <Joystick />
+      {activeModal === 'hustles' && <HustlesSheet />}
+      {activeModal === 'lodge' && <LodgeSheet />}
+      {activeModal === 'league' && <LeagueSheet />}
+      {!isInClassroom && <LodgeWatcher />}
+      {!isInClassroom && <BackgroundGate />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}
@@ -184,7 +218,7 @@ export const App: React.FC = () => {
       {activeModal === 'daily_reward' && <DailyRewardModal />}
       {activeModal === 'campus_bet' && <CampusBetModal />}
       {activeModal === 'food_vendor' && <FoodVendorSheet />}
-      <FoodVendorToast />
+      {activeModal === 'timetable' && <MyTimetable />}
       {activeModal === 'lecture_hall' && (
         <LectureHallModal
           isOpen={true}
@@ -198,9 +232,11 @@ export const App: React.FC = () => {
       {activeModal === 'private_chat' && <PrivateChatModal />}
       {activeModal === 'report_user' && <ReportUserModal />}
       {activeModal === 'campus_map' && <CampusMapModal />}
+      {activeModal === 'earn' && <EarnPanel />}
+      {activeModal === 'inbox' && <MessagesInbox />}
 
-      {/* First-time Mobile Touch Tutorial Overlay */}
-      <MobileTutorialOverlay />
+      {/* First-visit guided tour (replaces the old touch-controls popup) */}
+      {!isInClassroom && <CampusTourAutoStart userId={user.id} />}
 
       {/* Dev Multiplayer & Physics Diagnostics HUD */}
       <DevDebugPanel />

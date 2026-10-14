@@ -1,5 +1,5 @@
 import React from "react";
-import { useHostelStore } from "../stores/hostelStore";
+import { roomSizeNow, useHostelStore } from "../stores/hostelStore";
 import { useAuthStore } from "../stores/authStore";
 import { useGameStore } from "../stores/gameStore";
 import { hostelItem } from "../config/hostelItems";
@@ -38,7 +38,7 @@ export function RoomControls() {
     );
   if (s.preview) {
     const preview = s.preview,
-      error = placementError(preview, s.snapshot?.placements || []);
+      error = placementError(preview, s.snapshot?.placements || [], roomSizeNow());
     return (
       <section className="room-edit-bar" aria-label="Room edit mode">
         <strong>{item?.name || hostelItem(preview.item)?.name}</strong>
@@ -60,6 +60,8 @@ export function RoomControls() {
                   preview.x,
                   preview.z,
                   (preview.rotation + 45) % 360,
+                  s.snapshot?.placements || [],
+                  roomSizeNow(),
                 ),
               })
             }
@@ -87,7 +89,7 @@ export function RoomControls() {
     <section className="room-item-bar" aria-label="Furniture actions">
       <strong>{bed ? "Starter mattress" : item?.name}</strong>
       <div className="hostel-actions">
-        {near && (bed || id === "hostel_chair") && (
+        {near && (bed || id === "hostel_chair" || id === "hostel_bean_bag") && (
           <button onClick={() => s.rest(id)}>{bed ? "Sleep" : "Sit"}</button>
         )}
         {!near && (bed || item?.interactions.length !== 0) && (
@@ -104,8 +106,8 @@ export function RoomControls() {
               }
               onClick={() => {
                 const [x, , z] = position(p),
-                  next = candidate(id, x, z, (p.rotation + 45) % 360),
-                  error = placementError(next, s.snapshot?.placements || []);
+                  next = candidate(id, x, z, (p.rotation + 45) % 360, s.snapshot?.placements || [], roomSizeNow()),
+                  error = placementError(next, s.snapshot?.placements || [], roomSizeNow());
                 if (error) useHostelStore.setState({ error });
                 else void s.command("place", { ...next, owner: s.owner });
               }}

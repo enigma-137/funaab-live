@@ -51,7 +51,7 @@ function TicketSummary({ ticket }: { ticket: CampusBetTicketView }) {
   const correct = ticket.correct_count ?? 0, payout = ticket.payout ?? 0, net = payout - ticket.stake;
   const verdict = correct === 5 ? <><strong className="cb-big">5/5!</strong><span className="cb-cooked">YOU COOKED 🔥</span><span>Won {naira(payout)}</span></>
     : payout > ticket.stake ? <><strong className="cb-big">{correct}/5 🙌</strong><span>Nice one — {naira(payout)} back.</span></>
-      : <><strong className="cb-big">{correct}/5 {payout > 0 ? '😅' : '😭'}</strong><span>Better luck next Matchday.</span></>;
+      : <><strong className="cb-big">{correct}/5</strong><span>See you next Matchday.</span></>;
   return <div className="cb-summary">
     <div className="cb-verdict">{verdict}</div>
     <dl>
