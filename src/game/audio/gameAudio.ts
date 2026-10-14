@@ -168,6 +168,70 @@ class GameAudio {
   success() { this.blip([72, 76, 79, 84], 0.08, 0.35, 'triangle', 0.45); }
   /** Something missed (save, miss). */
   soft() { this.blip([60, 55], 0.13, 0.4, 'sine', 0.35); }
+
+  // ---------- The Arena: a synthesised dance groove while you're inside at night ----------
+  private beat: GainNode | null = null;
+  private beatTimer: number | null = null;
+  private bar = 0;
+  private noise: AudioBuffer | null = null;
+  /** Kick on every beat, shaker on the off-beats, a log-drum bassline and chord stabs (~112 BPM). */
+  setParty(on: boolean) {
+    const ctx = this.ctx, master = this.master, music = this.music;
+    if (!ctx || !master || !music || on === (this.beatTimer !== null)) return;
+    const t = ctx.currentTime;
+    music.gain.cancelScheduledValues(t);
+    music.gain.setValueAtTime(music.gain.value, t);
+    music.gain.linearRampToValueAtTime(on ? MUSIC_LEVEL * 0.1 : MUSIC_LEVEL, t + 1);
+    if (!on) {
+      window.clearInterval(this.beatTimer!);
+      this.beatTimer = null;
+      return;
+    }
+    if (!this.beat) {
+      this.beat = ctx.createGain();
+      this.beat.gain.value = 0.2;
+      this.beat.connect(master);
+      this.noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.08), ctx.sampleRate);
+      const d = this.noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    }
+    const barSeconds = (60 / 112) * 4;
+    const schedule = () => { if (ctx.state === 'running') this.playBar(ctx.currentTime + 0.1, barSeconds / 4); };
+    schedule();
+    this.beatTimer = window.setInterval(schedule, barSeconds * 1000);
+  }
+  private playBar(t0: number, beat: number) {
+    const ctx = this.ctx!, out = this.beat!;
+    const BASS = [[33, 33, 36, 31], [33, 33, 38, 36], [29, 29, 31, 33], [31, 31, 36, 38]][this.bar % 4];
+    const STAB = [[57, 60, 64], [62, 65, 69], [53, 57, 60], [55, 59, 62]][this.bar++ % 4];
+    for (let i = 0; i < 4; i++) {
+      const t = t0 + i * beat;
+      // Kick: a falling sine thump.
+      const osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.frequency.setValueAtTime(140, t);
+      osc.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      g.gain.setValueAtTime(0.9, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      osc.connect(g); g.connect(out); osc.start(t); osc.stop(t + 0.32);
+      // Shaker on the off-beat (and a ghost on the "a").
+      for (const [off, peak] of [[0.5, 0.25], [0.75, 0.1]] as const) {
+        const src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), sg = ctx.createGain();
+        src.buffer = this.noise; hp.type = 'highpass'; hp.frequency.value = 6500; sg.gain.value = peak;
+        src.connect(hp); hp.connect(sg); sg.connect(out); src.start(t + off * beat);
+      }
+      // Log drum: a short pitched bass note gliding down.
+      const b = ctx.createOscillator(), bg = ctx.createGain();
+      b.type = 'sine';
+      b.frequency.setValueAtTime(midi(BASS[i] + 12), t + beat * 0.5);
+      b.frequency.exponentialRampToValueAtTime(midi(BASS[i]), t + beat * 0.5 + 0.08);
+      bg.gain.setValueAtTime(0.0001, t + beat * 0.5);
+      bg.gain.exponentialRampToValueAtTime(0.5, t + beat * 0.5 + 0.01);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t + beat * 0.5 + 0.35);
+      b.connect(bg); bg.connect(out); b.start(t + beat * 0.5); b.stop(t + beat * 0.5 + 0.4);
+    }
+    // Chord stabs on beats 2 and 4.
+    for (const k of [1, 3]) STAB.forEach((n) => this.voice(midi(n), t0 + k * beat, 0.35, 0.08, 'triangle', out));
+  }
 }
 
 export const engine = new GameAudio();

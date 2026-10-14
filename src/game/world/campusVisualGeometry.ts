@@ -102,6 +102,9 @@ export const campusMaterials = {
   soil: mat("#6b4a2f"),
   tomato: mat("#d93a2b", 0.6),
   maize: mat("#c9b23a"),
+  arenaWall: mat("#2b1d3f"),
+  arenaFloor: mat("#17131d"),
+  felt: mat("#15803d"),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

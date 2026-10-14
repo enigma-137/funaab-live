@@ -36,7 +36,14 @@ for (const zone of zones) {
   // Transitions: the world can schedule its next re-render exactly.
   assert.equal(nextVendorTransition(lagos('12:00')), lagos('19:00'), 'both open at 19:00');
   assert.equal(nextVendorTransition(lagos('20:00')), lagos('23:00'));
-  assert.equal(nextVendorTransition(lagos('23:30')), lagos('07:00', 13), 'Indomie breakfast is next');
+  assert.equal(nextVendorTransition(lagos('23:30')), lagos('05:00', 13), 'the Arena bar closing at 5 AM is next');
+  assert.equal(nextVendorTransition(lagos('05:30', 13)), lagos('07:00', 13), 'Indomie breakfast is next');
+  // The Arena bar runs across midnight as one night: open until 5 AM, closed by day.
+  s = getVendorStatus('party_bar', lagos('21:00'));
+  assert.equal(s.isOpen, true); assert.equal(s.label, 'Open until 5 AM'); assert.equal(s.closesAt, lagos('05:00', 13));
+  s = getVendorStatus('party_bar', lagos('02:00', 13)); assert.equal(s.isOpen, true); assert.equal(s.closesAt, lagos('05:00', 13));
+  s = getVendorStatus('party_bar', lagos('05:00', 13)); assert.equal(s.isOpen, false); assert.equal(s.nextOpensAt, lagos('19:00', 13));
+  s = getVendorStatus('party_bar', lagos('12:00')); assert.equal(s.isOpen, false); assert.equal(s.shortLabel, 'Closed · Opens 7 PM');
   assert.equal(nextVendorTransition(lagos('08:00')), lagos('11:00'));
 
 }

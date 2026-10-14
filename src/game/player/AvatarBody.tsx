@@ -133,7 +133,10 @@ export const AvatarBody = memo(
       s.previous.copy(s.world);
       s.initialized = true;
       const seated = animation === "sit",
-        sleep = animation === "sleep";
+        sleep = animation === "sleep",
+        dance = animation === "dance";
+      // Dance groove at ~112 BPM: 1.87 beats a second.
+      const groove = t * Math.PI * 1.87;
       const requested = animation === "walk" || animation === "run";
       const speed = trackMovement
         ? distance < 1 && dt > 0
@@ -172,7 +175,9 @@ export const AvatarBody = memo(
         if (knee)
           knee.rotation.x = THREE.MathUtils.damp(
             knee.rotation.x,
-            seated
+            dance
+              ? 0.18 + Math.abs(Math.sin(groove + (i ? Math.PI / 2 : 0))) * 0.22
+              : seated
               ? Math.PI / 2
               : Math.max(0, -Math.sin(s.phase + (i ? Math.PI : 0))) *
                   0.48 *
@@ -197,7 +202,7 @@ export const AvatarBody = memo(
         if (arm) {
           arm.rotation.x = THREE.MathUtils.damp(
             arm.rotation.x,
-            carry ? -0.45 : seated ? -0.35 : -sign * swing * 0.72,
+            carry ? -0.45 : dance ? -0.5 - Math.sin(groove + i * Math.PI) * 0.35 : seated ? -0.35 : -sign * swing * 0.72,
             12,
             delta,
           );
@@ -207,7 +212,9 @@ export const AvatarBody = memo(
               ? -2.4 + Math.sin(t * 5) * 0.15
               : animation === "cheer"
                 ? sign * 2.4
-                : sign * 0.07,
+                : dance && !carry
+                  ? sign * (0.5 + Math.max(0, Math.sin(groove * 0.5 + i * Math.PI)) * 1.7)
+                  : sign * 0.07,
             12,
             delta,
           );
@@ -215,6 +222,7 @@ export const AvatarBody = memo(
         if (elbow)
           elbow.rotation.x = carry
             ? THREE.MathUtils.damp(elbow.rotation.x, -1.15, 12, delta)
+            : dance ? -0.9 - Math.sin(groove * 2) * 0.25
             : -0.12 - s.blend * 0.18;
         if (carry && heldRef.current && arm && elbow)
           heldRef.current.rotation.x = -(arm.rotation.x + elbow.rotation.x);
@@ -238,13 +246,15 @@ export const AvatarBody = memo(
       }
       if (chest.current) {
         chest.current.scale.y = 1 + Math.sin(t * 1.7) * 0.003 * (1 - s.blend);
-        chest.current.rotation.y = swing * 0.065;
+        chest.current.rotation.y = dance ? Math.sin(groove * 0.5) * 0.28 : swing * 0.065;
       }
-      if (head.current)
+      if (head.current) {
         head.current.rotation.y = Math.sin(t * 0.65) * 0.04 * (1 - s.blend);
+        head.current.rotation.x = dance ? Math.sin(groove * 2) * 0.09 : 0;
+      }
       root.current.position.y = THREE.MathUtils.damp(
         root.current.position.y,
-        seated ? -0.39 : 0,
+        seated ? -0.39 : dance ? -0.04 - Math.abs(Math.sin(groove)) * 0.05 : 0,
         14,
         delta,
       );

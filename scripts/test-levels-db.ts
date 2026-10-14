@@ -17,6 +17,8 @@ async function main() {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
   const files = fs.readdirSync(dir).sort();
   const sql = fs.readFileSync(path.join(dir, '031_activity_levels.sql'), 'utf8');
+  // The latest migration that (re)defines xp_amount holds the current XP table.
+  const xpSql = files.map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).filter((s) => s.includes('function public.xp_amount')).pop()!;
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const call = async (user: string | null, q: string, p: unknown[] = []) => {
     await db.exec(user ? `set role authenticated; select set_config('request.jwt.claim.sub','${user}',false);` : `set role anon; select set_config('request.jwt.claim.sub','',false);`);
@@ -45,7 +47,8 @@ async function main() {
 
   // Drift with the client config.
   assert(sql.includes(`least(v, greatest(0, ${XP_RULES.DAILY_CAP} - xp_today(p_user)))`), 'daily cap');
-  for (const [source, xp] of Object.entries(XP_RULES.SOURCES)) assert(sql.includes(`when '${source}' then ${xp}`), `${source} XP`);
+  for (const [source, xp] of Object.entries(XP_RULES.SOURCES)) assert(xpSql.includes(`when '${source}' then ${xp}`), `${source} XP`);
+  assert.equal((xpSql.match(/when '/g) ?? []).length, Object.keys(XP_RULES.SOURCES).length, 'no XP source missing from the config');
   for (const [xp, level] of [[0, 1], [99, 1], [100, 2], [249, 2], [250, 3], [449, 3], [450, 4], [2700, 10], [2699, 9], [100000, levelForXp(100000)]])
     assert.equal((await rows('select xp_level($1) l', [xp]))[0].l, level, `xp_level(${xp})`);
   for (let l = 1; l < 40; l++) assert.equal(levelForXp(xpForLevel(l)), l), assert.equal(levelForXp(xpForLevel(l) - 1), Math.max(1, l - 1));

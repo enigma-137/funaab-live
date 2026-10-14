@@ -1,5 +1,5 @@
 // Activity levels: Level 1, 2, 3… from XP earned by playing, replacing 100L–500L academics.
-// Mirrored by migration 031 (the database is the authority; scripts/test-levels-db.ts checks drift).
+// Mirrored by migrations 031 and 033 (the database is the authority; scripts/test-levels-db.ts checks drift).
 
 export const XP_RULES = {
   /** Most XP anyone can earn in one Lagos day, so levels reward regular play over grinding. */
@@ -26,6 +26,9 @@ export const XP_RULES = {
     court_win: 12,
     rally_match: 5,
     rally_win: 15,
+    party_ticket: 10,
+    arcade_match: 4,
+    arcade_win: 8,
   },
 } as const;
 export type XpSource = keyof typeof XP_RULES.SOURCES;
@@ -58,5 +61,6 @@ export const XP_GUIDE: Array<{ icon: string; label: string; xp: string }> = [
   { icon: '🎮', label: 'Play a Game Den match', xp: `${XP_RULES.SOURCES.game_den}` },
   { icon: '⚽', label: 'Win a penalty shootout', xp: `${XP_RULES.SOURCES.football_win}` },
   { icon: '🏀', label: 'Court 1v1 or 2v2 rally (more for a win)', xp: `${XP_RULES.SOURCES.court_match}–${XP_RULES.SOURCES.rally_win}` },
+  { icon: '🪩', label: 'Night out at The Arena; tic-tac-toe or pool there', xp: `${XP_RULES.SOURCES.arcade_match}–${XP_RULES.SOURCES.party_ticket}` },
   { icon: '🛺', label: 'Ride a keke, buy food, furnish your room', xp: `${XP_RULES.SOURCES.food_purchase}–${XP_RULES.SOURCES.hostel_expand}` },
 ];

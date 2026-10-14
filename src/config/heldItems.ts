@@ -15,6 +15,7 @@ export const isHeldKind = (v: unknown): v is HeldKind => HELD_ITEM_KINDS.include
 /** Which prop to show for a purchased item id. */
 export function heldKindFor(itemId: string, type?: 'food' | 'drink'): HeldKind {
   const id = itemId.toLowerCase();
+  if (id.startsWith('vendor_party_')) return id.includes('malt') ? 'malt' : 'water';
   if (id.includes('malt')) return 'malt';
   if (id.includes('water') || type === 'drink') return 'water';
   if (id.includes('indomie') || id.includes('noodle')) return 'bowl';

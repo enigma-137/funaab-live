@@ -36,7 +36,7 @@ export interface PlayerState {
   avatarConfig: AvatarConfig;
   position: [number, number, number];
   rotation: number;
-  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
+  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
   kekeRiding?: boolean;
   kekeId?: string;
   seatIndex?: number;
@@ -108,7 +108,7 @@ export interface WorldLocation {
 
 export interface InteractableZone {
   id: string;
-  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge';
+  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade';
   label: string;
   actionText: string;
   position: [number, number, number];

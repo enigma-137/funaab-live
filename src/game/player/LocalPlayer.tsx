@@ -1,4 +1,5 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
+import { onDanceFloor, partyOpen } from '../../config/partyHall';
 import { diningSpotAt } from '../../config/campusWorld';
 import { seatPosition } from '../../config/kekeSimulation';
 import { roomSizeNow, useHostelStore } from '../../stores/hostelStore';
@@ -99,7 +100,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const characterControllerRef = useRef<any>(null);
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const currentRotation = useRef<number>(0);
-  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep'>('idle');
+  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'dance'>('idle');
   const stuckTimerRef = useRef<number>(0);
   const lastSeatExit = useRef<[number, number, number] | null>(null);
   // Camera rig state: damped follow point + lightly smoothed orbit angles.
@@ -464,7 +465,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         const computedMovement = controller.computedMovement();
         nextY = Math.max(PLAYER_CENTER_OFFSET, currentTranslation.y + computedMovement.y);
       }
-      currentAnimation.current = 'idle';
+      // Standing on The Arena's dance floor while the party is on: dance.
+      currentAnimation.current = onDanceFloor([currentTranslation.x, 0, currentTranslation.z]) && partyOpen(Date.now()) ? 'dance' : 'idle';
     }
 
     // World Boundary Clamping
@@ -574,6 +576,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       volleyball: 1,
       hustle: 1,
       lodge: 1,
+      party: 1,
+      arcade: 1,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {

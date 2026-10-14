@@ -46,6 +46,9 @@ import { dailyGoal, isCampusNight, lagosDay } from '../src/config/dailyPlan';
 import { isInLoveGarden } from '../src/config/loveGarden';
 import { POS_KIOSK, PHOTO_SPOTS, PHOTO_RULES, ERRAND_RULES } from '../src/config/hustles';
 import { FARM_SHIFT, FARM_STEPS, inFarm } from '../src/config/fpyFarm';
+import { ARCADE_TABLES, PARTY_HALL, TTT_TABLES, inPartyHall, partyNight, partyOpen } from '../src/config/partyHall';
+import { createTtt, tttCreate, tttJoin, tttLeave, tttMove, tttRematch, tttExpire, isTttError, type TttState } from '../src/config/ticTacToe';
+import { createPool, poolCreate, poolJoin, poolLeave, poolRematch, poolShoot, poolExpire, isPoolError, poolPlayers, type PoolState } from '../src/config/pool';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -92,6 +95,8 @@ interface SessionData {
   posShift?: { ref: string; startedAt: number };
   /** FPY farm shift: steps done in order, each at its plot and not faster than minStepSeconds. */
   farmShift?: { ref: string; startedAt: number; step: number; lastAt: number };
+  /** The Arena: the night (Lagos date) this student holds a ticket for. */
+  partyNight?: string;
 }
 
 interface PlayerState {
@@ -383,6 +388,11 @@ export class WorldRoomDO {
   private footballTimer: ReturnType<typeof setTimeout> | null = null;
   private rally: RallyState = createRally(Date.now());
   private rallyTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The Arena arcade: tic-tac-toe tables and the pool table. */
+  private ttt: Record<string, TttState> = Object.fromEntries(TTT_TABLES.map((id) => [id, createTtt(id, Date.now())]));
+  private tttTimers: Record<string, ReturnType<typeof setTimeout> | null> = {};
+  private pool: PoolState = createPool(Date.now());
+  private poolTimer: ReturnType<typeof setTimeout> | null = null;
   private courts = Object.fromEntries(COURT_GAME_IDS.map((id) => [id, { state: COURT_GAMES[id].game.create(Date.now()), timer: null as ReturnType<typeof setTimeout> | null }])) as
     Record<CourtGameId, { state: any; timer: ReturnType<typeof setTimeout> | null }>;
 
@@ -470,6 +480,7 @@ export class WorldRoomDO {
       });
       this.footballDisconnect(sessionConnId, session?.id);
       this.courtsDisconnect(sessionConnId, session?.id);
+      this.arcadeDisconnect(sessionConnId, session?.id);
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
@@ -832,7 +843,7 @@ export class WorldRoomDO {
     return this.football;
   }
   /** XP for results only the Worker knows (migration 031); the database caps and dedupes. */
-  private awardXp(userId: string, source: 'court_match' | 'court_win' | 'rally_match' | 'rally_win', ref: string) {
+  private awardXp(userId: string, source: 'court_match' | 'court_win' | 'rally_match' | 'rally_win' | 'arcade_match' | 'arcade_win', ref: string) {
     if (!this.env.SUPABASE_SERVICE_ROLE_KEY) return;
     void this.dbRpc('xp_event_trusted', { p_user: userId, p_source: source, p_ref: ref }).then((xp) => {
       if (!xp) return;
@@ -1147,6 +1158,102 @@ export class WorldRoomDO {
     if (next !== this.rally) this.setRally(next);
     return this.rally;
   }
+  /** The Arena door: sell (or re-check) tonight's ticket. The database charges once per night. */
+  private async partyCommand(session: SessionData, data: any) {
+    if (String(data.op) !== 'enter') throw new Error('Unknown party action');
+    if (session.room !== 'world:funaab:main') throw new Error('The Arena is on campus.');
+    if (!partyOpen(Date.now())) throw new Error('The Arena opens at 7 PM.');
+    this.advanceTrustedPosition(session);
+    const pos = session.trustedPosition;
+    const atDoor = !!pos && Math.hypot(pos[0] - PARTY_HALL.entrance[0], pos[2] - PARTY_HALL.entrance[2]) <= 6;
+    if (!atDoor && !inPartyHall(pos)) throw new Error('Go to The Arena door to get in.');
+    const r = await this.dbRpc('party_entry_trusted', { p_user: session.id });
+    session.partyNight = String(r?.night ?? partyNight(Date.now()));
+    if (r?.charged) this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+    return { night: session.partyNight, charged: !!r?.charged };
+  }
+  /** Tic-tac-toe and pool: only ticket holders inside The Arena, at the table, while it is open. */
+  private arcadeCommand(session: SessionData, data: any) {
+    const table = ARCADE_TABLES.find((t) => t.id === data.table);
+    if (!table) throw new Error('Unknown table');
+    const op = String(data.op || 'state');
+    const now = Date.now();
+    if (op === 'state') return table.game === 'pool' ? this.pool : this.ttt[table.id];
+    if (op !== 'leave') {
+      if (session.room !== 'world:funaab:main' || !partyOpen(now)) throw new Error('The Arena is closed. It opens at 7 PM.');
+      if (session.partyNight !== partyNight(now)) throw new Error('Show your ticket at the door first.');
+      this.advanceTrustedPosition(session);
+      const pos = session.trustedPosition;
+      if (!inPartyHall(pos) || !pos || Math.hypot(pos[0] - table.at[0], pos[2] - table.at[2]) > 4.5) throw new Error(`Walk up to the ${table.label.toLowerCase()}.`);
+    }
+    const me = { userId: session.id, connectionId: session.connectionId, name: session.username };
+    if (table.game === 'ttt') {
+      const s = this.ttt[table.id];
+      const next = op === 'create' ? tttCreate(s, me, crypto.randomUUID(), now)
+        : op === 'join' ? tttJoin(s, me, String(data.id), now)
+        : op === 'move' ? tttMove(s, me.userId, Number(data.cell), now)
+        : op === 'rematch' ? tttRematch(s, me.userId, now)
+        : op === 'leave' ? (tttLeave(s, me.userId, now) ?? s)
+        : { error: 'Unknown move' };
+      if (isTttError(next)) throw new Error(next.error);
+      if (next !== s) this.setTtt(table.id, next);
+      return this.ttt[table.id];
+    }
+    const s = this.pool;
+    const next = op === 'create' ? poolCreate(s, me, crypto.randomUUID(), now)
+      : op === 'join' ? poolJoin(s, me, String(data.id), now)
+      : op === 'shoot' ? poolShoot(s, me.userId, Number(data.dx), Number(data.dz), Number(data.power), now)
+      : op === 'rematch' ? poolRematch(s, me.userId, now)
+      : op === 'leave' ? (poolLeave(s, me.userId, now) ?? s)
+      : { error: 'Unknown move' };
+    if (isPoolError(next)) throw new Error(next.error);
+    if (next !== s) this.setPool(next);
+    return this.pool;
+  }
+  private setTtt(id: string, next: TttState) {
+    const prev = this.ttt[id];
+    if (prev.status === 'ACTIVE' && next.status === 'RESULT' && (next.endReason === 'complete' || next.endReason === 'draw') && next.id) {
+      for (const p of [next.x, next.o]) if (p) this.awardXp(p.userId, 'arcade_match', `${id}:${next.id}`);
+      const winner = next.winner === 'X' ? next.x : next.winner === 'O' ? next.o : null;
+      if (winner) this.awardXp(winner.userId, 'arcade_win', `${id}:${next.id}`);
+    }
+    this.ttt[id] = next;
+    if (this.tttTimers[id]) clearTimeout(this.tttTimers[id]!);
+    this.tttTimers[id] = next.status === 'ACTIVE' && next.turnDeadline ? setTimeout(() => {
+      this.tttTimers[id] = null;
+      const expired = tttExpire(this.ttt[id], Date.now());
+      if (expired) this.setTtt(id, expired);
+    }, Math.max(0, next.turnDeadline - Date.now()) + 50) : null;
+    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'arcade_state', ttt: { [id]: next } }));
+  }
+  private setPool(next: PoolState) {
+    const prev = this.pool;
+    if (prev.status === 'ACTIVE' && next.status === 'RESULT' && next.endReason === 'complete' && next.id) {
+      for (const p of poolPlayers(next)) this.awardXp(p.userId, 'arcade_match', `pool:${next.id}`);
+      if (next.winnerUserId) this.awardXp(next.winnerUserId, 'arcade_win', `pool:${next.id}`);
+    }
+    this.pool = next;
+    if (this.poolTimer) clearTimeout(this.poolTimer);
+    this.poolTimer = next.status === 'ACTIVE' && next.turnDeadline ? setTimeout(() => {
+      this.poolTimer = null;
+      const expired = poolExpire(this.pool, Date.now());
+      if (expired) this.setPool(expired);
+    }, Math.max(0, next.turnDeadline - Date.now()) + 50) : null;
+    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'arcade_state', pool: next }));
+  }
+  private arcadeDisconnect(connectionId: string, userId?: string) {
+    if (!userId) return;
+    for (const id of TTT_TABLES) {
+      const s = this.ttt[id];
+      if (![s.x, s.o].some((p) => p?.connectionId === connectionId)) continue;
+      const next = tttLeave(s, userId, Date.now());
+      if (next) this.setTtt(id, next);
+    }
+    if (poolPlayers(this.pool).some((p) => p.connectionId === connectionId)) {
+      const next = poolLeave(this.pool, userId, Date.now());
+      if (next) this.setPool(next);
+    }
+  }
   private courtsDisconnect(connectionId: string, userId?: string) {
     const mine = [...this.rally.teams.A, ...this.rally.teams.B].some((p) => p.connectionId === connectionId);
     if (userId && mine) {
@@ -1411,7 +1518,7 @@ export class WorldRoomDO {
                 players: roomPlayers,
                 kekes: Object.fromEntries(this.kekes),
                 activeMatches: Object.fromEntries(this.psMatches),
-                ...(sessionRoom === 'world:funaab:main' ? { football: this.football, basketball: this.courts.basketball.state, volleyball: this.courts.volleyball.state, rally: this.rally } : {}),
+                ...(sessionRoom === 'world:funaab:main' ? { football: this.football, basketball: this.courts.basketball.state, volleyball: this.courts.volleyball.state, rally: this.rally, arcade: { ttt: this.ttt, pool: this.pool } } : {}),
               })
             );
 
@@ -1475,6 +1582,14 @@ export class WorldRoomDO {
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
+          case 'party':
+          case 'arcade': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: data.type === 'party' ? await this.partyCommand(current, data) : this.arcadeCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
           case 'basketball':
           case 'volleyball': {
             const current = this.sessions.get(webSocket);
@@ -1533,7 +1648,7 @@ export class WorldRoomDO {
                 && [...this.psMatches.values()].some((m) => m.status !== 'finished' && m.stationId === 'ps5-station-1' && (m.hostId === current.id || m.guestId === current.id)))
                 this.endPSMatchesFor(current.id, 'walked_away');
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
-              const animation = ['idle','walk','run','sit','sleep','wave','cheer'].includes(data.animation)?data.animation:'idle';
+              const animation = ['idle','walk','run','sit','sleep','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
               if (player.position.some((value, index) => value !== data.position[index])
                 || player.rotation !== rotation
                 || player.animation !== animation) this.dirtyPlayerIds.add(sessionConnId);
@@ -2001,6 +2116,7 @@ export class WorldRoomDO {
         });
         this.footballDisconnect(sessionConnId, session?.id);
         this.courtsDisconnect(sessionConnId, session?.id);
+        this.arcadeDisconnect(sessionConnId, session?.id);
         if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');

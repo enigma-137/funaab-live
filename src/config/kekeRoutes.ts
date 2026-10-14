@@ -42,7 +42,7 @@ export function roadPath(from:string,to:string):Point[]{
 export const pathLength=(path:Point[])=>path.slice(1).reduce((n,p,i)=>n+Math.hypot(p[0]-path[i][0],p[2]-path[i][2]),0);
 export const fareFor=(id:string)=>Math.min(120,30+Math.ceil(pathLength(roadPath(nodeKey(CAR_PARK_BAY),nodeKey(locationById(id).kekeStop)))/45)*10);
 export const kekeDestinations=campusLocations.filter(l=>l.mapVisible).map((l,i)=>({id:l.id,name:l.shortName,position:l.kekeStop,stopIndex:i,fare:fareFor(l.id),icon:l.id==='library'?'📚':l.type==='college'?'🏛️':'📍',description:l.description}));
-export const routeStops=['car-park','food-court','sports-centre','health-centre','colvet','senate-library','colbios','colcoms','collend','coleng','hostel-social','agromet','fpy-farm','colplant','bank-atm','w-landmark','main-gate','library','colbios-lecture-hall','colfhec','floral-world','colanim'];
+export const routeStops=['car-park','food-court','sports-centre','health-centre','colvet','senate-library','colbios','colcoms','collend','coleng','hostel-social','agromet','fpy-farm','party-hall','colplant','bank-atm','w-landmark','main-gate','library','colbios-lecture-hall','colfhec','floral-world','colanim'];
 export const publicRoute:Point[]=routeStops.flatMap((id,i)=>roadPath(nodeKey(locationById(id).kekeStop),nodeKey(locationById(routeStops[(i+1)%routeStops.length]).kekeStop)).slice(0,-1));
 export const roadBounds=roadEdges.map(([a,b])=>({minX:Math.min(roadNodes[a][0],roadNodes[b][0])-5,maxX:Math.max(roadNodes[a][0],roadNodes[b][0])+5,minZ:Math.min(roadNodes[a][2],roadNodes[b][2])-5,maxZ:Math.max(roadNodes[a][2],roadNodes[b][2])+5}));
 // Shared conservative collider envelopes; route safety uses swept vehicle clearance.

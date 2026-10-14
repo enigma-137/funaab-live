@@ -1,4 +1,5 @@
 import base from '../worlds/funaab/world.json';
+import { ARCADE_TABLES, HALL_BOUNDS, PARTY_HALL } from './partyHall';
 import { FPY_FARM, FARM_BOUNDS, FARM_STEPS, FARM_SHIFT } from './fpyFarm';
 import { campusLocations, collegeCatalogue, locationById, CAMPUS_BOUNDS, CAMPUS_SPAWN, type Point } from './campusLocations';
 import { roadBounds, kekeDestinations, publicRoute, routeStops, ROUTE_FARE } from './kekeRoutes';
@@ -149,6 +150,8 @@ const outsideGateZones=[
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,penaltySpot,freeThrowLine,serveLine,
     {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
+    {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦500',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
+    ...ARCADE_TABLES.map(t=>({id:`arcade-${t.id}`,type:'arcade',label:t.label,actionText:t.game==='pool'?'Play pool':'Play tic-tac-toe',position:t.at,radius:2.6,targetId:t.id})),
     {id:'hustle-fpy-farm',type:'hustle',label:'FPY Farm · Hustle',actionText:'Farm shift',position:FPY_FARM.gate,radius:4,targetId:'farm'},
     ...FARM_STEPS.map(s=>({id:`hustle-farm-${s.id}`,type:'hustle',label:`FPY Farm · ${s.label}`,actionText:s.verb,position:s.spot,radius:FARM_SHIFT.stepRadius,targetId:`farm-${s.id}`})),
     {id:'hustle-pos-kiosk',type:'hustle',label:'POS kiosk · Hustle',actionText:'POS kiosk shift',position:POS_KIOSK.serviceSpot,radius:POS_KIOSK.radius,targetId:'pos'},
@@ -170,6 +173,9 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
     {id:'love-garden-plaza',name:'Love Garden',type:'plaza',restricted:false,bounds:LOVE_GARDEN_PAVING.plaza},
     {id:'love-garden-walk',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.walkway},
     {id:'love-garden-connector',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.connector},
+    // The Arena: inside is a building; its forecourt joins the walkway.
+    {id:'party-hall-inside',name:'The Arena',type:'building',restricted:false,bounds:HALL_BOUNDS},
+    {id:'party-hall-forecourt',name:'The Arena',type:'plaza',restricted:false,bounds:{minX:PARTY_HALL.entrance[0]-3,maxX:HALL_BOUNDS.minX+0.5,minZ:PARTY_HALL.entrance[2]-4,maxZ:PARTY_HALL.entrance[2]+4}},
     // The farm's soil and paths are open to everyone (no lawn fine).
     {id:'fpy-farm',name:'FPY Farm',type:'plaza',restricted:false,bounds:{...FARM_BOUNDS,minX:FARM_BOUNDS.minX-3}},
     {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],

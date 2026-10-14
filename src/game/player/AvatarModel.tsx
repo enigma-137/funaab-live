@@ -14,7 +14,7 @@ interface AvatarModelProps {
   username: string;
   college: string;
   avatarConfig: AvatarConfig;
-  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
+  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
   isLocal?: boolean;
   held?: HeldItem | null;
   /** Table spot when seated at a restaurant (see diningSpotAt). */

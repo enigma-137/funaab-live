@@ -244,6 +244,13 @@ const locationMetadata: Record<
     description: 'COLFHEC Dedicated Lecture Hall: 250-capacity tiered lecture theatre with podium and projector.',
     interactiveModal: 'lecture_hall',
   },
+  'party-hall': {
+    category: 'landmark',
+    categoryLabel: 'Night Party & Arcade',
+    icon: '🪩',
+    color: '#7c3aed',
+    description: 'The Arena: dance floor with party lights, the Arena Bar, tic-tac-toe and pool. Open every night 7 PM–5 AM; ₦500 gate fee covers the whole night.',
+  },
   'fpy-farm': {
     category: 'landmark',
     categoryLabel: 'Teaching Farm',

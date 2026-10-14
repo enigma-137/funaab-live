@@ -1,4 +1,6 @@
 import {useHostelStore} from '../stores/hostelStore';
+import { usePartyStore } from '../stores/partyStore';
+import type { ArcadeTableId } from '../config/partyHall';
 import { useHustleStore } from '../stores/hustleStore';
 import { FARM_STEPS } from '../config/fpyFarm';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
@@ -226,6 +228,12 @@ export const GameHUD: React.FC = () => {
         case 'lodge':
           setActiveModal('lodge');
           break;
+        case 'party':
+          setActiveModal('party');
+          break;
+        case 'arcade':
+          usePartyStore.getState().openTable(nearbyInteractable.targetId as ArcadeTableId);
+          break;
       }
     } else if (selectedPlayer) {
       setActiveModal('player_profile');
@@ -287,6 +295,10 @@ export const GameHUD: React.FC = () => {
         return nearbyInteractable.targetId === 'pos' ? '🏧' : nearbyInteractable.targetId?.startsWith('farm') ? FARM_STEPS.find((s) => `farm-${s.id}` === nearbyInteractable.targetId)?.icon ?? '🌱' : '📸';
       case 'lodge':
         return '🏘️';
+      case 'party':
+        return '🪩';
+      case 'arcade':
+        return nearbyInteractable.targetId === 'pool' ? '🎱' : '⭕';
       case 'atm':
         return '🏧';
       case 'job_board':
@@ -382,6 +394,10 @@ export const GameHUD: React.FC = () => {
           : 'Photos';
       case 'lodge':
         return 'Lodge';
+      case 'party':
+        return 'Arena';
+      case 'arcade':
+        return nearbyInteractable.targetId === 'pool' ? 'Pool' : 'Tic-tac-toe';
       case 'food_vendor':
         return vendorStatus?.isOpen ? nearVendor!.actionLabel : vendorStatus?.shortLabel ?? 'Closed';
       default:

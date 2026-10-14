@@ -41,7 +41,7 @@ interface GameState {
   // Local player state
   myPosition: [number, number, number];
   myRotation: number;
-  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer';
+  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
   seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep'; exit?: [number, number, number] } | null;
   /** One-shot facing request (e.g. turn to face the goal); LocalPlayer applies then clears it. */
   faceRotation: number | null;
@@ -103,6 +103,8 @@ interface GameState {
     | 'volleyball'
     | 'volleyball_rally'
     | 'level'
+    | 'party'
+    | 'arcade'
     | 'background'
     | 'hustles'
     | 'lodge'
@@ -131,7 +133,7 @@ interface GameState {
   myHeldItem: HeldItem | null;
   setMyHeldItem: (item: HeldItem | null) => void;
   setMyRotation: (rot: number) => void;
-  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer') => void;
+  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance') => void;
   sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep'; exit?: [number, number, number] }) => void;
   standUp: () => void;
   setFaceRotation: (rotation: number | null) => void;
@@ -186,6 +188,8 @@ interface GameState {
     | 'volleyball'
     | 'volleyball_rally'
       | 'level'
+    | 'party'
+    | 'arcade'
       | 'background'
       | 'hustles'
       | 'lodge'

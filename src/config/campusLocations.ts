@@ -40,6 +40,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'collend': [-30,18, 20,12, -30,28, -30,45],
   // FPY farm east of Agromet and COLPLANT; its walkway runs between them from the x=55 road.
   'fpy-farm': [127,40, 0,0, 113,40, 55,40],
+  // The Arena (night party & arcade) east of COLERM; door in the west wall at z=-45.
+  'party-hall': [128,-45, 22,24, 113,-45, 55,-45],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
   'colphys': [-35,-108, 22,14, -35,-97, -35,-85],
@@ -56,7 +58,9 @@ const additions = ['colvet','colanim','colplant','colcoms','collend','colbios','
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
-const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2 };
+const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, 'party-hall': -Math.PI / 2 };
+const arena = [{ id: 'party-hall', name: 'The Arena · Night Party & Arcade', type: 'landmark',
+  description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦500 gate fee for the night.' }];
 const farm = [{ id: 'fpy-farm', name: 'FPY Teaching & Research Farm', type: 'landmark',
   description: 'Teaching & Research Farm where Farm Practical Year (FPY) students plant, water and harvest. Take a farm shift to earn.' }];
 const sportsSide = [
@@ -65,10 +69,10 @@ const sportsSide = [
   { id: 'sports-courts', name: 'Basketball & Volleyball Courts', type: 'sports',
     description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, serve challenge on the volleyball court.' },
 ];
-export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm].map(l=>{
+export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
-  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
+  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
     interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};

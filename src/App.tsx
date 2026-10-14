@@ -46,6 +46,8 @@ import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
 import { LevelSheet } from './ui/LevelSheet';
+import { PartySheet } from './ui/PartySheet';
+import { ArcadeSheet } from './ui/ArcadeSheet';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
 import { LeagueSheet } from './ui/LeagueSheet';
@@ -190,6 +192,8 @@ export const App: React.FC = () => {
       {(activeModal === 'basketball' || activeModal === 'volleyball') && <CourtGamePanel key={activeModal} game={activeModal} />}
       {activeModal === 'volleyball_rally' && <RallyPanel />}
       {activeModal === 'level' && <LevelSheet />}
+      {activeModal === 'party' && <PartySheet />}
+      {activeModal === 'arcade' && <ArcadeSheet />}
       {activeModal === 'hustles' && <HustlesSheet />}
       {activeModal === 'lodge' && <LodgeSheet />}
       {activeModal === 'league' && <LeagueSheet />}
