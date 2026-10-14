@@ -54,7 +54,15 @@ export const usePartyStore = create<PartyStore>((set, get) => ({
     if (!table || get().busy) return;
     set({ busy: true, error: null });
     try {
-      const state = await networkManager.court('arcade', op, { table, ...payload });
+      const call = () => networkManager.court('arcade', op, { table, ...payload });
+      let state;
+      try { state = await call(); } catch (e) {
+        // The server forgets tickets when the connection drops and comes back. If this device already
+        // holds tonight's ticket, show it again (free, the database only charges once) and retry.
+        if (!/ticket at the door/i.test((e as Error).message) || !get().hasTicket()) throw e;
+        await networkManager.court('party', 'enter');
+        state = await call();
+      }
       get().receive(table === 'pool' ? { pool: state } : { ttt: { [table]: state } });
     } catch (e) { set({ error: (e as Error).message }); } finally { set({ busy: false }); }
   },
