@@ -129,6 +129,35 @@ const fs = require('node:fs'),
     ]),
     /Invalid avatar/,
   );
+  // 029 widens the style allowlist to the client's avatarOptions, no more and no less.
+  await db.exec('reset role');
+  await db.exec(fs.readFileSync(path.join(dir, '029_avatar_styles.sql'), 'utf8'));
+  await as(fresh);
+  const options = fs.readFileSync(path.join(__dirname, '../src/config/avatar.ts'), 'utf8');
+  for (const key of ['hairstyle', 'topStyle', 'bottomStyle', 'shoeStyle']) {
+    const list = options.match(new RegExp(`${key}: \\[([^\\]]*)\\]`))[1];
+    const values = [...list.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    assert(values.length > 3, key);
+    for (const value of values)
+      await db.query('select * from complete_student_profile($1,$2,$3)', [
+        'FST',
+        JSON.stringify({ ...avatar, [key]: value }),
+        true,
+      ]);
+    await assert.rejects(
+      db.query('select * from complete_student_profile($1,$2,$3)', [
+        'FST',
+        JSON.stringify({ ...avatar, [key]: 'cape' }),
+        true,
+      ]),
+      /Invalid avatar style/,
+    );
+  }
+  // The last accepted save stays; the rejected one changed nothing.
+  assert.equal(
+    (await db.query("select avatar_config->>'shoeStyle' s from profiles where id=$1", [fresh])).rows[0].s,
+    'boots',
+  );
   assert.equal(
     (await db.query('select course_id,game_matric_number from profiles where id=$1', [beta])).rows
       .length,
@@ -143,7 +172,7 @@ const fs = require('node:fs'),
   await assert.rejects(db.query('select * from ensure_student_journey()'), /permission denied/);
   await db.close();
   console.log(
-    'SQL PASSED: all six migrations; beta/new routing; profile, wallet, friends, inventory preservation; unique stable matric; avatar persistence; RLS; protected fields; idempotent badge; anonymous rejection.',
+    'SQL PASSED: all six migrations plus 029 avatar styles (synced with avatarOptions); beta/new routing; profile, wallet, friends, inventory preservation; unique stable matric; avatar persistence; RLS; protected fields; idempotent badge; anonymous rejection.',
   );
 })().catch((e) => {
   console.error(e);

@@ -5,12 +5,13 @@ import type { AvatarConfig } from "../../types/game";
 import { normalizeAvatar } from "../../config/avatar";
 import type { HeldItem } from "../../config/heldItems";
 import { HeldProp } from "./HeldProp";
+import { identitySeed } from "./avatarGeometry";
 import {
-  ellipsoids,
-  silhouette,
-  identitySeed,
-  type Part,
-} from "./avatarGeometry";
+  buildAvatarGeometry,
+  HEAD_SCALE,
+  HEAD_Y,
+  lipColor,
+} from "./avatarParts";
 
 export const AvatarBody = memo(
   ({
@@ -43,7 +44,8 @@ export const AvatarBody = memo(
       head = useRef<THREE.Group>(null);
     const legs = useRef<(THREE.Group | null)[]>([]),
       knees = useRef<(THREE.Group | null)[]>([]);
-    const skirt = useRef<THREE.Group>(null);
+    const skirt = useRef<THREE.Group>(null),
+      skirtLow = useRef<THREE.Group>(null);
     const ankles = useRef<(THREE.Group | null)[]>([]);
     const heldRef = useRef<THREE.Group>(null),
       servedRef = useRef<THREE.Group>(null);
@@ -56,177 +58,16 @@ export const AvatarBody = memo(
       phase: seed % 100,
       blend: 0,
     });
-    const width =
-      (a.bodyType === "feminine" ? 0.245 : 0.275) * (0.96 + (seed % 7) * 0.013);
     const resources = useMemo(() => {
-      const g: Record<string, THREE.BufferGeometry> = {};
-      const e = (name: string, parts: Part[]) => (g[name] = ellipsoids(parts));
-      const faceWidth = 0.173 + (seed % 5) * 0.004;
-      e("head", [
-        [0, 0, 0, faceWidth, 0.235, 0.174],
-        [0, -0.116, 0.043, 0.128, 0.115, 0.132],
-        [-faceWidth, -0.01, 0, 0.038, 0.065, 0.032],
-        [faceWidth, -0.01, 0, 0.038, 0.065, 0.032],
-        [0, -0.025, 0.166, 0.036, 0.048, 0.045],
-      ]);
-      e(
-        "white",
-        [-1, 1].map(
-          (s) => [s * 0.069, 0.032, 0.158, 0.042, 0.023, 0.017] as Part,
-        ),
-      );
-      e(
-        "features",
-        [-1, 1]
-          .flatMap(
-            (s) =>
-              [
-                [s * 0.067, 0.03, 0.176, 0.015, 0.018, 0.008],
-                [s * 0.069, 0.084, 0.157, 0.048, 0.01, 0.012],
-              ] as Part[],
-          )
-          .concat([
-            [-0.027, -0.091, 0.16, 0.027, 0.006, 0.009],
-            [0.027, -0.091, 0.16, 0.027, 0.006, 0.009],
-            [0, -0.098, 0.161, 0.025, 0.006, 0.009],
-          ]),
-      );
-      const hair: Part[] = [[0, 0.133, -0.026, 0.184, 0.115, 0.168]];
-      if (
-        ["short-afro", "short-natural", "natural-puff"].includes(a.hairstyle)
-      ) {
-        for (let i = 0; i < 18; i++) {
-          const t = i * 2.39996,
-            y = 0.17 + (i % 3) * 0.045;
-          hair.push([
-            Math.cos(t) * 0.146,
-            y,
-            Math.sin(t) * 0.134 - 0.02,
-            0.091,
-            0.09,
-            0.083,
-          ]);
-        }
-      }
-      if (a.hairstyle === "fade")
-        hair.push([0, 0.188, -0.016, 0.157, 0.07, 0.146]);
-      if (["bun", "natural-puff"].includes(a.hairstyle))
-        hair.push([
-          0,
-          0.24,
-          -0.12,
-          a.hairstyle === "bun" ? 0.105 : 0.16,
-          0.14,
-          0.13,
-        ]);
-      if (["braids", "short-twists"].includes(a.hairstyle)) {
-        for (let i = 0; i < 12; i++) {
-          const t = (i * Math.PI * 2) / 12;
-          const front = Math.sin(t) > 0.45;
-          hair.push([
-            Math.cos(t) * 0.16,
-            a.hairstyle === "braids" && !front ? -0.06 : 0.17,
-            Math.sin(t) * 0.14 - 0.03,
-            0.027,
-            a.hairstyle === "braids" && !front ? 0.24 : 0.086,
-            0.029,
-          ]);
-        }
-      }
-      e("hair", hair);
-      g.torso = silhouette(
-        [
-          [0, 0.9],
-          [width * 0.75, 0.9],
-          [width * 0.85, 0.96],
-          [width * 0.81, 1.1],
-          [width, 1.37],
-          [width * 0.94, 1.46],
-          [0.115, 1.51],
-          [0, 1.51],
-        ],
-        0.66,
-      );
-      e("neck", [[0, 1.53, 0, 0.085, 0.12, 0.08]]);
-      e("hips", [[0, 0.89, 0, width * 0.83, 0.13, 0.15]]);
-      g.upperLeg = silhouette(
-        [
-          [0, -0.435],
-          [0.073, -0.435],
-          [0.09, -0.31],
-          [0.108, -0.12],
-          [0.098, 0.025],
-          [0, 0.025],
-        ],
-        1,
-      );
-      g.lowerLeg = silhouette(
-        [
-          [0, -0.42],
-          [0.061, -0.42],
-          [0.065, -0.3],
-          [0.082, -0.12],
-          [0.074, 0.025],
-          [0, 0.025],
-        ],
-        1,
-      );
-      e("shoe", [[0, 0.067, 0.048, 0.095, 0.067, 0.17]]);
-      e("sole", [[0, 0.026, 0.048, 0.097, 0.026, 0.174]]);
-      e("upperArm", [[0, -0.145, 0, 0.075, 0.19, 0.08]]);
-      e("sleeve", [
-        [0, -0.08, 0, a.topStyle === "hoodie" ? 0.098 : 0.089, 0.139, 0.09],
-      ]);
-      e("forearm", [[0, -0.12, 0, 0.059, 0.154, 0.065]]);
-      e("hand", [
-        [0, -0.275, 0.008, 0.059, 0.078, 0.035],
-        [0.044, -0.25, 0.022, 0.02, 0.04, 0.024],
-      ]);
-      const trim: Part[] = [[0, 1.489, 0.015, 0.115, 0.024, 0.085]];
-      if (["shirt", "polo"].includes(a.topStyle))
-        trim.push(
-          [-0.065, 1.45, 0.106, 0.05, 0.059, 0.017],
-          [0.065, 1.45, 0.106, 0.05, 0.059, 0.017],
-        );
-      if (a.topStyle === "shirt") trim.push([0, 1.2, 0.171, 0.01, 0.24, 0.009]);
-      if (a.topStyle === "hoodie")
-        trim.push(
-          [0, 1.43, -0.128, 0.16, 0.12, 0.085],
-          [0, 1.04, 0.153, 0.15, 0.068, 0.025],
-        );
-      e("trim", trim);
-      g.skirt = silhouette(
-        [
-          [0, 0.49],
-          [0.32, 0.49],
-          [0.32, 0.52],
-          [0.24, 0.9],
-          [0.2, 0.94],
-          [0, 0.94],
-        ],
-        0.72,
-      );
-      e("badge", [[-0.125, 1.31, 0.175, 0.037, 0.047, 0.014]]);
-      e("farSkin", [
-        [0, 1.77, 0, 0.18, 0.235, 0.174],
-        [-0.32, 1.03, 0, 0.07, 0.28, 0.07],
-        [0.32, 1.03, 0, 0.07, 0.28, 0.07],
-      ]);
-      e("farHair", [[0, 1.94, -0.025, 0.19, 0.105, 0.17]]);
-      e("farBottom", [
-        [-0.115, 0.48, 0, 0.1, 0.43, 0.1],
-        [0.115, 0.48, 0, 0.1, 0.43, 0.1],
-        [0, 0.87, 0, 0.22, 0.1, 0.14],
-      ]);
-      e("farShoes", [
-        [-0.115, 0.066, 0.048, 0.095, 0.066, 0.17],
-        [0.115, 0.066, 0.048, 0.095, 0.066, 0.17],
-      ]);
-      e("beret", [[0, 0.205, -0.02, 0.215, 0.075, 0.19]]);
+      const { g, look, width } = buildAvatarGeometry(a, seed);
       const materials = {
         skin: new THREE.MeshStandardMaterial({
           color: a.skinTone,
-          roughness: 0.78,
+          roughness: 0.7,
+        }),
+        lips: new THREE.MeshStandardMaterial({
+          color: lipColor(a),
+          roughness: 0.55,
         }),
         hair: new THREE.MeshStandardMaterial({
           color: a.hairColor,
@@ -242,33 +83,31 @@ export const AvatarBody = memo(
         }),
         shoe: new THREE.MeshStandardMaterial({
           color: a.shoeColor,
-          roughness: 0.8,
+          roughness: 0.75,
         }),
         white: new THREE.MeshStandardMaterial({
           color: "#f3ede2",
           roughness: 0.85,
         }),
         dark: new THREE.MeshStandardMaterial({
-          color: "#251b1c",
+          color: "#1d1514",
           roughness: 0.9,
         }),
         trim: new THREE.MeshStandardMaterial({
           color: new THREE.Color(a.topColor).multiplyScalar(0.76),
           roughness: 0.9,
         }),
+        gold: new THREE.MeshStandardMaterial({
+          color: "#d4a017",
+          roughness: 0.35,
+          metalness: 0.6,
+        }),
       };
-      return { g, materials };
-    }, [
-      a.skinTone,
-      a.hairColor,
-      a.topColor,
-      a.bottomColor,
-      a.shoeColor,
-      a.hairstyle,
-      a.topStyle,
-      seed,
-      width,
-    ]);
+      return { g, look, width, materials };
+      // Rebuild only when the appearance changes, not when a caller passes a fresh object.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [JSON.stringify(a), seed]);
+    const { look, width } = resources;
     useEffect(
       () => () => {
         Object.values(resources.g).forEach((g) => g.dispose());
@@ -380,13 +219,23 @@ export const AvatarBody = memo(
         if (carry && heldRef.current && arm && elbow)
           heldRef.current.rotation.x = -(arm.rotation.x + elbow.rotation.x);
       }
-      if (skirt.current)
+      if (skirt.current) {
         skirt.current.rotation.x = THREE.MathUtils.damp(
           skirt.current.rotation.x,
           seated ? -Math.PI / 2 : 0,
           12,
           delta,
         );
+        // Folded over the lap the hem gathers in instead of flaring like a barrel.
+        const gather = THREE.MathUtils.damp(skirt.current.scale.x, seated ? 0.72 : 1, 12, delta);
+        skirt.current.scale.set(gather, 1, gather);
+      }
+      // A long skirt's hem drops in front of the shins, which hang from the knees at z 0.41.
+      if (skirtLow.current) {
+        const p = skirtLow.current.position;
+        p.y = THREE.MathUtils.damp(p.y, seated ? 0.41 : 0, 12, delta);
+        p.z = THREE.MathUtils.damp(p.z, seated ? 0.41 : 0, 12, delta);
+      }
       if (chest.current) {
         chest.current.scale.y = 1 + Math.sin(t * 1.7) * 0.003 * (1 - s.blend);
         chest.current.rotation.y = swing * 0.065;
@@ -408,13 +257,16 @@ export const AvatarBody = memo(
       root.current.scale.setScalar(sleep ? 0.9 : 1);
     });
     const m = resources.materials;
-    const part = (geometry: string, material: keyof typeof m) => (
-      <mesh
-        geometry={resources.g[geometry]}
-        material={m[material]}
-        castShadow
-      />
-    );
+    const part = (geometry: string, material: keyof typeof m) =>
+      resources.g[geometry] ? (
+        <mesh
+          geometry={resources.g[geometry]}
+          material={m[material]}
+          castShadow
+        />
+      ) : null;
+    const legMaterial = look.bareLegs ? "skin" : "bottom";
+    const armMaterial = look.longSleeves ? "top" : "skin";
     return (
       <>
       {held && table && (
@@ -426,30 +278,45 @@ export const AvatarBody = memo(
         <group ref={far} visible={false}>
           {part("torso", "top")}
           {part("farSkin", "skin")}
-          {part("farHair", "hair")}
-          {part("farBottom", "bottom")}
+          {part("farHair", look.hairMaterial)}
+          {part("farLegs", look.bareLegs ? "skin" : "bottom")}
+          {part("farHips", look.hipsMaterial)}
           {part("farShoes", "shoe")}
-          {a.bottomStyle === "skirt" && part("skirt", "bottom")}
+          {part("skirt", "bottom")}
+          {part("skirtLow", "bottom")}
+          {part("tunic", "top")}
         </group>
         <group ref={near}>
-          {part("hips", "bottom")}
+          {part("hips", look.hipsMaterial)}
           <group ref={chest}>
             {part("torso", "top")}
+            {part("bust", "top")}
+            {part("flare", "top")}
             {part("neck", "skin")}
             {part("trim", "trim")}
+            {part("inner", "white")}
+            {part("embroidery", "gold")}
             {accessory === "security" && part("badge", "white")}
-            <group ref={head} position={[0, 1.77, 0]}>
+            <group ref={head} position={[0, HEAD_Y, 0]} scale={HEAD_SCALE}>
               {part("head", "skin")}
               {part("white", "white")}
               {part("features", "dark")}
-              {part("hair", "hair")}
+              {part("lips", "lips")}
+              {part("earrings", "gold")}
+              {part("hair", look.hairMaterial)}
               {accessory === "security" && part("beret", "bottom")}
             </group>
           </group>
-          {a.bottomStyle === "skirt" && (
+          {(look.skirt || look.tunic) && (
             <group ref={skirt} position={[0, 0.91, 0]}>
-              <group position={[0, -0.91, 0]}>{part("skirt", "bottom")}</group>
+              <group position={[0, -0.91, 0]}>
+                {part("skirt", "bottom")}
+                {part("tunic", "top")}
+              </group>
             </group>
+          )}
+          {look.longSkirt && (
+            <group ref={skirtLow}>{part("skirtLow", "bottom")}</group>
           )}
           {[-1, 1].map((side, i) => (
             <group key={side}>
@@ -459,10 +326,7 @@ export const AvatarBody = memo(
                 }}
                 position={[side * (width + 0.032), 1.43, 0]}
               >
-                {part(
-                  "upperArm",
-                  ["shirt", "hoodie"].includes(a.topStyle) ? "top" : "skin",
-                )}
+                {part("upperArm", armMaterial)}
                 {part("sleeve", "top")}
                 <group
                   ref={(el) => {
@@ -470,10 +334,7 @@ export const AvatarBody = memo(
                   }}
                   position={[0, -0.285, 0]}
                 >
-                  {part(
-                    "forearm",
-                    ["hoodie", "shirt"].includes(a.topStyle) ? "top" : "skin",
-                  )}
+                  {part("forearm", armMaterial)}
                   {part("hand", "skin")}
                   {i === 0 && held && (
                     <group ref={heldRef} position={[0, -0.31, 0.02]} scale={1.3} visible={false}>
@@ -488,20 +349,15 @@ export const AvatarBody = memo(
                 }}
                 position={[side * 0.115, 0.91, 0]}
               >
-                {part(
-                  "upperLeg",
-                  a.bottomStyle === "skirt" ? "skin" : "bottom",
-                )}
+                {part("upperLeg", legMaterial)}
+                {part("shortLeg", "bottom")}
                 <group
                   ref={(el) => {
                     knees.current[i] = el;
                   }}
                   position={[0, -0.41, 0]}
                 >
-                  {part(
-                    "lowerLeg",
-                    a.bottomStyle === "skirt" ? "skin" : "bottom",
-                  )}
+                  {part("lowerLeg", legMaterial)}
                   <group
                     ref={(el) => {
                       ankles.current[i] = el;
@@ -509,7 +365,8 @@ export const AvatarBody = memo(
                     position={[0, -0.5, 0]}
                   >
                     {part("shoe", "shoe")}
-                    {a.shoeStyle === "sneakers" && part("sole", "white")}
+                    {part("sole", "white")}
+                    {part("foot", "skin")}
                   </group>
                 </group>
               </group>

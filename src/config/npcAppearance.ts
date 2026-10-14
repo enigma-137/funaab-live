@@ -1,4 +1,4 @@
-import { avatarOptions, normalizeAvatar, skinTones } from "./avatar";
+import { avatarOptions, normalizeAvatar, skinTones, typicalStyles } from "./avatar";
 import type { AvatarConfig } from "../types/game";
 
 // No randomness or stored-profile migration: the same NPC ID always gets the same outfit.
@@ -12,15 +12,18 @@ export function npcAppearance(
     n = Math.imul(n ^ (n >>> 16), 2246822507);
     return items[(n >>> 0) % items.length];
   };
+  const bodyType = overrides.bodyType ?? pick(avatarOptions.bodyType);
+  const typical = typicalStyles[bodyType];
   return normalizeAvatar({
-    bodyType: pick(avatarOptions.bodyType),
+    bodyType,
     skinTone: pick(skinTones),
-    hairstyle: pick(avatarOptions.hairstyle),
-    topStyle: pick(avatarOptions.topStyle),
-    topColor: pick(["#387c76", "#b35e40", "#dab97a", "#687da5", "#a57089"]),
-    bottomStyle: pick(avatarOptions.bottomStyle),
-    bottomColor: pick(["#26354a", "#514c43", "#394c44"]),
-    shoeStyle: pick(avatarOptions.shoeStyle),
+    hairstyle: pick(typical.hairstyle),
+    topStyle: pick(typical.topStyle),
+    topColor: pick(["#387c76", "#b35e40", "#dab97a", "#687da5", "#a57089", "#e7e2d4", "#2f3b55", "#7a2a4a"]),
+    bottomStyle: pick(typical.bottomStyle),
+    bottomColor: pick(["#26354a", "#514c43", "#394c44", "#1f1f22"]),
+    hairColor: pick(["#1a1412", "#211b18", "#211b18", "#3b2a20"]),
+    shoeStyle: pick(typical.shoeStyle),
     ...overrides,
   });
 }

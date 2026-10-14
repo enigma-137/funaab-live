@@ -11,10 +11,50 @@ export const avatarOptions = {
     'braids',
     'bun',
     'short-natural',
+    'long-weave',
+    'ponytail',
+    'bob',
+    'locs',
+    'big-afro',
+    'cornrows',
+    'headwrap',
+    'bald',
   ],
-  topStyle: ['t-shirt', 'polo', 'shirt', 'hoodie', 'blouse'],
-  bottomStyle: ['trousers', 'jeans', 'joggers', 'skirt'],
-  shoeStyle: ['sneakers', 'flats'],
+  topStyle: ['t-shirt', 'polo', 'shirt', 'hoodie', 'blouse', 'jacket', 'jersey', 'kaftan', 'tank-top', 'gown'],
+  bottomStyle: ['trousers', 'jeans', 'joggers', 'skirt', 'shorts', 'long-skirt'],
+  shoeStyle: ['sneakers', 'flats', 'sandals', 'heels', 'boots'],
+} as const;
+// Friendlier names for the editor; anything missing shows its id with spaces.
+export const optionLabels: Record<string, string> = {
+  'low-cut': 'Low cut',
+  'short-afro': 'Short afro',
+  'short-twists': 'Short twists',
+  'natural-puff': 'Afro puff',
+  'short-natural': 'Short natural',
+  'long-weave': 'Long weave / wig',
+  'big-afro': 'Big afro',
+  headwrap: 'Gele / headwrap',
+  bald: 'Clean shave',
+  't-shirt': 'T-shirt',
+  kaftan: 'Kaftan / senator',
+  'tank-top': 'Tank top',
+  'long-skirt': 'Long skirt',
+  flats: 'Flats / loafers',
+};
+// What NPCs of each body type are dressed in; players can still wear anything.
+export const typicalStyles = {
+  masculine: {
+    hairstyle: ['low-cut', 'short-afro', 'fade', 'short-twists', 'short-natural', 'locs', 'cornrows', 'bald'],
+    topStyle: ['t-shirt', 'polo', 'shirt', 'hoodie', 'jacket', 'jersey', 'kaftan', 'tank-top'],
+    bottomStyle: ['trousers', 'jeans', 'joggers', 'shorts'],
+    shoeStyle: ['sneakers', 'flats', 'sandals', 'boots'],
+  },
+  feminine: {
+    hairstyle: ['natural-puff', 'braids', 'bun', 'long-weave', 'ponytail', 'bob', 'locs', 'big-afro', 'cornrows', 'headwrap', 'short-natural'],
+    topStyle: ['t-shirt', 'blouse', 'shirt', 'hoodie', 'jacket', 'gown', 'kaftan', 'polo'],
+    bottomStyle: ['jeans', 'trousers', 'skirt', 'long-skirt', 'joggers'],
+    shoeStyle: ['sneakers', 'flats', 'sandals', 'heels', 'boots'],
+  },
 } as const;
 export const skinTones = ['#c68c63', '#ad7147', '#8d5524', '#663c28', '#3d251e'];
 export type StudentAvatar = Required<
@@ -106,4 +146,50 @@ export const stylePresets: Record<string, Partial<AvatarConfig>> = {
     shoeStyle: 'sneakers',
     shoeColor: '#f0ede4',
   },
+  Street: {
+    topStyle: 'jacket',
+    topColor: '#2f3b2f',
+    bottomStyle: 'jeans',
+    bottomColor: '#1f2a3d',
+    shoeStyle: 'boots',
+    shoeColor: '#5a3a22',
+  },
+  Baller: {
+    topStyle: 'jersey',
+    topColor: '#1d4ed8',
+    bottomStyle: 'shorts',
+    bottomColor: '#1d4ed8',
+    shoeStyle: 'sneakers',
+    shoeColor: '#f4f4f0',
+  },
+  Owambe: {
+    topStyle: 'kaftan',
+    topColor: '#1e3a5f',
+    bottomStyle: 'trousers',
+    bottomColor: '#1e3a5f',
+    shoeStyle: 'flats',
+    shoeColor: '#2a1d16',
+  },
+  'Owambe Gele': {
+    hairstyle: 'headwrap',
+    topStyle: 'gown',
+    topColor: '#8a2252',
+    shoeStyle: 'heels',
+    shoeColor: '#d4a017',
+  },
+  'Sunday Best': {
+    topStyle: 'blouse',
+    topColor: '#f3e6c4',
+    bottomStyle: 'long-skirt',
+    bottomColor: '#3b4f7a',
+    shoeStyle: 'heels',
+    shoeColor: '#2a1d16',
+  },
+};
+// Presets shown only for one body type (the rest suit everyone).
+export const presetBodyType: Record<string, 'masculine' | 'feminine'> = {
+  Owambe: 'masculine',
+  'Owambe Gele': 'feminine',
+  'Sunday Best': 'feminine',
+  Soft: 'feminine',
 };
