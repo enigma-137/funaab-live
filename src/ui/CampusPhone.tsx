@@ -1,4 +1,4 @@
-import { useAcademicStore } from '../stores/academicStore';
+import { useLevelStore } from '../stores/levelStore';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
@@ -57,7 +57,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'lodge', label: 'Lodge', glyph: 'hostel', colors: ['#fbbf24', '#b45309'], open: () => setModal('lodge') },
     { id: 'hustles', label: 'Hustles', glyph: 'hustles', colors: ['#4ade80', '#15803d'], open: () => setModal('hustles') },
     { id: 'jobs', label: 'Jobs', glyph: 'jobs', colors: ['#a78bfa', '#6d28d9'], open: () => setModal('campus_jobs') },
-    { id: 'school', label: 'School', glyph: 'school', colors: ['#60a5fa', '#1d4ed8'], open: () => useAcademicStore.getState().open() },
+    { id: 'level', label: 'Level', glyph: 'level', colors: ['#fbbf24', '#d97706'], open: () => useLevelStore.getState().open() },
     { id: 'timetable', label: 'Timetable', glyph: 'timetable', colors: ['#f472b6', '#be185d'], open: () => setModal('lecture_hall') },
     { id: 'inventory', label: 'Bag', glyph: 'inventory', colors: ['#fbbf24', '#b45309'], open: () => setModal('inventory') },
     { id: 'daily', label: 'Allowance', glyph: 'daily', colors: ['#f87171', '#b91c1c'], open: () => setModal('daily_reward') },

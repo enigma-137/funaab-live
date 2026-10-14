@@ -45,7 +45,7 @@ import { MessagesInbox } from './ui/MessagesInbox';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
-import { AcademicSheet } from './ui/AcademicSheet';
+import { LevelSheet } from './ui/LevelSheet';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
 import { LeagueSheet } from './ui/LeagueSheet';
@@ -189,7 +189,7 @@ export const App: React.FC = () => {
       {activeModal === 'football' && <FootballPanel />}
       {(activeModal === 'basketball' || activeModal === 'volleyball') && <CourtGamePanel key={activeModal} game={activeModal} />}
       {activeModal === 'volleyball_rally' && <RallyPanel />}
-      {activeModal === 'academics' && <AcademicSheet />}
+      {activeModal === 'level' && <LevelSheet />}
       {activeModal === 'hustles' && <HustlesSheet />}
       {activeModal === 'lodge' && <LodgeSheet />}
       {activeModal === 'league' && <LeagueSheet />}

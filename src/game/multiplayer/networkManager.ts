@@ -1,3 +1,4 @@
+import { useLevelStore } from '../../stores/levelStore';
 import { CAMPUS_SPAWN } from '../../config/campusLocations';
 import { TABLE_ITEM_MS, isHeldKind, type HeldKind } from '../../config/heldItems';
 import { useHostelStore } from '../../stores/hostelStore';
@@ -252,7 +253,8 @@ class NetworkManager {
       }
       case 'room_changed': window.dispatchEvent(new Event('hostel-room-changed')); return;
       case 'campus_bet_settled': { window.dispatchEvent(new Event('campus-bet-settled')); const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
-      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); return; }
+      case 'level_refresh': void useLevelStore.getState().load(); return;
+      case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); void useLevelStore.getState().load(); return; }
       case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
       case 'hustle_notice': toast({ icon: data.icon || '💼', text: String(data.text || ''), tone: 'info', ms: 4500 }); void useHustleStore.getState().loadErrands(); return;
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;

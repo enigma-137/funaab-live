@@ -110,7 +110,7 @@
 .academic-questions button.is-chosen{border-color:#60a5fa;background:#172554}
 .academic-questions button.is-correct{border-color:#22c55e;background:#14532d}
 .academic-questions button.is-wrong{border-color:#ef4444;background:#450a0a}
-.campus-status-level{flex-shrink:0;padding:0 6px;border-radius:999px;background:#1d4ed8;color:#fff;font-weight:900}
+.campus-status-level{flex-shrink:0;padding:0 6px;border:0;border-radius:999px;background:#d97706;color:#fff;font:inherit;font-weight:900;cursor:pointer;pointer-events:auto}
 
 /* Home background chooser. */
 .bg-options{display:flex;flex-direction:column;gap:8px}

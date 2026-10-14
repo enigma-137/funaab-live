@@ -828,8 +828,22 @@ export class WorldRoomDO {
     if (op === 'practice' || op === 'shoot') this.dailyGoalEvent(session, 'take_penalties');
     return this.football;
   }
+  /** XP for results only the Worker knows (migration 031); the database caps and dedupes. */
+  private awardXp(userId: string, source: 'court_match' | 'court_win' | 'rally_match' | 'rally_win', ref: string) {
+    if (!this.env.SUPABASE_SERVICE_ROLE_KEY) return;
+    void this.dbRpc('xp_event_trusted', { p_user: userId, p_source: source, p_ref: ref }).then((xp) => {
+      if (!xp) return;
+      const ids = [...this.sessions.values()].filter((s) => s.id === userId).map((s) => s.connectionId);
+      this.sendToConnections(ids, JSON.stringify({ type: 'level_refresh' }));
+    }).catch(() => {});
+  }
   private setCourt(id: CourtGameId, next: any) {
     const court = this.courts[id];
+    // A played-out 1v1 earns both players XP and the winner a little more; forfeits earn nothing.
+    if (court.state?.status === 'ACTIVE' && next.status === 'RESULT' && next.endReason === 'complete' && next.id) {
+      for (const p of [next.player1, next.player2]) if (p?.userId) this.awardXp(p.userId, 'court_match', `${id}:${next.id}`);
+      if (next.winnerUserId) this.awardXp(next.winnerUserId, 'court_win', `${id}:${next.id}`);
+    }
     court.state = next;
     if (court.timer !== null) clearTimeout(court.timer);
     court.timer = null;
@@ -1053,6 +1067,13 @@ export class WorldRoomDO {
     this.broadcastToRoom(room, JSON.stringify({ type: 'ps_match_update', match: m }));
   }
   private setRally(next: RallyState) {
+    if (this.rally?.status === 'ACTIVE' && next.status === 'RESULT' && next.endReason === 'complete' && next.id) {
+      for (const [team, players] of Object.entries(next.teams))
+        for (const p of players) if (!p.bot && p.userId) {
+          this.awardXp(p.userId, 'rally_match', next.id);
+          if (next.winner === team) this.awardXp(p.userId, 'rally_win', next.id);
+        }
+    }
     this.rally = next;
     this.armRally();
     this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'volleyball_rally_state', rally: next }));
