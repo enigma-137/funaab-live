@@ -414,3 +414,9 @@
 .room-swatch small { color:#5b6b5f; font-weight:700; }
 .room-swatch[aria-checked="true"] { border:2px solid #2c9860; background:#effaf3; }
 .room-swatch:disabled:not([aria-checked="true"]) { opacity:.5; }
+
+/* Room menu: closed by default so it never blocks the room; one tap opens it, any choice closes it. */
+.hostel-menu-btn{position:fixed;z-index:35;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:20px;background:#f6f9f4ed;color:#234334;border:1px solid #b6c9b7;font-weight:800;font-size:13px;box-shadow:0 3px 12px #102a1830}
+.hostel-dock strong{display:flex!important;align-items:center;justify-content:space-between}
+.hostel-dock-close{min-width:30px;min-height:30px;border-radius:50%;font-size:18px;line-height:1}
+.room-quick{position:fixed;z-index:35;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);width:52px;height:52px;border-radius:50%;background:#f6f9f4ee;border:2px solid #b6c9b7;font-size:24px;box-shadow:0 4px 14px #102a1840;display:grid;place-items:center}
