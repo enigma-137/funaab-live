@@ -71,11 +71,11 @@ assert.deepEqual(
 // COLFHEC's four departments, and HTM reaches the database through migration 022.
 assert.deepEqual(courses.filter((c) => c.college === 'COLFHEC').map((c) => c.id).sort(), ['FST', 'HSM', 'HTM', 'NTD']);
 assert(readFileSync('supabase/migrations/022_colfhec_htm.sql', 'utf8').includes("('HTM', 'Hospitality and Tourism Management', 'COLFHEC', 55)"));
-// COLERM is offered (its building and lecture hall exist): four departments, all in migration 025.
+// COLERM is offered (its building and lecture hall exist): five departments, in migrations 025 and 026.
 assert(colleges.some((c) => c.code === 'COLERM'), 'COLERM can be chosen');
 const colerm = courses.filter((c) => c.college === 'COLERM');
-assert.deepEqual(colerm.map((c) => c.id).sort(), ['AQFM', 'EMT', 'FWM', 'WMA']);
-const sql025 = readFileSync('supabase/migrations/025_colerm_departments.sql', 'utf8');
+assert.deepEqual(colerm.map((c) => c.id).sort(), ['AQFM', 'EMT', 'FWM', 'GLY', 'WMA']);
+const sql025 = readFileSync('supabase/migrations/025_colerm_departments.sql', 'utf8') + readFileSync('supabase/migrations/026_colerm_geology.sql', 'utf8');
 for (const c of colerm) assert(sql025.includes(`('${c.id}', '${c.name}', 'COLERM', ${c.gameCutoffRange[0]})`), `${c.id} in 025`);
 const migration = readFileSync('supabase/migrations/006_student_journey.sql', 'utf8');
 assert(

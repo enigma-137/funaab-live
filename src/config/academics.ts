@@ -17,6 +17,7 @@ export const courses = [
   ['EMT', 'Environmental Management and Toxicology', 'COLERM', 55],
   ['FWM', 'Forestry and Wildlife Management', 'COLERM', 48],
   ['WMA', 'Water Resources Management and Agrometeorology', 'COLERM', 50],
+  ['GLY', 'Geology', 'COLERM', 52], // migration 026
   ['AEC', 'Agricultural Economics', 'COLAMRUD', 50],
   ['ARD', 'Agricultural Extension and Rural Development', 'COLAMRUD', 0],
   ['CPT', 'Crop Protection', 'COLPLANT', 0],
