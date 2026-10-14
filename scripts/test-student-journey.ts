@@ -77,6 +77,13 @@ const colerm = courses.filter((c) => c.college === 'COLERM');
 assert.deepEqual(colerm.map((c) => c.id).sort(), ['AQFM', 'EMT', 'FWM', 'GLY', 'WMA']);
 const sql025 = readFileSync('supabase/migrations/025_colerm_departments.sql', 'utf8') + readFileSync('supabase/migrations/026_colerm_geology.sql', 'utf8');
 for (const c of colerm) assert(sql025.includes(`('${c.id}', '${c.name}', 'COLERM', ${c.gameCutoffRange[0]})`), `${c.id} in 025`);
+// COLCOMS is offered with its four departments; Computer Science moved there from COLPHYS (migration 028).
+assert(colleges.some((c) => c.code === 'COLCOMS'), 'COLCOMS can be chosen');
+const colcoms = courses.filter((c) => c.college === 'COLCOMS');
+assert.deepEqual(colcoms.map((c) => c.id).sort(), ['CDS', 'CSC', 'ICT', 'SEI']);
+const sql028 = readFileSync('supabase/migrations/028_colcoms_departments.sql', 'utf8');
+for (const c of colcoms) assert(sql028.includes(`('${c.id}', '${c.name}', 'COLCOMS', ${c.gameCutoffRange[0]})`), `${c.id} in 028`);
+assert(sql028.includes("update public.profiles set college = 'COLCOMS'") && sql028.includes("course_id = 'CSC'"), 'CSC students follow their department');
 const migration = readFileSync('supabase/migrations/006_student_journey.sql', 'utf8');
 assert(
   migration.includes('select id, true from public.profiles'),

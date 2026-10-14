@@ -28,7 +28,11 @@ export const courses = [
   ['BCH', 'Biochemistry', 'COLBIOS', 60],
   ['MCB', 'Microbiology', 'COLBIOS', 58],
   ['BIO', 'Biological Sciences', 'COLBIOS', 0],
-  ['CSC', 'Computer Science', 'COLPHYS', 65],
+  // COLCOMS (migration 028). Computer Science moved here from COLPHYS.
+  ['CSC', 'Computer Science', 'COLCOMS', 65],
+  ['ICT', 'Information Technology and Information Communication Technology', 'COLCOMS', 58],
+  ['SEI', 'Software Engineering and Information Systems', 'COLCOMS', 63],
+  ['CDS', 'Cyber Security and Data Science', 'COLCOMS', 62],
   ['MTH', 'Mathematics', 'COLPHYS', 0],
   ['PHY', 'Physics', 'COLPHYS', 48],
 ].map(([id, name, college, cutoff]) => ({
