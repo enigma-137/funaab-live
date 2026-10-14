@@ -20,6 +20,7 @@ import { FoodVendorModal } from './ui/FoodVendorModal';
 import { PSPenaltyGame } from './game/minigames/PSPenaltyGame';
 import { FootballPanel } from './ui/FootballPanel';
 import { CourtGamePanel } from './ui/CourtGamePanel';
+import { RallyPanel } from './ui/RallyPanel';
 import { PlayerInteractionModal } from './ui/PlayerInteractionModal';
 import { FriendsModal } from './ui/FriendsModal';
 import { InventoryModal } from './ui/InventoryModal';
@@ -187,6 +188,7 @@ export const App: React.FC = () => {
       {activeModal === 'ps_match' && <PSPenaltyGame />}
       {activeModal === 'football' && <FootballPanel />}
       {(activeModal === 'basketball' || activeModal === 'volleyball') && <CourtGamePanel key={activeModal} game={activeModal} />}
+      {activeModal === 'volleyball_rally' && <RallyPanel />}
       {activeModal === 'academics' && <AcademicSheet />}
       {activeModal === 'hustles' && <HustlesSheet />}
       {activeModal === 'lodge' && <LodgeSheet />}

@@ -13,6 +13,7 @@ import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
 import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
+import { useRallyStore } from '../../stores/rallyStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 import { useHustleStore } from '../../stores/hustleStore';
 import { toast } from '../../stores/toastStore';
@@ -123,7 +124,7 @@ class NetworkManager {
     });
   }
   /** Court games (basketball free throws, volleyball serves): aim + power out, verdict back. */
-  public court(game:'basketball'|'volleyball',op:string,payload:Record<string,unknown>={}):Promise<any>{
+  public court(game:'basketball'|'volleyball'|'volleyball_rally',op:string,payload:Record<string,unknown>={}):Promise<any>{
     if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error(`Reconnect to campus to play ${game}`));
     const requestId=crypto.randomUUID();
     return new Promise((resolve,reject)=>{
@@ -288,6 +289,7 @@ class NetworkManager {
         if (data.football) useFootballStore.getState().receive(data.football, true);
         if (data.basketball) useBasketballStore.getState().receive(data.basketball, true);
         if (data.volleyball) useVolleyballStore.getState().receive(data.volleyball, true);
+        if (data.rally) useRallyStore.getState().receive(data.rally, true);
 
         const account=useAuthStore.getState().user;if(account)void useWalletStore.getState().loadWallet(account.id);
         console.log(`[WS] joined ${this.room}`);
@@ -494,6 +496,10 @@ class NetworkManager {
       }
       case 'volleyball_state': {
         if (data.volleyball) useVolleyballStore.getState().receive(data.volleyball);
+        break;
+      }
+      case 'volleyball_rally_state': {
+        if (data.rally) useRallyStore.getState().receive(data.rally);
         break;
       }
 

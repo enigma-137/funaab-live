@@ -45,6 +45,7 @@
     "test:football": "tsx scripts/test-football.ts && tsx scripts/test-football-worker.ts",
     "test:basketball": "tsx scripts/test-basketball.ts",
     "test:volleyball": "tsx scripts/test-volleyball.ts",
+    "test:volley-rally": "tsx scripts/test-volley-rally.ts",
     "test:football:browser": "tsx scripts/test-football-browser.ts",
     "test:vite": "VITE_SUPABASE_URL=https://student-test.supabase.co VITE_SUPABASE_ANON_KEY=test-anon VITE_WS_URL=ws://127.0.0.1:8787 VITE_TRACEIQ_PROJECT_ID= VITE_TRACEIQ_WRITE_KEY= vite --host 127.0.0.1 --port 5178 --strictPort",
     "test:ux:browser": "tsx scripts/test-ux-browser.ts",

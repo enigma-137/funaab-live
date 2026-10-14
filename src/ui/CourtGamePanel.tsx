@@ -7,7 +7,21 @@ import { BASKETBALL_RULES, isBasket } from '../config/basketball';
 import { VOLLEYBALL_RULES } from '../config/volleyball';
 import type { ShootoutPlayer, ShootoutState, Shot } from '../config/shootout';
 import { ShotControls } from './FootballPanel';
+import { openRally, useRallyStore } from '../stores/rallyStore';
 import './football.css';
+
+/** Volleyball only: the way into 2v2 team play, with how many have joined so far. */
+function RallyEntry() {
+  const joined = useRallyStore((r) => r.state.teams.A.filter((p) => !p.bot).length + r.state.teams.B.filter((p) => !p.bot).length);
+  const status = useRallyStore((r) => r.state.status);
+  const label = status === 'ACTIVE' ? 'match on now' : status === 'FORMING' ? `${joined}/4 joined` : 'pick a team';
+  return (
+    <div className="fb-challenge">
+      <span className="fb-grow">🏐 2v2 Team Rally · {label}</span>
+      <button className="fb-btn fb-primary" onClick={openRally}>2v2 Rally</button>
+    </div>
+  );
+}
 
 type State = ShootoutState<string, { outcome: string }>;
 type AnyShot = Shot<{ outcome: string }>;
@@ -191,6 +205,7 @@ export const CourtGamePanel: React.FC<{ game: CourtGameId }> = ({ game }) => {
             </>
           ) : null}
         </div>
+        {game === 'volleyball' && <RallyEntry />}
       </>
     );
   }

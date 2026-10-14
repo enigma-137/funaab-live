@@ -5,6 +5,8 @@ import { Html } from '@react-three/drei';
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier';
 import { VOLLEYBALL_COURT, receiverSpot, serveFlightPath, type VolleyballShot } from '../../config/volleyball';
 import type { ShootoutState } from '../../config/shootout';
+import { serveSpot as rallyServeSpot, slotSpot, teamFacing, type RallyState } from '../../config/volleyRally';
+import { useRallyStore } from '../../stores/rallyStore';
 import { BASKETBALL_COURT, hoopFlightPath, isBasket, type BasketballShot, type Vec3 } from '../../config/basketball';
 import { COURT_ZONES } from '../../config/campusWorld';
 import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
@@ -102,8 +104,17 @@ function ScoreBubble() {
   return <Bubble text={text} at={[x, y + 1.6, z]} tone="border-orange-400 text-orange-200" />;
 }
 
+function rallyLine(s: RallyState) {
+  if (s.status === 'FORMING') return `🏐 2v2 rally forming · ${s.teams.A.length + s.teams.B.length}/4 — join at the serve line`;
+  if (s.status === 'ACTIVE') return `🏐 Team A ${s.score.A} – ${s.score.B} Team B`;
+  if (s.status === 'RESULT') return `🏁 Team ${s.winner} wins ${s.score.A}–${s.score.B}`;
+  return null;
+}
+
 function ServeBubble() {
-  const text = useVolleyballStore((v) => scoreLine(v.state, '🏐', 'serve-off', 'serve'));
+  const serve = useVolleyballStore((v) => scoreLine(v.state, '🏐', 'serve-off', 'serve'));
+  const rally = useRallyStore((r) => rallyLine(r.state));
+  const text = rally ?? serve;
   const { centre, netZ } = VOLLEYBALL_COURT;
   return <Bubble text={text} at={[centre[0], 4, netZ]} tone="border-sky-400 text-sky-200" />;
 }
@@ -197,6 +208,10 @@ function ServeBall() {
     }
     const b = ball.current, r = receiver.current;
     if (!b || !r) return;
+    // The court belongs to the 2v2 rally while it runs.
+    const rallyOn = useRallyStore.getState().state.status === 'ACTIVE';
+    b.visible = r.visible = !rallyOn;
+    if (rallyOn) return;
     const f = flight.current;
     const t = f ? (performance.now() - f.start) / 1000 : Infinity;
     const home = VOLLEYBALL_COURT.receiverHome;
@@ -240,6 +255,59 @@ function ServeBall() {
   );
 }
 
+const CPU_LOOK = npcAppearance('sports-cpu', {
+  bodyType: 'masculine', hairstyle: 'low-cut', topStyle: 't-shirt', topColor: '#a3a3a3',
+  bottomStyle: 'joggers', bottomColor: '#262626', shoeStyle: 'sneakers', shoeColor: '#f8fafc',
+});
+
+/** 2v2 rally: the ball follows the Worker's events; CPU stand-ins fill any empty slots. */
+function RallyCourt() {
+  const ball = useRef<THREE.Mesh>(null);
+  const status = useRallyStore((r) => r.state.status);
+  // Only re-render when who's a bot or who's serving changes.
+  const bots = useRallyStore((r) => {
+    const s = r.state;
+    if (s.status !== 'ACTIVE') return '';
+    return (['A', 'B'] as const).flatMap((t) => s.teams[t].map((p, i) => (p.bot ? `${t}${i}${s.phase === 'SERVE' && s.pending?.team === t && s.pending.slot === i ? 's' : ''}` : ''))).filter(Boolean).join(',');
+  });
+  useFrame((_, delta) => {
+    const b = ball.current;
+    if (!b) return;
+    const { state, eventAt } = useRallyStore.getState();
+    const ev = state.lastEvent;
+    b.visible = state.status === 'ACTIVE' && (state.phase === 'SERVE' || !!ev);
+    if (!b.visible) return;
+    // Waiting to serve: the ball is in the server's hand.
+    if (state.phase === 'SERVE' && state.pending) {
+      const at = rallyServeSpot(state.pending.team, state.pending.slot);
+      b.position.set(at[0], 1.3, at[2] - (state.pending.team === 'A' ? 0.35 : -0.35));
+      return;
+    }
+    if (!ev) return;
+    const u = Math.min(1, Math.max(0, (Date.now() - eventAt) / ev.flightMs));
+    const ctrl: Vec3 = [(ev.from[0] + ev.to[0]) / 2, ev.apex * 2 - (ev.from[1] + ev.to[1]) / 2, (ev.from[2] + ev.to[2]) / 2];
+    b.position.set(...bezier(ev.from, ctrl, ev.to, u));
+    if (u < 1) b.rotation.x -= delta * 10;
+  });
+  return (
+    <>
+      <mesh ref={ball} name="sports_volleyball_rally" visible={false} castShadow>
+        <icosahedronGeometry args={[VB_R, 1]} />
+        <meshStandardMaterial color="#fde68a" roughness={0.6} flatShading />
+      </mesh>
+      {status === 'ACTIVE' && bots.split(',').filter(Boolean).map((key) => {
+        const team = key[0] as 'A' | 'B', slot = Number(key[1]), serving = key.endsWith('s');
+        const at = serving ? rallyServeSpot(team, slot) : slotSpot(team, slot);
+        return (
+          <group key={key} position={at} rotation={[0, teamFacing(team), 0]}>
+            <AvatarBody identity={`sports-cpu-${team}${slot}`} config={CPU_LOOK} animation="idle" />
+          </group>
+        );
+      })}
+    </>
+  );
+}
+
 export function SportsCourts() {
   const batches = useMemo(buildCourts, []);
   useEffect(() => () => batches.forEach((b) => b.geometry.dispose()), [batches]);
@@ -278,6 +346,7 @@ export function SportsCourts() {
       <ChallengeBall />
       <ScoreBubble />
       <ServeBall />
+      <RallyCourt />
       <ServeBubble />
       <group position={[BASKETBALL_COURT.freeThrowX + 3.2, 0, CZ + HALF_W + 1.4]} rotation={[0, -0.35, 0]}>
         {[-1, 1].map((side) => (

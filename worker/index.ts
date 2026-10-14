@@ -25,6 +25,9 @@ import {
 import { BASKETBALL, BASKETBALL_COURT } from '../src/config/basketball';
 import { VOLLEYBALL, VOLLEYBALL_COURT } from '../src/config/volleyball';
 import { isShootoutError, type Shootout } from '../src/config/shootout';
+import {
+  RALLY_RULES, createRally, isRallyError, joinTeam, leaveRally, rallyAgain, rallyBusy, rallyServe, rallyTick, rallyTouch, type RallyState,
+} from '../src/config/volleyRally';
 
 // Sports Centre court games: same shootout machine, different shot model and spot.
 type CourtGameId = 'basketball' | 'volleyball';
@@ -375,6 +378,8 @@ export class WorldRoomDO {
   // Sports Centre penalty challenge: one shared pitch, one ball, one match at a time.
   private football: FootballMatchState = createLobby(Date.now());
   private footballTimer: ReturnType<typeof setTimeout> | null = null;
+  private rally: RallyState = createRally(Date.now());
+  private rallyTimer: ReturnType<typeof setTimeout> | null = null;
   private courts = Object.fromEntries(COURT_GAME_IDS.map((id) => [id, { state: COURT_GAMES[id].game.create(Date.now()), timer: null as ReturnType<typeof setTimeout> | null }])) as
     Record<CourtGameId, { state: any; timer: ReturnType<typeof setTimeout> | null }>;
 
@@ -850,6 +855,8 @@ export class WorldRoomDO {
       this.advanceTrustedPosition(session);
       const pos = session.trustedPosition;
       if (!pos || Math.hypot(pos[0] - spot[0], pos[2] - spot[2]) > radius) throw new Error(walk);
+      // One volleyball court: the serve challenge waits while a 2v2 rally is on.
+      if (id === 'volleyball' && op !== 'shoot' && rallyBusy(this.rally)) throw new Error('A 2v2 rally is on the court. Serve after it finishes.');
     }
     const shot = { aim: data.aim, power: data.power };
     let next: any;
@@ -1045,7 +1052,64 @@ export class WorldRoomDO {
           : `${leaverName} left the match.`;
     this.broadcastToRoom(room, JSON.stringify({ type: 'ps_match_update', match: m }));
   }
+  private setRally(next: RallyState) {
+    this.rally = next;
+    this.armRally();
+    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'volleyball_rally_state', rally: next }));
+  }
+  /** One timer for the rally clock: point pauses, CPU moves, time running out, result clearing. */
+  private armRally() {
+    if (this.rallyTimer !== null) clearTimeout(this.rallyTimer);
+    this.rallyTimer = null;
+    const wakeAt = this.rally.wakeAt;
+    if (wakeAt === null) return;
+    this.rallyTimer = setTimeout(() => {
+      this.rallyTimer = null;
+      const next = rallyTick(this.rally, Date.now(), Math.random);
+      if (next) this.setRally(next);
+      else if (Date.now() < (this.rally.wakeAt ?? 0)) this.armRally(); // woke a little early
+    }, Math.max(0, wakeAt - Date.now()) + 30);
+  }
+  /** 2v2 volleyball: clients send a serve (aim + power) or a touch (action + timing); the rally is decided here. */
+  private rallyCommand(session: SessionData, data: any) {
+    if (session.room !== 'world:funaab:main') throw new Error('The volleyball court is at the Sports Centre.');
+    const now = Date.now();
+    const op = String(data.op || 'state');
+    if (op === 'state') return this.rally;
+    const me = { userId: session.id, connectionId: session.connectionId, name: session.username };
+    let next: RallyState | { error: string } | null;
+    switch (op) {
+      case 'join': {
+        this.advanceTrustedPosition(session);
+        const pos = session.trustedPosition, c = VOLLEYBALL_COURT.centre;
+        if (!pos || Math.hypot(pos[0] - c[0], pos[2] - c[2]) > RALLY_RULES.JOIN_RADIUS) throw new Error('Walk over to the volleyball court to join a team.');
+        if (this.courts.volleyball.state.status === 'ACTIVE') throw new Error('A serve-off is on the court. Join after it finishes.');
+        next = joinTeam(this.rally, me, data.team, crypto.randomUUID(), now);
+        break;
+      }
+      case 'leave': next = leaveRally(this.rally, me.userId, now) ?? this.rally; break;
+      case 'again': next = rallyAgain(this.rally, me.userId, crypto.randomUUID(), now); break;
+      case 'serve':
+      case 'touch': {
+        // Only the player's own socket may play (a second tab cannot play for them).
+        const mine = [...this.rally.teams.A, ...this.rally.teams.B].find((p) => p.userId === me.userId);
+        if (mine && mine.connectionId !== me.connectionId) throw new Error('Play from the device you joined with.');
+        const input = op === 'serve' ? { aim: data.aim, power: data.power } : { action: data.action, timing: data.timing };
+        next = op === 'serve' ? rallyServe(this.rally, me.userId, input, Math.random, now) : rallyTouch(this.rally, me.userId, input, Math.random, now);
+        break;
+      }
+      default: throw new Error('Unknown rally action.');
+    }
+    if (isRallyError(next)) throw new Error(next.error);
+    if (next !== this.rally) this.setRally(next);
+    return this.rally;
+  }
   private courtsDisconnect(connectionId: string, userId?: string) {
+    const mine = [...this.rally.teams.A, ...this.rally.teams.B].some((p) => p.connectionId === connectionId);
+    if (userId && mine) {
+      const next = leaveRally(this.rally, userId, Date.now());
+      if (next) this.setRally(next);
+    }
     for (const id of COURT_GAME_IDS) {
       const c = this.courts[id].state;
       if (!userId || ![c.player1, c.player2].some((p: any) => p?.connectionId === connectionId)) continue;
@@ -1304,7 +1368,7 @@ export class WorldRoomDO {
                 players: roomPlayers,
                 kekes: Object.fromEntries(this.kekes),
                 activeMatches: Object.fromEntries(this.psMatches),
-                ...(sessionRoom === 'world:funaab:main' ? { football: this.football, basketball: this.courts.basketball.state, volleyball: this.courts.volleyball.state } : {}),
+                ...(sessionRoom === 'world:funaab:main' ? { football: this.football, basketball: this.courts.basketball.state, volleyball: this.courts.volleyball.state, rally: this.rally } : {}),
               })
             );
 
@@ -1358,6 +1422,13 @@ export class WorldRoomDO {
             const current = this.sessions.get(webSocket);
             if (!current) return;
             try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: this.footballCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
+          case 'volleyball_rally': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: this.rallyCommand(current, data) })); }
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
@@ -1957,7 +2028,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet', 'trusted_catchup', 'football', 'basketball', 'volleyball', 'daily_plan', 'hustles', 'feedback', 'held_item'],
+          features: ['campus_bet', 'trusted_catchup', 'football', 'basketball', 'volleyball', 'volleyball_rally', 'daily_plan', 'hustles', 'feedback', 'held_item'],
           timestamp: Date.now(),
         }),
         {
