@@ -259,6 +259,15 @@ export function HostelLife() {
             </p>
           )}
           {s.notice && <p role="status">{s.notice}</p>}
+          {s.justBought && hostelItem(s.justBought) && (
+            <div className="hostel-placeprompt" role="group" aria-label="Place your new item">
+              <b>Place {hostelItem(s.justBought)!.name} now?</b>
+              <div className="hostel-actions">
+                <button onClick={() => void s.placeNow(s.justBought!)}>{mine ? "Place it" : "Go to my room & place it"}</button>
+                <button onClick={() => useHostelStore.setState({ justBought: null })}>Later</button>
+              </div>
+            </div>
+          )}
           <fieldset disabled={s.busy || !!s.transition}>
             {s.panel === "home" && (
               <>

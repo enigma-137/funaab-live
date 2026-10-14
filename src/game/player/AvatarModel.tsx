@@ -85,7 +85,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
               <span className="text-[7.5px] leading-[14px] font-bold tracking-wide text-slate-400 uppercase">
                 {college}
               </span>
-              {isPresident && <span className="text-[7.5px] leading-[14px] font-black text-amber-300" title="SUG President">👑 SUG</span>}
+              {isPresident && <span className="text-[7.5px] leading-[14px] font-black text-amber-300 whitespace-nowrap shrink-0" title="SUG President">👑 SUG</span>}
             </div>
           </div>
         </Html>

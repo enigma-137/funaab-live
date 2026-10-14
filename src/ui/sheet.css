@@ -175,3 +175,14 @@
 .sug-banner{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 88px);z-index:33;max-width:520px;margin:0 auto;display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:12px;background:#082f49f2;border:1px solid #38bdf866;color:#e0f2fe;font-size:12px;line-height:1.35;box-shadow:0 8px 24px #0006}
 .sug-banner span{flex:1}
 .sug-banner button{flex-shrink:0;border:0;background:transparent;color:#bae6fd;font-weight:900;cursor:pointer}
+
+/* Controls: joystick and the chooser */
+.campus-joystick{position:fixed;left:84px;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);z-index:44;width:108px;height:108px;border-radius:50%;background:#0f172a8c;border:2px solid #ffffff3d;backdrop-filter:blur(4px);touch-action:none;display:grid;place-items:center}
+.campus-joystick i{display:block;width:46px;height:46px;border-radius:50%;background:#34d399d9;border:2px solid #ecfdf5;box-shadow:0 4px 12px #0006;transition:transform 40ms linear}
+.controls-option{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;padding:12px;margin-bottom:8px;border-radius:14px;background:#0f172a;border:2px solid #1e293b;color:#f1f5f9}
+.controls-option>span:first-child{font-size:26px}
+.controls-option b{display:block;font-size:14px}
+.controls-option small{display:block;margin-top:2px;color:#94a3b8;font-size:12px;line-height:1.35}
+.controls-option.is-on{border-color:#34d399;background:#052e2b}
+
+.hostel-placeprompt{margin:8px 0;padding:10px 12px;border-radius:12px;background:#052e2b;border:1px solid #34d39966;color:#ecfdf5;display:flex;flex-direction:column;gap:8px;font-size:13px}

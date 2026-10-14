@@ -20,6 +20,13 @@ interface InputState {
   isTouchDevice: boolean;
   isCoarsePointer: boolean;
   
+  // How you move on touch screens: tap a spot to walk there, or hold an on-screen joystick.
+  controlMode: 'tap' | 'joystick';
+  /** Joystick push, each axis −1…1 (x right, y down the screen), zero when released. */
+  joystick: [number, number];
+  setControlMode: (mode: 'tap' | 'joystick') => void;
+  setJoystick: (x: number, y: number) => void;
+
   // Mobile Tap-To-Move Navigation
   targetDestination: [number, number, number] | null;
   targetInteraction: TargetInteraction | null;
@@ -70,7 +77,23 @@ const getInitialTutorialState = (): boolean => {
   }
 };
 
+const readControlMode = (): 'tap' | 'joystick' => {
+  try {
+    return localStorage.getItem('funaab_control_mode') === 'joystick' ? 'joystick' : 'tap';
+  } catch {
+    return 'tap';
+  }
+};
+
 export const useInputStore = create<InputState>((set) => ({
+  controlMode: typeof window !== 'undefined' ? readControlMode() : 'tap',
+  joystick: [0, 0],
+  setControlMode: (controlMode) => {
+    try { localStorage.setItem('funaab_control_mode', controlMode); } catch {}
+    set({ controlMode, joystick: [0, 0], targetDestination: null, targetInteraction: null });
+  },
+  setJoystick: (x, y) => set({ joystick: [x, y] }),
+
   isTouchDevice: typeof window !== 'undefined' ? detectTouchCapability() : false,
   isCoarsePointer: typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false,
   

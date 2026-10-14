@@ -372,11 +372,15 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     const backward = !isModalOpen && (keysPressed.current['s'] || keysPressed.current['arrowdown']) ? 1 : 0;
     const left = !isModalOpen && (keysPressed.current['a'] || keysPressed.current['arrowleft']) ? 1 : 0;
     const right = !isModalOpen && (keysPressed.current['d'] || keysPressed.current['arrowright']) ? 1 : 0;
-    const isSprinting = !isModalOpen && Boolean(keysPressed.current['shift']);
+    const isSprinting = !isModalOpen && (Boolean(keysPressed.current['shift']) || Math.hypot(...useInputStore.getState().joystick) > 0.92);
 
-    const moveZ = backward - forward;
-    const moveX = right - left;
-    const isKeyboardMoving = moveX !== 0 || moveZ !== 0;
+    // On-screen joystick (touch): a dead zone, then walk; pushed all the way, jog.
+    const [jx, jy] = isModalOpen ? [0, 0] : useInputStore.getState().joystick;
+    const stick = Math.hypot(jx, jy);
+    const stickOn = stick > 0.18;
+    const moveZ = stickOn ? jy / stick : backward - forward;
+    const moveX = stickOn ? jx / stick : right - left;
+    const isKeyboardMoving = stickOn || moveX !== 0 || moveZ !== 0;
 
     // If keyboard is touched, clear any tap destination immediately
     if (isKeyboardMoving && targetDestination) {

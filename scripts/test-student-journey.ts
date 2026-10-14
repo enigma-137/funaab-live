@@ -69,7 +69,8 @@ assert.deepEqual(
   { studentsOnline: 2, popular: [{ name: 'Car Park', count: 2 }] },
 );
 // COLFHEC's four departments, and HTM reaches the database through migration 022.
-assert.deepEqual(courses.filter((c) => c.college === 'COLFHEC').map((c) => c.id).sort(), ['FST', 'HSM', 'HTM', 'NTD']);
+assert.deepEqual(courses.filter((c) => c.college === 'COLFHEC').map((c) => c.id).sort(), ['CTX', 'FST', 'HSM', 'HTM', 'NTD']);
+assert(readFileSync('supabase/migrations/035_clothing_textiles.sql', 'utf8').includes("('CTX', 'Clothing and Textiles', 'COLFHEC', 50)"));
 assert(readFileSync('supabase/migrations/022_colfhec_htm.sql', 'utf8').includes("('HTM', 'Hospitality and Tourism Management', 'COLFHEC', 55)"));
 // COLERM is offered (its building and lecture hall exist): five departments, in migrations 025 and 026.
 assert(colleges.some((c) => c.code === 'COLERM'), 'COLERM can be chosen');

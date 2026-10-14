@@ -72,6 +72,8 @@ export const TouchInputController: React.FC = () => {
       const result = tracker.up(sample(e));
       if (!tracker.active && useInputStore.getState().isDraggingCamera) input.setIsDraggingCamera(false);
       if (result.kind !== 'tap' || gameplayInputBlocked()) return;
+      // With the joystick on, walking is the stick's job: a tap just selects things.
+      if (useInputStore.getState().controlMode === 'joystick' && e.pointerType !== 'mouse') return;
 
       const rect = el.getBoundingClientRect();
       _ndc.set(((result.x - rect.left) / rect.width) * 2 - 1, -((result.y - rect.top) / rect.height) * 2 + 1);

@@ -17,6 +17,7 @@ import {
   type RoomTransform,
 } from "../config/roomPlacement";
 import { roomSizeOf } from "../config/roomMakeover";
+import { hostelItem } from "../config/hostelShop";
 export interface Placement extends RoomTransform {}
 /** The current room's size (standard until the owner pays to expand it). */
 export const roomSizeNow = () => roomSizeOf(useHostelStore.getState().snapshot?.room.room_size);
@@ -70,6 +71,10 @@ interface HostelState {
     item: string;
   } | null;
   teleport: [number, number, number] | null;
+  /** Furniture just bought, so the shop can offer to place it right away. */
+  justBought: string | null;
+  /** Go to your room if needed and start placing this item. */
+  placeNow: (item: string) => Promise<void>;
   beginEdit: (item: string) => void;
   confirmEdit: () => Promise<void>;
   rest: (item: string) => void;
@@ -98,6 +103,18 @@ export const useHostelStore = create<HostelState>((set, get) => ({
   selected: null,
   pose: null,
   teleport: null,
+  justBought: null,
+  placeNow: async (item) => {
+    const me = useAuthStore.getState().user?.id;
+    if (!me) return;
+    set({ justBought: null });
+    if (get().owner !== me) {
+      useGameStore.setState({ activeModal: null });
+      await get().travel("room");
+      if (get().owner !== me) return;
+    }
+    get().beginEdit(item);
+  },
   beginEdit: (item) => {
     if (
       get().owner !== useAuthStore.getState().user?.id ||
@@ -233,12 +250,17 @@ export const useHostelStore = create<HostelState>((set, get) => ({
       await useWalletStore.getState().loadWallet(user.id);
       if (get().owner) await get().loadRoom(get().owner!);
       networkManager.roomChanged();
+      const bought = action === "purchase" ? hostelItem(String((data as { item?: string }).item)) : undefined;
+      const placeable = !!bought && !bought.consumable && bought.placementType !== "none";
+      if (action === "purchase") set({ justBought: placeable ? bought!.id : null });
       set({
         notice:
           action === "sleep"
             ? null
             : action === "purchase"
-              ? "Added to your inventory."
+              ? placeable
+                ? `${bought!.name} is yours! Place it in your room below, or later under My items → Place.`
+                : "Added to your inventory. Find it under My items."
               : action === "pay"
                 ? "Iya Ibeji: Thank you, my student!"
                 : action === "consume"

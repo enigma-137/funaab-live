@@ -49,6 +49,8 @@ import { LevelSheet } from './ui/LevelSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
 import { SugSheet, SugBanner } from './ui/SugSheet';
+import { ControlsSheet } from './ui/ControlsSheet';
+import { Joystick } from './ui/Joystick';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
 import { LeagueSheet } from './ui/LeagueSheet';
@@ -197,6 +199,8 @@ export const App: React.FC = () => {
       {activeModal === 'party' && <PartySheet />}
       {activeModal === 'arcade' && <ArcadeSheet />}
       {activeModal === 'sug' && <SugSheet />}
+      {activeModal === 'controls' && <ControlsSheet />}
+      <Joystick />
       {activeModal === 'hustles' && <HustlesSheet />}
       {activeModal === 'lodge' && <LodgeSheet />}
       {activeModal === 'league' && <LeagueSheet />}
