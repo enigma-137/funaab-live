@@ -160,7 +160,7 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
     {id:'campus-bet-counter',type:'campus_bet',label:'Campus Bet',actionText:'Open Campus Bet',position:CAMPUS_BET_SHOP.counter,radius:CAMPUS_BET_SHOP.interactionRadius,targetId:CAMPUS_BET_SHOP.id},
     // Every college hall without a hand-placed world.json entry gets the same lecture-hall interaction.
     ...LECTURE_HALLS.filter(h=>!h.legacyInteractable).map(h=>({id:h.interactableId,type:'lecture_hall',label:h.hallName,actionText:'Enter Lecture Hall',position:h.entrance,radius:4.5,targetId:h.id}))],
-  terrainZones:[{id:'health-centre-interior',name:'Health Centre',type:'building',restricted:false,bounds:HC_INTERIOR},...roadBounds.map((bounds,i)=>({id:`road-${i}`,name:'Campus road',type:'road',restricted:false,bounds})),...pedestrianPaths,
+  terrainZones:[{id:'health-centre-interior',name:'Health Centre',type:'building',restricted:false,bounds:HC_INTERIOR},{id:'acad-interior',name:'Acad',type:'building',restricted:false,bounds:{minX:-125,maxX:-91,minZ:-36,maxZ:-24}},...roadBounds.map((bounds,i)=>({id:`road-${i}`,name:'Campus road',type:'road',restricted:false,bounds})),...pedestrianPaths,
     ...campusLocations.map(l=>({id:`forecourt-${l.id}`,name:l.shortName,type:l.id==='sports-centre'?'sports':'plaza',restricted:false,bounds:corridor(l.entrance,l.entrance,7)})),
     {id:'sports-turf',name:'Sports Centre',type:'sports',restricted:false,bounds:{minX:-118,maxX:-80,minZ:-18,maxZ:18}},
     {id:'basketball-court',name:'Basketball Court',type:'sports',restricted:false,bounds:COURT_ZONES.basketball},
