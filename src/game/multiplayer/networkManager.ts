@@ -16,6 +16,7 @@ import { useFootballStore } from '../../stores/footballStore';
 import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
 import { useRallyStore } from '../../stores/rallyStore';
 import { usePartyStore } from '../../stores/partyStore';
+import { useNoticeStore } from '../../stores/noticeStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 import { useHustleStore } from '../../stores/hustleStore';
 import { toast } from '../../stores/toastStore';
@@ -54,6 +55,17 @@ class NetworkManager {
     const response = await fetch(url, { signal });
     if (!response.ok) throw new Error('Campus activity unavailable');
     return response.json() as Promise<import('../../config/campusSummary').CampusSummary>;
+  }
+
+  /** The campus announcement the owner sent from Telegram, or null. */
+  public async announcement(signal?: AbortSignal) {
+    const url = new URL(this.targetWsUrl, window.location.href);
+    url.protocol = ['wss:', 'https:'].includes(url.protocol) ? 'https:' : 'http:';
+    url.pathname = '/announcement';
+    url.search = '';
+    const response = await fetch(url, { signal, cache: 'no-store' });
+    if (!response.ok) throw new Error('No announcement feed');
+    return (await response.json()).announcement as import('../../config/broadcast').Announcement | null;
   }
 
   private resolveTargetUrl() {
@@ -254,6 +266,7 @@ class NetworkManager {
       }
       case 'room_changed': window.dispatchEvent(new Event('hostel-room-changed')); return;
       case 'campus_bet_settled': { window.dispatchEvent(new Event('campus-bet-settled')); const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); return; }
+      case 'announcement': useNoticeStore.getState().receive(data.announcement ?? null); return;
       case 'level_refresh': void useLevelStore.getState().load(); return;
       case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); void useLevelStore.getState().load(); return; }
       case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;

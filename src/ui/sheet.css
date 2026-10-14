@@ -186,3 +186,13 @@
 .controls-option.is-on{border-color:#34d399;background:#052e2b}
 
 .hostel-placeprompt{margin:8px 0;padding:10px 12px;border-radius:12px;background:#052e2b;border:1px solid #34d39966;color:#ecfdf5;display:flex;flex-direction:column;gap:8px;font-size:13px}
+
+/* Owner announcements and the "new version" prompt */
+.notice-stack{position:fixed;left:12px;right:76px;top:calc(env(safe-area-inset-top,0px) + 88px);z-index:36;max-width:520px;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.notice-stack>*{pointer-events:auto}
+.notice-banner{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border-radius:12px;background:#3b0764f2;border:1px solid #c084fc88;color:#faf5ff;font-size:12.5px;line-height:1.35;box-shadow:0 8px 24px #0006}
+.notice-banner.is-update{background:#052e2bf2;border-color:#34d39988;color:#ecfdf5}
+.notice-banner span{flex:1}
+.notice-banner button{flex-shrink:0;border:0;border-radius:8px;background:#ffffff22;color:inherit;font-weight:900;padding:2px 8px;cursor:pointer}
+/* The SUG President's announcement lives in the same stack. */
+.notice-stack .sug-banner{position:static;margin:0;max-width:none}

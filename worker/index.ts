@@ -46,6 +46,7 @@ import { dailyGoal, isCampusNight, lagosDay } from '../src/config/dailyPlan';
 import { isInLoveGarden } from '../src/config/loveGarden';
 import { POS_KIOSK, PHOTO_SPOTS, PHOTO_RULES, ERRAND_RULES } from '../src/config/hustles';
 import { FARM_SHIFT, FARM_STEPS, inFarm } from '../src/config/fpyFarm';
+import { BOT_HELP, BROADCAST, announcementActive, cleanAnnouncement, isBotAdmin, parseBotCommand, type Announcement } from '../src/config/broadcast';
 import { ARCADE_TABLES, PARTY_HALL, TTT_TABLES, inPartyHall, partyNight, partyOpen } from '../src/config/partyHall';
 import { createTtt, tttCreate, tttJoin, tttLeave, tttMove, tttRematch, tttExpire, isTttError, type TttState } from '../src/config/ticTacToe';
 import { createPool, poolCreate, poolJoin, poolLeave, poolRematch, poolShoot, poolExpire, isPoolError, poolPlayers, type PoolState } from '../src/config/pool';
@@ -62,6 +63,9 @@ export interface Env {
   /** In-game feedback goes to this Telegram bot/chat (Cloudflare secrets). */
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
+  /** Telegram → campus announcements: the webhook secret, and who may send (Telegram user ids, comma separated). */
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  TELEGRAM_ADMIN_IDS?: string;
 }
 
 interface SessionData {
@@ -1304,6 +1308,16 @@ export class WorldRoomDO {
     if (url.pathname === '/campus-summary') {
       return Response.json(summarizeCampus(this.players.values(), getZoneName));
     }
+    // The current campus announcement (public, read-only). Everyone polls this on load.
+    if (url.pathname === '/announcement') {
+      return Response.json({ announcement: await this.currentAnnouncement() }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    // Set or clear it. Only the Worker's Telegram handler can call this: it carries the shared secret.
+    if (url.pathname === '/__announce' && request.method === 'POST') {
+      const secret = this.env.TELEGRAM_WEBHOOK_SECRET;
+      if (!secret || request.headers.get('X-Internal') !== secret) return new Response('Forbidden', { status: 403 });
+      return Response.json({ announcement: await this.publishAnnouncement(await request.json().catch(() => ({}))) });
+    }
     const isWebSocket = request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
 
     if (isWebSocket) {
@@ -2153,6 +2167,30 @@ export class WorldRoomDO {
     webSocket.addEventListener('error', cleanup);
   }
 
+  private async currentAnnouncement(): Promise<Announcement | null> {
+    const storage = this.state.storage;
+    if (!storage || typeof storage.get !== 'function') return null;
+    const a = await storage.get<Announcement>('announcement');
+    return announcementActive(a) ? a! : null;
+  }
+  /** { text, hours } sets a new announcement; { clear: true } takes it down. Everyone online sees it at once. */
+  private async publishAnnouncement(body: any): Promise<Announcement | null> {
+    const storage = this.state.storage;
+    let next: Announcement | null = null;
+    if (!body?.clear) {
+      const text = cleanAnnouncement(String(body?.text ?? '')).slice(0, BROADCAST.MAX_TEXT);
+      const hours = Math.min(BROADCAST.MAX_HOURS, Math.max(0.05, Number(body?.hours) || BROADCAST.DEFAULT_HOURS));
+      if (!text) throw new Error('Empty announcement');
+      const now = Date.now();
+      next = { id: crypto.randomUUID(), text, createdAt: now, expiresAt: now + Math.round(hours * 3600000) };
+    }
+    if (storage && typeof storage.put === 'function') {
+      if (next) await storage.put('announcement', next);
+      else await storage.delete('announcement');
+    }
+    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'announcement', announcement: next }));
+    return next;
+  }
   private broadcastToRoom(room: string, message: string, skipSocket?: WebSocket) {
     for (const [ws, session] of this.sessions) {
       if (session.room === room && ws !== skipSocket && ws.readyState === WebSocket.OPEN) {
@@ -2173,6 +2211,44 @@ export class WorldRoomDO {
       }
     }
   }
+}
+
+const sayOnTelegram = (env: Env, chatId: unknown, text: string) =>
+  env.TELEGRAM_BOT_TOKEN
+    ? fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text }),
+      }).catch(() => undefined)
+    : Promise.resolve(undefined);
+
+/** Always answers 200 so Telegram doesn't retry; only the secret-bearing, allow-listed owner can publish. */
+async function handleTelegramWebhook(request: Request, env: Env): Promise<Response> {
+  const ok = () => Response.json({ ok: true });
+  const secret = env.TELEGRAM_WEBHOOK_SECRET;
+  if (request.method !== 'POST' || !secret || request.headers.get('X-Telegram-Bot-Api-Secret-Token') !== secret) return new Response('Forbidden', { status: 403 });
+  const update: any = await request.json().catch(() => null);
+  const message = update?.message ?? update?.channel_post;
+  const chatId = message?.chat?.id, from = message?.from?.id;
+  const command = parseBotCommand(message?.text);
+  if (command.kind === 'ignore' || chatId === undefined) return ok();
+  const reply = (text: string) => sayOnTelegram(env, chatId, text);
+  // Anyone may ask for their own id (needed once to set the allow-list); nothing else is open.
+  if (command.kind === 'myid') { await reply(`Your Telegram id: ${from}`); return ok(); }
+  if (!isBotAdmin(env.TELEGRAM_ADMIN_IDS, from)) return ok();
+  const main = env.WORLD_ROOM.get(env.WORLD_ROOM.idFromName('world:funaab:main'));
+  const call = (body: object) => main.fetch('https://room/__announce', { method: 'POST', headers: { 'X-Internal': secret, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  try {
+    if (command.kind === 'help') await reply(BOT_HELP);
+    else if (command.kind === 'error') await reply(`⚠️ ${command.message}`);
+    else if (command.kind === 'status') {
+      const r: any = await (await main.fetch('https://room/announcement')).json();
+      await reply(r.announcement ? `📣 Showing now (until ${new Date(r.announcement.expiresAt).toISOString()}):\n${r.announcement.text}` : 'Nothing is showing right now.');
+    } else if (command.kind === 'clear') { await call({ clear: true }); await reply('✅ Announcement taken down.'); }
+    else if (command.kind === 'set') {
+      const res = await call({ text: command.text, hours: command.hours });
+      await reply(res.ok ? `✅ Live for ${command.hours >= 1 ? `${+command.hours.toFixed(1)}h` : `${Math.round(command.hours * 60)}m`}. Everyone online sees it now; others see it when they open the game.` : '⚠️ Could not publish. Try again.');
+    }
+  } catch { await reply('⚠️ Something went wrong. Try again.'); }
+  return ok();
 }
 
 export default {
@@ -2198,6 +2274,12 @@ export default {
         }
       );
     }
+
+    // Telegram bot webhook: the owner's /notification becomes a campus announcement.
+    if (url.pathname === '/telegram/webhook') {
+      return handleTelegramWebhook(request, env);
+    }
+    if (url.pathname.startsWith('/__')) return new Response('Not found', { status: 404 });
 
     // 2. CORS Preflight
     if (request.method === 'OPTIONS') {

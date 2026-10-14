@@ -48,8 +48,9 @@ import { TodayPlan } from './ui/TodayPlan';
 import { LevelSheet } from './ui/LevelSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
-import { SugSheet, SugBanner } from './ui/SugSheet';
+import { SugSheet } from './ui/SugSheet';
 import { ControlsSheet } from './ui/ControlsSheet';
+import { NoticeBanner } from './ui/NoticeBanner';
 import { Joystick } from './ui/Joystick';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
@@ -177,7 +178,7 @@ export const App: React.FC = () => {
 
       <StudentCampusTools />
       {!isInClassroom && <StatusStrip />}
-      {!isInClassroom && <SugBanner />}
+      {!isInClassroom && <NoticeBanner />}
       {!isInClassroom && <TodayPlan />}
       <FeedbackButton />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />

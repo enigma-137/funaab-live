@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from '../stores/toastStore';
 import { useInputStore } from '../stores/inputStore';
 import { useGameStore } from '../stores/gameStore';
 
@@ -12,6 +13,15 @@ export function Joystick() {
   const [knob, setKnob] = useState<[number, number]>([0, 0]);
   const base = useRef<HTMLDivElement>(null);
   const pid = useRef<number | null>(null);
+  // Once per device: say the joystick is here, and how to go back to tapping.
+  useEffect(() => {
+    if (mode !== 'joystick' || !touch) return;
+    try {
+      if (localStorage.getItem('funaab_joystick_hint')) return;
+      localStorage.setItem('funaab_joystick_hint', '1');
+    } catch { return; }
+    toast({ icon: '🕹️', text: 'New: move with the joystick at the bottom-left. Prefer tapping? Phone → Controls.', tone: 'info', ms: 9000 });
+  }, [mode, touch]);
   if (mode !== 'joystick' || !touch || modal) return null;
 
   const move = (e: React.PointerEvent) => {

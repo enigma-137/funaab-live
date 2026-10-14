@@ -77,11 +77,12 @@ const getInitialTutorialState = (): boolean => {
   }
 };
 
+// The joystick is the default; anyone who chose Tap to move in Controls keeps that.
 const readControlMode = (): 'tap' | 'joystick' => {
   try {
-    return localStorage.getItem('funaab_control_mode') === 'joystick' ? 'joystick' : 'tap';
+    return localStorage.getItem('funaab_control_mode') === 'tap' ? 'tap' : 'joystick';
   } catch {
-    return 'tap';
+    return 'joystick';
   }
 };
 
