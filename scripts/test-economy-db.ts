@@ -67,16 +67,16 @@ async function main() {
   assert.equal(await balance(early), E.STARTER_BALANCE + E.DAILY_RESUMPTION_ALLOWANCE);
   assert.equal(Number((await one("select count(*) n from wallet_transactions where user_id=$1 and type='starter_bonus'", [early])).n), 1);
 
-  // ---------- Daily reward: ₦300 once per 20 hours ----------
+  // ---------- Daily reward: ₦500 once per 20 hours ----------
   const d1 = (await call(fresh, 'select claim_daily_reward() r')).r;
   assert.equal(Number(d1.reward), E.DAILY_RESUMPTION_ALLOWANCE);
-  assert.equal(await balance(fresh), E.STARTER_BALANCE + 300);
+  assert.equal(await balance(fresh), E.STARTER_BALANCE + E.DAILY_RESUMPTION_ALLOWANCE);
   assert.equal((await call(fresh, 'select claim_daily_reward() r')).r.success, false, 'replay rejected');
   assert.equal((await call(fresh, 'select claim_daily_reward($1) r', [veteran])).r.success, false, 'p_user_id cannot redirect a claim');
   assert.equal(await balance(veteran), 3210.5);
   await db.query("update wallets set last_daily_reward_at=now()-interval '21 hours' where user_id=$1", [fresh]);
   assert.equal((await call(fresh, 'select claim_daily_reward() r')).r.success, true, 'claimable again the next day');
-  let expected = E.STARTER_BALANCE + 600;
+  let expected = E.STARTER_BALANCE + 2 * E.DAILY_RESUMPTION_ALLOWANCE;
   assert.equal(await balance(fresh), expected);
 
   // ---------- Anonymous callers can no longer move money for a named student ----------
