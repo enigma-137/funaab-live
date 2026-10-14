@@ -35,6 +35,7 @@ import { DevDebugPanel } from './ui/DevDebugPanel';
 import { ClassroomView } from './game/world/ClassroomScene';
 import { ClassroomHUD } from './ui/ClassroomHUD';
 import { LectureHallModal } from './ui/LectureHallModal';
+import { MyTimetable } from './ui/MyTimetable';
 import { FloralWorldModal } from './ui/FloralWorldModal';
 import { PrivateChatModal } from './ui/PrivateChatModal';
 import { ReportUserModal } from './ui/ReportUserModal';
@@ -217,6 +218,7 @@ export const App: React.FC = () => {
       {activeModal === 'daily_reward' && <DailyRewardModal />}
       {activeModal === 'campus_bet' && <CampusBetModal />}
       {activeModal === 'food_vendor' && <FoodVendorSheet />}
+      {activeModal === 'timetable' && <MyTimetable />}
       {activeModal === 'lecture_hall' && (
         <LectureHallModal
           isOpen={true}

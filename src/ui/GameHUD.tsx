@@ -518,7 +518,7 @@ export const GameHUD: React.FC = () => {
             return (
               <button
                 id="btn-hud-lecture-timetable"
-                onClick={() => setActiveModal('lecture_hall')}
+                onClick={() => setActiveModal('timetable')}
                 className={`hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-slate-900/90 hover:bg-emerald-950/80 hover:border-emerald-500/50 backdrop-blur-md border ${liveLecture ? 'border-emerald-400' : 'border-slate-700/60'
                   } shadow-xl text-xs transition group`}
                 title={liveLecture ? `Live Class: ${liveLecture.courseCode}` : 'Lecture Timetable'}

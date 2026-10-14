@@ -61,7 +61,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'level', label: 'Level', glyph: 'level', colors: ['#fbbf24', '#d97706'], open: () => useLevelStore.getState().open() },
     { id: 'controls', label: 'Controls', glyph: 'controls', colors: ['#34d399', '#047857'], open: () => useGameStore.getState().setActiveModal('controls') },
     { id: 'sug', label: 'SUG Vote', glyph: 'vote', colors: ['#38bdf8', '#0369a1'], open: () => useSugStore.getState().open() },
-    { id: 'timetable', label: 'Timetable', glyph: 'timetable', colors: ['#f472b6', '#be185d'], open: () => setModal('lecture_hall') },
+    { id: 'timetable', label: 'Timetable', glyph: 'timetable', colors: ['#f472b6', '#be185d'], open: () => setModal('timetable') },
     { id: 'inventory', label: 'Bag', glyph: 'inventory', colors: ['#fbbf24', '#b45309'], open: () => setModal('inventory') },
     { id: 'daily', label: 'Allowance', glyph: 'daily', colors: ['#f87171', '#b91c1c'], open: () => setModal('daily_reward') },
     { id: 'feedback', label: 'Feedback', glyph: 'feedback', colors: ['#2dd4bf', '#0f766e'], open: () => setModal('feedback') },
