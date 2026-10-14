@@ -38,6 +38,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
   // Inside the ring road between Floral World and the car park, facing the z=45 road.
   'collend': [-30,18, 20,12, -30,28, -30,45],
+  // FPY farm east of Agromet and COLPLANT; its walkway runs between them from the x=55 road.
+  'fpy-farm': [127,40, 0,0, 113,40, 55,40],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
   'colphys': [-35,-108, 22,14, -35,-97, -35,-85],
@@ -55,16 +57,18 @@ const additions = ['colvet','colanim','colplant','colcoms','collend','colbios','
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
 const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2 };
+const farm = [{ id: 'fpy-farm', name: 'FPY Teaching & Research Farm', type: 'landmark',
+  description: 'Teaching & Research Farm where Farm Practical Year (FPY) students plant, water and harvest. Take a farm shift to earn.' }];
 const sportsSide = [
   { id: 'acad', name: 'Academic Building (Acad)', type: 'academic',
     description: 'Three-storey Academic Building, right beside the Sports Centre. Students just call it Acad.' },
   { id: 'sports-courts', name: 'Basketball & Volleyball Courts', type: 'sports',
     description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, serve challenge on the volleyball court.' },
 ];
-export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide].map(l=>{
+export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
-  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
+  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
     interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};

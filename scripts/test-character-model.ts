@@ -81,7 +81,7 @@ for (const bodyType of avatarOptions.bodyType)
           assert.equal(!!g.hair, look.hair, label);
           assert.equal(!!g.sleeve, topStyle !== "tank-top", label);
           assert.equal(!!g.tunic, ["gown", "kaftan"].includes(topStyle), label);
-          assert.equal(!!g.skirtLow, bottomStyle === "long-skirt" && topStyle !== "gown", label);
+          assert.equal(!!g.skirtLow, bottomStyle === "long-skirt" && !["gown", "jumpsuit"].includes(topStyle), label);
           Object.entries(g).forEach(([name, geometry]) => {
             finite(geometry, `${name} ${label}`);
             geometry.dispose();
@@ -98,6 +98,9 @@ for (const bodyType of avatarOptions.bodyType) {
 const fem = avatarLook(normalizeAvatar({ bodyType: "feminine", topStyle: "gown", bottomStyle: "jeans" }));
 assert(fem.bareLegs && !fem.skirt && fem.tunic && fem.hipsMaterial === "top");
 assert(avatarLook(normalizeAvatar({ hairstyle: "bald" })).hair === false);
+// A jumpsuit covers the legs in the top colour whatever the bottom says.
+const coverall = avatarLook(normalizeAvatar({ topStyle: "jumpsuit", bottomStyle: "shorts" }));
+assert(coverall.legMaterial === "top" && coverall.hipsMaterial === "top" && !coverall.shorts && !coverall.skirt && coverall.longSleeves);
 assert.equal(normalizeAvatar({ topStyle: "cape" }).topStyle, "t-shirt");
 console.log(
   "CHARACTER MODEL PASSED: deterministic diversity, uniform overrides, legacy preservation, finite merged geometry and normals.",

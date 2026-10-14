@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { WorldRoomDO } from '../worker/index';
 import { POS_KIOSK, PHOTO_SPOTS } from '../src/config/hustles';
+import { FARM_SHIFT, FARM_STEPS, FPY_FARM } from '../src/config/fpyFarm';
 
 class Socket { static OPEN = 1; readyState = 1; messages: any[] = []; handlers: Record<string, Function> = {}; accept() {} addEventListener(e: string, f: Function) { this.handlers[e] = f; } send(s: string) { this.messages.push(JSON.parse(s)); } close() { this.readyState = 3; this.handlers.close?.(); } async packet(p: object) { await this.handlers.message({ data: JSON.stringify(p) }); } }
 
@@ -61,6 +62,35 @@ async function main() {
     assert.equal(paid('pos').length, 1); assert.equal(paid('pos')[0].body.p_amount, 250);
     assert.match((await hustle(ada.socket, { op: 'pos_finish' })).error, /Start a shift/);
 
+    // ---- FPY farm: three jobs, each at its plot, in order, at a real pace ----
+    const at = (p: readonly number[]) => { ada.session.trustedPosition = [...p]; ada.session.claimedPosition = [...p]; };
+    at(POS_KIOSK.serviceSpot);
+    assert.match((await hustle(ada.socket, { op: 'farm_start' })).error, /FPY farm/);
+    assert.match((await hustle(ada.socket, { op: 'farm_step' })).error, /Start a farm shift/);
+    at(FPY_FARM.gate);
+    assert.equal((await hustle(ada.socket, { op: 'farm_start' })).result.step, 0);
+    now += FARM_SHIFT.minStepSeconds * 1000;
+    assert.match((await hustle(ada.socket, { op: 'farm_step' })).error, /plot/, 'must stand at the plant plot');
+    at(FARM_STEPS[1].spot);
+    assert.match((await hustle(ada.socket, { op: 'farm_step' })).error, /plot/, 'out of order');
+    at(FARM_STEPS[0].spot);
+    assert.equal((await hustle(ada.socket, { op: 'farm_step' })).result.step, 1);
+    at(FARM_STEPS[1].spot);
+    assert.match((await hustle(ada.socket, { op: 'farm_step' })).error, /Take your time/, 'too fast');
+    now += FARM_SHIFT.minStepSeconds * 1000;
+    assert.equal((await hustle(ada.socket, { op: 'farm_step' })).result.step, 2);
+    assert.equal(paid('farm').length, 0, 'not paid before the harvest');
+    at(FARM_STEPS[2].spot);
+    now += FARM_SHIFT.minStepSeconds * 1000;
+    const harvest = await hustle(ada.socket, { op: 'farm_step', amount: 99999 });
+    assert.equal(harvest.result.paid, FARM_SHIFT.pay);
+    assert.equal(paid('farm').length, 1); assert.equal(paid('farm')[0].body.p_amount, FARM_SHIFT.pay);
+    assert.match((await hustle(ada.socket, { op: 'farm_step' })).error, /Start a farm shift/, 'paid once');
+    // A half-done shift expires.
+    at(FPY_FARM.gate); await hustle(ada.socket, { op: 'farm_start' });
+    now += FARM_SHIFT.expireMinutes * 60000 + 1000; at(FARM_STEPS[0].spot);
+    assert.match((await hustle(ada.socket, { op: 'farm_step' })).error, /Start a farm shift/);
+
     // ---- Photos: pay grows with real students nearby (capped at 3) ----
     const spot = PHOTO_SPOTS[0];
     assert.match((await hustle(ada.socket, { op: 'photo', spot: spot.id })).error, /photo spot/);
@@ -91,7 +121,7 @@ async function main() {
     assert.match((await hustle(ada.socket, { op: 'errand_handover', errand: id })).error, /not yours/, 'the poster cannot pay themselves');
     errand = { poster: '00000000-0000-4000-8000-0000000000ff', runner: B, status: 'accepted' };
     assert.match((await hustle(bisi.socket, { op: 'errand_handover', errand: id })).error, /not on campus/);
-    console.log('HUSTLES WORKER PASSED: POS timed + presence + walk-away cancel + once, photo pay from real nearby students, tutoring Library-only with sanitised answers, errand handover needs both face to face');
+    console.log('HUSTLES WORKER PASSED: POS timed + presence + walk-away cancel + once, FPY farm steps in order at their plots at a real pace and paid once, photo pay from real nearby students, tutoring Library-only with sanitised answers, errand handover needs both face to face');
   } finally {
     (globalThis as any).WebSocket = oldWS; globalThis.fetch = oldFetch; globalThis.setInterval = oldInterval; Date.now = oldNow;
   }

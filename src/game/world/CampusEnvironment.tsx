@@ -1,4 +1,5 @@
 import { CampusArchitecture } from './CampusArchitecture';
+import { FpyFarm } from './FpyFarm';
 import { HealthCentre } from './HealthCentre';
 import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
 import { campusMaterials } from './campusVisualGeometry';
@@ -51,7 +52,7 @@ export const CampusEnvironment: React.FC = () => {
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
-      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><HustleProps/><LodgeBuilding/><LeagueBanner/>
+      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><HustleProps/><LodgeBuilding/><LeagueBanner/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}

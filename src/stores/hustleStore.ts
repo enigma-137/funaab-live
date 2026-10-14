@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { FARM_SHIFT, FARM_STEPS } from '../config/fpyFarm';
+import { useGameStore } from './gameStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { networkManager } from '../game/multiplayer/networkManager';
 import { useWalletStore } from './walletStore';
@@ -15,6 +17,8 @@ interface HustleStore {
   shop: ShopState | null;
   errands: ErrandBoard | null;
   posEndsAt: number | null;
+  /** FPY farm shift in progress: next step index, when the last one finished, and any step being worked. */
+  farm: { step: number; lastAt: number; working: { step: number; until: number } | null } | null;
   tutor: TutorSession | null;
   tutorAnswers: Record<string, number>;
   tutorResult: { score: number; total: number; paid: number; answers: Record<string, number> } | null;
@@ -26,6 +30,9 @@ interface HustleStore {
   collect: () => Promise<void>;
   startPos: () => Promise<void>;
   finishPos: () => Promise<void>;
+  startFarm: () => Promise<void>;
+  /** Do the farm job at this plot: starts a shift if needed, waits out the job, then reports it. */
+  farmAt: (plot: string) => Promise<void>;
   photo: (spot: string) => Promise<void>;
   startTutor: () => Promise<void>;
   pickTutor: (id: string, option: number) => void;
@@ -53,7 +60,7 @@ export const useHustleStore = create<HustleStore>((set, get) => {
     try { await fn(); } catch (e) { set({ error: (e as Error).message }); } finally { set({ busy: null }); }
   };
   return {
-    shop: null, errands: null, posEndsAt: null, tutor: null, tutorAnswers: {}, tutorResult: null, busy: null, error: null,
+    shop: null, errands: null, posEndsAt: null, farm: null, tutor: null, tutorAnswers: {}, tutorResult: null, busy: null, error: null,
     loadShop: async () => {
       if (!isSupabaseConfigured) return;
       try { const s = await rpc<ShopState>('shop_state'); if (validShop(s)) set({ shop: s }); } catch { /* older database */ }
@@ -82,6 +89,47 @@ export const useHustleStore = create<HustleStore>((set, get) => {
         toast({ icon: '🏧', text: 'POS shift done', amount: r.paid, tone: 'good' });
       } finally { set({ posEndsAt: null }); void get().loadShop(); }
     }),
+    startFarm: () => run('farm', async () => {
+      const r = await networkManager.hustle('farm_start');
+      const cur = get().farm;
+      set({ farm: cur && cur.step === r.step ? cur : { step: r.step, lastAt: Date.now(), working: null } });
+      const next = FARM_STEPS[r.step];
+      useGameStore.getState().setNavigationDestination({ id: `farm-${next.id}`, name: next.label, shortName: next.label, position: next.spot, icon: next.icon });
+      useGameStore.getState().setActiveModal(null);
+    }),
+    farmAt: async (plot) => {
+      if (!get().farm) { await get().startFarm(); if (!get().farm) return; }
+      const f = get().farm!;
+      if (f.working) return;
+      const step = FARM_STEPS[f.step];
+      if (`farm-${step.id}` !== plot) {
+        toast({ icon: step.icon, text: `Next job: ${step.label.toLowerCase()} at the ${step.icon} plot.`, tone: 'info' });
+        return;
+      }
+      // The job takes a few seconds; the Worker refuses anything faster.
+      const until = Math.max(Date.now(), f.lastAt + FARM_SHIFT.minStepSeconds * 1000) + 400;
+      set({ farm: { ...f, working: { step: f.step, until } } });
+      toast({ icon: step.icon, text: `${step.label}… stay at the plot`, tone: 'info', ms: until - Date.now() });
+      await new Promise((r) => setTimeout(r, until - Date.now()));
+      try {
+        const r = await networkManager.hustle('farm_step');
+        if (r.paid != null || r.step >= FARM_STEPS.length) {
+          set({ farm: null });
+          useGameStore.getState().setNavigationDestination(null);
+          toast({ icon: '🧺', text: 'Farm shift done — good work!', amount: r.paid, tone: 'good' });
+          void get().loadShop();
+          return;
+        }
+        set({ farm: { step: r.step, lastAt: Date.now(), working: null } });
+        const next = FARM_STEPS[r.step];
+        useGameStore.getState().setNavigationDestination({ id: `farm-${next.id}`, name: next.label, shortName: next.label, position: next.spot, icon: next.icon });
+        toast({ icon: '✅', text: `Done! Next: ${next.label.toLowerCase()} ${next.icon}`, tone: 'good' });
+      } catch (e) {
+        const msg = (e as Error).message;
+        set({ farm: /Start a farm shift/.test(msg) ? null : { ...get().farm!, working: null }, error: msg });
+        toast({ icon: '🌱', text: msg, tone: 'bad' });
+      }
+    },
     photo: (spot) => run('photo', async () => {
       const r = await networkManager.hustle('photo', { spot });
       toast({ icon: '📸', text: r.clients ? `Shoot done · ${r.clients} student${r.clients === 1 ? '' : 's'} paid for photos` : 'Shoot done · bring friends for bigger jobs', amount: r.paid, tone: 'good' });

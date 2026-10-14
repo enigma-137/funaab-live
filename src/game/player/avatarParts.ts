@@ -10,27 +10,32 @@ import { ellipsoids, silhouette, type Part } from "./avatarGeometry";
 export const HEAD_Y = 1.75;
 export const HEAD_SCALE = 0.88;
 
-const LONG_SLEEVES = ["shirt", "hoodie", "jacket", "kaftan"];
+const LONG_SLEEVES = ["shirt", "hoodie", "jacket", "kaftan", "jumpsuit"];
 const PUFF_SLEEVES = ["blouse", "gown"];
 const OPEN_NECK = ["tank-top", "gown", "blouse"];
 
 /** Which material each body part wears, derived from the outfit. */
 export function avatarLook(a: StudentAvatar) {
   const gown = a.topStyle === "gown";
+  /** One-piece outfits own the legs too, so the bottom is ignored. */
+  const jumpsuit = a.topStyle === "jumpsuit";
+  const onePiece = gown || jumpsuit;
   const bareLegs =
-    gown || ["skirt", "long-skirt", "shorts"].includes(a.bottomStyle);
+    gown || (!jumpsuit && ["skirt", "long-skirt", "shorts"].includes(a.bottomStyle));
   return {
     feminine: a.bodyType === "feminine",
     longSleeves: LONG_SLEEVES.includes(a.topStyle),
     sleeveless: a.topStyle === "tank-top",
     bareLegs,
-    shorts: !gown && a.bottomStyle === "shorts",
+    shorts: !onePiece && a.bottomStyle === "shorts",
     /** Garment hanging from the waist owned by the bottom (skirts). */
-    skirt: !gown && ["skirt", "long-skirt"].includes(a.bottomStyle),
-    longSkirt: !gown && a.bottomStyle === "long-skirt",
+    skirt: !onePiece && ["skirt", "long-skirt"].includes(a.bottomStyle),
+    longSkirt: !onePiece && a.bottomStyle === "long-skirt",
+    jumpsuit,
+    legMaterial: bareLegs ? ("skin" as const) : jumpsuit ? ("top" as const) : ("bottom" as const),
     /** Garment hanging from the waist owned by the top (gown, kaftan tunic). */
     tunic: gown || a.topStyle === "kaftan",
-    hipsMaterial: gown ? ("top" as const) : ("bottom" as const),
+    hipsMaterial: onePiece ? ("top" as const) : ("bottom" as const),
     hair: a.hairstyle !== "bald",
     hairMaterial: a.hairstyle === "headwrap" ? ("top" as const) : ("hair" as const),
     sole: a.shoeStyle === "sneakers",
@@ -302,6 +307,13 @@ export function buildAvatarGeometry(a: StudentAvatar, seed: number) {
     trim.push(
       ...both((s) => [[s * 0.035, 1.44, chestZ(1.44) - 0.004, 0.045, 0.012, 0.014, 0, 0, s * 0.8] as Part]),
       ...both((s) => [[s * w * 0.86, 1.2, 0, 0.016, 0.22, 0.05] as Part]),
+    );
+  // Coverall: zip down the front, chest pocket, a belt at the waist.
+  if (a.topStyle === "jumpsuit")
+    trim.push(
+      [0, 1.18, chestZ(1.18) + 0.002, 0.009, 0.27, 0.008],
+      [0.075, 1.33, chestZ(1.33) - 0.002, 0.045, 0.05, 0.01],
+      [0, 0.95, 0, w * (fem ? 0.97 : 0.86), 0.035, fem ? 0.165 : 0.155],
     );
   if (a.topStyle === "tank-top") trim.push(...both((s) => [[s * 0.11, 1.48, 0, 0.03, 0.03, 0.1] as Part]));
   e("trim", trim);

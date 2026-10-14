@@ -244,6 +244,13 @@ const locationMetadata: Record<
     description: 'COLFHEC Dedicated Lecture Hall: 250-capacity tiered lecture theatre with podium and projector.',
     interactiveModal: 'lecture_hall',
   },
+  'fpy-farm': {
+    category: 'landmark',
+    categoryLabel: 'Teaching Farm',
+    icon: '🌱',
+    color: '#3f7d2c',
+    description: 'FPY Teaching & Research Farm: Farm Practical Year students in green jumpsuits plant, water and harvest. Take a farm shift (Hustles) to earn.',
+  },
   acad: {
     category: 'academic',
     categoryLabel: 'Academic Building',

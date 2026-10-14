@@ -20,7 +20,7 @@ export const avatarOptions = {
     'headwrap',
     'bald',
   ],
-  topStyle: ['t-shirt', 'polo', 'shirt', 'hoodie', 'blouse', 'jacket', 'jersey', 'kaftan', 'tank-top', 'gown'],
+  topStyle: ['t-shirt', 'polo', 'shirt', 'hoodie', 'blouse', 'jacket', 'jersey', 'kaftan', 'tank-top', 'gown', 'jumpsuit'],
   bottomStyle: ['trousers', 'jeans', 'joggers', 'skirt', 'shorts', 'long-skirt'],
   shoeStyle: ['sneakers', 'flats', 'sandals', 'heels', 'boots'],
 } as const;
@@ -38,6 +38,7 @@ export const optionLabels: Record<string, string> = {
   't-shirt': 'T-shirt',
   kaftan: 'Kaftan / senator',
   'tank-top': 'Tank top',
+  jumpsuit: 'Jumpsuit / FPY coverall',
   'long-skirt': 'Long skirt',
   flats: 'Flats / loafers',
 };
@@ -176,6 +177,12 @@ export const stylePresets: Record<string, Partial<AvatarConfig>> = {
     topColor: '#8a2252',
     shoeStyle: 'heels',
     shoeColor: '#d4a017',
+  },
+  FPY: {
+    topStyle: 'jumpsuit',
+    topColor: '#2f6b2f',
+    shoeStyle: 'boots',
+    shoeColor: '#2a2522',
   },
   'Sunday Best': {
     topStyle: 'blouse',

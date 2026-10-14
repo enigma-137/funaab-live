@@ -265,7 +265,7 @@ export const AvatarBody = memo(
           castShadow
         />
       ) : null;
-    const legMaterial = look.bareLegs ? "skin" : "bottom";
+    const legMaterial = look.legMaterial;
     const armMaterial = look.longSleeves ? "top" : "skin";
     return (
       <>
@@ -279,7 +279,7 @@ export const AvatarBody = memo(
           {part("torso", "top")}
           {part("farSkin", "skin")}
           {part("farHair", look.hairMaterial)}
-          {part("farLegs", look.bareLegs ? "skin" : "bottom")}
+          {part("farLegs", look.legMaterial)}
           {part("farHips", look.hipsMaterial)}
           {part("farShoes", "shoe")}
           {part("skirt", "bottom")}

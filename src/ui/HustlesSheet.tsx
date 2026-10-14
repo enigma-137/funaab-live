@@ -6,6 +6,7 @@ import { useHustleStore } from '../stores/hustleStore';
 import { useBackgroundStore } from '../stores/backgroundStore';
 import { ERRAND_KINDS, ERRAND_RULES, HUSTLE_RULES, PHOTO_RULES, PHOTO_SPOTS, POS_KIOSK, SHOP_RULES, TUTORING, type ErrandKind } from '../config/hustles';
 import { LIBRARY_ROOM } from '../config/library';
+import { FARM_SHIFT, FARM_STEPS, FPY_FARM, inFarm } from '../config/fpyFarm';
 
 const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
 const near = (a: readonly number[], b: readonly number[], r: number) => Math.hypot(a[0] - b[0], a[2] - b[2]) <= r;
@@ -17,7 +18,7 @@ function go(name: string, position: [number, number, number], icon: string) {
   g.setActiveModal(null);
 }
 
-/** All five hustles in one place. The server decides pay; this only shows where/when you can earn. */
+/** All the hustles in one place. The server decides pay; this only shows where/when you can earn. */
 export function HustlesSheet() {
   const setModal = useGameStore((s) => s.setActiveModal);
   const myPosition = useGameStore((s) => s.myPosition);
@@ -32,6 +33,7 @@ export function HustlesSheet() {
   const onCampus = room === 'world:funaab:main';
   const atKiosk = onCampus && near(myPosition, POS_KIOSK.serviceSpot, POS_KIOSK.radius);
   const atSpot = onCampus ? PHOTO_SPOTS.find((s) => near(myPosition, s.position, s.radius)) : undefined;
+  const atFarm = onCampus && inFarm(myPosition);
   const posLeft = h.posEndsAt ? Math.max(0, Math.ceil((h.posEndsAt - now) / 1000)) : null;
   const shop = h.shop;
   const ready = shop?.items.reduce((n, i) => n + i.ready, 0) ?? 0;
@@ -85,6 +87,28 @@ export function HustlesSheet() {
           <button className="academic-primary academic-wide" disabled={!!h.busy || ready === 0} onClick={h.collect}>
             {ready > 0 ? `Collect ${ready} sale${ready === 1 ? '' : 's'}` : 'No sales to collect yet'}
           </button>
+        </section>
+
+        <section className="hustle-card" aria-label="FPY farm shift">
+          <h3>🌱 FPY farm shift <small>{naira(FARM_SHIFT.pay)} · 3 jobs</small></h3>
+          {h.farm ? (
+            <ul className="academic-checks">
+              {FARM_STEPS.map((s, i) => (
+                <li key={s.id} className={i < h.farm!.step ? 'is-done' : ''}>
+                  {s.icon} {s.label} {i === h.farm!.step && <b>{h.farm!.working ? '· working…' : '· next'}</b>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="academic-note">Plant, water and harvest at the farm's three plots, like the FPY students. Each job takes a few seconds at its plot.</p>
+          )}
+          {h.farm ? (
+            <button className="hustle-btn hustle-wide" onClick={() => { const s = FARM_STEPS[h.farm!.step]; go(s.label, s.spot, s.icon); }}>Show me the next plot</button>
+          ) : atFarm ? (
+            <button className="academic-primary academic-wide" disabled={busy('farm')} onClick={h.startFarm}>Start farm shift</button>
+          ) : (
+            <button className="hustle-btn hustle-wide" onClick={() => go(FPY_FARM.name, FPY_FARM.entrance, '🌱')}>Show me the FPY farm</button>
+          )}
         </section>
 
         <section className="hustle-card" aria-label="POS kiosk">

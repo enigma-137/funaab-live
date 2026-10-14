@@ -1,4 +1,5 @@
 import base from '../worlds/funaab/world.json';
+import { FPY_FARM, FARM_BOUNDS, FARM_STEPS, FARM_SHIFT } from './fpyFarm';
 import { campusLocations, collegeCatalogue, locationById, CAMPUS_BOUNDS, CAMPUS_SPAWN, type Point } from './campusLocations';
 import { roadBounds, kekeDestinations, publicRoute, routeStops, ROUTE_FARE } from './kekeRoutes';
 import { LECTURE_HALLS } from './lectureHalls';
@@ -148,6 +149,8 @@ const outsideGateZones=[
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,penaltySpot,freeThrowLine,serveLine,
     {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
+    {id:'hustle-fpy-farm',type:'hustle',label:'FPY Farm · Hustle',actionText:'Farm shift',position:FPY_FARM.gate,radius:4,targetId:'farm'},
+    ...FARM_STEPS.map(s=>({id:`hustle-farm-${s.id}`,type:'hustle',label:`FPY Farm · ${s.label}`,actionText:s.verb,position:s.spot,radius:FARM_SHIFT.stepRadius,targetId:`farm-${s.id}`})),
     {id:'hustle-pos-kiosk',type:'hustle',label:'POS kiosk · Hustle',actionText:'POS kiosk shift',position:POS_KIOSK.serviceSpot,radius:POS_KIOSK.radius,targetId:'pos'},
     ...PHOTO_SPOTS.map(s=>({id:`hustle-${s.id}`,type:'hustle',label:s.title,actionText:'Take photos',position:s.position,radius:s.radius,targetId:s.id})),{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
     ...FOOD_VENDOR_LIST.map(v=>({id:`vendor-${v.id}`,type:'food_vendor',label:v.name,actionText:v.actionLabel,position:vendorCounter(v),radius:2.6,targetId:v.id})),
@@ -167,6 +170,8 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
     {id:'love-garden-plaza',name:'Love Garden',type:'plaza',restricted:false,bounds:LOVE_GARDEN_PAVING.plaza},
     {id:'love-garden-walk',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.walkway},
     {id:'love-garden-connector',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.connector},
+    // The farm's soil and paths are open to everyone (no lawn fine).
+    {id:'fpy-farm',name:'FPY Farm',type:'plaza',restricted:false,bounds:{...FARM_BOUNDS,minX:FARM_BOUNDS.minX-3}},
     {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],
   kekeDestinations,kekeRoutes:[{id:'route-alpha',name:'Public campus route',fare:ROUTE_FARE,waypoints:publicRoute,stops:routeStops.map(id=>({id,name:locationById(id).shortName,position:locationById(id).kekeStop,duration:4}))}],
   securityRoutes:base.securityRoutes.map(r=>({...r,points:r.points.map(p=>[p[0]*1.6,p[1],p[2]*1.6])})),

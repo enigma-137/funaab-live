@@ -45,6 +45,7 @@ const COURT_GAME_IDS = Object.keys(COURT_GAMES) as CourtGameId[];
 import { dailyGoal, isCampusNight, lagosDay } from '../src/config/dailyPlan';
 import { isInLoveGarden } from '../src/config/loveGarden';
 import { POS_KIOSK, PHOTO_SPOTS, PHOTO_RULES, ERRAND_RULES } from '../src/config/hustles';
+import { FARM_SHIFT, FARM_STEPS, inFarm } from '../src/config/fpyFarm';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
 
 export interface Env {
@@ -89,6 +90,8 @@ interface SessionData {
   goalSent?: Record<string, number>;
   /** Open POS kiosk shift (Worker-timed; cancelled if the student walks away). */
   posShift?: { ref: string; startedAt: number };
+  /** FPY farm shift: steps done in order, each at its plot and not faster than minStepSeconds. */
+  farmShift?: { ref: string; startedAt: number; step: number; lastAt: number };
 }
 
 interface PlayerState {
@@ -947,6 +950,25 @@ export class WorldRoomDO {
         const paid = await this.dbRpc('hustle_pay_trusted', { p_user: session.id, p_hustle: 'pos', p_ref: shift.ref, p_amount: POS_KIOSK.pay });
         this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
         return { paid };
+      }
+      case 'farm_start': {
+        if (!inFarm(pos)) throw new Error('Go to the FPY farm to start a shift.');
+        const s = session.farmShift;
+        if (!s || now - s.startedAt > FARM_SHIFT.expireMinutes * 60000) session.farmShift = { ref: crypto.randomUUID(), startedAt: now, step: 0, lastAt: now };
+        return { step: session.farmShift!.step };
+      }
+      case 'farm_step': {
+        const s = session.farmShift;
+        if (!s || now - s.startedAt > FARM_SHIFT.expireMinutes * 60000) { session.farmShift = undefined; throw new Error('Start a farm shift first.'); }
+        const step = FARM_STEPS[s.step];
+        if (!near(pos, step.spot, FARM_SHIFT.stepRadius)) throw new Error(`Go to the ${step.icon} plot to ${step.label.toLowerCase()}.`);
+        if (now - s.lastAt < FARM_SHIFT.minStepSeconds * 1000) throw new Error('Take your time — finish the job properly.');
+        s.step++; s.lastAt = now;
+        if (s.step < FARM_STEPS.length) return { step: s.step };
+        session.farmShift = undefined;
+        const paid = await this.dbRpc('hustle_pay_trusted', { p_user: session.id, p_hustle: 'farm', p_ref: s.ref, p_amount: FARM_SHIFT.pay });
+        this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+        return { step: s.step, paid };
       }
       case 'photo': {
         const spot = PHOTO_SPOTS.find((p) => p.id === data.spot);

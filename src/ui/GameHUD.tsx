@@ -1,4 +1,6 @@
 import {useHostelStore} from '../stores/hostelStore';
+import { useHustleStore } from '../stores/hustleStore';
+import { FARM_STEPS } from '../config/fpyFarm';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../stores/authStore';
@@ -217,7 +219,9 @@ export const GameHUD: React.FC = () => {
           openCourtGame(nearbyInteractable.type);
           break;
         case 'hustle':
-          setActiveModal('hustles');
+          // Farm plots do the job right there; everything else opens Hustles.
+          if (nearbyInteractable.targetId?.startsWith('farm-')) void useHustleStore.getState().farmAt(nearbyInteractable.targetId);
+          else setActiveModal('hustles');
           break;
         case 'lodge':
           setActiveModal('lodge');
@@ -280,7 +284,7 @@ export const GameHUD: React.FC = () => {
       case 'volleyball':
         return '🏐';
       case 'hustle':
-        return nearbyInteractable.targetId === 'pos' ? '🏧' : '📸';
+        return nearbyInteractable.targetId === 'pos' ? '🏧' : nearbyInteractable.targetId?.startsWith('farm') ? FARM_STEPS.find((s) => `farm-${s.id}` === nearbyInteractable.targetId)?.icon ?? '🌱' : '📸';
       case 'lodge':
         return '🏘️';
       case 'atm':
@@ -372,7 +376,10 @@ export const GameHUD: React.FC = () => {
       case 'volleyball':
         return 'Serve';
       case 'hustle':
-        return nearbyInteractable.targetId === 'pos' ? 'POS shift' : 'Photos';
+        return nearbyInteractable.targetId === 'pos' ? 'POS shift'
+          : nearbyInteractable.targetId === 'farm' ? 'Farm shift'
+          : nearbyInteractable.targetId?.startsWith('farm-') ? nearbyInteractable.actionText.replace(' here', '')
+          : 'Photos';
       case 'lodge':
         return 'Lodge';
       case 'food_vendor':

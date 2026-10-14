@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { HUSTLE_RULES, SHOP_STOCK, SHOP_RULES, POS_KIOSK, TUTORING, PHOTO_RULES, ERRAND_KINDS, ERRAND_RULES } from '../src/config/hustles';
+import { FARM_SHIFT } from '../src/config/fpyFarm';
 
 const require = createRequire(import.meta.url);
 const { PGlite } = require(process.env.PGLITE_MODULE || '@electric-sql/pglite');
@@ -95,6 +96,16 @@ async function main() {
   assert.equal((await service("select hustle_pay_trusted($1,'photo','p1',300) n", [bisi])).n, 300);
   await serviceFails("select hustle_pay_trusted($1,'mint','x',100)", /Unknown hustle/, [bisi]);
   assert.equal(await balance(bisi), start + 550);
+  // FPY farm shift (migration 032): fixed pay, own cooldown, once per shift.
+  await serviceFails("select hustle_pay_trusted($1,'farm','f1',5000)", /Invalid farm pay/, [bisi]);
+  assert.equal((await service(`select hustle_pay_trusted($1,'farm','f1',${FARM_SHIFT.pay}) n`, [bisi])).n, FARM_SHIFT.pay);
+  assert.equal((await service(`select hustle_pay_trusted($1,'farm','f1',${FARM_SHIFT.pay}) n`, [bisi])).n, 0, 'same farm shift never paid twice');
+  await serviceFails(`select hustle_pay_trusted($1,'farm','f2',${FARM_SHIFT.pay})`, /short break/, [bisi]);
+  assert.equal(await balance(bisi), start + 550 + FARM_SHIFT.pay);
+  start += FARM_SHIFT.pay;
+  const sql032 = fs.readFileSync(path.join(dir, '032_fpy_farm.sql'), 'utf8');
+  assert(sql032.includes(`if p_amount<>${FARM_SHIFT.pay} then raise exception 'Invalid farm pay'`) && sql032.includes(`interval '${FARM_SHIFT.cooldownMinutes} minutes'`), 'farm drift');
+  assert(sql032.includes("'gown','jumpsuit')"), 'jumpsuit allowed in saved avatars');
 
   // Daily cap is shared and partial payments stop exactly at ₦2,500.
   await db.query("update hustle_payments set created_at=now()-interval '10 minutes' where user_id=$1", [bisi]);

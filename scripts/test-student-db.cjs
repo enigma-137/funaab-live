@@ -132,6 +132,7 @@ const fs = require('node:fs'),
   // 029 widens the style allowlist to the client's avatarOptions, no more and no less.
   await db.exec('reset role');
   await db.exec(fs.readFileSync(path.join(dir, '029_avatar_styles.sql'), 'utf8'));
+  await db.exec(fs.readFileSync(path.join(dir, '032_fpy_farm.sql'), 'utf8')); // adds the jumpsuit
   await as(fresh);
   const options = fs.readFileSync(path.join(__dirname, '../src/config/avatar.ts'), 'utf8');
   for (const key of ['hairstyle', 'topStyle', 'bottomStyle', 'shoeStyle']) {
