@@ -55,7 +55,9 @@ export const useJobStore=create<JobState>((set,get)=>{
    if(!job || networkManager.room!=='world:funaab:main')return {canPickup:false,canDeliver:false,targetName:'Return to campus',distance:999};
    const pickup=job.status==='accepted',target=pickup?job.sourcePos:job.destinationPos;
    const distance=Math.hypot(pos[0]-target[0],pos[2]-target[2]);
-   return {canPickup:pickup&&distance<=4.5,canDeliver:!pickup&&distance<=4.5,targetName:pickup?job.source:job.destination,distance:Math.round(distance)};
+   // Half a metre inside the server's radius so a slightly delayed position still counts.
+   const reach=pickup?4.5:(job.destRadius??5)-0.5;
+   return {canPickup:pickup&&distance<=reach,canDeliver:!pickup&&distance<=reach,targetName:pickup?job.source:job.destination,distance:Math.round(distance)};
  }
  };
 });

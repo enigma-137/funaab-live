@@ -208,6 +208,8 @@ export interface CampusJob {
   sourcePos: [number, number, number];
   destination: string;
   destinationPos: [number, number, number];
+  /** Server delivery radius in metres (job_catalog.dest_radius, default 5). */
+  destRadius?: number;
   description: string;
   status: 'available' | 'accepted' | 'picked_up' | 'completed';
   progress?: number;

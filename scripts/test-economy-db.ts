@@ -136,6 +136,7 @@ async function main() {
   // ---------- Jobs: config = database, server pay, first-job bonus once per Lagos day ----------
   for (const j of CAMPUS_JOBS) {
     const row = await one('select reward,source_x,source_z,dest_x,dest_z from job_catalog where id=$1', [j.id]);
+    assert.equal(Number((await one('select dest_radius from job_catalog where id=$1', [j.id])).dest_radius), j.destRadius ?? 5, `${j.id} radius drift`);
     assert.deepEqual([row.reward, ...['source_x', 'source_z', 'dest_x', 'dest_z'].map((k) => Number(row[k]))],
       [j.reward, j.sourcePos[0], j.sourcePos[2], j.destinationPos[0], j.destinationPos[2]], `${j.id} drift`);
   }
@@ -150,10 +151,11 @@ async function main() {
   const worker = await student('Worker');
   await call(worker, 'select ensure_player_wallet()');
   const delivery = CAMPUS_JOBS[0];
-  // The old COLENG drop-off point is no longer accepted; the forecourt the client shows is.
-  await assert.rejects(() => doJob(worker, delivery, [80, 0, -57]), /correct destination/);
+  // COLENG drop-off (027): too far out on the forecourt is refused…
+  await assert.rejects(() => doJob(worker, delivery, [80, 0, -45]), /correct destination/);
   await db.query("update job_runs set status='cancelled' where user_id=$1 and status='picked_up'", [worker]);
-  const first = await doJob(worker, delivery);
+  // …but standing right at COLENG's door (where students stop) delivers.
+  const first = await doJob(worker, delivery, [80, 0, -57.1]);
   assert.equal(first.done.paid, 500); assert.equal(first.done.bonus, E.FIRST_JOB_DAILY_BONUS);
   assert.equal(await balance(worker), E.STARTER_BALANCE + 500 + 200, 'job pay + first job bonus');
   const replay = (await one("select job_action_trusted($1,'deliver',null,$2,$3,$4) r", [worker, first.id, delivery.destinationPos[0], delivery.destinationPos[2]])).r;
