@@ -22,7 +22,7 @@ export const COLANIM = { hallHalf: 5, D: 12, eave: 7, apex: 9.6, floor: 1.2, win
 // middle (walkable under its slab), two-storey east block. Shared with its colliders.
 export const COLPLANT = { front: 5, D: 11, porch: { x0: -3, x1: 3.5, front: 6.5, back: 3, h: 4.2, open: 3 }, west: { x0: -12, h: 4 }, east: { x1: 12, h: 7.2 } };
 export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys" | "colbios" | "colanim" | "colplant";
-export function StaticBatches({ batches }: { batches: Batch[] }) {
+export function StaticBatches({ batches, interior = false }: { batches: Batch[]; interior?: boolean }) {
   return (
     <group dispose={null}>
       {batches.map((b) => (

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { InnerShell } from './InnerShell';
 import { QUALITY } from '../../config/quality';
 import { useGraphicsStore } from '../../stores/graphicsStore';
 import { useFrame } from '@react-three/fiber';
@@ -224,10 +225,17 @@ export function PartyHall() {
     <group position={[CX, 0, CZ]} name="party_hall">
       <StaticBatches batches={batches} />
       {/* Roof only when you're outside, so the camera can see in. */}
-      {/* Inside, the walls drop to waist height (and the roof goes) so the camera can follow you. */}
-      <group scale={[1, inside ? 0.24 : 1, 1]}><StaticBatches batches={walls} /></group>
+      {/* Inside, the hall's own walls and ceiling close in around you; from outside the camera sees
+          through the wall between it and you. Outside, the solid walls and roof show. */}
+      {inside && (
+        <InnerShell rect={{ minX: -W / 2 + T / 2, maxX: W / 2 - T / 2, minZ: -D / 2 + T / 2, maxZ: D / 2 - T / 2 }} height={H}
+          wall="#3b2860" ceiling="#1d1230" dado={{ color: "#5b3394", height: 1.1 }}
+          neon={[{ color: "#e879f9", y: H - 0.5 }, { color: "#22d3ee", y: 1.25 }]}
+          openings={[{ side: "west", centre: 0, half: DOOR, top: H - 1.2 }]} />
+      )}
       {!inside && (
         <>
+          <StaticBatches batches={walls} />
           <mesh position={[0, H + 0.1, 0]}><boxGeometry args={[W + 0.6, 0.2, D + 0.6]} /><meshStandardMaterial color="#1e1530" /></mesh>
           <mesh position={[-W / 2 - 0.17, H - 0.15, 0]}><boxGeometry args={[0.06, 0.12, D]} /><meshBasicMaterial color={open ? '#c084fc' : '#4c3a63'} /></mesh>
           <group position={[-W / 2 - 0.2, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>

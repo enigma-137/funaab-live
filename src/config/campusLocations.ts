@@ -38,8 +38,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
   // Inside the ring road between Floral World and the car park, facing the z=45 road.
   'collend': [-30,18, 20,12, -30,28, -30,45],
-  // Just north of Acad, facing south onto the walkway to the x=-55 road.
-  'colamrud': [-105,-50, 22,12, -105,-42, -55,-42],
+  // East side, between The Arena (north) and the FPY farm (south); door faces south onto a walkway to the x=55 road.
+  'colamrud': [128,-10, 22,12, 128,0, 55,-6],
   // FPY farm east of Agromet and COLPLANT; its walkway runs between them from the x=55 road.
   'fpy-farm': [127,40, 0,0, 113,40, 55,40],
   // The Arena (night party & arcade) east of COLERM; door in the west wall at z=-45.

@@ -1,4 +1,5 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { InnerShell } from "./InnerShell";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
@@ -219,20 +220,29 @@ function Nurse({ nurse }: { nurse: NurseSpec }) {
 }
 
 export function HealthCentre() {
-  const upperRef = useRef<THREE.Group>(null);
+  const [inside, setInside] = useState(false);
   useFrame(() => {
-    if (!upperRef.current) return;
     const [x, , z] = useGameStore.getState().myPosition;
-    upperRef.current.visible = !(x > HC_INTERIOR.minX && x < HC_INTERIOR.maxX && z > HC_INTERIOR.minZ && z < HC_INTERIOR.maxZ);
+    const now = x > HC_INTERIOR.minX && x < HC_INTERIOR.maxX && z > HC_INTERIOR.minZ && z < HC_INTERIOR.maxZ;
+    setInside((was) => (was === now ? was : now));
   });
   return (
     <group position={HEALTH_CENTRE.position}>
       <StaticBatches batches={baseBatches} />
-      <group ref={upperRef}>
-        <StaticBatches batches={upperBatches} />
-        <CampusSign position={[0, 4.75, HC.porchFront - 0.15]} width={3.8} height={0.8}
-          title="FUNAAB HEALTH CENTRE" subtitle="Clinic • Pharmacy • Emergency" />
-      </group>
+      {/* Inside, the roof and upper walls go and the ward's own walls and ceiling close in around
+          you; from outside the camera sees through the wall between it and you. */}
+      {!inside && (
+        <>
+          <StaticBatches batches={upperBatches} />
+          <CampusSign position={[0, 4.75, HC.porchFront - 0.15]} width={3.8} height={0.8}
+            title="FUNAAB HEALTH CENTRE" subtitle="Clinic • Pharmacy • Emergency" />
+        </>
+      )}
+      {inside && (
+        <InnerShell rect={{ minX: -W + T / 2, maxX: W - T / 2, minZ: B + T / 2, maxZ: F - T / 2 }} height={H}
+          wall="#eef3ea" ceiling="#f4f7f2" dado={{ color: "#bfe3d3", height: 1.0 }}
+          openings={[{ side: "south", centre: 0, half: HC.doorHalf, top: HC.doorHeight }]} />
+      )}
       <group position={[-3.555, 0.62, 0.6]} rotation={[0, Math.PI / 2, 0]}>
         <CampusSign width={1.6} height={0.34} title="NURSES' STATION" tone="cream" />
       </group>
