@@ -19,7 +19,7 @@ export const courses = [
   ['FWM', 'Forestry and Wildlife Management', 'COLERM', 48],
   ['WMA', 'Water Resources Management and Agrometeorology', 'COLERM', 50],
   ['GLY', 'Geology', 'COLERM', 52], // migration 026
-  ['AEC', 'Agricultural Economics', 'COLAMRUD', 50],
+  ['AEC', 'Agricultural Economics and Farm Management', 'COLAMRUD', 50], // renamed in migration 037
   ['ARD', 'Agricultural Extension and Rural Development', 'COLAMRUD', 0],
   ['AAD', 'Agricultural Administration', 'COLAMRUD', 48], // migration 036
   ['CPT', 'Crop Protection', 'COLPLANT', 0],

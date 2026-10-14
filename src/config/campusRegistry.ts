@@ -191,6 +191,14 @@ const locationMetadata: Record<
     description: 'College of Computing Sciences: Computer Science, Cyber Security, Software Engineering labs, and IT halls. Lecture hall entrance at the college forecourt.',
     interactiveModal: 'lecture_hall',
   },
+  colamrud: {
+    category: 'college',
+    categoryLabel: 'College / Faculty',
+    icon: '🏛️',
+    color: '#15803d',
+    description: 'College of Agricultural Management and Rural Development: Agricultural Administration, Agricultural Economics and Farm Management, and Agricultural Extension and Rural Development. Beside Acad.',
+    interactiveModal: 'lecture_hall',
+  },
   collend: {
     category: 'college',
     categoryLabel: 'College / Faculty',

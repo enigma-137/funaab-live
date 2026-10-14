@@ -269,6 +269,14 @@ export const LECTURE_SCHEDULE: LectureDefinition[] = [
         ['Why should you separate your business money from your pocket money? Raise your hand.', 'Bookkeeping: Income − Expenses = Profit'],
         ['Exactly — or you will never know if you made profit. Write your idea in one sentence before next class. Dismissed!', 'Class Dismissed!\nTask: One-line business idea'],
       ]),
+    collegeLecture('colamrud', 'funaab-aec-201', 'AEC 201', 'Introduction to Farm Management', 'Prof. Adeyemi', 'Professor, Agricultural Economics', '#14532d', '#8d5524',
+      'Planning a farm like a business: costs, revenue, records and the gross margin.', [
+        ['Good day, everyone. AEC 201 — Introduction to Farm Management.', 'AEC 201: Introduction to Farm Management\nTopic: The Farm as a Business'],
+        ['A farm has fixed costs, which you pay whatever happens, and variable costs, which grow with output.', 'Fixed: land, tools, rent\nVariable: seed, feed, labour'],
+        ['Gross margin is revenue minus the variable costs of that enterprise.', 'Gross margin = Revenue − Variable costs'],
+        ['A farmer sells maize for 900,000 naira and spent 600,000 on variable inputs. What is the gross margin? Raise your hand.', 'GM = 900,000 − 600,000 = ?'],
+        ['Three hundred thousand naira. Keep farm records this week and bring them to class. Dismissed!', 'Class Dismissed!\nTask: Start a farm record book'],
+      ]),
     collegeLecture('colphys', 'funaab-phy-201', 'PHY 201', 'Mechanics & Properties of Matter', 'Dr. Akinola', 'Senior Lecturer, Physics', '#4c1d95', '#6b4423',
       'Newton\'s laws, momentum and the elastic properties of solids and fluids.', [
         ['Good afternoon, physicists. PHY 201 — Mechanics and Properties of Matter.', 'PHY 201: Mechanics & Properties of Matter\nTopic: Newton\'s Laws & Momentum'],

@@ -36,7 +36,7 @@ export function CampusRoads(){return <group><CampusRoadFinish/>
   {campusLocations.filter(l=>l.mapVisible).map(l=><group key={l.id} position={l.kekeStop}><mesh rotation={[-Math.PI/2,0,0]} position={[3,.04,0]}><planeGeometry args={[1,3]}/><meshBasicMaterial color="#e9bc37"/></mesh></group>)}
   </group>;}
 export function CampusExpansion(){return <group>
-  {['colvet','colanim','colplant','colcoms','collend','colbios','colphys','library'].map((id,i)=>{
+  {['colvet','colanim','colplant','colcoms','collend','colamrud','colbios','colphys','library'].map((id,i)=>{
     const l=locationById(id),[w,d]=l.footprint,h=id==='library'?7:id==='colphys'?8.5:i===0?5:6;
     return <group key={id} position={l.position} rotation={[0,l.facing,0]} name={l.assetKey}>
       <RigidBody type="fixed" colliders={false}>
