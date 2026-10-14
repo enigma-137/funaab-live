@@ -6,7 +6,7 @@ import { useWalletStore } from './walletStore';
 import { useGameStore } from './gameStore';
 import { holdPurchasedItem } from '../game/player/holdItem';
 import { toast as pushToast } from './toastStore';
-import { getVendorStatus, nextVendorTransition, type FoodVendorId, type VendorStatus } from '../config/foodVendors';
+import { FOOD_VENDORS, getVendorStatus, nextVendorTransition, type FoodVendorId, type VendorStatus } from '../config/foodVendors';
 
 interface FoodVendorStore {
   /** server − device clock (ms). Display uses the server clock, so a wrong phone clock can't fake hours. */
@@ -23,9 +23,10 @@ export const vendorNow = () => Date.now() + useFoodVendorStore.getState().clockO
 
 /** Opens the menu only while the vendor is open (server clock). A closed stall just shows its hours. */
 export function openFoodVendor(vendorId: string | undefined) {
-  if (vendorId !== 'mai_suya' && vendorId !== 'indomie_egg') return;
-  if (!getVendorStatus(vendorId, vendorNow()).isOpen) return;
-  useFoodVendorStore.getState().open(vendorId);
+  if (!vendorId || !(vendorId in FOOD_VENDORS)) return;
+  const id = vendorId as FoodVendorId;
+  if (!getVendorStatus(id, vendorNow()).isOpen) return;
+  useFoodVendorStore.getState().open(id);
   useGameStore.getState().setActiveModal('food_vendor');
 }
 

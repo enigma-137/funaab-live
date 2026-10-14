@@ -3,7 +3,7 @@
  padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));font-family:'Plus Jakarta Sans',system-ui,sans-serif}
 .fv-sheet{--fv-accent:#d97706;--fv-ink:#1f1a14;width:min(100%,380px);background:#fffaf0;color:var(--fv-ink);border-radius:18px;
  border:1px solid #e7d7bd;box-shadow:0 12px 40px #1f1a1440;overflow:hidden}
-.fv-mai_suya{--fv-accent:#b45309;--fv-head:#1c1917}.fv-indomie_egg{--fv-accent:#c2410c;--fv-head:#facc15}
+.fv-mai_suya{--fv-accent:#b45309;--fv-head:#1c1917}.fv-indomie_egg{--fv-accent:#c2410c;--fv-head:#facc15}.fv-party_bar{--fv-accent:#7c3aed;--fv-head:#2b1d3f}
 .fv-sheet header{display:flex;align-items:center;gap:10px;padding:10px 8px 10px 14px;background:var(--fv-head);color:#fffaf0}
 .fv-indomie_egg header{color:#3b1d06}
 .fv-icon{font-size:24px;line-height:1}
