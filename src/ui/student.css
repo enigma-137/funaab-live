@@ -101,3 +101,4 @@
  .student-entry h1 { margin-top:12px; }
  .student-welcome { padding:24px 0; }
 }
+.student-dept-change input { flex:1 1 140px; min-width:0; min-height:40px; padding:6px 10px; border:1px solid #c7d6c9; border-radius:10px; background:white; }

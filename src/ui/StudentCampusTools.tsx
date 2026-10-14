@@ -10,6 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useStudentStore } from '../stores/studentStore';
+import { useInputStore } from '../stores/inputStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useLectureStore } from '../stores/lectureStore';
 import { courseById, courses, colleges } from '../config/academics';
@@ -205,6 +206,7 @@ export function StudentCampusTools() {
                       <div className="student-avatar-layout">
                         <AvatarPreview config={user.avatarConfig} />
                         <div className="student-id">
+                          <UsernameChanger />
                           <strong>{user.college}</strong>
                           <span>{courseById(user.courseId)?.name}</span>
                           <DepartmentChanger />
@@ -251,6 +253,61 @@ export function StudentCampusTools() {
   );
 }
 
+/** Rejoin the room so other players see the new name / college on your name tag. */
+function rejoinAfterProfileChange() {
+  const room = useHostelStore.getState().roomId;
+  const updated = useAuthStore.getState().user;
+  // Campus only (as before): elsewhere the new tag shows the next time you enter a room.
+  if (updated && room === 'world:funaab:main') void networkManager.switchRoom(room, updated);
+}
+
+/** Change username from the profile. The database checks the rules and allows one change a week. */
+function UsernameChanger() {
+  const user = useAuthStore((s) => s.user)!;
+  const saving = useStudentStore((s) => s.saving);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(user.username);
+  const [done, setDone] = useState('');
+  const clean = name.trim();
+  const valid = /^[A-Za-z0-9_]{3,20}$/.test(clean);
+  if (!open)
+    return (
+      <span>
+        <button className="student-link" onClick={() => { setName(user.username); setDone(''); setOpen(true); }}>
+          Change username
+        </button>
+        {done && <em> · {done}</em>}
+      </span>
+    );
+  const save = async () => {
+    if (clean === user.username) return setOpen(false);
+    if (await useStudentStore.getState().changeUsername(clean)) {
+      setOpen(false);
+      setDone(`You are now @${useAuthStore.getState().user?.username}`);
+      rejoinAfterProfileChange();
+    }
+  };
+  return (
+    <span className="student-dept-change">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && valid) void save(); }}
+        aria-label="New username"
+        maxLength={20}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        onFocus={() => useInputStore.getState().setIsInputFocused(true)}
+        onBlur={() => useInputStore.getState().setIsInputFocused(false)}
+      />
+      <button className="student-primary" disabled={saving || !valid || clean === user.username} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+      <button className="student-link" onClick={() => setOpen(false)}>Cancel</button>
+      <small>{valid || !clean ? '3–20 letters, numbers or underscores. You can change it once a week.' : 'Use 3–20 letters, numbers or underscores only.'}</small>
+    </span>
+  );
+}
+
 /** Change department from the profile. The database allows one change a day; the college follows. */
 function DepartmentChanger() {
   const user = useAuthStore((s) => s.user)!;
@@ -272,10 +329,7 @@ function DepartmentChanger() {
     if (await useStudentStore.getState().changeDepartment(choice)) {
       setOpen(false);
       setDone(`Now in ${courseById(choice)?.name}`);
-      // Rejoin so other players see the new college on your name tag.
-      const room = useHostelStore.getState().roomId;
-      const updated = useAuthStore.getState().user;
-      if (updated && room === 'world:funaab:main') void networkManager.switchRoom(room, updated);
+      rejoinAfterProfileChange();
     }
   };
   return (
