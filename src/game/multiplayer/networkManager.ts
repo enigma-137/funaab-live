@@ -12,7 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
-import { useBasketballStore } from '../../stores/basketballStore';
+import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 import { useHustleStore } from '../../stores/hustleStore';
 import { toast } from '../../stores/toastStore';
@@ -122,14 +122,14 @@ class NetworkManager {
       this.send({type:'football',requestId,op,...payload});
     });
   }
-  /** Basketball free throws: same contract as football (aim + power out, verdict back). */
-  public basketball(op:string,payload:Record<string,unknown>={}):Promise<any>{
-    if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to play basketball'));
+  /** Court games (basketball free throws, volleyball serves): aim + power out, verdict back. */
+  public court(game:'basketball'|'volleyball',op:string,payload:Record<string,unknown>={}):Promise<any>{
+    if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error(`Reconnect to campus to play ${game}`));
     const requestId=crypto.randomUUID();
     return new Promise((resolve,reject)=>{
       const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('The court did not answer. If this keeps happening, the multiplayer Worker may need redeploying.'));},10000);
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
-      this.send({type:'basketball',requestId,op,...payload});
+      this.send({type:game,requestId,op,...payload});
     });
   }
   /** Hustles that need proof of place/time (POS, photos, tutoring, errand handover). */
@@ -287,6 +287,7 @@ class NetworkManager {
         if (data.activeMatches) gameStore.setMatches(data.activeMatches);
         if (data.football) useFootballStore.getState().receive(data.football, true);
         if (data.basketball) useBasketballStore.getState().receive(data.basketball, true);
+        if (data.volleyball) useVolleyballStore.getState().receive(data.volleyball, true);
 
         const account=useAuthStore.getState().user;if(account)void useWalletStore.getState().loadWallet(account.id);
         console.log(`[WS] joined ${this.room}`);
@@ -489,6 +490,10 @@ class NetworkManager {
       }
       case 'basketball_state': {
         if (data.basketball) useBasketballStore.getState().receive(data.basketball);
+        break;
+      }
+      case 'volleyball_state': {
+        if (data.volleyball) useVolleyballStore.getState().receive(data.volleyball);
         break;
       }
 

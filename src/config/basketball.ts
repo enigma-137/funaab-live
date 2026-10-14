@@ -2,6 +2,10 @@
 // (src/config/football.ts): pure and dependency-free so the Worker (authority) and the client
 // (rendering) agree exactly. The client only sends aim + power; the Worker rolls randomness.
 
+import {
+  defineShootout, isShootoutError, isValidShotInput, type ShootoutError, type ShootoutPlayer, type ShootoutState, type ShootoutStatus, type Shot, type ShotInput,
+} from './shootout';
+
 export type Vec3 = [number, number, number];
 
 // World layout: a full court south of the football pitch, long axis along X. The challenge
@@ -35,8 +39,6 @@ export const BASKETBALL_COURT = {
   serverRadius: 7,
 };
 
-/** Volleyball court beside the basketball court (visual only for now). Long axis along Z. */
-export const VOLLEYBALL_COURT = { centre: [-87.5, 0, 31] as Vec3, length: 16, width: 8 };
 
 export const BASKETBALL_RULES = {
   SHOTS_PER_PLAYER: 5,
@@ -51,12 +53,7 @@ export const BASKETBALL_RULES = {
 export type HoopOutcome = 'SWISH' | 'SCORE' | 'RIM' | 'MISS';
 export const isBasket = (o: HoopOutcome) => o === 'SWISH' || o === 'SCORE';
 
-export interface HoopShotInput {
-  /** -1 (left of the rim, from the shooter's view) .. 1 (right). */
-  aim: number;
-  /** 0 .. 1; too little falls short, too much clangs off the back. */
-  power: number;
-}
+export type HoopShotInput = ShotInput;
 
 export interface HoopShotResult {
   outcome: HoopOutcome;
@@ -66,12 +63,7 @@ export interface HoopShotResult {
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
-export function isValidHoopShot(input: unknown): input is HoopShotInput {
-  const s = input as HoopShotInput;
-  return !!s && typeof s.aim === 'number' && typeof s.power === 'number'
-    && Number.isFinite(s.aim) && Number.isFinite(s.power)
-    && s.aim >= -1 && s.aim <= 1 && s.power >= 0 && s.power <= 1;
-}
+export const isValidHoopShot = isValidShotInput;
 
 /**
  * Deterministic for a given rng: three draws, always in the same order (side noise, depth noise,
@@ -124,165 +116,32 @@ export function hoopFlightPath(shot: Pick<HoopShotResult, 'outcome' | 'landing'>
   return { release, apex, cross, rest };
 }
 
-// ── 1v1 match state ────────────────────────────────────────────────────────────────────────
+// ── 1v1 match state (shared shootout machine) ──────────────────────────────────────────
 
-export type BasketballStatus = 'LOBBY' | 'WAITING' | 'ACTIVE' | 'RESULT';
+export const BASKETBALL = defineShootout<HoopOutcome, HoopShotResult>({
+  rules: BASKETBALL_RULES,
+  resolve: resolveHoopShot,
+  points: (o) => (isBasket(o) ? 1 : 0),
+  timeoutResult: { outcome: 'MISS', landing: [0, -3] },
+  match: 'shootout',
+  place: 'court',
+  practise: 'Practise',
+});
 
-export interface BasketballPlayer { userId: string; connectionId: string; name: string }
-
-export interface BasketballShot extends HoopShotResult {
-  /** Increments for every shot (practice included) so clients animate each one exactly once. */
-  seq: number;
-  shooterUserId: string;
-  shooterConnectionId: string;
-  shooterName: string;
-  practice: boolean;
-  aim: number;
-  power: number;
-  /** 'timeout' when the turn clock ran out; the shot counts as a miss. */
-  reason?: 'timeout';
-  at: number;
-}
-
-export interface BasketballMatchState {
-  id: string;
-  status: BasketballStatus;
-  player1: BasketballPlayer | null;
-  player2: BasketballPlayer | null;
-  turnUserId: string | null;
-  turnDeadline: number | null;
-  shotsRemaining: Record<string, number>;
-  score: Record<string, number>;
-  history: Record<string, HoopOutcome[]>;
-  winnerUserId: string | null;
-  endReason: 'complete' | 'forfeit' | null;
-  rematchVotes: string[];
-  leftUserIds: string[];
-  lastShot: BasketballShot | null;
-  shotSeq: number;
-  updatedAt: number;
-  finishedAt: number | null;
-}
-
-export type BasketballError = { error: string };
-const fail = (error: string): BasketballError => ({ error });
-export const isBasketballError = (v: unknown): v is BasketballError => !!v && typeof (v as BasketballError).error === 'string';
-
-export function createCourt(now: number, shotSeq = 0): BasketballMatchState {
-  return {
-    id: '', status: 'LOBBY', player1: null, player2: null, turnUserId: null, turnDeadline: null,
-    shotsRemaining: {}, score: {}, history: {}, winnerUserId: null, endReason: null, rematchVotes: [],
-    leftUserIds: [], lastShot: null, shotSeq, updatedAt: now, finishedAt: null,
-  };
-}
-
-export const isCourtPlayer = (s: BasketballMatchState, userId: string) =>
-  s.player1?.userId === userId || s.player2?.userId === userId;
-const opponentOf = (s: BasketballMatchState, userId: string) => (s.player1?.userId === userId ? s.player2 : s.player1);
-export const courtBusy = (s: BasketballMatchState) => s.status === 'ACTIVE';
-const reset = (s: BasketballMatchState, now: number) => ({ ...createCourt(now, s.shotSeq), lastShot: s.lastShot });
-
-export function createHoopChallenge(s: BasketballMatchState, host: BasketballPlayer, id: string, now: number): BasketballMatchState | BasketballError {
-  if (s.status === 'WAITING') return fail(s.player1?.userId === host.userId ? 'Your challenge is already open.' : `@${s.player1?.name} is already waiting for a challenger. Join them!`);
-  if (s.status === 'ACTIVE') return fail('A shootout is on. Wait for the final buzzer.');
-  if (s.status === 'RESULT' && !isCourtPlayer(s, host.userId) && now - (s.finishedAt ?? 0) < BASKETBALL_RULES.RESULT_HOLD_MS)
-    return fail('The last shootout just ended. Try again in a few seconds.');
-  return { ...reset(s, now), id, status: 'WAITING', player1: host };
-}
-
-function start(s: BasketballMatchState, p1: BasketballPlayer, p2: BasketballPlayer, now: number, id: string): BasketballMatchState {
-  const per = BASKETBALL_RULES.SHOTS_PER_PLAYER;
-  return {
-    ...s, id, status: 'ACTIVE', player1: p1, player2: p2, turnUserId: p1.userId,
-    turnDeadline: now + BASKETBALL_RULES.TURN_SECONDS * 1000,
-    shotsRemaining: { [p1.userId]: per, [p2.userId]: per },
-    score: { [p1.userId]: 0, [p2.userId]: 0 },
-    history: { [p1.userId]: [], [p2.userId]: [] },
-    winnerUserId: null, endReason: null, rematchVotes: [], leftUserIds: [], updatedAt: now, finishedAt: null,
-  };
-}
-
-export function joinHoopChallenge(s: BasketballMatchState, guest: BasketballPlayer, matchId: string, now: number): BasketballMatchState | BasketballError {
-  if (s.status !== 'WAITING' || !s.player1 || s.id !== matchId) return fail('That challenge is no longer open.');
-  if (s.player1.userId === guest.userId) return fail('You cannot join your own challenge.');
-  return start(s, s.player1, guest, now, s.id);
-}
-
-export function cancelHoopChallenge(s: BasketballMatchState, userId: string, now: number): BasketballMatchState | BasketballError {
-  if (s.status !== 'WAITING' || s.player1?.userId !== userId) return fail('No open challenge to cancel.');
-  return reset(s, now);
-}
-
-function finish(s: BasketballMatchState, now: number, endReason: 'complete' | 'forfeit', winnerUserId: string | null): BasketballMatchState {
-  return { ...s, status: 'RESULT', turnUserId: null, turnDeadline: null, winnerUserId, endReason, rematchVotes: [], finishedAt: now, updatedAt: now };
-}
-
-function record(s: BasketballMatchState, shooter: BasketballPlayer, input: HoopShotInput, result: HoopShotResult, now: number, reason?: 'timeout'): BasketballMatchState {
-  const seq = s.shotSeq + 1;
-  const shot: BasketballShot = {
-    seq, shooterUserId: shooter.userId, shooterConnectionId: shooter.connectionId, shooterName: shooter.name,
-    practice: false, aim: input.aim, power: input.power, ...result, ...(reason ? { reason } : {}), at: now,
-  };
-  const uid = shooter.userId;
-  const score = { ...s.score, [uid]: (s.score[uid] ?? 0) + (isBasket(result.outcome) ? 1 : 0) };
-  const shotsRemaining = { ...s.shotsRemaining, [uid]: Math.max(0, (s.shotsRemaining[uid] ?? 0) - 1) };
-  const history = { ...s.history, [uid]: [...(s.history[uid] ?? []), result.outcome] };
-  const next: BasketballMatchState = { ...s, score, shotsRemaining, history, lastShot: shot, shotSeq: seq, updatedAt: now };
-  const opponent = opponentOf(s, uid)!;
-  const nextShooter = (shotsRemaining[opponent.userId] ?? 0) > 0 ? opponent : (shotsRemaining[uid] ?? 0) > 0 ? shooter : null;
-  if (!nextShooter) {
-    const a = score[s.player1!.userId] ?? 0, b = score[s.player2!.userId] ?? 0;
-    return finish(next, now, 'complete', a === b ? null : a > b ? s.player1!.userId : s.player2!.userId);
-  }
-  return { ...next, turnUserId: nextShooter.userId, turnDeadline: now + BASKETBALL_RULES.TURN_SECONDS * 1000 };
-}
-
-export function takeHoopShot(s: BasketballMatchState, userId: string, input: HoopShotInput, rng: () => number, now: number): BasketballMatchState | BasketballError {
-  if (s.status !== 'ACTIVE') return fail('No shootout in progress.');
-  if (!isCourtPlayer(s, userId)) return fail('You are not in this shootout.');
-  if (s.turnUserId !== userId) return fail('Wait for your turn.');
-  if (!isValidHoopShot(input)) return fail('Invalid shot.');
-  const shooter = s.player1!.userId === userId ? s.player1! : s.player2!;
-  return record(s, shooter, input, resolveHoopShot(input, rng), now);
-}
-
-/** Turn clock ran out: the shot is lost (counted as a miss, nothing is thrown). */
-export function expireHoopTurn(s: BasketballMatchState, now: number): BasketballMatchState | null {
-  if (s.status !== 'ACTIVE' || !s.turnDeadline || now < s.turnDeadline || !s.turnUserId) return null;
-  const shooter = s.player1!.userId === s.turnUserId ? s.player1! : s.player2!;
-  return record(s, shooter, { aim: 0, power: 0 }, { outcome: 'MISS', landing: [0, -3] }, now, 'timeout');
-}
-
-/** Practice throw: anyone, any time the court is not mid-shootout. Never touches the score. */
-export function takeHoopPractice(s: BasketballMatchState, shooter: BasketballPlayer, input: HoopShotInput, rng: () => number, now: number): BasketballMatchState | BasketballError {
-  if (courtBusy(s)) return fail('A shootout is on. Practise after the final buzzer.');
-  if (!isValidHoopShot(input)) return fail('Invalid shot.');
-  const seq = s.shotSeq + 1;
-  const shot: BasketballShot = {
-    seq, shooterUserId: shooter.userId, shooterConnectionId: shooter.connectionId, shooterName: shooter.name,
-    practice: true, aim: input.aim, power: input.power, ...resolveHoopShot(input, rng), at: now,
-  };
-  return { ...s, lastShot: shot, shotSeq: seq, updatedAt: now };
-}
-
-/** Disconnect / walk-away. Mid-shootout the opponent wins by forfeit; otherwise the slot is freed. */
-export function leaveCourt(s: BasketballMatchState, userId: string, now: number): BasketballMatchState | null {
-  if (!isCourtPlayer(s, userId)) return null;
-  if (s.status === 'WAITING') return reset(s, now);
-  if (s.status === 'ACTIVE') return { ...finish(s, now, 'forfeit', opponentOf(s, userId)!.userId), leftUserIds: [userId] };
-  if (s.status === 'RESULT') {
-    const stay = opponentOf(s, userId);
-    if (!stay || s.leftUserIds.includes(stay.userId)) return reset(s, now);
-    return { ...s, leftUserIds: [...new Set([...s.leftUserIds, userId])], rematchVotes: s.rematchVotes.filter((v) => v !== userId), updatedAt: now };
-  }
-  return null;
-}
-
-/** Both players press Play Again → fresh shootout, the other player shoots first. */
-export function voteHoopRematch(s: BasketballMatchState, userId: string, now: number, newId: string): BasketballMatchState | BasketballError {
-  if (s.status !== 'RESULT' || !isCourtPlayer(s, userId)) return fail('No finished shootout to replay.');
-  if (s.leftUserIds.length) return fail('Your opponent has left the court.');
-  const votes = s.rematchVotes.includes(userId) ? s.rematchVotes : [...s.rematchVotes, userId];
-  if (votes.length < 2) return { ...s, rematchVotes: votes, updatedAt: now };
-  return start(s, s.player2!, s.player1!, now, newId);
-}
+export type BasketballStatus = ShootoutStatus;
+export type BasketballPlayer = ShootoutPlayer;
+export type BasketballShot = Shot<HoopShotResult>;
+export type BasketballMatchState = ShootoutState<HoopOutcome, HoopShotResult>;
+export type BasketballError = ShootoutError;
+export const isBasketballError = isShootoutError;
+export const createCourt = BASKETBALL.create;
+export const isCourtPlayer = BASKETBALL.isPlayer;
+export const courtBusy = BASKETBALL.busy;
+export const createHoopChallenge = BASKETBALL.createChallenge;
+export const joinHoopChallenge = BASKETBALL.join;
+export const cancelHoopChallenge = BASKETBALL.cancel;
+export const takeHoopShot = BASKETBALL.take;
+export const expireHoopTurn = BASKETBALL.expire;
+export const takeHoopPractice = BASKETBALL.practice;
+export const leaveCourt = BASKETBALL.leave;
+export const voteHoopRematch = BASKETBALL.rematch;

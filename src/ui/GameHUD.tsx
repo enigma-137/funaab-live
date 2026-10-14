@@ -38,7 +38,7 @@ import worldData from '../config/campusWorld';
 import { FOOD_VENDORS, getVendorStatus, type FoodVendorId } from '../config/foodVendors';
 import { openFoodVendor, vendorNow } from '../stores/foodVendorStore';
 import { openFootball } from '../stores/footballStore';
-import { openBasketball } from '../stores/basketballStore';
+import { openCourtGame } from '../stores/courtGameStore';
 import { toast } from '../stores/toastStore';
 import { NavigationArrow } from './NavigationArrow';
 
@@ -213,7 +213,8 @@ export const GameHUD: React.FC = () => {
           openFootball();
           break;
         case 'basketball':
-          openBasketball();
+        case 'volleyball':
+          openCourtGame(nearbyInteractable.type);
           break;
         case 'hustle':
           setActiveModal('hustles');
@@ -276,6 +277,8 @@ export const GameHUD: React.FC = () => {
         return '⚽';
       case 'basketball':
         return '🏀';
+      case 'volleyball':
+        return '🏐';
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? '🏧' : '📸';
       case 'lodge':
@@ -321,6 +324,8 @@ export const GameHUD: React.FC = () => {
           return 'Practice Shot / 1v1 Challenge';
         case 'basketball':
           return 'Free Throws / 1v1 Shootout';
+        case 'volleyball':
+          return 'Practice Serves / 1v1 Serve-off';
         case 'hustle':
           return nearbyInteractable.actionText;
         case 'lodge':
@@ -364,6 +369,8 @@ export const GameHUD: React.FC = () => {
         return 'Penalty';
       case 'basketball':
         return 'Hoops';
+      case 'volleyball':
+        return 'Serve';
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? 'POS shift' : 'Photos';
       case 'lodge':

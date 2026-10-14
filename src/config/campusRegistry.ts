@@ -249,7 +249,7 @@ const locationMetadata: Record<
     categoryLabel: 'Sports & Recreation',
     icon: '🏀',
     color: '#ea580c',
-    description: 'Basketball court (free-throw challenge, 1v1 shootouts) and a volleyball court, beside the Sports Centre.',
+    description: 'Basketball court (free-throw challenge, 1v1 shootouts) and volleyball court (serve challenge, 1v1 serve-offs), beside the Sports Centre.',
     interactiveModal: 'basketball',
   },
   'central-lecture-hall': {

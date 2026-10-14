@@ -22,10 +22,23 @@ import {
   FOOTBALL_PITCH, FOOTBALL_RULES, createLobby, createChallenge, joinChallenge, cancelChallenge, takeMatchShot,
   takePracticeShot, expireTurn, leaveMatch, voteRematch, isFootballError, type FootballMatchState,
 } from '../src/config/football';
-import {
-  BASKETBALL_COURT, BASKETBALL_RULES, createCourt, createHoopChallenge, joinHoopChallenge, cancelHoopChallenge, takeHoopShot,
-  takeHoopPractice, expireHoopTurn, leaveCourt, voteHoopRematch, isBasketballError, type BasketballMatchState,
-} from '../src/config/basketball';
+import { BASKETBALL, BASKETBALL_COURT } from '../src/config/basketball';
+import { VOLLEYBALL, VOLLEYBALL_COURT } from '../src/config/volleyball';
+import { isShootoutError, type Shootout } from '../src/config/shootout';
+
+// Sports Centre court games: same shootout machine, different shot model and spot.
+type CourtGameId = 'basketball' | 'volleyball';
+const COURT_GAMES: Record<CourtGameId, { game: Shootout<any, any>; spot: number[]; radius: number; where: string; walk: string; device: string }> = {
+  basketball: {
+    game: BASKETBALL, spot: BASKETBALL_COURT.shooterSpot, radius: BASKETBALL_COURT.serverRadius,
+    where: 'The basketball court is at the Sports Centre.', walk: 'Walk up to the free-throw line on the basketball court.', device: 'Shoot from the device you joined with.',
+  },
+  volleyball: {
+    game: VOLLEYBALL, spot: VOLLEYBALL_COURT.serveSpot, radius: VOLLEYBALL_COURT.serverRadius,
+    where: 'The volleyball court is at the Sports Centre.', walk: 'Walk up to the serving line on the volleyball court.', device: 'Serve from the device you joined with.',
+  },
+};
+const COURT_GAME_IDS = Object.keys(COURT_GAMES) as CourtGameId[];
 import { dailyGoal, isCampusNight, lagosDay } from '../src/config/dailyPlan';
 import { isInLoveGarden } from '../src/config/loveGarden';
 import { POS_KIOSK, PHOTO_SPOTS, PHOTO_RULES, ERRAND_RULES } from '../src/config/hustles';
@@ -67,7 +80,8 @@ interface SessionData {
   /** Last time this session showed a held item (rate limit). */
   heldItemAt?: number;
   footballAt?: number;
-  basketballAt?: number;
+  /** Last practice shot per court game (cooldown). */
+  courtAt?: Partial<Record<CourtGameId, number>>;
   /** Today's Plan progress already reported this session, keyed `${day}:${goal}`. */
   goalSent?: Record<string, number>;
   /** Open POS kiosk shift (Worker-timed; cancelled if the student walks away). */
@@ -361,8 +375,8 @@ export class WorldRoomDO {
   // Sports Centre penalty challenge: one shared pitch, one ball, one match at a time.
   private football: FootballMatchState = createLobby(Date.now());
   private footballTimer: ReturnType<typeof setTimeout> | null = null;
-  private basketball: BasketballMatchState = createCourt(Date.now());
-  private basketballTimer: ReturnType<typeof setTimeout> | null = null;
+  private courts = Object.fromEntries(COURT_GAME_IDS.map((id) => [id, { state: COURT_GAMES[id].game.create(Date.now()), timer: null as ReturnType<typeof setTimeout> | null }])) as
+    Record<CourtGameId, { state: any; timer: ReturnType<typeof setTimeout> | null }>;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -447,7 +461,7 @@ export class WorldRoomDO {
         if (keke.passengers.includes(sessionConnId)) void this.dropPassenger(keke, sessionConnId, 'refund');
       });
       this.footballDisconnect(sessionConnId, session?.id);
-      this.basketballDisconnect(sessionConnId, session?.id);
+      this.courtsDisconnect(sessionConnId, session?.id);
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
@@ -809,54 +823,58 @@ export class WorldRoomDO {
     if (op === 'practice' || op === 'shoot') this.dailyGoalEvent(session, 'take_penalties');
     return this.football;
   }
-  private setBasketball(next: BasketballMatchState) {
-    this.basketball = next;
-    if (this.basketballTimer !== null) clearTimeout(this.basketballTimer);
-    this.basketballTimer = null;
+  private setCourt(id: CourtGameId, next: any) {
+    const court = this.courts[id];
+    court.state = next;
+    if (court.timer !== null) clearTimeout(court.timer);
+    court.timer = null;
     if (next.status === 'ACTIVE' && next.turnDeadline) {
-      this.basketballTimer = setTimeout(() => {
-        this.basketballTimer = null;
-        const expired = expireHoopTurn(this.basketball, Date.now());
-        if (expired) this.setBasketball(expired);
+      court.timer = setTimeout(() => {
+        court.timer = null;
+        const expired = COURT_GAMES[id].game.expire(court.state, Date.now());
+        if (expired) this.setCourt(id, expired);
       }, Math.max(0, next.turnDeadline - Date.now()) + 50);
     }
-    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: 'basketball_state', basketball: next }));
+    this.broadcastToRoom('world:funaab:main', JSON.stringify({ type: `${id}_state`, [id]: next }));
   }
-  /** Free-throw shootout: the client supplies only aim + power; turns, results and score are decided here. */
-  private basketballCommand(session: SessionData, data: any) {
-    if (session.room !== 'world:funaab:main') throw new Error('The basketball court is at the Sports Centre.');
+  /** Court games (free throws, serves): the client supplies only aim + power; turns, results and score are decided here. */
+  private courtCommand(id: CourtGameId, session: SessionData, data: any) {
+    const { game, spot, radius, where, walk, device } = COURT_GAMES[id];
+    if (session.room !== 'world:funaab:main') throw new Error(where);
     const now = Date.now();
     const op = String(data.op || 'state');
-    if (op === 'state') return this.basketball;
+    const current = this.courts[id].state;
+    if (op === 'state') return current;
     const me = { userId: session.id, connectionId: session.connectionId, name: session.username };
     if (['practice', 'create', 'join', 'shoot'].includes(op)) {
       this.advanceTrustedPosition(session);
-      const pos = session.trustedPosition, spot = BASKETBALL_COURT.shooterSpot;
-      if (!pos || Math.hypot(pos[0] - spot[0], pos[2] - spot[2]) > BASKETBALL_COURT.serverRadius) throw new Error('Walk up to the free-throw line on the basketball court.');
+      const pos = session.trustedPosition;
+      if (!pos || Math.hypot(pos[0] - spot[0], pos[2] - spot[2]) > radius) throw new Error(walk);
     }
     const shot = { aim: data.aim, power: data.power };
-    let next: BasketballMatchState | { error: string } | null;
+    let next: any;
     switch (op) {
       case 'practice':
-        if (now - (session.basketballAt || 0) < BASKETBALL_RULES.PRACTICE_COOLDOWN_MS) throw new Error('Wait for the ball to come back.');
-        next = takeHoopPractice(this.basketball, me, shot, Math.random, now);
-        if (!isBasketballError(next)) session.basketballAt = now;
+        if (now - (session.courtAt?.[id] || 0) < game.rules.PRACTICE_COOLDOWN_MS) throw new Error('Wait for the ball to come back.');
+        next = game.practice(current, me, shot, Math.random, now);
+        if (!isShootoutError(next)) session.courtAt = { ...session.courtAt, [id]: now };
         break;
-      case 'create': next = createHoopChallenge(this.basketball, me, crypto.randomUUID(), now); break;
-      case 'join': next = joinHoopChallenge(this.basketball, me, String(data.matchId || ''), now); break;
-      case 'cancel': next = cancelHoopChallenge(this.basketball, me.userId, now); break;
+      case 'create': next = game.createChallenge(current, me, crypto.randomUUID(), now); break;
+      case 'join': next = game.join(current, me, String(data.matchId || ''), now); break;
+      case 'cancel': next = game.cancel(current, me.userId, now); break;
       case 'shoot':
-        if (this.basketball.status === 'ACTIVE' && this.basketball.turnUserId === me.userId
-          && ![this.basketball.player1, this.basketball.player2].some((p) => p?.connectionId === me.connectionId)) throw new Error('Shoot from the device you joined with.');
-        next = takeHoopShot(this.basketball, me.userId, shot, Math.random, now);
+        // Only the player's own socket may shoot (a second tab cannot play for them).
+        if (current.status === 'ACTIVE' && current.turnUserId === me.userId
+          && ![current.player1, current.player2].some((p: any) => p?.connectionId === me.connectionId)) throw new Error(device);
+        next = game.take(current, me.userId, shot, Math.random, now);
         break;
-      case 'rematch': next = voteHoopRematch(this.basketball, me.userId, now, crypto.randomUUID()); break;
-      case 'leave': next = leaveCourt(this.basketball, me.userId, now) ?? this.basketball; break;
-      default: throw new Error('Unknown basketball action.');
+      case 'rematch': next = game.rematch(current, me.userId, now, crypto.randomUUID()); break;
+      case 'leave': next = game.leave(current, me.userId, now) ?? current; break;
+      default: throw new Error(`Unknown ${id} action.`);
     }
-    if (isBasketballError(next)) throw new Error(next.error);
-    if (next !== this.basketball) this.setBasketball(next);
-    return this.basketball;
+    if (isShootoutError(next)) throw new Error(next.error);
+    if (next !== current) this.setCourt(id, next);
+    return this.courts[id].state;
   }
   /**
    * Today's Plan: report progress the database cannot see (positions, shots, visits). Each
@@ -1027,11 +1045,13 @@ export class WorldRoomDO {
           : `${leaverName} left the match.`;
     this.broadcastToRoom(room, JSON.stringify({ type: 'ps_match_update', match: m }));
   }
-  private basketballDisconnect(connectionId: string, userId?: string) {
-    const b = this.basketball;
-    if (!userId || ![b.player1, b.player2].some((p) => p?.connectionId === connectionId)) return;
-    const next = leaveCourt(b, userId, Date.now());
-    if (next) this.setBasketball(next);
+  private courtsDisconnect(connectionId: string, userId?: string) {
+    for (const id of COURT_GAME_IDS) {
+      const c = this.courts[id].state;
+      if (!userId || ![c.player1, c.player2].some((p: any) => p?.connectionId === connectionId)) continue;
+      const next = COURT_GAMES[id].game.leave(c, userId, Date.now());
+      if (next) this.setCourt(id, next);
+    }
   }
   private footballDisconnect(connectionId: string, userId?: string) {
     const f = this.football;
@@ -1284,7 +1304,7 @@ export class WorldRoomDO {
                 players: roomPlayers,
                 kekes: Object.fromEntries(this.kekes),
                 activeMatches: Object.fromEntries(this.psMatches),
-                ...(sessionRoom === 'world:funaab:main' ? { football: this.football, basketball: this.basketball } : {}),
+                ...(sessionRoom === 'world:funaab:main' ? { football: this.football, basketball: this.courts.basketball.state, volleyball: this.courts.volleyball.state } : {}),
               })
             );
 
@@ -1341,10 +1361,11 @@ export class WorldRoomDO {
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
-          case 'basketball': {
+          case 'basketball':
+          case 'volleyball': {
             const current = this.sessions.get(webSocket);
             if (!current) return;
-            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: this.basketballCommand(current, data) })); }
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: this.courtCommand(data.type, current, data) })); }
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
@@ -1865,7 +1886,7 @@ export class WorldRoomDO {
           if(keke.passengers.includes(sessionConnId!))void this.dropPassenger(keke,sessionConnId!,'refund');
         });
         this.footballDisconnect(sessionConnId, session?.id);
-        this.basketballDisconnect(sessionConnId, session?.id);
+        this.courtsDisconnect(sessionConnId, session?.id);
         if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
@@ -1936,7 +1957,7 @@ export default {
           service: 'funaab-life-backend',
           environment: env.ENVIRONMENT || 'production',
           // Lets a deploy be verified from the browser: older Workers silently ignore new messages.
-          features: ['campus_bet', 'trusted_catchup', 'football', 'basketball', 'daily_plan', 'hustles', 'feedback', 'held_item'],
+          features: ['campus_bet', 'trusted_catchup', 'football', 'basketball', 'volleyball', 'daily_plan', 'hustles', 'feedback', 'held_item'],
           timestamp: Date.now(),
         }),
         {

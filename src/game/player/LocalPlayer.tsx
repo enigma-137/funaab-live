@@ -20,7 +20,7 @@ import { classifyTerrain, lawnEnforcement } from '../rules/lawnSecuritySystem';
 import { useShallow } from 'zustand/react/shallow';
 import { openFoodVendor } from '../../stores/foodVendorStore';
 import { openFootball, useFootballStore, amParticipant } from '../../stores/footballStore';
-import { openBasketball, useBasketballStore, onCourt } from '../../stores/basketballStore';
+import { openCourtGame, courtStores, onCourt } from '../../stores/courtGameStore';
 import { HOSTEL_COURTYARD_BOUND, HOSTEL_SPAWN } from '../../config/hostelCompound';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 
@@ -247,7 +247,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           openFootball();
           break;
         case 'basketball':
-          openBasketball();
+        case 'volleyball':
+          openCourtGame(nearbyInteractable.type);
           break;
         case 'hustle':
           setActiveModal('hustles');
@@ -567,6 +568,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       food_vendor: 1,
       football: 1,
       basketball: 1,
+      volleyball: 1,
       hustle: 1,
       lodge: 1,
     };
@@ -607,6 +609,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         food_vendor: ['food_vendor'],
         football: ['football'],
         basketball: ['basketball'],
+        volleyball: ['volleyball'],
       };
 
       const targetZoneTypes = PROXIMITY_MODAL_ZONES[activeModal];
@@ -615,10 +618,10 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         const isRiding = isRidingKeke || useGameStore.getState().isRidingKeke;
         const currentMatch = useGameStore.getState().currentMatch;
         const pitch = useFootballStore.getState().state;
-        const court = useBasketballStore.getState().state;
+        const court = activeModal === 'basketball' || activeModal === 'volleyball' ? courtStores[activeModal].getState().state : null;
         const isPlayingMatch = (currentMatch && currentMatch.status === 'in_progress')
           || (activeModal === 'football' && pitch.status !== 'LOBBY' && amParticipant(pitch))
-          || (activeModal === 'basketball' && court.status !== 'LOBBY' && onCourt(court));
+          || (!!court && court.status !== 'LOBBY' && onCourt(court));
 
         if (!isInClassroom && !isRiding && !isPlayingMatch) {
           const HYSTERESIS_BUFFER = 2.0; // 2.0m tolerance buffer outside base radius to prevent boundary jitter

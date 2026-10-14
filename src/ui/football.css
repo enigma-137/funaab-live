@@ -68,3 +68,9 @@
 .bb-board{position:absolute;left:50%;top:6px;width:30%;height:34px;transform:translateX(-50%);border:3px solid #fff;border-radius:3px;background:#ffffff22}
 .bb-square{position:absolute;left:50%;bottom:2px;width:36%;height:14px;transform:translateX(-50%);border:2px solid #fff}
 .bb-rim{position:absolute;left:50%;top:40px;width:15%;height:9px;transform:translateX(-50%);border:3px solid #f97316;border-radius:50%}
+
+/* Volleyball pad: the far half of the court seen from the serving line, net across the bottom. */
+.vb-court{position:absolute;left:18%;right:18%;top:6px;bottom:16px;border:2px solid #fff;background:#2f7a5288}
+.vb-net{position:absolute;left:14%;right:14%;bottom:12px;height:7px;border-top:2px solid #fff;
+ background:repeating-linear-gradient(90deg,#ffffff55 0 1px,transparent 1px 6px)}
+.vb-receiver{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-size:20px;line-height:1}

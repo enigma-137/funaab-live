@@ -3,9 +3,13 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier';
-import { BASKETBALL_COURT, VOLLEYBALL_COURT, hoopFlightPath, isBasket, type BasketballMatchState, type BasketballShot, type Vec3 } from '../../config/basketball';
+import { VOLLEYBALL_COURT, receiverSpot, serveFlightPath, type VolleyballShot } from '../../config/volleyball';
+import type { ShootoutState } from '../../config/shootout';
+import { BASKETBALL_COURT, hoopFlightPath, isBasket, type BasketballShot, type Vec3 } from '../../config/basketball';
 import { COURT_ZONES } from '../../config/campusWorld';
-import { useBasketballStore } from '../../stores/basketballStore';
+import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameStore';
+import { AvatarBody } from '../player/AvatarBody';
+import { npcAppearance } from '../../config/npcAppearance';
 import { VisualBuilder, campusMaterials } from './campusVisualGeometry';
 import { StaticBatches } from './CampusArchitecture';
 import { CampusSign } from './CampusSign';
@@ -73,25 +77,35 @@ function buildCourts() {
   return b.finish();
 }
 
-function scoreLine(s: BasketballMatchState) {
+function scoreLine(s: ShootoutState<string, { outcome: string }>, icon: string, match: string, verb: string) {
   const p1 = s.player1, p2 = s.player2;
-  if (s.status === 'WAITING' && p1) return `🏀 @${p1.name} is waiting for a 1v1 shootout`;
+  if (s.status === 'WAITING' && p1) return `${icon} @${p1.name} is waiting for a 1v1 ${match}`;
   if (!p1 || !p2) return null;
   const line = `${p1.name} ${s.score[p1.userId] ?? 0} – ${s.score[p2.userId] ?? 0} ${p2.name}`;
-  if (s.status === 'ACTIVE') return `🏀 ${line} · ${s.turnUserId === p1.userId ? p1.name : p2.name} to shoot`;
+  if (s.status === 'ACTIVE') return `${icon} ${line} · ${s.turnUserId === p1.userId ? p1.name : p2.name} to ${verb}`;
   if (s.status === 'RESULT') return `🏁 Final: ${line}`;
   return null;
 }
 
-function ScoreBubble() {
-  const text = useBasketballStore((b) => scoreLine(b.state));
+function Bubble({ text, at, tone }: { text: string | null; at: Vec3; tone: string }) {
   if (!text) return null;
-  const [x, y, z] = BASKETBALL_COURT.rim;
   return (
-    <Html position={[x, y + 1.6, z]} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
-      <div className="px-3 py-1 rounded-xl bg-slate-950/90 border border-orange-400 text-orange-200 text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap">{text}</div>
+    <Html position={at} center distanceFactor={12} style={{ pointerEvents: 'none' }}>
+      <div className={`px-3 py-1 rounded-xl bg-slate-950/90 border text-xs font-bold font-['Outfit'] shadow-xl whitespace-nowrap ${tone}`}>{text}</div>
     </Html>
   );
+}
+
+function ScoreBubble() {
+  const text = useBasketballStore((b) => scoreLine(b.state, '🏀', 'shootout', 'shoot'));
+  const [x, y, z] = BASKETBALL_COURT.rim;
+  return <Bubble text={text} at={[x, y + 1.6, z]} tone="border-orange-400 text-orange-200" />;
+}
+
+function ServeBubble() {
+  const text = useVolleyballStore((v) => scoreLine(v.state, '🏐', 'serve-off', 'serve'));
+  const { centre, netZ } = VOLLEYBALL_COURT;
+  return <Bubble text={text} at={[centre[0], 4, netZ]} tone="border-sky-400 text-sky-200" />;
 }
 
 const bezier = (a: Vec3, c: Vec3, e: Vec3, u: number): Vec3 => {
@@ -160,6 +174,72 @@ function ChallengeBall() {
   );
 }
 
+// The receiver wears a club bib; they guess a side (decided on the server) and dive for the dig.
+const RECEIVER_LOOK = npcAppearance('sports-receiver', {
+  bodyType: 'feminine', hairstyle: 'braids', topStyle: 't-shirt', topColor: '#0ea5e9',
+  bottomStyle: 'joggers', bottomColor: '#1e293b', shoeStyle: 'sneakers', shoeColor: '#f8fafc',
+});
+const VB_R = 0.11;
+const VB_REST: Vec3 = [VOLLEYBALL_COURT.serveSpot[0] + 0.6, VB_R, VOLLEYBALL_COURT.serveSpot[2] - 0.5];
+const SERVE_T = 1.05;
+
+/** Serve ball + NPC receiver, animated from the server's verdict. */
+function ServeBall() {
+  const ball = useRef<THREE.Mesh>(null);
+  const receiver = useRef<THREE.Group>(null);
+  const lastSeq = useRef(useVolleyballStore.getState().state.lastShot?.seq ?? 0);
+  const flight = useRef<{ shot: VolleyballShot; start: number; path: ReturnType<typeof serveFlightPath> } | null>(null);
+  useFrame((_, delta) => {
+    const shot = useVolleyballStore.getState().state.lastShot;
+    if (shot && shot.seq !== lastSeq.current) {
+      lastSeq.current = shot.seq;
+      flight.current = shot.reason === 'timeout' ? null : { shot, start: performance.now(), path: serveFlightPath(shot) };
+    }
+    const b = ball.current, r = receiver.current;
+    if (!b || !r) return;
+    const f = flight.current;
+    const t = f ? (performance.now() - f.start) / 1000 : Infinity;
+    const home = VOLLEYBALL_COURT.receiverHome;
+    if (!f || t > RESET_AFTER) {
+      flight.current = null;
+      b.position.set(...VB_REST);
+      r.position.set(...home);
+      r.rotation.set(0, 0, 0);
+      return;
+    }
+    const { contact, apex, land, rest } = f.path;
+    if (t <= SERVE_T) {
+      const ctrl: Vec3 = [apex[0], apex[1] * 2 - (contact[1] + land[1]) / 2, apex[2]];
+      b.position.set(...bezier(contact, ctrl, land, t / SERVE_T));
+    } else {
+      const u = Math.min(1, (t - SERVE_T) / 1.1);
+      const e = 1 - (1 - u) * (1 - u);
+      // A dig pops the ball high; anything else bounces along the floor.
+      const lift = f.shot.outcome === 'DUG' ? Math.sin(Math.PI * u) * 3 : Math.abs(Math.sin(Math.PI * u * 2)) * 0.9 * (1 - u);
+      b.position.set(THREE.MathUtils.lerp(land[0], rest[0], e), VB_R + lift, THREE.MathUtils.lerp(land[2], rest[2], e));
+    }
+    b.rotation.x -= delta * 10;
+    // Receiver commits just after the serve and dives to their guessed side.
+    const to = receiverSpot(f.shot.receiverDive);
+    const d = Math.min(1, Math.max(0, (t - 0.25) / 0.7));
+    const k = 1 - (1 - d) * (1 - d);
+    r.position.set(THREE.MathUtils.lerp(home[0], to[0], k), 0, home[2]);
+    // Faces the server (+Z); a sideways dive tips the body toward the dive side.
+    r.rotation.set(0, 0, -f.shot.receiverDive * 0.6 * k);
+  });
+  return (
+    <>
+      <mesh ref={ball} name="sports_volleyball" position={VB_REST} castShadow>
+        <icosahedronGeometry args={[VB_R, 1]} />
+        <meshStandardMaterial color="#f8f3d6" roughness={0.6} flatShading />
+      </mesh>
+      <group ref={receiver} position={VOLLEYBALL_COURT.receiverHome}>
+        <AvatarBody identity="sports-receiver" config={RECEIVER_LOOK} animation="idle" />
+      </group>
+    </>
+  );
+}
+
 export function SportsCourts() {
   const batches = useMemo(buildCourts, []);
   useEffect(() => () => batches.forEach((b) => b.geometry.dispose()), [batches]);
@@ -197,6 +277,8 @@ export function SportsCourts() {
       </RigidBody>
       <ChallengeBall />
       <ScoreBubble />
+      <ServeBall />
+      <ServeBubble />
       <group position={[BASKETBALL_COURT.freeThrowX + 3.2, 0, CZ + HALF_W + 1.4]} rotation={[0, -0.35, 0]}>
         {[-1, 1].map((side) => (
           <mesh key={side} position={[side * 1.05, 0.9, 0]} material={campusMaterials.metal}>
@@ -204,6 +286,14 @@ export function SportsCourts() {
           </mesh>
         ))}
         <CampusSign position={[0, 1.75, 0]} width={2.4} height={0.8} title="BASKETBALL COURT" subtitle="FREE-THROW CHALLENGE" />
+      </group>
+      <group position={[VOLLEYBALL_COURT.centre[0] + 5.2, 0, VOLLEYBALL_COURT.centre[2] + 5.5]} rotation={[0, -0.7, 0]}>
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * 1.05, 0.9, 0]} material={campusMaterials.metal}>
+            <cylinderGeometry args={[0.05, 0.06, 1.8, 6]} />
+          </mesh>
+        ))}
+        <CampusSign position={[0, 1.75, 0]} width={2.4} height={0.8} title="VOLLEYBALL COURT" subtitle="SERVE CHALLENGE" />
       </group>
     </group>
   );

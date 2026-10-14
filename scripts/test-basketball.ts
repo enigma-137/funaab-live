@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict';
 import { WorldRoomDO } from '../worker/index';
 import {
-  BASKETBALL_COURT, BASKETBALL_RULES, VOLLEYBALL_COURT, createCourt, createHoopChallenge, expireHoopTurn, hoopFlightPath,
+  BASKETBALL_COURT, BASKETBALL_RULES, createCourt, createHoopChallenge, expireHoopTurn, hoopFlightPath,
   isBasketballError, joinHoopChallenge, leaveCourt, resolveHoopShot, takeHoopPractice, takeHoopShot, type BasketballMatchState,
 } from '../src/config/basketball';
+import { VOLLEYBALL_COURT } from '../src/config/volleyball';
 import world, { COURT_ZONES } from '../src/config/campusWorld';
 import { campusLocations } from '../src/config/campusLocations';
 import { classifyTerrain } from '../src/game/rules/lawnSecuritySystem';

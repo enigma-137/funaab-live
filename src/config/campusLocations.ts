@@ -56,7 +56,7 @@ const sportsSide = [
   { id: 'acad', name: 'Academic Building (Acad)', type: 'academic',
     description: 'Three-storey Academic Building, right beside the Sports Centre. Students just call it Acad.' },
   { id: 'sports-courts', name: 'Basketball & Volleyball Courts', type: 'sports',
-    description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, volleyball net next door.' },
+    description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, serve challenge on the volleyball court.' },
 ];
 export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
