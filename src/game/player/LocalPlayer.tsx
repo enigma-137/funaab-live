@@ -701,6 +701,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       {/* Visual Avatar Mesh attached to physics body with offset to match feet level */}
       <group ref={avatarVisualRef} position={[0, -PLAYER_CENTER_OFFSET, 0]}>
         <AvatarModel
+          userId={user.id}
           username={user.username}
           college={user.college}
           avatarConfig={user.avatarConfig}

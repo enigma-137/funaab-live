@@ -7,6 +7,7 @@ import { AvatarConfig } from '../../types/game';
 import { useSocialStore } from '../../stores/socialStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useInputStore } from '../../stores/inputStore';
+import { useSugStore } from '../../stores/sugStore';
 import { MessageSquare } from 'lucide-react';
 
 interface AvatarModelProps {
@@ -36,6 +37,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   const inRoom=useHostelStore(s=>!!s.owner);
   const isModalOpen = useGameStore((s) => s.activeModal !== null);
   const isTouch = useInputStore((s) => s.isTouchDevice);
+  const isPresident = useSugStore((s) => !!userId && s.state?.president?.user_id === userId);
   const unreadCount = unreadDmsByPartner[username.toLowerCase()] || 0;
   const hasUnreadDm = unreadCount > 0;
 
@@ -83,6 +85,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
               <span className="text-[7.5px] leading-[14px] font-bold tracking-wide text-slate-400 uppercase">
                 {college}
               </span>
+              {isPresident && <span className="text-[7.5px] leading-[14px] font-black text-amber-300" title="SUG President">👑 SUG</span>}
             </div>
           </div>
         </Html>

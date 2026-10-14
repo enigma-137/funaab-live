@@ -158,3 +158,20 @@
 .arcade-shot{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .arcade-shot label{flex:1;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#e2e8f0}
 .arcade-shot input{flex:1;accent-color:#a78bfa}
+
+/* SUG elections */
+.sug-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.sug-candidate{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;border-radius:12px;background:#0f172a;border:1px solid #1e293b}
+.sug-candidate.is-mine{border-color:#38bdf8}
+.sug-candidate.is-top{border-color:#fbbf24;background:#1f1a0a}
+.sug-candidate b{color:#f8fafc;font-size:13px}
+.sug-candidate small{color:#94a3b8;font-size:11px;font-weight:700}
+.sug-candidate p{margin:4px 0 0;color:#cbd5e1;font-size:12px;line-height:1.35}
+.sug-votes{font-weight:900;color:#fbbf24;font-size:13px;white-space:nowrap}
+.sug-announcement{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#082f49;color:#e0f2fe;font-size:12.5px;font-weight:700}
+.sug-compose,.sug-manifesto{margin-top:8px}
+.sug-compose{display:flex;flex-direction:column;gap:6px}
+.sug-compose textarea,.sug-manifesto{width:100%;box-sizing:border-box;border-radius:10px;background:#020617;border:1px solid #334155;color:#f1f5f9;padding:8px 10px;font:inherit;font-size:13px;resize:none}
+.sug-banner{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 88px);z-index:33;max-width:520px;margin:0 auto;display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:12px;background:#082f49f2;border:1px solid #38bdf866;color:#e0f2fe;font-size:12px;line-height:1.35;box-shadow:0 8px 24px #0006}
+.sug-banner span{flex:1}
+.sug-banner button{flex-shrink:0;border:0;background:transparent;color:#bae6fd;font-weight:900;cursor:pointer}

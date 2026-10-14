@@ -48,6 +48,7 @@ import { TodayPlan } from './ui/TodayPlan';
 import { LevelSheet } from './ui/LevelSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
+import { SugSheet, SugBanner } from './ui/SugSheet';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
 import { LeagueSheet } from './ui/LeagueSheet';
@@ -174,6 +175,7 @@ export const App: React.FC = () => {
 
       <StudentCampusTools />
       {!isInClassroom && <StatusStrip />}
+      {!isInClassroom && <SugBanner />}
       {!isInClassroom && <TodayPlan />}
       <FeedbackButton />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />
@@ -194,6 +196,7 @@ export const App: React.FC = () => {
       {activeModal === 'level' && <LevelSheet />}
       {activeModal === 'party' && <PartySheet />}
       {activeModal === 'arcade' && <ArcadeSheet />}
+      {activeModal === 'sug' && <SugSheet />}
       {activeModal === 'hustles' && <HustlesSheet />}
       {activeModal === 'lodge' && <LodgeSheet />}
       {activeModal === 'league' && <LeagueSheet />}
