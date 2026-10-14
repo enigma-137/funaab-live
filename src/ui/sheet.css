@@ -70,6 +70,7 @@
 .campus-plan-body li button{min-height:32px;padding:0 10px;border-radius:9px;background:#059669;color:#fff;font-weight:900}
 .campus-plan-body li button:disabled{opacity:.5}
 .campus-plan-reward{color:#94a3b8;font-weight:700}
+.campus-plan-body li button.campus-plan-go{background:#2563eb;min-width:44px}
 .campus-plan-done{color:#4ade80;font-weight:900}
 .campus-plan-note,.campus-plan-hint{margin-top:8px;color:#cbd5e1;line-height:1.35}
 .campus-plan-hint{color:#64748b;font-size:10.5px}

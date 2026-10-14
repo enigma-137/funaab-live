@@ -3,6 +3,10 @@
 // 'db' goals are proven from existing ledgers (lectures, jobs, food, keke, Game Den);
 // 'worker' goals are reported by the Worker from trusted positions/actions.
 
+import { locationById } from './campusLocations';
+import { LOVE_GARDEN } from './loveGarden';
+import { FOOTBALL_PITCH } from './football';
+
 export type DailyGoalSource = 'db' | 'worker';
 export interface DailyGoalDef { id: string; title: string; icon: string; source: DailyGoalSource; target: number; reward: number }
 
@@ -26,6 +30,28 @@ export const DAILY_PLAN = {
   STREAK_BADGES: [3, 7, 30] as const,
   /** Campus Night: Lagos wall-clock hour [start, end). */
   CAMPUS_NIGHT_HOURS: [20, 21] as const,
+};
+
+/** Where a goal's "Go" button takes the student: a route arrow to a place, or the sheet that does it. */
+export type GoalTarget =
+  | { kind: 'place'; id: string; name: string; at: [number, number, number]; icon: string }
+  | { kind: 'sheet'; modal: 'campus_jobs' | 'friends'; hint: string }
+  | { kind: 'lecture' };
+export const goalTarget = (goalId: string): GoalTarget | null => {
+  const place = (id: string, name: string, at: [number, number, number], icon: string): GoalTarget => ({ kind: 'place', id, name, at, icon });
+  switch (goalId) {
+    case 'attend_lecture': return { kind: 'lecture' };
+    case 'finish_job': return { kind: 'sheet', modal: 'campus_jobs', hint: 'Pick a job, then follow the arrow.' };
+    case 'buy_food': return place('food-court', 'Food Court', locationById('food-court').entrance, '🍲');
+    case 'ride_keke': return place('car-park', 'Car Park Keke stop', locationById('car-park').kekeStop, '🛺');
+    case 'game_den_match': return place('ps-room', 'Game Den', locationById('ps-room').entrance, '🎮');
+    case 'take_penalties': return place('sports-penalty-spot', 'Penalty spot', FOOTBALL_PITCH.shooterSpot, '⚽');
+    case 'visit_love_garden':
+    case 'garden_hangout':
+    case 'campus_night': return place('love-garden', LOVE_GARDEN.name, LOVE_GARDEN.centre, '🌳');
+    case 'visit_friend_room': return { kind: 'sheet', modal: 'friends', hint: 'Open a friend and invite yourself in, or accept an invite.' };
+    default: return null;
+  }
 };
 
 export const dailyGoal = (id: string) => DAILY_GOALS.find((g) => g.id === id);

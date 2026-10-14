@@ -4,7 +4,10 @@ import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
 import { useStudentStore } from '../stores/studentStore';
 import { useHostelStore } from '../stores/hostelStore';
-import { DAILY_PLAN } from '../config/dailyPlan';
+import { DAILY_PLAN, goalTarget } from '../config/dailyPlan';
+import { lectureHallForCollege, LECTURE_HALLS } from '../config/lectureHalls';
+import { useAuthStore } from '../stores/authStore';
+import { toast } from '../stores/toastStore';
 
 const BADGE_LABEL: Record<string, string> = { streak_3: '3-day', streak_7: '7-day', streak_30: '30-day' };
 
@@ -16,6 +19,23 @@ export function TodayPlan() {
   const riding = useGameStore((s) => s.isRidingKeke);
   const onCampus = useHostelStore((s) => s.roomId === 'world:funaab:main');
   const balance = useWalletStore((s) => s.balance);
+  const college = useAuthStore((s) => s.user?.college);
+
+  /** Point the route arrow at the goal's place (or open the sheet that does it), and close the panel. */
+  const go = (goalId: string) => {
+    const t = goalTarget(goalId); if (!t) return;
+    const g = useGameStore.getState();
+    setOpen(false);
+    if (t.kind === 'sheet') { g.setActiveModal(t.modal); toast({ icon: '📅', text: t.hint, tone: 'info', ms: 4500 }); return; }
+    if (t.kind === 'lecture') {
+      const hall = (college && lectureHallForCollege(college)) || LECTURE_HALLS[0];
+      g.setNavigationDestination({ id: `plan-${hall.id}`, name: hall.hallName, shortName: hall.collegeCode, position: hall.entrance, icon: '🎓' });
+      toast({ icon: '🎓', text: `Follow the arrow to ${hall.hallName}. Classes run 9 AM–5 PM.`, tone: 'info', ms: 4500 });
+      return;
+    }
+    g.setNavigationDestination({ id: `plan-${t.id}`, name: t.name, shortName: t.name, position: t.at, icon: t.icon });
+    toast({ icon: t.icon, text: `Follow the arrow to the ${t.name}.`, tone: 'info', ms: 4000 });
+  };
 
   useEffect(() => { void load(); const t = setInterval(() => void load(), 60000); return () => clearInterval(t); }, []);
   // Lectures, food and keke are proven by the ledger, so a wallet change is a good moment to recheck.
@@ -54,7 +74,10 @@ export function TodayPlan() {
                   ) : complete ? (
                     <button disabled={claiming === g.id} onClick={() => claim(g.id)}>+₦{g.reward}</button>
                   ) : (
-                    <span className="campus-plan-reward">₦{g.reward}</span>
+                    <>
+                      <span className="campus-plan-reward">₦{g.reward}</span>
+                      {goalTarget(g.id) && <button className="campus-plan-go" onClick={() => go(g.id)} aria-label={`Go: ${g.title}`}>Go</button>}
+                    </>
                   )}
                 </li>
               );
