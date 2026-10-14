@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --green: #15803d; --emerald: #22c55e; --ink: #0b120c; --cream: #f5f7f2; --keke: #facc15; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #000; font-family: 'Plus Jakarta Sans', sans-serif; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+  #shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 50% 50%; }
+  #shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(4, 12, 6, .78) 0%, rgba(4, 12, 6, .35) 28%, rgba(4, 12, 6, 0) 48%); }
+  #cap { position: absolute; left: 112px; bottom: 104px; right: 112px; color: #fff; }
+  .kicker { display: inline-flex; align-items: center; gap: 12px; padding: 10px 20px; border-radius: 999px; background: var(--green);
+    font: 700 22px/1 'Plus Jakarta Sans'; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 26px; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+  .kicker i { width: 10px; height: 10px; border-radius: 50%; background: #bbf7d0; box-shadow: 0 0 0 5px rgba(187,247,208,.25); display: inline-block; }
+  .head { font: 800 120px/1.02 'Outfit'; letter-spacing: -.035em; text-shadow: 0 6px 40px rgba(0,0,0,.45); }
+  .head .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .08em; margin-bottom: -.08em; }
+  .head .w > span { display: inline-block; }
+  .head em { font-style: normal; color: #4ade80; }
+  .sub { margin-top: 22px; font: 600 34px/1.3 'Plus Jakarta Sans'; color: rgba(255,255,255,.9); text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+  .bar { height: 8px; width: 140px; border-radius: 8px; background: var(--keke); margin-bottom: 28px; transform-origin: left; }
+  .list { display: flex; gap: 22px; flex-wrap: wrap; }
+  .chip { font: 800 64px/1 'Outfit'; letter-spacing: -.03em; padding: 22px 34px 26px; border-radius: 28px; background: rgba(255,255,255,.96); color: var(--ink); box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+  .chip b { color: var(--green); }
+
+  /* Cards */
+  .card { position: absolute; inset: 0; background: radial-gradient(1200px 700px at 50% 42%, #14532d 0%, #0b2414 45%, var(--ink) 100%); display: none; color: #fff; }
+  .grid { position: absolute; inset: -40px; background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px); background-size: 80px 80px; }
+  .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .logo { width: 150px; height: 150px; border-radius: 40px; background: linear-gradient(145deg, #16a34a, #166534); display: grid; place-items: center; font-size: 84px; box-shadow: 0 30px 80px rgba(34,197,94,.35), inset 0 2px 0 rgba(255,255,255,.25); }
+  .word { margin-top: 40px; font: 900 168px/1 'Outfit'; letter-spacing: -.045em; white-space: nowrap; }
+  .word .ch { display: inline-block; }
+  .word .life { color: #4ade80; }
+  .pill { margin-top: 30px; display: inline-flex; gap: 12px; align-items: center; padding: 12px 24px; border-radius: 999px; border: 2px solid rgba(74,222,128,.55); color: #bbf7d0; font: 700 24px/1 'Plus Jakarta Sans'; letter-spacing: .16em; text-transform: uppercase; }
+  .pill i { width: 11px; height: 11px; border-radius: 50%; background: #4ade80; display: inline-block; }
+  .tag { margin-top: 34px; font: 600 46px/1.2 'Plus Jakarta Sans'; color: rgba(255,255,255,.88); }
+  .cta { margin-top: 46px; display: inline-flex; align-items: center; gap: 18px; padding: 26px 46px; border-radius: 22px; background: #fff; color: var(--ink); font: 800 44px/1 'Outfit'; letter-spacing: -.02em; box-shadow: 0 24px 70px rgba(0,0,0,.4); }
+  .cta .play { width: 0; height: 0; border-left: 26px solid var(--green); border-top: 16px solid transparent; border-bottom: 16px solid transparent; }
+  .fine { position: absolute; bottom: 54px; left: 0; right: 0; text-align: center; font: 500 22px/1.4 'Plus Jakarta Sans'; color: rgba(255,255,255,.55); }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <img id="shot" alt="">
+  <div id="shade"></div>
+  <div id="cap"></div>
+  <div class="card" id="intro"><div class="grid"></div><div class="center">
+    <div class="logo">🎓</div>
+    <div class="word"><span class="ch">F</span><span class="ch">U</span><span class="ch">N</span><span class="ch">A</span><span class="ch">A</span><span class="ch">B</span><span class="ch">&nbsp;</span><span class="ch life">L</span><span class="ch life">i</span><span class="ch life">v</span><span class="ch life">e</span></div>
+    <div class="pill"><i></i>Update</div>
+    <div class="tag">What’s new on campus</div>
+  </div></div>
+  <div class="card" id="outro"><div class="grid"></div><div class="center">
+    <div class="logo">🎓</div>
+    <div class="word" style="font-size:150px;margin-top:34px">FUNAAB <span class="life">Live</span></div>
+    <div class="tag">Come see what’s new.</div>
+    <div class="cta"><span class="play"></span>Play now</div>
+    <div class="tag" style="font-size:30px;margin-top:28px;color:rgba(255,255,255,.7)">In your browser · desktop &amp; mobile</div>
+  </div>
+  <div class="fine">An independent student community project · Not affiliated with or endorsed by FUNAAB</div></div>
+  <div id="flash"></div>
+  <div id="fade"></div>
+</div>
+<script>
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (f, a, b) => clamp((f - a) / (b - a));
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const easeBack = (t) => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const easeInOut = (t) => t * t * (3 - 2 * t);
+
+// Edit decision list. Lengths are multiples of 15 frames (one beat at 120 BPM, 30 fps).
+const EDL = [
+  { card: 'intro', len: 120 },
+  { shot: 'night_library', len: 120, head: 'Campus at <em>night</em>' },
+  { shot: 'arena', len: 150, head: 'The <em>Arena</em>' },
+  { shot: 'keke', len: 120, head: 'New <em>keke</em>' },
+  { shot: 'col_a', len: 60, head: 'More <em>colleges</em>', hold: 180 },
+  { shot: 'col_b', len: 60, cont: true },
+  { shot: 'col_c', len: 60, cont: true },
+  { shot: 'farm', len: 135, head: 'FPY <em>farm</em> work' },
+  { shot: 'courts', len: 120, head: '<em>Sports</em>' },
+  { card: 'outro', len: 150, dissolve: 15 },
+];
+let start = 0; for (const s of EDL) { s.start = start; start += s.len; }
+window.TOTAL_FRAMES = start;
+
+const $ = (id) => document.getElementById(id);
+let lastCapKey = null;
+function buildCaption(s) {
+  const cap = $('cap'); cap.innerHTML = '';
+  if (s.list) {
+    cap.innerHTML = `<div class="bar"></div><div class="list">${s.list.map((x) => `<div class="chip">${x}</div>`).join('')}</div>`;
+    return;
+  }
+  if (!s.head) return;
+  const words = s.head.split(' ').map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
+  cap.innerHTML = (s.kicker ? `<div class="kicker"><i></i>${s.kicker}</div>` : `<div class="bar"></div>`) +
+    `<div class="head">${words}</div>` + (s.sub ? `<div class="sub">${s.sub}</div>` : '');
+}
+function animCaption(s, f) {
+  const cap = $('cap');
+  const out = 1 - easeInOut(prog(f, s.len - 10, s.len - 1));
+  cap.style.opacity = out;
+  const bar = cap.querySelector('.bar'); if (bar) bar.style.transform = `scaleX(${easeOut(prog(f, 4, 16))})`;
+  const kick = cap.querySelector('.kicker');
+  if (kick) { const k = easeOut(prog(f, 4, 16)); kick.style.opacity = k; kick.style.transform = `translateY(${(1 - k) * 20}px)`; }
+  cap.querySelectorAll('.head .w > span').forEach((w, i) => {
+    const t = easeOut(prog(f, 6 + i * 3, 20 + i * 3)); w.style.transform = `translateY(${(1 - t) * 110}%)`;
+  });
+  const sub = cap.querySelector('.sub');
+  if (sub) { const t = easeOut(prog(f, 22, 36)); sub.style.opacity = t; sub.style.transform = `translateY(${(1 - t) * 18}px)`; }
+  cap.querySelectorAll('.chip').forEach((c, i) => {
+    const t = prog(f, 8 + i * 15, 20 + i * 15); c.style.opacity = clamp(t * 3); c.style.transform = `translateY(${(1 - easeOut(t)) * 40}px) scale(${0.85 + 0.15 * easeBack(t)})`;
+  });
+}
+function animIntro(f) {
+  const card = $('intro');
+  const logo = card.querySelector('.logo'); const l = easeBack(prog(f, 2, 18));
+  logo.style.transform = `scale(${l}) rotate(${(1 - l) * -12}deg)`; logo.style.opacity = clamp(prog(f, 2, 8));
+  card.querySelectorAll('.word .ch').forEach((c, i) => {
+    const t = prog(f, 12 + i * 2, 26 + i * 2); c.style.opacity = clamp(t * 2); c.style.transform = `translateY(${(1 - easeOut(t)) * 60}px)`;
+  });
+  const pill = card.querySelector('.pill'); pill.style.opacity = easeOut(prog(f, 40, 52));
+  const tag = card.querySelector('.tag'); const tt = easeOut(prog(f, 50, 66)); tag.style.opacity = tt; tag.style.transform = `translateY(${(1 - tt) * 20}px)`;
+  card.querySelector('.grid').style.transform = `translateY(${f * 0.4}px)`;
+  const center = card.querySelector('.center'); center.style.transform = `scale(${1 + f * 0.0006 + Math.pow(prog(f, 104, 120), 2) * 0.35})`;
+  center.style.opacity = 1 - prog(f, 110, 120);
+}
+function animOutro(f, len) {
+  const card = $('outro');
+  const ce = card.querySelector('.center');
+  const logo = card.querySelector('.logo'); const l = easeBack(prog(f, 6, 22)); logo.style.transform = `scale(${l})`;
+  const word = card.querySelector('.word'); const w = easeOut(prog(f, 10, 26)); word.style.opacity = w; word.style.transform = `translateY(${(1 - w) * 40}px)`;
+  const [tag, small] = card.querySelectorAll('.tag'); const t = easeOut(prog(f, 22, 36)); tag.style.opacity = t; tag.style.transform = `translateY(${(1 - t) * 20}px)`;
+  const cta = card.querySelector('.cta'); const c = easeBack(prog(f, 32, 48)); cta.style.opacity = clamp(prog(f, 32, 38)); cta.style.transform = `scale(${0.8 + 0.2 * c})`;
+  small.style.opacity = easeOut(prog(f, 44, 58)) * 1;
+  card.querySelector('.fine').style.opacity = easeOut(prog(f, 50, 64));
+  card.querySelector('.grid').style.transform = `translateY(${f * 0.4}px)`;
+  ce.style.transform = `scale(${1 + f * 0.0004})`;
+  $('fade').style.opacity = easeInOut(prog(f, len - 24, len - 1));
+}
+async function setShot(name, i) {
+  const img = $('shot'); const src = `frames2/${name}/${String(i).padStart(4, '0')}.jpg`;
+  if (!img.src.endsWith(src)) { img.src = src; await img.decode(); }
+}
+window.renderFrame = async (F) => {
+  const idx = EDL.findIndex((s) => F >= s.start && F < s.start + s.len);
+  const s = EDL[idx]; const f = F - s.start;
+  $('intro').style.display = 'none'; $('outro').style.display = 'none';
+  $('flash').style.opacity = 0; $('fade').style.opacity = 0;
+  $('outro').style.opacity = 1;
+  if (s.card === 'intro') { $('intro').style.display = 'block'; $('cap').innerHTML = ''; lastCapKey = null; animIntro(f); return; }
+  if (s.card === 'outro') {
+    // Dissolve: the finale keeps playing under the card for the first frames.
+    const prev = EDL[idx - 1];
+    if (f < s.dissolve) await setShot(prev.shot, prev.len - 1);
+    $('outro').style.display = 'block'; $('outro').style.opacity = easeInOut(prog(f, 0, s.dissolve));
+    $('cap').innerHTML = ''; lastCapKey = null; animOutro(f, s.len); return;
+  }
+  await setShot(s.shot, Math.min(f, s.len - 1));
+  // Cut punch-in: slight zoom settle on each new shot; slow push on stills.
+  const punch = 1 + 0.035 * (1 - easeOut(prog(f, 0, 9)));
+  const kb = s.kb ? 1 + 0.07 * easeInOut(prog(f, 0, s.len)) : 1;
+  $('shot').style.transform = `scale(${punch * kb})`;
+  // A caption with `hold` spans the following `cont` shots.
+  let cs = s, cf = f;
+  if (s.cont) { let j = idx; while (EDL[j].cont) j--; cs = EDL[j]; cf = F - cs.start; }
+  if (lastCapKey !== cs.shot) { buildCaption(cs); lastCapKey = cs.shot; }
+  $('cap').style.left = '112px';
+  animCaption({ ...cs, len: cs.hold || cs.len }, cf);
+  $('shade').style.opacity = cs.head || cs.list ? 1 : 0;
+  // White flash on the beat drop (first gameplay frame).
+  if (idx === 1) $('flash').style.opacity = 0.85 * (1 - prog(f, 0, 8));
+};
+</script>
+</body>
+</html>

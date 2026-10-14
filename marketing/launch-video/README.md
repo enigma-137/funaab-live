@@ -37,3 +37,15 @@ The pipeline runs the real game against a mocked Supabase and realtime server. T
 Set `PLAYWRIGHT_MODULE` if Playwright isn't resolvable from this folder.
 
 Edit `EDL` in `compose.html` to change the copy, ordering or timing. Shot lengths are multiples of 15 frames, so cuts land on the 120 BPM beat. If you change the total length, update `music.py` to match.
+
+## "What's new on FUNAAB Live" (update video)
+
+`funaab-live-whats-new.mp4` is 36.5 s long, 1080p, with music only. Its shots are campus at night, the Arena, the new keke, more colleges, FPY farm work and sports, then a "Play now" end card. `whats-new-poster.jpg` is its thumbnail.
+
+To re-render it, use the same steps as above with these changes:
+- Render with `node render2.cjs [shot ...]`. The staged students come from `peers2.cjs`.
+- Generate the music with `python3 music.py 36.5 -1 -1 music2.wav`.
+- Lay out the frames with `PAGE=compose2.html OUT=/out2 node compose.cjs`.
+- Encode `out2/` with `music2.wav`.
+
+`render2.cjs` sets day or night per shot, so the output doesn't depend on the real Lagos clock.

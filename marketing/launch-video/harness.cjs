@@ -2,7 +2,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const ID = '00000000-0000-4000-8000-000000000001';
 const profile = { id: ID, username: 'Emmanuel', college: 'COLENG',
-  avatar_config: { shirtColor: '#15803d', skinColor: '#8d5524', topColor: '#15803d', bottomColor: '#1e293b', hairStyle: 'short' },
+  avatar_config: { bodyType: 'masculine', skinTone: '#8d5524', hairstyle: 'fade', topStyle: 'jersey', topColor: '#15803d', bottomStyle: 'joggers', bottomColor: '#1e293b', shoeStyle: 'sneakers', shoeColor: '#eeeeea', shirtColor: '#15803d', skinColor: '#8d5524' },
   onboarding_completed: true, course_id: 'FST', game_matric_number: 'FST/26/1001' };
 const journey = { beta_player: false, draft: {}, orientation_steps: ['a','b','c','d','e'], orientation_completed: true, admission_story_completed: true };
 async function launch({ width = 1920, height = 1080, peers = [] } = {}) {
@@ -44,6 +44,8 @@ async function launch({ width = 1920, height = 1080, peers = [] } = {}) {
   await context.addInitScript((s) => {
     localStorage.setItem('sb-student-test-auth-token', JSON.stringify(s));
     localStorage.setItem('funaab_mobile_tutorial_seen', 'true');
+    localStorage.setItem('funaab:tour:v1:' + s.user.id, 'done');
+    localStorage.setItem('funaab_joystick_hint', '1');
   }, session);
   page.setDefaultTimeout(300000); page.setDefaultNavigationTimeout(300000);
   page.on('pageerror', (e) => console.log('PAGE ERROR', e.message));

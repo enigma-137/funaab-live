@@ -3,7 +3,7 @@ import numpy as np, wave, sys
 SR = 44100; BPM = 120; BEAT = 60 / BPM; BAR = 4 * BEAT
 TOTAL = float(sys.argv[1]) if len(sys.argv) > 1 else 48.5
 INTRO_END = 4.0            # drums drop when gameplay starts
-BREAK = (22.0, 24.0)       # half-time breakdown for the "stay off the lawn" gag
+BREAK = (float(sys.argv[2]), float(sys.argv[3])) if len(sys.argv) > 3 else (-1.0, -1.0)  # optional half-time breakdown
 OUTRO = TOTAL - 5.0        # last 5 s: outro card
 N = int(SR * (TOTAL + 1.5))
 L = np.zeros(N); R = np.zeros(N)
@@ -99,7 +99,7 @@ add(kick(), OUTRO, 1.0); add(logdrum(hz(45)), OUTRO, 0.8); add(pad([hz(m) for m 
 mix = np.stack([L, R], 1)[: int(TOTAL * SR)]
 fade = int(1.5 * SR); mix[-fade:] *= np.linspace(1, 0, fade)[:, None] ** 1.5
 mix = np.tanh(mix / np.abs(mix).max() * 1.4) * 0.89
-with wave.open('music.wav', 'wb') as w:
+with wave.open(sys.argv[4] if len(sys.argv) > 4 else 'music.wav', 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes((mix * 32767).astype('<i2').tobytes())
 print('wrote music.wav', TOTAL, 's')

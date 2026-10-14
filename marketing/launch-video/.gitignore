@@ -1,4 +1,6 @@
 frames/
+frames2/
 out/
+out2/
 preview/
-music.wav
+*.wav
