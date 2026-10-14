@@ -38,8 +38,9 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'colcoms': [100,-105, 18,16, 100,-93, 55,-85],
   // Inside the ring road between Floral World and the car park, facing the z=45 road.
   'collend': [-30,18, 20,12, -30,28, -30,45],
-  // East side, between The Arena (north) and the FPY farm (south); door faces south onto a walkway to the x=55 road.
-  'colamrud': [128,-10, 22,12, 128,0, 55,-6],
+  // East side, between The Arena (north) and the FPY farm (south); faces west onto the campus road
+  // (facing below), so the footprint is world X × Z after that turn.
+  'colamrud': [128,-8, 11,26, 117,-8, 55,-6],
   // FPY farm east of Agromet and COLPLANT; its walkway runs between them from the x=55 road.
   'fpy-farm': [127,40, 0,0, 113,40, 55,40],
   // The Arena (night party & arcade) east of COLERM; door in the west wall at z=-45.
@@ -60,7 +61,7 @@ const additions = ['colvet','colanim','colplant','colcoms','collend','colamrud',
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
-const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, 'party-hall': -Math.PI / 2 };
+const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, colamrud: -Math.PI / 2, 'party-hall': -Math.PI / 2 };
 const arena = [{ id: 'party-hall', name: 'The Arena · Night Party & Arcade', type: 'landmark',
   description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦500 gate fee for the night.' }];
 const farm = [{ id: 'fpy-farm', name: 'FPY Teaching & Research Farm', type: 'landmark',

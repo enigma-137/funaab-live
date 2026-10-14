@@ -21,7 +21,10 @@ export const COLANIM = { hallHalf: 5, D: 12, eave: 7, apex: 9.6, floor: 1.2, win
 // COLPLANT, front-facing (+Z) frame: single-storey west wing, open entrance porch in the
 // middle (walkable under its slab), two-storey east block. Shared with its colliders.
 export const COLPLANT = { front: 5, D: 11, porch: { x0: -3, x1: 3.5, front: 6.5, back: 3, h: 4.2, open: 3 }, west: { x0: -12, h: 4 }, east: { x1: 12, h: 7.2 } };
-export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys" | "colbios" | "colanim" | "colplant";
+// COLAMRUD, front-facing (+Z) frame: long two-storey block (L along X), maroon vent-block wing at
+// the +X end, arched entrance in the middle with steps. The campus group turns it to face the road.
+export const COLAMRUD = { L: 26, D: 11, h: 6.9, wingX0: 8, entrance: { half: 3.4, project: 1.2 }, steps: 1.8 };
+export type LandmarkId = "colerm" | "colfhec" | "colvet" | "library" | "coleng" | "colphys" | "colbios" | "colanim" | "colplant" | "colamrud";
 export function StaticBatches({ batches, interior = false }: { batches: Batch[]; interior?: boolean }) {
   return (
     <group dispose={null}>
@@ -86,6 +89,70 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     sideWindows(b, W / 2, [-5, -1.7, 1.7, 5], [2.4, 6.75], 2);
     for (const x of [-9, -6, -3, 3, 6, 9])
       for (const y of [2.4, 6.75]) b.box([x, y, -front - 0.03], [1.2, 2.2, 0.06], "glass");
+  }
+  if (id === "colamrud") {
+    // After the COLAMRUD photo: long pale block under a grey corrugated hip roof, tan louvred
+    // window bays with split AC units, a central arched entrance with steps and railings under a
+    // green name board, a maroon wing with white ventilation blocks, and a white lamp post.
+    const { L, D, h, wingX0 } = COLAMRUD, front = D / 2, E = COLAMRUD.entrance;
+    b.box([0, 0.15, 0], [L + 0.6, 0.3, D + 0.6], "curbDark");
+    b.box([0, 0.3 + (h - 0.3) / 2, 0], [L, h - 0.3, D], "ivory");
+    b.box([0, 3.6, 0], [L + 0.3, 0.22, D + 0.3], "cream"); // first-floor band
+    b.box([0, h - 0.05, 0], [L + 0.5, 0.35, D + 0.5], "cream"); // eaves band
+    // Grey corrugated hip roof with a ridge cap and rib lines along the slope.
+    b.roof(L + 1.6, D + 1.6, h + 0.1, 2.3, "clinicRoof", [0, 0, 0]);
+    b.box([0, h + 2.42, 0], [L - D * 1.2 + 1.2, 0.18, 0.5], "roofDark");
+    // Louvred bays: two floors left of the entrance (4) and right of it (2), tan frames with slats.
+    const bays = [-11.6, -9.2, -6.8, -4.4, 4.4, 6.0];
+    for (const x of bays)
+      for (const [fi, y] of [2.1, 5.3].entries()) {
+        b.box([x, y, front + 0.05], [1.9, 2.1, 0.1], "terracotta");
+        b.box([x, y, front + 0.11], [1.6, 1.8, 0.05], "glass");
+        for (let k = 0; k < 6; k++) b.box([x, y - 0.8 + k * 0.32, front + 0.17], [1.6, 0.1, 0.07], "wood", [0.4, 0, 0]);
+        if ((Math.round(x * 5) + fi * 3) % 3 === 0) {
+          b.box([x + 0.1, y - 1.3, front + 0.35], [0.65, 0.4, 0.35], "clinicSheet"); // AC unit
+          b.box([x + 0.1, y - 1.1, front + 0.3], [0.65, 0.05, 0.4], "metal");
+        }
+      }
+    // Maroon wing at the right end, proud of the facade, with white ventilation blocks.
+    const wx = (wingX0 + L / 2 + 0.3) / 2, ww = L / 2 + 0.3 - wingX0;
+    b.box([wx, 0.3 + (h - 0.3) / 2, 0.5], [ww, h - 0.3, D + 1], "clinicTrim");
+    b.box([wx, h - 0.05, 0.5], [ww + 0.3, 0.35, D + 1.3], "cream");
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < 4; c++) {
+        const x = wingX0 + 0.85 + c * 1.15, y = 1.4 + r * 1.05;
+        b.box([x, y, front + 1.02], [0.9, 0.85, 0.06], "ivory");
+        b.box([x, y, front + 1.06], [0.5, 0.45, 0.04], "shadow");
+      }
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < 6; c++) {
+        const z = -4.2 + c * 1.5, y = 1.4 + r * 1.05;
+        b.box([L / 2 + 0.33, y, z], [0.06, 0.85, 0.9], "ivory");
+        b.box([L / 2 + 0.37, y, z], [0.04, 0.45, 0.5], "shadow");
+      }
+    // Central entrance: ivory surround, arched dark opening with glazed doors, name-board plinth.
+    b.box([0, 3.3, front + E.project / 2], [E.half * 2, 6, E.project], "ivory");
+    b.box([0, 6.45, front + E.project / 2], [E.half * 2 + 0.6, 0.4, E.project + 0.4], "cream");
+    b.box([0, 1.7, front + E.project + 0.03], [2.8, 3.1, 0.06], "shadow");
+    b.add(new CylinderGeometry(1.4, 1.4, 0.06, 16), "shadow", [0, 3.25, front + E.project + 0.03], [1, 1, 1], [Math.PI / 2, 0, 0]);
+    for (const x of [-0.7, 0.7]) b.box([x, 1.5, front + E.project + 0.07], [1.2, 2.7, 0.04], "glass");
+    b.box([0, 1.5, front + E.project + 0.1], [0.06, 2.7, 0.04], "metal");
+    b.box([0, 5.3, front + E.project + 0.04], [E.half * 2 - 0.6, 1.4, 0.06], "green"); // name-board backing
+    // Steps up to the door with railings either side.
+    for (let i = 0; i < 3; i++) {
+      const dz = COLAMRUD.steps * (1 - i / 3);
+      b.box([0, 0.14 + i * 0.16, front + E.project + dz / 2], [4.2, 0.28 + i * 0.16, dz], "concrete");
+    }
+    for (const x of [-2.2, 2.2]) {
+      b.box([x, 0.95, front + E.project + 0.9], [0.06, 0.06, 1.8], "metal");
+      b.box([x, 0.55, front + E.project + 0.9], [0.05, 0.05, 1.8], "metal");
+      for (const z of [0.1, 0.9, 1.7]) b.box([x, 0.5, front + E.project + z], [0.05, 1, 0.05], "metal");
+    }
+    // White lamp post beside the entrance (right of the steps, as in the photo).
+    b.pole([5.2, 2.6, front + 2.6], 0.1, 5.2, "ivory");
+    b.orb([5.2, 5.35, front + 2.6], [0.28, 0.28, 0.28], "ivory");
+    // Plain back wall windows.
+    for (const x of [-10, -6, -2, 2, 6, 10]) for (const y of [2.1, 5.3]) b.box([x, y, -front - 0.03], [1.4, 1.6, 0.06], "glass");
   }
   if (id === "colbios") {
     // After the College of Biosciences photo: four storeys of pale-yellow render, maroon fins
@@ -451,7 +518,7 @@ export function buildLandmark(id: LandmarkId): Batch[] {
     for (const x of [-11.6, 11.6]) b.box([x, 0.55, 6], [0.8, 1.1, 4], "ivory");
   }
   // Modest side-wall windows keep oblique approach views from reading as blank boxes.
-  if (id !== "library" && id !== "coleng" && id !== "colphys" && id !== "colbios" && id !== "colanim" && id !== "colplant") {
+  if (id !== "library" && id !== "coleng" && id !== "colphys" && id !== "colbios" && id !== "colanim" && id !== "colplant" && id !== "colamrud") {
     const sideX = id === "colerm" ? 7 : id === "colfhec" ? 10 : 11;
     for (const side of [-1, 1])
       for (const z of [-4, 0, 3]) {
@@ -521,6 +588,13 @@ const signs: Record<
     h: 0.78,
     title: "COLANIM",
     sub: "ANIMAL SCIENCE & LIVESTOCK PRODUCTION",
+  },
+  colamrud: {
+    p: [0, 5.3, COLAMRUD.D / 2 + COLAMRUD.entrance.project + 0.1],
+    w: 5.8,
+    h: 1.1,
+    title: "COLAMRUD",
+    sub: "AGRICULTURAL MANAGEMENT & RURAL DEVELOPMENT",
   },
   colbios: {
     p: [0, COLBIOS.G - 0.5, COLBIOS.D / 2 + 0.16],

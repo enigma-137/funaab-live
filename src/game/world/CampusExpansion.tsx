@@ -1,7 +1,7 @@
 import { CampusRoadFinish } from './CampusLandscape';
-import { CampusArchitecture, COLBIOS, COLANIM, COLPLANT } from './CampusArchitecture';
+import { CampusArchitecture, COLBIOS, COLANIM, COLPLANT, COLAMRUD } from './CampusArchitecture';
 // Photo-matched buildings draw their own signs, windows and planting.
-const LANDMARKS=['library','colvet','colphys','colbios','colanim','colplant'];
+const LANDMARKS=['library','colvet','colphys','colbios','colanim','colplant','colamrud'];
 import { CampusSign } from './CampusSign';
 import { campusMaterials } from './campusVisualGeometry';
 import React, { useRef } from 'react';
@@ -65,6 +65,16 @@ export function CampusExpansion(){return <group>
           <CuboidCollider position={[(COLANIM.wing.x0+COLANIM.wing.x1)/2,COLANIM.wing.h/2,0]} args={[(COLANIM.wing.x1-COLANIM.wing.x0)/2,COLANIM.wing.h/2,COLANIM.wing.d/2]}/>
           <CuboidCollider position={[1.2,COLANIM.floor/2,COLANIM.D/2+1.2]} args={[2.9,COLANIM.floor/2,1.2]}/>
           <CuboidCollider position={[-6.2,2.3,COLANIM.wing.d/2+2.2]} args={[.12,2.3,.12]}/>
+        </>:id==='colamrud'?<>
+          <CampusArchitecture id="colamrud"/>
+          {/* Main block, the maroon wing, the entrance surround and steps, and the lamp post. */}
+          {(()=>{const {L,D,h,wingX0,entrance:E,steps}=COLAMRUD;return <>
+            <CuboidCollider position={[0,h/2,0]} args={[L/2,h/2,D/2]}/>
+            <CuboidCollider position={[(wingX0+L/2+.3)/2,h/2,.5]} args={[(L/2+.3-wingX0)/2,h/2,(D+1)/2]}/>
+            <CuboidCollider position={[0,h/2,D/2+E.project/2]} args={[E.half,h/2,E.project/2]}/>
+            <CuboidCollider position={[0,.3,D/2+E.project+steps/2]} args={[2.1,.3,steps/2]}/>
+            <CuboidCollider position={[5.2,2.6,D/2+2.6]} args={[.15,2.6,.15]}/>
+          </>;})()}
         </>:id==='colbios'?<>
           <CampusArchitecture id="colbios"/>
           {/* Lobby block behind the open ground floor, the stair, columns and entrance hedges. */}
@@ -86,7 +96,7 @@ export function CampusExpansion(){return <group>
         {!LANDMARKS.includes(id)&&[-.35,0,.35].map((x,j)=><Block key={j} p={[x*w,h*.6,d/2+.05]} s={[2,1.5,.1]} m="glass"/>)}
       </RigidBody>
       {!LANDMARKS.includes(id)&&<CollegeWallSign position={[0,h-.95,d/2+.12]} width={Math.min(w-2,18)} height={1.55} code={l.shortName} name={collegeCatalogue.find(c=>c.code===l.shortName)?.name??l.name}/>}
-      {!['library','colvet','colanim','colplant'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
+      {!['library','colvet','colanim','colplant','colamrud'].includes(id)&&[-1,1].map(side=><group key={side} position={[side*(w/2+5),0,-d/2]}><mesh position={[0,1.3,0]}><cylinderGeometry args={[.18,.24,2.6,5]}/><meshStandardMaterial color="#786446"/></mesh><mesh position={[0,3,0]}><icosahedronGeometry args={[2,0]}/><meshStandardMaterial color={i%2?'#617e49':'#3f7255'}/></mesh></group>)}
     </group>;
   })}
   <NearbyLabel position={[-68,3,55]}>CAMPUS KEKE</NearbyLabel>
