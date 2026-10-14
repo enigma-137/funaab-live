@@ -83,6 +83,23 @@ After the grace period, approaching the courtyard security post causes a short
 fictional pause and opens the debt panel. Debt remains until paid. This is game
 comedy, without real-world arrest, interest accrual, forced deductions or legal claims.
 
+## Room makeover (migration 024)
+
+- **Paint and floors:** Hostel → *makeover* tab. Nine wall paints (₦300, back to white free) and five
+  floors (₦600–₦900). Prices live in `hostel_finishes`; `src/config/roomMakeover.ts` mirrors them.
+- **Bigger room:** a one-off ₦5,000 expansion makes the room 11 m wide instead of 8 m (`hostel_rooms.room_size`).
+  Placement bounds, player movement, the room camera and safe-stand spots all read the room size.
+- **More items:** TV stand, wardrobe, bookshelf, bean bag (sit), wall mirror, wall clock, LED strip lights,
+  potted plant, indoor palm, flower vase, hanging plant, washing machine, gas cooker, mini fridge and
+  microwave (new *Plants* and *Appliances* categories). The washing machine, cooker, fridge and LED strip
+  have switches.
+- **Surfaces:** small desk items and the TV can stand on the TV stand (top 0.55 m) or the table (0.77 m).
+  A table/stand can't move or be removed while something stands on it.
+- The rules run twice (client preview + `hostel_command`); `npm run test:room-makeover:db` replays 400
+  random placements through both and requires identical decisions.
+- **Night:** the courtyard and rooms follow campus day/night. Rooms get dim moonlight, a ceiling bulb
+  and glowing lamps/LED strips; the courtyard gets corridor and pole lamps and lit windows.
+
 ## Earnings and balance
 
 | Loop | Fixed game reward | Guard |

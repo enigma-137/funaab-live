@@ -38,7 +38,8 @@ export const WorldScene: React.FC = () => {
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
       >
-        <SkyAndLight night={hostel ? 0 : night} />
+        {/* Hostel courtyard and rooms share campus day/night; the library interior stays lit. */}
+        <SkyAndLight night={roomId === LIBRARY_ROOM ? 0 : night} indoor={roomId.startsWith('world:funaab:hostel-room:')} />
 
         <Suspense fallback={null}>
           {/* timeStep="vary": one physics step per rendered frame, so the kinematic player, its mesh and
@@ -79,7 +80,8 @@ const mix = (a: string, b: string, t: number) => '#' + new THREE.Color(a).lerp(n
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** Sky, fog and the sun/moon, blended from bright tropical day (0) to campus night (1). */
-function SkyAndLight({ night: n }: { night: number }) {
+/** `indoor` (your room): little moonlight gets in after dark, so the ceiling bulb and lamps light it. */
+function SkyAndLight({ night: n, indoor = false }: { night: number; indoor?: boolean }) {
   // Moonlight comes from the opposite side so shadows swing round after dark.
   const sun: [number, number, number] = n < 0.5 ? [30, 45, 25] : [-30, 50, -20];
   return (
@@ -88,10 +90,10 @@ function SkyAndLight({ night: n }: { night: number }) {
       <fog attach="fog" args={[mix('#bae6fd', '#101a33', n), lerp(45, 32, n), lerp(130, 115, n)]} />
 
       {/* Ambient & Warm Tropical Sunlight, cooling to moonlight at night */}
-      <ambientLight intensity={lerp(0.65, 0.5, n)} color={mix('#fef08a', '#8d9fd6', n)} />
+      <ambientLight intensity={lerp(0.65, indoor ? 0.16 : 0.5, n)} color={mix('#fef08a', '#8d9fd6', n)} />
       <directionalLight
         position={sun}
-        intensity={lerp(1.2, 0.38, n)}
+        intensity={lerp(1.2, indoor ? 0.08 : 0.38, n)}
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
@@ -103,7 +105,7 @@ function SkyAndLight({ night: n }: { night: number }) {
         shadow-camera-bottom={-60}
         color={mix('#fffbeb', '#a9bbff', n)}
       />
-      <hemisphereLight groundColor={mix('#1e3a1e', '#0a1410', n)} color={mix('#60a5fa', '#29407a', n)} intensity={lerp(0.4, 0.32, n)} />
+      <hemisphereLight groundColor={mix('#1e3a1e', '#0a1410', n)} color={mix('#60a5fa', '#29407a', n)} intensity={lerp(0.4, indoor ? 0.1 : 0.32, n)} />
 
       {/* Atmospheric Sky by day, stars by night */}
       {n < 0.7 && (

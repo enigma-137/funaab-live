@@ -1,7 +1,8 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
 import { diningSpotAt } from '../../config/campusWorld';
 import { seatPosition } from '../../config/kekeSimulation';
-import { useHostelStore } from '../../stores/hostelStore';
+import { roomSizeNow, useHostelStore } from '../../stores/hostelStore';
+import { ROOM_SIZES } from '../../config/roomMakeover';
 import React, { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -470,7 +471,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     nextX = Math.max(worldData.bounds.minX + 0.5, Math.min(worldData.bounds.maxX - 0.5, nextX));
     nextZ = Math.max(worldData.bounds.minZ + 0.5, Math.min(worldData.bounds.maxZ - 0.5, nextZ));
 
-    if(offCampus) { const bound=roomState.roomId === 'world:funaab:library'?11.4:useHostelStore.getState().owner?3.5:HOSTEL_COURTYARD_BOUND;nextX=Math.max(-bound,Math.min(bound,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
+    if(offCampus) { const inRoom=!!useHostelStore.getState().owner, bound=roomState.roomId === 'world:funaab:library'?11.4:inRoom?3.5:HOSTEL_COURTYARD_BOUND;
+      // An expanded room (migration 024) is wider along X.
+      const boundX=inRoom?ROOM_SIZES[roomSizeNow()].halfX-0.5:bound;nextX=Math.max(-boundX,Math.min(boundX,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
     if(roomState.teleport){[nextX,nextY,nextZ]=roomState.teleport;nextY+=PLAYER_CENTER_OFFSET;useHostelStore.setState({teleport:null});}
     const faceRotation=useGameStore.getState().faceRotation;
@@ -509,12 +512,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if(lens.view?.enabled)lens.clearViewOffset();
     const fov=hostelState.owner?(size.width<650&&!decorating?65:55):50;if(lens.fov!==fov){lens.fov=fov;lens.updateProjectionMatrix();}
     if(decorating){
-      const height=size.width<650?12:9;
-      camera.position.lerp(_camTarget.set(0,height,7),roomCamK);camera.lookAt(0,0,-.3);
+      const big=roomSizeNow()==='large', height=(size.width<650?12:9)*(big?1.45:1);
+      camera.position.lerp(_camTarget.set(0,height,big?9.5:7),roomCamK);camera.lookAt(0,0,-.3);
     }else if(offCampus&&hostelState.owner){
       // Clamp the orbit eye inside the room walls; no camera can pass through masonry.
-      const clamp=(n:number)=>Math.max(-3.65,Math.min(3.65,n));
-      camera.position.lerp(_camTarget.set(clamp(nextX*.25+Math.sin(cameraYaw)*3.2),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),roomCamK);
+      const clamp=(n:number,r=3.65)=>Math.max(-r,Math.min(r,n)), wide=ROOM_SIZES[roomSizeNow()].halfX-0.35;
+      camera.position.lerp(_camTarget.set(clamp(nextX*.25+Math.sin(cameraYaw)*3.2,wide),(size.width<650?8:5.2)+cameraPitch,clamp(nextZ*.25+Math.cos(cameraYaw)*3.2)),roomCamK);
       camera.lookAt(nextX*.25,.65,nextZ*.25-.8);
     }else{
       updateOrbitCamera(_camTarget.set(nextX,nextY,nextZ),cameraYaw,cameraPitch,camDist,camHeight,0.6,0.8,delta);

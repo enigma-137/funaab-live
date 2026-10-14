@@ -13,6 +13,7 @@ import { useGameStore } from "../stores/gameStore";
 import { useWalletStore } from "../stores/walletStore";
 import { useSocialStore } from "../stores/socialStore";
 import { HOSTEL_SHOP, hostelItem } from "../config/hostelShop";
+import { FLOORS, PAINTS, ROOM_EXPANSION_PRICE, floorById, paintById, roomSizeOf } from "../config/roomMakeover";
 import "./hostel.css";
 export const openHostel = (
   panel: "home" | "shop" | "decorate" | "debts" | "invites" = "home",
@@ -216,6 +217,8 @@ export function HostelLife() {
                     ? "Iya Ibeji debts"
                     : s.panel === "decorate"
                       ? "Make room for you."
+                      : s.panel === "makeover"
+                        ? "Room makeover"
                       : s.panel === "invites"
                         ? "Come my place."
                         : s.owner ? `${s.snapshot?.owner_name || "Student"}’s Room` : "HOSTEL"}
@@ -233,7 +236,7 @@ export function HostelLife() {
             </button>
           </header>
           <nav aria-label="Hostel sections">
-            {(["home", "shop", "decorate", "debts", "invites"] as const).map(
+            {(["home", "shop", "decorate", "makeover", "debts", "invites"] as const).map(
               (p) => (
                 <button
                   key={p}
@@ -333,6 +336,8 @@ export function HostelLife() {
                     "Room",
                     "Entertainment",
                     "Power",
+                    "Plants",
+                    "Appliances",
                     "Foodstuff",
                     "Basics",
                   ].map((c) => (
@@ -474,6 +479,7 @@ export function HostelLife() {
                 </div>
               </>
             )}
+            {s.panel === "makeover" && <Makeover mine={mine} balance={balance} />}
             {s.panel === "debts" && (
               <>
                 {s.debts.length === 0 && (
@@ -576,6 +582,86 @@ export function HostelLife() {
             )}
           </fieldset>
         </section>
+      )}
+    </>
+  );
+}
+
+/** Paint, floor and the one-off room expansion. Prices are checked again by the database (migration 024). */
+function Makeover({ mine, balance }: { mine: boolean; balance: number }) {
+  const s = useHostelStore();
+  const room = s.snapshot?.room;
+  if (!mine || !room)
+    return (
+      <p>
+        Enter your own room to repaint, change the floor or expand it.{" "}
+        <button onClick={() => s.travel("room")}>Go to my room</button>
+      </p>
+    );
+  const paint = paintById(room.wall_paint), floor = floorById(room.floor_style), large = roomSizeOf(room.room_size) === "large";
+  return (
+    <>
+      <h2>Wall paint</h2>
+      <p>Repaint all four walls. Going back to hostel white is free.</p>
+      <div className="room-swatches" role="radiogroup" aria-label="Wall paint">
+        {PAINTS.map((p) => (
+          <button
+            key={p.id}
+            role="radio"
+            aria-checked={p.id === paint.id}
+            className="room-swatch"
+            disabled={p.id === paint.id || balance < p.price}
+            onClick={() => s.command("decorate", { wall: p.id, owner: s.owner })}
+          >
+            <i style={{ background: `linear-gradient(135deg, ${p.back} 0 55%, ${p.side} 55% 100%)` }} aria-hidden />
+            <span>{p.label}</span>
+            <small>{p.id === paint.id ? "Current" : p.price ? formatNaira(p.price) : "Free"}</small>
+          </button>
+        ))}
+      </div>
+      <h2>Floor</h2>
+      <div className="room-swatches" role="radiogroup" aria-label="Floor design">
+        {FLOORS.map((f) => (
+          <button
+            key={f.id}
+            role="radio"
+            aria-checked={f.id === floor.id}
+            className="room-swatch"
+            disabled={f.id === floor.id || balance < f.price}
+            onClick={() => s.command("decorate", { floor: f.id, owner: s.owner })}
+          >
+            <i
+              aria-hidden
+              style={{
+                background:
+                  f.pattern === "checker" ? `conic-gradient(${f.accent} 0 25%, ${f.base} 0 50%, ${f.accent} 0 75%, ${f.base} 0) 0 0 / 50% 50%`
+                  : f.pattern === "planks" ? `repeating-linear-gradient(0deg, ${f.base} 0 8px, ${f.accent} 8px 10px)`
+                  : `radial-gradient(${f.accent} 1px, ${f.base} 1.5px) 0 0 / 6px 6px`,
+              }}
+            />
+            <span>{f.label}</span>
+            <small>{f.id === floor.id ? "Current" : f.price ? formatNaira(f.price) : "Free"}</small>
+          </button>
+        ))}
+      </div>
+      <h2>Bigger room</h2>
+      {large ? (
+        <p>✓ Expanded. Your room is 11 m wide: space for more furniture and more friends to hang out.</p>
+      ) : (
+        <>
+          <p>Knock through to the next store room: your room becomes 11 m wide instead of 8 m. Furniture stays where it is. One-time payment.</p>
+          <div className="hostel-actions">
+            <button
+              disabled={balance < ROOM_EXPANSION_PRICE}
+              onClick={() => {
+                if (window.confirm(`Expand your room for ${formatNaira(ROOM_EXPANSION_PRICE)}?`)) void s.command("expand", { owner: s.owner });
+              }}
+            >
+              Expand room · {formatNaira(ROOM_EXPANSION_PRICE)}
+            </button>
+          </div>
+          {balance < ROOM_EXPANSION_PRICE && <p>You need {formatNaira(ROOM_EXPANSION_PRICE - balance)} more. Campus jobs and hustles can help.</p>}
+        </>
       )}
     </>
   );

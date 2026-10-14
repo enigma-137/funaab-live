@@ -10,6 +10,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { useHostelStore } from '../../stores/hostelStore';
 import { useInputStore } from '../../stores/inputStore';
 import { openHostel } from '../../ui/HostelLife';
+import { useDayNight, NIGHT_LIGHTS_FROM } from './dayNight';
 
 // Procedural stand-in for /models/hostel/hostel_compound_main.glb. Gameplay (doors, stairs, room
 // travel) reads config/hostelCompound.ts, so a Blender model can replace these meshes untouched.
@@ -307,8 +308,49 @@ function CompoundColliders() {
   </RigidBody>;
 }
 
+/** Compound at night: corridor and courtyard lights (4 real lights) plus soft pools on the ground, and lit
+ *  room windows behind the corridor so the block looks lived-in. Nothing renders in daylight. */
+const POOL_TEX = (() => {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d')!, grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,214,140,0.9)'); grad.addColorStop(1, 'rgba(255,214,140,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+function CompoundNight() {
+  const night = useDayNight((s) => s.night);
+  if (night < NIGHT_LIGHTS_FROM || !POOL_TEX) return null;
+  const k = (night - NIGHT_LIGHTS_FROM) / (1 - NIGHT_LIGHTS_FROM);
+  const corridorZ = (BUILDING.facadeZ + BUILDING.corridorFrontZ) / 2;
+  const lights: Array<{ p: [number, number, number]; i: number; d: number }> = [
+    { p: [-4, 2.6, corridorZ], i: 6, d: 11 },
+    { p: [4, 2.6 + FLOOR_HEIGHT, corridorZ], i: 6, d: 11 },
+    { p: [-1.8, 3.6, 1], i: 9, d: 16 }, // courtyard pole lamp
+    { p: [IYA_IBEJI.door[0], 2.4, IYA_IBEJI.door[2]], i: 5, d: 8 },
+  ];
+  const pools: Array<[number, number, number]> = [[-4, corridorZ, 4], [4, corridorZ, 4], [-1.8, 1, 7], [IYA_IBEJI.door[0], IYA_IBEJI.door[2], 4], [SECURITY_POST[0], SECURITY_POST[2], 3.5]];
+  return <group name="hostel-night">
+    {lights.map((l, n) => <pointLight key={n} position={l.p} color="#ffd6a0" intensity={l.i * k} distance={l.d} decay={1.6} />)}
+    {pools.map(([x, z, r], n) => (
+      <mesh key={n} position={[x, 0.03, z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[r * 2, r * 2]} />
+        <meshBasicMaterial map={POOL_TEX} transparent opacity={0.55 * k} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
+    ))}
+    {/* Warm light behind most louvred windows (a couple stay dark: someone's asleep). */}
+    {HOSTEL_DOORS.filter((d) => d.number % 5 !== 3).map((d) => (
+      <mesh key={d.number} position={[d.position[0] + 1.35, d.position[1] + 1.55, BUILDING.facadeZ + 0.06]}>
+        <planeGeometry args={[0.8, 0.75]} />
+        <meshBasicMaterial color="#ffcf7a" transparent opacity={0.55 * k} toneMapped={false} />
+      </mesh>
+    ))}
+  </group>;
+}
+
 export function HostelCompound({ myRoom }: { myRoom: number | null }) {
   return <group name={HOSTEL_COMPOUND_ASSET}>
+    <CompoundNight />
     <CompoundColliders />
     <Courtyard />
     <Building myRoom={myRoom} />

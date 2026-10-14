@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as T from "three";
 import { createHostelAsset } from "./hostelAssets";
+import { useDayNight } from "./dayNight";
 export function HostelItemModel({
   id,
   ghost = false,
@@ -71,6 +72,36 @@ export function HostelItemModel({
       m.emissiveIntensity = active
         ? 0.6 + Math.sin(clock.elapsedTime * 2) * 0.2
         : 0;
+    }
+    // Room makeover appliances (migration 024).
+    const drum = model.getObjectByName("drum");
+    if (drum && active) drum.rotation.z += dt * 9;
+    model.traverse((o) => {
+      if (o.name === "flame") {
+        o.visible = active;
+        if (active) o.scale.y = 0.05 * (1 + Math.sin(clock.elapsedTime * 22 + o.position.x * 9) * 0.25);
+      }
+    });
+    const led = model.getObjectByName("ledStrip") as T.Mesh | undefined;
+    if (led) {
+      const m = led.material as T.MeshStandardMaterial;
+      if (active) {
+        m.color.setHSL((clock.elapsedTime * 0.08) % 1, 0.9, 0.6);
+        m.emissive.copy(m.color);
+        m.emissiveIntensity = 1.4;
+      } else {
+        m.color.set("#5b5b78");
+        m.emissiveIntensity = 0;
+      }
+    }
+    const fridge = model.getObjectByName("fridgeLight") as T.Mesh | undefined;
+    if (fridge) (fridge.material as T.MeshStandardMaterial).color.set(active ? "#4ade80" : "#3a3a3a");
+    // The rechargeable lamp glows after dark.
+    const bulb = model.getObjectByName("lampBulb") as T.Mesh | undefined;
+    if (bulb) {
+      const m = bulb.material as T.MeshStandardMaterial;
+      m.emissive.set("#ffd27a");
+      m.emissiveIntensity = useDayNight.getState().night * 1.5;
     }
     const indicator = model.getObjectByName("indicator") as T.Mesh | undefined;
     if (indicator)

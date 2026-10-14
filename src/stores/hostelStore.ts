@@ -16,7 +16,10 @@ import {
   type EditPlacement,
   type RoomTransform,
 } from "../config/roomPlacement";
+import { roomSizeOf } from "../config/roomMakeover";
 export interface Placement extends RoomTransform {}
+/** The current room's size (standard until the owner pays to expand it). */
+export const roomSizeNow = () => roomSizeOf(useHostelStore.getState().snapshot?.room.room_size);
 export interface RoomSnapshot {
   room: {
     owner_id: string;
@@ -24,6 +27,10 @@ export interface RoomSnapshot {
     tv_on: boolean;
     /** 'lodge' while renting an off-campus self-contain (migration 020). */
     style?: string;
+    /** Room makeover (migration 024). */
+    wall_paint?: string;
+    floor_style?: string;
+    room_size?: string;
     rested_at: string | null;
     security_at: string | null;
   };
@@ -52,7 +59,7 @@ interface HostelState {
   busy: boolean;
   error: string | null;
   notice: string | null;
-  panel: "home" | "shop" | "decorate" | "debts" | "invites";
+  panel: "home" | "shop" | "decorate" | "makeover" | "debts" | "invites";
   preview: EditPlacement | null;
   transition: string | null;
   selected: string | null;
@@ -102,7 +109,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
     const old = get().snapshot?.placements.find((p) => p.item_id === item);
     const [x, , z] = old ? position(old) : [1, 0, 0];
     set({
-      preview: candidate(item, x, z, old?.rotation || 0),
+      preview: candidate(item, x, z, old?.rotation || 0, get().snapshot?.placements || [], roomSizeNow()),
       selected: null,
       error: null,
       notice: null,
@@ -113,7 +120,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
   confirmEdit: async () => {
     const p = get().preview;
     if (!p) return;
-    const error = placementError(p, get().snapshot?.placements || []);
+    const error = placementError(p, get().snapshot?.placements || [], roomSizeNow());
     if (error) {
       set({ error });
       return;
@@ -162,7 +169,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
   wake: () => {
     const p = get().pose;
     if (!p) return;
-    const destination = safeStand(get().snapshot?.placements || [], p.position);
+    const destination = safeStand(get().snapshot?.placements || [], p.position, roomSizeNow());
     if (!destination) {
       set({ error: "No clear space to stand. Ask the owner to make space." });
       return;

@@ -406,3 +406,11 @@
 .hostel-enter-room kbd{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#4ade80;color:#052e16;font:800 13px ui-monospace,monospace}
 .hostel-enter-room small{font-size:10.5px;font-weight:700;color:#bbf7d0}
 .hostel-enter-room:disabled{opacity:.6}
+
+/* Room makeover swatches (paint + floor). */
+.room-swatches { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; margin:6px 0 14px; }
+.room-swatch { display:flex; flex-direction:column; align-items:center; gap:4px; min-height:44px; padding:8px 6px; border-radius:12px; border:1px solid #c7d6c9; background:#fff; color:#193b29; font-size:12px; text-align:center; }
+.room-swatch i { width:100%; height:42px; border-radius:8px; border:1px solid #00000022; }
+.room-swatch small { color:#5b6b5f; font-weight:700; }
+.room-swatch[aria-checked="true"] { border:2px solid #2c9860; background:#effaf3; }
+.room-swatch:disabled:not([aria-checked="true"]) { opacity:.5; }
