@@ -21,6 +21,7 @@ export const courses = [
   ['GLY', 'Geology', 'COLERM', 52], // migration 026
   ['AEC', 'Agricultural Economics', 'COLAMRUD', 50],
   ['ARD', 'Agricultural Extension and Rural Development', 'COLAMRUD', 0],
+  ['AAD', 'Agricultural Administration', 'COLAMRUD', 48], // migration 036
   ['CPT', 'Crop Protection', 'COLPLANT', 0],
   ['HRT', 'Horticulture', 'COLPLANT', 48],
   ['ANP', 'Animal Production and Health', 'COLANIM', 50],
