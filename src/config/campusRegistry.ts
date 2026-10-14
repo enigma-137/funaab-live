@@ -87,7 +87,7 @@ const locationMetadata: Record<
     categoryLabel: 'Sports & Recreation',
     icon: '⚽',
     color: '#10b981',
-    description: 'Standard football pitch, athletic running track, and sports pavilion for inter-college leagues.',
+    description: 'Football pitch (penalty challenge) with the basketball and volleyball courts beside it, and Acad next door.',
   },
   'food-court': {
     category: 'food',
@@ -236,6 +236,21 @@ const locationMetadata: Record<
     color: '#16a34a',
     description: 'COLFHEC Dedicated Lecture Hall: 250-capacity tiered lecture theatre with podium and projector.',
     interactiveModal: 'lecture_hall',
+  },
+  acad: {
+    category: 'academic',
+    categoryLabel: 'Academic Building',
+    icon: '🏫',
+    color: '#db2777',
+    description: 'Acad: the three-storey Academic Building with pink and brick bays, right beside the Sports Centre and its courts.',
+  },
+  'sports-courts': {
+    category: 'sports',
+    categoryLabel: 'Sports & Recreation',
+    icon: '🏀',
+    color: '#ea580c',
+    description: 'Basketball court (free-throw challenge, 1v1 shootouts) and a volleyball court, beside the Sports Centre.',
+    interactiveModal: 'basketball',
   },
   'central-lecture-hall': {
     category: 'academic',

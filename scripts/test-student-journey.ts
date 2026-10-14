@@ -68,6 +68,9 @@ assert.deepEqual(
   ),
   { studentsOnline: 2, popular: [{ name: 'Car Park', count: 2 }] },
 );
+// COLFHEC's four departments, and HTM reaches the database through migration 022.
+assert.deepEqual(courses.filter((c) => c.college === 'COLFHEC').map((c) => c.id).sort(), ['FST', 'HSM', 'HTM', 'NTD']);
+assert(readFileSync('supabase/migrations/022_colfhec_htm.sql', 'utf8').includes("('HTM', 'Hospitality and Tourism Management', 'COLFHEC', 55)"));
 const migration = readFileSync('supabase/migrations/006_student_journey.sql', 'utf8');
 assert(
   migration.includes('select id, true from public.profiles'),

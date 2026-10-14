@@ -38,7 +38,9 @@ import worldData from '../config/campusWorld';
 import { FOOD_VENDORS, getVendorStatus, type FoodVendorId } from '../config/foodVendors';
 import { openFoodVendor, vendorNow } from '../stores/foodVendorStore';
 import { openFootball } from '../stores/footballStore';
+import { openBasketball } from '../stores/basketballStore';
 import { toast } from '../stores/toastStore';
+import { NavigationArrow } from './NavigationArrow';
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -210,6 +212,9 @@ export const GameHUD: React.FC = () => {
         case 'football':
           openFootball();
           break;
+        case 'basketball':
+          openBasketball();
+          break;
         case 'hustle':
           setActiveModal('hustles');
           break;
@@ -269,6 +274,8 @@ export const GameHUD: React.FC = () => {
         return '🪑';
       case 'football':
         return '⚽';
+      case 'basketball':
+        return '🏀';
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? '🏧' : '📸';
       case 'lodge':
@@ -312,6 +319,8 @@ export const GameHUD: React.FC = () => {
           return 'Open Campus Bet';
         case 'football':
           return 'Practice Shot / 1v1 Challenge';
+        case 'basketball':
+          return 'Free Throws / 1v1 Shootout';
         case 'hustle':
           return nearbyInteractable.actionText;
         case 'lodge':
@@ -353,6 +362,8 @@ export const GameHUD: React.FC = () => {
         return 'Campus Bet';
       case 'football':
         return 'Penalty';
+      case 'basketball':
+        return 'Hoops';
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? 'POS shift' : 'Photos';
       case 'lodge':
@@ -600,6 +611,8 @@ export const GameHUD: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <NavigationArrow />
 
             <div className="flex items-center gap-1 shrink-0">
               <button

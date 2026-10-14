@@ -63,3 +63,8 @@
 .fb-verdict.fb-v-post{background:#f59e0b;color:#1c1917}
 @keyframes fb-pop{from{transform:translateX(-50%) scale(.6);opacity:0}}
 @media (prefers-reduced-motion:reduce){.fb-verdict,.fb-spinner{animation:none}}
+
+/* Basketball court pad: backboard and rim in place of the goal and keeper. */
+.bb-board{position:absolute;left:50%;top:6px;width:30%;height:34px;transform:translateX(-50%);border:3px solid #fff;border-radius:3px;background:#ffffff22}
+.bb-square{position:absolute;left:50%;bottom:2px;width:36%;height:14px;transform:translateX(-50%);border:2px solid #fff}
+.bb-rim{position:absolute;left:50%;top:40px;width:15%;height:9px;transform:translateX(-50%);border:3px solid #f97316;border-radius:50%}

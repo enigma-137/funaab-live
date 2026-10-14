@@ -38,7 +38,14 @@ function useShotVerdict(shot: FootballShot | null, relevant: (s: FootballShot) =
   return verdict;
 }
 
-function ShotControls({ disabled, label, onShoot }: { disabled: boolean; label: string; onShoot: (aim: number, power: number) => void }) {
+/** Aim pad + hold-to-power button. Shared with the basketball court, which swaps the pad art. */
+export function ShotControls({ disabled, label, onShoot, pad, sweetSpot }: {
+  disabled: boolean; label: string; onShoot: (aim: number, power: number) => void;
+  /** Pad art behind the aim marker (defaults to the goal and keeper). */
+  pad?: React.ReactNode;
+  /** Meter sweet spot as [left %, width %]. */
+  sweetSpot?: [number, number];
+}) {
   const [aim, setAim] = useState(0);
   const [power, setPower] = useState(0);
   const [charging, setCharging] = useState(false);
@@ -110,8 +117,12 @@ function ShotControls({ disabled, label, onShoot }: { disabled: boolean; label: 
         onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); aimFrom(e.clientX); }}
         onPointerMove={(e) => { if (e.buttons) aimFrom(e.clientX); }}
       >
-        <div className="fb-goal" style={{ left: `${50 - POST_AT * 50}%`, right: `${50 - POST_AT * 50}%` }} />
-        <div className="fb-keeper" aria-hidden>🧤</div>
+        {pad ?? (
+          <>
+            <div className="fb-goal" style={{ left: `${50 - POST_AT * 50}%`, right: `${50 - POST_AT * 50}%` }} />
+            <div className="fb-keeper" aria-hidden>🧤</div>
+          </>
+        )}
         <div className="fb-target" style={{ left: `${50 + aim * 50}%` }} aria-hidden />
         <span className="fb-aim-hint">Drag to aim</span>
       </div>
@@ -124,7 +135,7 @@ function ShotControls({ disabled, label, onShoot }: { disabled: boolean; label: 
         onPointerCancel={stopCharge}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <span className="fb-meter" aria-hidden><i style={{ width: `${power * 100}%` }} /><b /></span>
+        <span className="fb-meter" aria-hidden><i style={{ width: `${power * 100}%` }} /><b style={sweetSpot ? { left: `${sweetSpot[0]}%`, width: `${sweetSpot[1]}%` } : undefined} /></span>
         <span className="fb-shoot-label">{charging ? 'Release to SHOOT' : label}</span>
       </button>
     </div>

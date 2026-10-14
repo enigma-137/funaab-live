@@ -89,6 +89,16 @@ export const campusMaterials = {
   tankBlack: mat("#1c1d1f", 0.6),
   gasBlue: mat("#2453c9", 0.5),
   clinicSteel: mat("#c5ccd0", 0.35),
+  // Acad (Academic Building): white render, magenta-pink bays, painted red and face-brick towers.
+  acadWhite: mat("#eceeec"),
+  acadPink: mat("#cf3f7c", 0.8),
+  acadRed: mat("#b23a3a", 0.85),
+  // Sports courts: blue hard court, orange key, white lines, orange rims.
+  courtBlue: mat("#2e6a86", 0.8),
+  courtGreen: mat("#2f7a52", 0.85),
+  courtKey: mat("#b7542a", 0.8),
+  courtLine: mat("#f4f6f2", 0.7),
+  hoopOrange: mat("#ea580c", 0.5),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

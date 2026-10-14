@@ -11,6 +11,7 @@ export const courses = [
   ['FST', 'Food Science and Technology', 'COLFHEC', 60],
   ['NTD', 'Nutrition and Dietetics', 'COLFHEC', 58],
   ['HSM', 'Home Science and Management', 'COLFHEC', 0],
+  ['HTM', 'Hospitality and Tourism Management', 'COLFHEC', 55],
   ['AEC', 'Agricultural Economics', 'COLAMRUD', 50],
   ['ARD', 'Agricultural Extension and Rural Development', 'COLAMRUD', 0],
   ['CPT', 'Crop Protection', 'COLPLANT', 0],

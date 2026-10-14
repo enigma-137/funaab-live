@@ -6,6 +6,7 @@ import { CAMPUS_BET_SHOP } from './campusBet';
 import { FOOD_VENDOR_LIST, VENDOR_PLAZA, vendorCounter } from './foodVendors';
 import { bedSpots, waitingSpots, HC_INTERIOR } from './healthCentre';
 import { FOOTBALL_PITCH } from './football';
+import { BASKETBALL_COURT, VOLLEYBALL_COURT } from './basketball';
 import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
 import { LODGE } from './lodge';
@@ -104,6 +105,23 @@ const penaltySpot = {
   radius: FOOTBALL_PITCH.interactionRadius,
   targetId: 'sports-centre',
 };
+const freeThrowLine = {
+  id: 'sports-free-throw-line',
+  type: 'basketball' as const,
+  label: 'Basketball Court · Free Throws',
+  actionText: 'Practice or 1v1 Free-Throw Shootout',
+  position: BASKETBALL_COURT.shooterSpot,
+  radius: BASKETBALL_COURT.interactionRadius,
+  targetId: 'sports-courts',
+};
+const halfX = (c: { centre: Point }, w: number, d: number) => ({ minX: c.centre[0] - w / 2, maxX: c.centre[0] + w / 2, minZ: c.centre[2] - d / 2, maxZ: c.centre[2] + d / 2 });
+/** Hard-court surfaces (with run-off) are walkable, not lawn. */
+export const COURT_ZONES = {
+  basketball: halfX(BASKETBALL_COURT, BASKETBALL_COURT.length + 3, BASKETBALL_COURT.width + 3),
+  volleyball: halfX(VOLLEYBALL_COURT, VOLLEYBALL_COURT.width + 3, VOLLEYBALL_COURT.length + 3),
+  /** Paved courtside joining the pitch, both courts and the walkway to the road. */
+  apron: { minX: -121, maxX: -82, minZ: 17, maxZ: 41 },
+};
 export const OUTSIDE_GATE = {
   gateWalk:{minX:-9,maxX:9,minZ:80,maxZ:95},
   road:{minX:-48,maxX:48,minZ:93,maxZ:98},
@@ -117,7 +135,7 @@ const outsideGateZones=[
   {id:'lodge-frontage',name:LODGE.name,type:'plaza',restricted:false,bounds:LODGE.frontage},
 ];
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
-  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,penaltySpot,
+  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,penaltySpot,freeThrowLine,
     {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
     {id:'hustle-pos-kiosk',type:'hustle',label:'POS kiosk · Hustle',actionText:'POS kiosk shift',position:POS_KIOSK.serviceSpot,radius:POS_KIOSK.radius,targetId:'pos'},
     ...PHOTO_SPOTS.map(s=>({id:`hustle-${s.id}`,type:'hustle',label:s.title,actionText:'Take photos',position:s.position,radius:s.radius,targetId:s.id})),{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
@@ -128,6 +146,11 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
   terrainZones:[{id:'health-centre-interior',name:'Health Centre',type:'building',restricted:false,bounds:HC_INTERIOR},...roadBounds.map((bounds,i)=>({id:`road-${i}`,name:'Campus road',type:'road',restricted:false,bounds})),...pedestrianPaths,
     ...campusLocations.map(l=>({id:`forecourt-${l.id}`,name:l.shortName,type:l.id==='sports-centre'?'sports':'plaza',restricted:false,bounds:corridor(l.entrance,l.entrance,7)})),
     {id:'sports-turf',name:'Sports Centre',type:'sports',restricted:false,bounds:{minX:-118,maxX:-80,minZ:-18,maxZ:18}},
+    {id:'basketball-court',name:'Basketball Court',type:'sports',restricted:false,bounds:COURT_ZONES.basketball},
+    {id:'volleyball-court',name:'Volleyball Court',type:'sports',restricted:false,bounds:COURT_ZONES.volleyball},
+    {id:'courtside',name:'Courtside',type:'plaza',restricted:false,bounds:COURT_ZONES.apron},
+    // Acad's front apron along its whole facade, joining the pitch-side walk.
+    {id:'acad-apron',name:'Acad',type:'plaza',restricted:false,bounds:{minX:-125,maxX:-91,minZ:-24.5,maxZ:-17.5}},
     // Outside the main gate: the gate walk, the public road and the Campus Bet frontage are paved.
     ...outsideGateZones,
     {id:'love-garden-plaza',name:'Love Garden',type:'plaza',restricted:false,bounds:LOVE_GARDEN_PAVING.plaza},

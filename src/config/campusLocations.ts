@@ -39,6 +39,9 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
   'colphys': [-35,-108, 22,14, -35,-97, -35,-85],
+  // Beside the Sports Centre: Acad faces the pitch; the courts sit south of it.
+  'acad': [-108,-30, 34,12, -108,-22, -55,-22],
+  'sports-courts': [-100,31, 36,18, -100,42, -55,45],
 };
 export const collegeCatalogue = [...base.colleges,
   {code:'COLERM', name:'College of Environmental Resources Management',color:'#0d9488'},
@@ -49,10 +52,16 @@ const additions = ['colvet','colanim','colplant','colcoms','colbios','colphys','
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
 const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2 };
-export const campusLocations: CampusLocation[] = [...base.locations,...additions].map(l=>{
+const sportsSide = [
+  { id: 'acad', name: 'Academic Building (Acad)', type: 'academic',
+    description: 'Three-storey Academic Building, right beside the Sports Centre. Students just call it Acad.' },
+  { id: 'sports-courts', name: 'Basketball & Volleyball Courts', type: 'sports',
+    description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, volleyball net next door.' },
+];
+export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
-  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
+  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
     interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};
