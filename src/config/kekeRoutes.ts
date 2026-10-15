@@ -5,8 +5,8 @@ export const KOROPE_ID='korope-1';
 /** How long a route vehicle waits at a stop: longer while it has free seats, and while someone is booking. */
 export const STOP_DWELL={freeSeatsMs:10000,fullMs:3500,junctionMs:3500,/** A booking sheet that stops reporting is dropped after this. */holdTtlMs:15000,/** One person can hold a vehicle at most this long. */holdMaxMs:60000,/** Time to sit down after paying, so it doesn't pull away mid-boarding. */boardedGraceMs:3000};
 /** Korope shared bus: waits at the Car Park until MIN_RIDERS have paid, then runs the public loop. */
-export const KOROPE={capacity:8,minRiders:5,fare:30,/** Ms the bus waits for riders before it refunds them and starts over. */waitMs:240000,doorsMs:4000};
-export const ROUTE_FARE=50;
+export const KOROPE={capacity:8,minRiders:5,fare:300,/** Ms the bus waits for riders before it refunds them and starts over. */waitMs:240000,doorsMs:4000};
+export const ROUTE_FARE=500;
 export const nodeKey=(p:Point)=>`${p[0]}:${p[2]}`;
 export const roadNodes:Record<string,Point>={};
 export const roadEdges:Array<[string,string]>=[];
@@ -45,7 +45,7 @@ export function roadPath(from:string,to:string):Point[]{
   return path.map(id=>roadNodes[id]);
 }
 export const pathLength=(path:Point[])=>path.slice(1).reduce((n,p,i)=>n+Math.hypot(p[0]-path[i][0],p[2]-path[i][2]),0);
-export const fareFor=(id:string)=>Math.min(120,30+Math.ceil(pathLength(roadPath(nodeKey(CAR_PARK_BAY),nodeKey(locationById(id).kekeStop)))/45)*10);
+export const fareFor=(id:string)=>Math.min(1200,300+Math.ceil(pathLength(roadPath(nodeKey(CAR_PARK_BAY),nodeKey(locationById(id).kekeStop)))/45)*100);
 export const kekeDestinations=campusLocations.filter(l=>l.mapVisible).map((l,i)=>({id:l.id,name:l.shortName,position:l.kekeStop,stopIndex:i,fare:fareFor(l.id),icon:l.id==='library'?'📚':l.type==='college'?'🏛️':'📍',description:l.description}));
 export const routeStops=['car-park','food-court','sports-centre','health-centre','colvet','senate-library','colbios','colcoms','collend','colamrud','coleng','hostel-social','agromet','fpy-farm','party-hall','colplant','bank-atm','w-landmark','main-gate','library','colbios-lecture-hall','colfhec','floral-world','colanim'];
 export const publicRoute:Point[]=routeStops.flatMap((id,i)=>roadPath(nodeKey(locationById(id).kekeStop),nodeKey(locationById(routeStops[(i+1)%routeStops.length]).kekeStop)).slice(0,-1));

@@ -1,4 +1,5 @@
 import worldData from '../../config/campusWorld';
+import { ECONOMY_CONFIG } from '../../config/economy';
 import { TerrainZone, SecurityRoute } from '../../types/game';
 
 const terrainZones = worldData.terrainZones as TerrainZone[];
@@ -121,7 +122,7 @@ class LawnEnforcementManager {
         return {
           caught: true,
           officerName: officer.name,
-          fineAmount: 500,
+          fineAmount: ECONOMY_CONFIG.LAWN_FINE,
           officerId: officer.id,
         };
       }

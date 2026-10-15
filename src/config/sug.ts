@@ -1,14 +1,14 @@
 // SUG elections: every week students can run for SUG President and vote. The database runs the
 // election (migration 034); this mirrors its calendar and rules for the UI and tests.
 //
-//   Mon–Wed  nominations (Level 3+, ₦1,000 fee, a short manifesto)
+//   Mon–Wed  nominations (Level 3+, ₦10,000 fee, a short manifesto)
 //   Thu–Sat  voting (Level 2+, one vote, can change it until polls close)
 //   Sunday   results: the winner is SUG President for the next week (until next Sunday)
 //
 // The President gets a 👑 SUG badge on their name tag and one campus-wide announcement a day.
 
 export const SUG = {
-  NOMINATION_FEE: 1000,
+  NOMINATION_FEE: 10000,
   MIN_LEVEL_TO_RUN: 3,
   MIN_LEVEL_TO_VOTE: 2,
   MAX_CANDIDATES: 12,

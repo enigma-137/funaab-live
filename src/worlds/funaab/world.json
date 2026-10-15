@@ -212,7 +212,7 @@
       "id": "floral-world-counter",
       "type": "food",
       "label": "Floral World Restaurant Counter",
-      "actionText": "Order Floral World Specials (from ₦150)",
+      "actionText": "Order Floral World Specials (from ₦500)",
       "position": [-32, 0, -25],
       "radius": 4.2
     },
@@ -263,7 +263,7 @@
       "id": "keke-stop-1",
       "type": "keke_stop",
       "label": "Campus Keke Terminal",
-      "actionText": "Board Keke Tour (₦50)",
+      "actionText": "Board Keke Tour (₦500)",
       "position": [-30, 0, 26],
       "radius": 5.0
     },
@@ -279,7 +279,7 @@
       "id": "job-board-food",
       "type": "job_board",
       "label": "Mama Buka Delivery Board",
-      "actionText": "Accept Food Delivery Job (₦300)",
+      "actionText": "Accept Food Delivery Job (₦5,000)",
       "position": [-25, 0, 10],
       "radius": 4.2
     },
@@ -287,7 +287,7 @@
       "id": "job-board-sports",
       "type": "job_board",
       "label": "Sports Assistant Board",
-      "actionText": "Accept Sports Task (₦200)",
+      "actionText": "Accept Sports Task (₦3,000)",
       "position": [-36, 0, 2],
       "radius": 4.2
     }

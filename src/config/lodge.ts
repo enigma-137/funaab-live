@@ -5,7 +5,7 @@ type Point = [number, number, number];
 
 export const LODGE = {
   name: 'Isolu Court Lodge',
-  weeklyRent: 2000,
+  weeklyRent: 5000,
   graceDays: 2,
   /** You can pay at most this many weeks ahead. */
   maxPrepaidWeeks: 2,

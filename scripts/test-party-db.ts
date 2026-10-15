@@ -1,4 +1,4 @@
-// The Arena (migration 033): night boundaries, ₦500 ticket once per night, closed hours, funds,
+// The Arena (migration 033): night boundaries, ₦5,000 ticket once per night, closed hours, funds,
 // Worker-only sales, XP for the night out and arcade games, drift.
 // Run: PGLITE_MODULE=<path to pglite index.cjs> npx tsx scripts/test-party-db.ts
 import assert from 'node:assert/strict';
@@ -16,12 +16,14 @@ async function main() {
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
-  const sql = fs.readFileSync(path.join(dir, '033_party_hall.sql'), 'utf8');
+  let sql = fs.readFileSync(path.join(dir, '033_party_hall.sql'), 'utf8');
+  // Amounts may have been rescaled since (039): also check the live functions as they are now.
+  sql += (await db.query("select string_agg(pg_get_functiondef(p.oid), chr(10)) d from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f'")).rows[0].d + fs.readFileSync(path.join(dir, '039_economy_x10.sql'), 'utf8');
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const svc = async (q: string, p: unknown[] = []) => { await db.exec('set role service_role;'); try { return (await rows(q, p))[0]; } finally { await db.exec('reset role;'); } };
   const as = async (u: string, q: string) => { await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${u}',false);`); try { return (await rows(q))[0]; } finally { await db.exec('reset role;'); } };
   const ada = '00000000-0000-4000-8000-0000000000a1', bisi = '00000000-0000-4000-8000-0000000000b2';
-  for (const [id, name, money] of [[ada, 'Ada', 1200], [bisi, 'Bisi', 300]] as const) {
+  for (const [id, name, money] of [[ada, 'Ada', 12000], [bisi, 'Bisi', 3000]] as const) {
     await db.query('insert into auth.users values($1)', [id]);
     await db.query("insert into profiles(id,username,college) values($1,$2,'COLENG')", [id, name]);
     await db.query('insert into wallets(user_id,balance) values($1,$2) on conflict(user_id) do update set balance=excluded.balance', [id, money]);
@@ -54,23 +56,23 @@ async function main() {
   // Closed hours (force the clock's answer).
   await db.exec("create or replace function public.party_open(p_at timestamptz default now()) returns boolean language sql stable as $$ select false $$");
   await assert.rejects(svc('select party_entry_trusted($1)', [ada]), /opens at 7 PM/);
-  assert.equal(await balance(ada), 1200);
+  assert.equal(await balance(ada), 12000);
   await db.exec("create or replace function public.party_open(p_at timestamptz default now()) returns boolean language sql stable as $$ select true $$");
 
-  // ₦500 once per night; re-entry the same night is free.
+  // ₦5,000 once per night; re-entry the same night is free.
   const first = (await svc('select party_entry_trusted($1) r', [ada])).r;
-  assert.equal(first.charged, true); assert.equal(Number(first.balance), 700);
+  assert.equal(first.charged, true); assert.equal(Number(first.balance), 7000);
   const again = (await svc('select party_entry_trusted($1) r', [ada])).r;
   assert.equal(again.charged, false); assert.equal(again.night, first.night);
-  assert.equal(await balance(ada), 700);
-  assert.equal((await rows("select count(*)::int c from wallet_transactions where user_id=$1 and type='party_ticket' and amount=-500", [ada]))[0].c, 1);
+  assert.equal(await balance(ada), 7000);
+  assert.equal((await rows("select count(*)::int c from wallet_transactions where user_id=$1 and type='party_ticket' and amount=-5000", [ada]))[0].c, 1);
   // A new night charges again.
   await db.query('update party_tickets set night=night-1 where user_id=$1', [ada]);
   assert.equal((await svc('select party_entry_trusted($1) r', [ada])).r.charged, true);
-  assert.equal(await balance(ada), 200);
+  assert.equal(await balance(ada), 2000);
   // Not enough money: nothing changes.
-  await assert.rejects(svc('select party_entry_trusted($1)', [bisi]), /₦500/);
-  assert.equal(await balance(bisi), 300);
+  await assert.rejects(svc('select party_entry_trusted($1)', [bisi]), /₦5,000/);
+  assert.equal(await balance(bisi), 3000);
   assert.equal((await rows('select count(*)::int c from party_tickets where user_id=$1', [bisi]))[0].c, 0);
 
   // XP: the night out counts once per ticket; arcade results come from the Worker.
@@ -84,6 +86,6 @@ async function main() {
   assert.equal((await rows("select count(*)::int c from food_vendor_items where vendor_id='party_bar'"))[0].c, 5);
 
   await db.close();
-  console.log('PARTY DB PASSED: night boundaries match the client, closed hours, ₦500 once per night, new night charges, funds check, Worker-only, XP, bar menu.');
+  console.log('PARTY DB PASSED: night boundaries match the client, closed hours, ₦5,000 once per night, new night charges, funds check, Worker-only, XP, bar menu.');
 }
 main().catch((e) => { console.error(e); process.exit(1); });

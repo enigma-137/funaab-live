@@ -15,8 +15,10 @@ async function main() {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
-  const sql = fs.readFileSync(path.join(dir, '020_off_campus_lodge.sql'), 'utf8');
+  let sql = fs.readFileSync(path.join(dir, '020_off_campus_lodge.sql'), 'utf8');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  // Amounts may have been rescaled since (039): also check the live functions as they are now.
+  sql += (await db.query("select string_agg(pg_get_functiondef(p.oid), chr(10)) d from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f'")).rows[0].d + fs.readFileSync(path.join(dir, '039_economy_x10.sql'), 'utf8');
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const one = async (q: string, p: unknown[] = []) => (await rows(q, p))[0];
   const call = async (user: string | null, q: string, p: unknown[] = []) => {

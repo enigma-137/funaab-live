@@ -63,7 +63,7 @@ const additions = ['colvet','colanim','colplant','colcoms','collend','colamrud',
 }));
 const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, colamrud: -Math.PI / 2, 'party-hall': -Math.PI / 2 };
 const arena = [{ id: 'party-hall', name: 'The Arena · Night Party & Arcade', type: 'landmark',
-  description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦500 gate fee for the night.' }];
+  description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦5,000 gate fee for the night.' }];
 const farm = [{ id: 'fpy-farm', name: 'FPY Teaching & Research Farm', type: 'landmark',
   description: 'Teaching & Research Farm where Farm Practical Year (FPY) students plant, water and harvest. Take a farm shift to earn.' }];
 const sportsSide = [

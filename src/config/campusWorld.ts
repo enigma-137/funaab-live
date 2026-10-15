@@ -38,7 +38,7 @@ const restaurantDiningSeats = [-2.2, 2.2].flatMap((x, table) =>
 // Order right at the serving counter too, not only at the entrance (the terrace seats used to win there).
 const floralCounter = {
   id: 'floral-world-order-counter', type: 'food' as const, label: 'Floral World Restaurant Counter',
-  actionText: 'Order Floral World Specials (from ₦150)',
+  actionText: 'Order Floral World Specials (from ₦500)',
   position: [restaurant.position[0], 0, restaurant.position[2] - 0.6] as Point, radius: 1.6,
 };
 const foodCourt = locationById('food-court');
@@ -156,7 +156,7 @@ const outsideGateZones=[
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,floralCounter,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,penaltySpot,freeThrowLine,serveLine,
     {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
-    {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦500',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
+    {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦5,000',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
     ...ARCADE_TABLES.map(t=>({id:`arcade-${t.id}`,type:'arcade',label:t.label,actionText:t.game==='pool'?'Play pool':'Play tic-tac-toe',position:t.at,radius:2.6,targetId:t.id})),
     {id:'hustle-fpy-farm',type:'hustle',label:'FPY Farm · Hustle',actionText:'Farm shift',position:FPY_FARM.gate,radius:4,targetId:'farm'},
     ...FARM_STEPS.map(s=>({id:`hustle-farm-${s.id}`,type:'hustle',label:`FPY Farm · ${s.label}`,actionText:s.verb,position:s.spot,radius:FARM_SHIFT.stepRadius,targetId:`farm-${s.id}`})),

@@ -10,7 +10,10 @@ const require = createRequire(import.meta.url);
 const { PGlite } = require(process.env.PGLITE_MODULE || '@electric-sql/pglite');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dir = path.join(here, '../supabase/migrations');
-const files = fs.readdirSync(dir).sort();
+// The catch-up was written against 001–038; later migrations are applied on top of both databases below.
+const all = fs.readdirSync(dir).sort();
+const files = all.filter((f) => f < '039');
+const later = all.filter((f) => f >= '039');
 const PRE = fs.readFileSync(path.join(here, 'test-economy-db.ts'), 'utf8').match(/await db\.exec\(`(create role anon[^`]*)`\)/)![1];
 
 async function fresh(skip012: boolean) {
@@ -39,5 +42,10 @@ const data = async (db: any) => ({
   const a = await defs(stale), b = await defs(full);
   const diff = Object.keys({ ...a, ...b }).filter((k) => a[k] !== b[k]);
   assert.deepEqual(diff, [], 'every function matches a normal replay: ' + diff.join(', '));
+  // Production was caught up this way: the later migrations must apply to it exactly as to a full replay.
+  for (const f of later) for (const db of [full, stale]) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  assert.deepEqual(await data(stale), await data(full), 'rows still match after ' + later.join(', '));
+  const a2 = await defs(stale), b2 = await defs(full);
+  assert.deepEqual(Object.keys({ ...a2, ...b2 }).filter((k) => a2[k] !== b2[k]), [], 'functions still match after later migrations');
   console.log('CATCH-UP 012 PASSED: jobs, vendor and hostel prices, wallet default and every function match a normal replay.');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -257,7 +257,7 @@ const locationMetadata: Record<
     categoryLabel: 'Night Party & Arcade',
     icon: '🪩',
     color: '#7c3aed',
-    description: 'The Arena: dance floor with party lights, the Arena Bar, tic-tac-toe and pool. Open every night 7 PM–5 AM; ₦500 gate fee covers the whole night.',
+    description: 'The Arena: dance floor with party lights, the Arena Bar, tic-tac-toe and pool. Open every night 7 PM–5 AM; ₦5,000 gate fee covers the whole night.',
   },
   'fpy-farm': {
     category: 'landmark',

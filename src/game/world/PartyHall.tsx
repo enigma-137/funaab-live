@@ -239,7 +239,7 @@ export function PartyHall() {
           <mesh position={[0, H + 0.1, 0]}><boxGeometry args={[W + 0.6, 0.2, D + 0.6]} /><meshStandardMaterial color="#1e1530" /></mesh>
           <mesh position={[-W / 2 - 0.17, H - 0.15, 0]}><boxGeometry args={[0.06, 0.12, D]} /><meshBasicMaterial color={open ? '#c084fc' : '#4c3a63'} /></mesh>
           <group position={[-W / 2 - 0.2, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
-            <CampusSign position={[0, H - 1.6, 0]} width={6} height={1.4} title="THE ARENA" subtitle={open ? 'Party & arcade · ₦500' : 'Opens 7 PM'} />
+            <CampusSign position={[0, H - 1.6, 0]} width={6} height={1.4} title="THE ARENA" subtitle={open ? 'Party & arcade · ₦5,000' : 'Opens 7 PM'} />
           </group>
         </>
       )}

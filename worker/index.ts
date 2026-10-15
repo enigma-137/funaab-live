@@ -8,6 +8,7 @@ import { HELD_ITEM_KINDS, HELD_ITEM_MS, TABLE_ITEM_MS } from '../src/config/held
 import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
+import { ECONOMY_CONFIG } from '../src/config/economy';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
 
@@ -844,7 +845,7 @@ export class WorldRoomDO {
       throw new Error('Walk up to the Campus Bet counter to place a ticket.');
     }
     const stake = data.stake;
-    if (!isValidCampusBetStake(stake)) throw new Error('Stake must be ₦50–₦500 in ₦10 steps.');
+    if (!isValidCampusBetStake(stake)) throw new Error('Stake must be ₦500–₦5,000 in ₦100 steps.');
     const picks = data.picks;
     if (!Array.isArray(picks) || picks.length !== 5 || !picks.every((p) => CAMPUS_BET_PICKS.includes(p))) throw new Error('Pick a result for all 5 matches.');
     const roundId = String(data.roundId || '');
@@ -2145,7 +2146,7 @@ export class WorldRoomDO {
                 type: 'activity_event',
                 eventType: 'lawn_fine',
                 username: session.username,
-                amount: 500,
+                amount: ECONOMY_CONFIG.LAWN_FINE,
                 timestamp: Date.now(),
               })
             );
@@ -2164,7 +2165,7 @@ export class WorldRoomDO {
                 eventType: 'campus_job',
                 username: session.username,
                 jobTitle: String(data.jobTitle || 'Errand').slice(0, 50),
-                reward: Number(data.reward) || 300,
+                reward: Number(data.reward) || 3000,
                 timestamp: Date.now(),
               })
             );

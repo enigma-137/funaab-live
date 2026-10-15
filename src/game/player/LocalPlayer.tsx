@@ -1,4 +1,5 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
+import { ECONOMY_CONFIG } from '../../config/economy';
 import { onDanceFloor, partyOpen } from '../../config/partyHall';
 import { diningSpotAt } from '../../config/campusWorld';
 import { seatPosition } from '../../config/kekeSimulation';
@@ -546,7 +547,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const enforcement = lawnEnforcement.checkEnforcement(feetPosition, officersList);
       if (enforcement.caught && enforcement.officerName) {
         // Player caught on restricted lawn!
-        const fineAmount = enforcement.fineAmount || 500;
+        const fineAmount = enforcement.fineAmount || ECONOMY_CONFIG.LAWN_FINE;
         applyLawnFine(user.id, fineAmount);
         networkManager.reportLawnFine(enforcement.officerName, fineAmount);
         setLawnViolationNotice({

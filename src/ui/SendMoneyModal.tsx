@@ -35,14 +35,14 @@ export const SendMoneyModal: React.FC<SendMoneyModalProps> = ({
 
   const onClose = propClose || (() => setActiveModal(null));
 
-  const [selectedAmount, setSelectedAmount] = useState<number>(500);
+  const [selectedAmount, setSelectedAmount] = useState<number>(5000);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const presets = [100, 200, 500, 1000];
+  const presets = [1000, 2000, 5000, 10000];
   const finalAmount = customAmount ? Math.max(0, parseInt(customAmount, 10) || 0) : selectedAmount;
 
   const handlePresetClick = (amount: number) => {

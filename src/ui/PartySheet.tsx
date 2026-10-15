@@ -5,7 +5,7 @@ import { usePartyStore } from '../stores/partyStore';
 import { useWalletStore } from '../stores/walletStore';
 import { PARTY_HALL, partyHoursLabel, partyOpen } from '../config/partyHall';
 
-/** The Arena door: buy tonight's ticket (₦500, good until 5 AM) or come back when it opens. */
+/** The Arena door: buy tonight's ticket (₦5,000, good until 5 AM) or come back when it opens. */
 export function PartySheet() {
   const setModal = useGameStore((s) => s.setActiveModal);
   const { busy, error, enter, hasTicket } = usePartyStore();

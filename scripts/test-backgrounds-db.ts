@@ -48,7 +48,7 @@ async function main() {
   await fails(null, "select choose_background('comfortable') r", /permission denied|Authentication/);
   const start = await balance(rich);
   const chosen = (await call(rich, "select choose_background('comfortable') r")).r;
-  assert.equal(chosen.paid, 3000); assert.equal(await balance(rich), start + 3000);
+  assert.equal(chosen.paid, 30000); assert.equal(await balance(rich), start + 30000);
   assert.equal(chosen.allowance_ready, false, "this week's money is part of the welcome");
   await fails(rich, "select choose_background('struggling') r", /already set/);
   await call(avg, "select choose_background('average') r");
@@ -59,7 +59,7 @@ async function main() {
   // Weekly money from home: once per Sunday-week.
   assert.equal((await call(rich, 'select claim_home_allowance() r')).r.paid, 0, 'nothing more this week');
   await db.query('update student_backgrounds set last_allowance_week=last_allowance_week-1');
-  for (const [u, weekly] of [[rich, 2500], [avg, 1200], [poor, 400]] as const) {
+  for (const [u, weekly] of [[rich, 25000], [avg, 12000], [poor, 4000]] as const) {
     const before = await balance(u);
     const r = (await call(u, 'select claim_home_allowance() r')).r;
     assert.equal(r.paid, weekly); assert.equal(await balance(u), before + weekly);
@@ -82,7 +82,7 @@ async function main() {
     const before = await balance(u);
     const reward = await runJob(u);
     const bonus = Math.floor((reward * pct) / 100);
-    assert.equal(await balance(u), before + reward + 200 /* first job of the day */ + bonus, `${pct}% hustle bonus`);
+    assert.equal(await balance(u), before + reward + 2000 /* first job of the day */ + bonus, `${pct}% hustle bonus`);
     const lines = await rows("select type,amount from wallet_transactions where user_id=$1 and type in('campus_job','campus_job_bonus','hustle_bonus') order by created_at,type", [u]);
     assert.equal(lines.filter((l) => l.type === 'hustle_bonus').length, pct ? 1 : 0, 'bonus is its own ledger line, never on the first-job bonus');
   }
