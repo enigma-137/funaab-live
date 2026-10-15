@@ -105,6 +105,19 @@ export const campusMaterials = {
   arenaWall: mat("#2b1d3f"),
   arenaFloor: mat("#17131d"),
   felt: mat("#15803d"),
+  // Central Mosque and Chapel of Grace (config/worship.ts).
+  mosqueCream: mat("#efe3c2"),
+  mosqueGreen: mat("#1f6f43", 0.7),
+  mosqueGreenDark: mat("#14532d", 0.8),
+  matGreen: mat("#2f7d4f", 1),
+  matRed: mat("#8f2d33", 1),
+  chapelCream: mat("#efe2c4"),
+  chapelSlate: mat("#4a4f57", 0.8),
+  pewWood: mat("#7a4b2a", 0.75),
+  stainBlue: mat("#2f5fa8", 0.4),
+  stainRed: mat("#b8322f", 0.4),
+  stainAmber: mat("#d99a2b", 0.4),
+  aisleRed: mat("#8b1e2a", 1),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

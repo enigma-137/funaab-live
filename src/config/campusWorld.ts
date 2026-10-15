@@ -14,6 +14,7 @@ import { courtBenchSeats } from './courtBenches';
 import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
 import { LODGE } from './lodge';
+import { WORSHIP_PLACES, chapelPewSeats, worshipBounds } from './worship';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
   const a=l.kekeStop,b=l.entrance,w=l.footprint[0]/2,d=l.footprint[1]/2;
@@ -154,7 +155,7 @@ const outsideGateZones=[
   {id:'lodge-frontage',name:LODGE.name,type:'plaza',restricted:false,bounds:LODGE.frontage},
 ];
 const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
-  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,floralCounter,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,penaltySpot,freeThrowLine,serveLine,
+  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,floralCounter,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,...chapelPewSeats,penaltySpot,freeThrowLine,serveLine,
     {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
     {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦5,000',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
     ...ARCADE_TABLES.map(t=>({id:`arcade-${t.id}`,type:'arcade',label:t.label,actionText:t.game==='pool'?'Play pool':'Play tic-tac-toe',position:t.at,radius:2.6,targetId:t.id})),
@@ -182,6 +183,8 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
     // The Arena: inside is a building; its forecourt joins the walkway.
     {id:'party-hall-inside',name:'The Arena',type:'building',restricted:false,bounds:HALL_BOUNDS},
     {id:'party-hall-forecourt',name:'The Arena',type:'plaza',restricted:false,bounds:{minX:PARTY_HALL.entrance[0]-3,maxX:HALL_BOUNDS.minX+0.5,minZ:PARTY_HALL.entrance[2]-4,maxZ:PARTY_HALL.entrance[2]+4}},
+    // Mosque and Chapel of Grace: inside is a building (no lawn fine).
+    ...WORSHIP_PLACES.map(w=>({id:`${w.id}-inside`,name:w.name,type:'building',restricted:false,bounds:worshipBounds(w)})),
     // The farm's soil and paths are open to everyone (no lawn fine).
     {id:'fpy-farm',name:'FPY Farm',type:'plaza',restricted:false,bounds:{...FARM_BOUNDS,minX:FARM_BOUNDS.minX-3}},
     {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],

@@ -29,7 +29,7 @@ export const avenueTrees: TreeSpec[] = [
   [-35, 85],
   [40, 95],
   [-15, -120],
-  [65, -120],
+  [82, -120],
 ].map(([x, z], i) => ({
   pos: [x, 0, z],
   scale: 0.85 + (i % 5) * 0.08,

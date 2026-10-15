@@ -51,6 +51,9 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   // Beside the Sports Centre: Acad faces the pitch; the courts sit south of it.
   'acad': [-108,-30, 34,12, -108,-22, -55,-22],
   'sports-courts': [-100,31, 36,18, -100,42, -55,45],
+  // Worship (config/worship.ts): south of the colleges, one each side; doors face the campus (+Z).
+  'mosque': [-62,-126, 22,18, -62,-114.5, -55,-85],
+  'chapel': [62,-125, 16,20, 62,-112.5, 55,-85],
 };
 export const collegeCatalogue = [...base.colleges,
   {code:'COLERM', name:'College of Environmental Resources Management',color:'#0d9488'},
@@ -72,10 +75,14 @@ const sportsSide = [
   { id: 'sports-courts', name: 'Basketball & Volleyball Courts', type: 'sports',
     description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, serve challenge on the volleyball court.' },
 ];
-export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena].map(l=>{
+const worship = [
+  { id: 'mosque', name: 'Central Mosque', type: 'landmark', description: "Campus mosque with rows of prayer mats. Open on Fridays for Jumu'ah (Nigeria time)." },
+  { id: 'chapel', name: 'Chapel of Grace', type: 'landmark', description: 'Campus chapel with wooden pews and a pulpit. Open on Sundays (Nigeria time).' },
+];
+export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena,...worship].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
-  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
+  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id==='mosque'?'Mosque':id==='chapel'?'Chapel':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
     interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};

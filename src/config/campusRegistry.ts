@@ -252,6 +252,20 @@ const locationMetadata: Record<
     description: 'COLFHEC Dedicated Lecture Hall: 250-capacity tiered lecture theatre with podium and projector.',
     interactiveModal: 'lecture_hall',
   },
+  mosque: {
+    category: 'landmark',
+    categoryLabel: 'Place of Worship',
+    icon: '🕌',
+    color: '#15803d',
+    description: "Central Mosque: rows of prayer mats and the Imam at the mihrab. Open Fridays for Jumu'ah (Nigeria time).",
+  },
+  chapel: {
+    category: 'landmark',
+    categoryLabel: 'Place of Worship',
+    icon: '⛪',
+    color: '#b45309',
+    description: 'Chapel of Grace: wooden pews, a central aisle and the Pastor at the pulpit. Open Sundays (Nigeria time).',
+  },
   'party-hall': {
     category: 'landmark',
     categoryLabel: 'Night Party & Arcade',
