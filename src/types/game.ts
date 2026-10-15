@@ -270,5 +270,5 @@ export interface ClassroomState {
   status: 'waiting' | 'in_progress' | 'ended';
   currentBoardText: string;
   currentLecturerSpeech: string;
-  activeStudents: Record<string, { connectionId: string; username: string; college: string; seatNumber: number; handRaised?: boolean }>;
+  activeStudents: Record<string, { connectionId: string; username: string; college: string; seatNumber: number; handRaised?: boolean; pos?: [number, number, number]; moving?: boolean }>;
 }

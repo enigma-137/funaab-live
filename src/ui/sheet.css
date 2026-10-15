@@ -199,3 +199,6 @@ body:has(.hostel-dock) .campus-joystick{bottom:calc(env(safe-area-inset-bottom,0
 .notice-banner button{flex-shrink:0;border:0;border-radius:8px;background:#ffffff22;color:inherit;font-weight:900;padding:2px 8px;cursor:pointer}
 /* The SUG President's announcement lives in the same stack. */
 .notice-stack .sug-banner{position:static;margin:0;max-width:none}
+/* In a lecture hall the lecturer's caption and action bar fill the bottom; stand the stick above them. */
+body:has(.classroom-hud) .campus-joystick{left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 206px);z-index:61}
+body:has(.classroom-hud.is-seated) .campus-joystick{display:none}

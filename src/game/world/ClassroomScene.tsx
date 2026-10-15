@@ -2,7 +2,9 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { useLectureStore } from '../../stores/lectureStore';
+import { useLectureStore, hallSpot } from '../../stores/lectureStore';
+import { useInputStore } from '../../stores/inputStore';
+import { networkManager } from '../multiplayer/networkManager';
 import { useAuthStore } from '../../stores/authStore';
 import { useGameStore } from '../../stores/gameStore';
 import { npcAppearance } from '../../config/npcAppearance';
@@ -10,7 +12,9 @@ import {
   CHAIR_BACK_Z,
   CHAIR_OFFSET_Z,
   FACE_BOARD,
+  HALL_DOOR_SPOT,
   HALL_STANDING_VIEW,
+  clampToHallFloor,
   getLectureHall,
   hallSeatPositions,
   type HallSeat,
@@ -18,6 +22,9 @@ import {
 import { AvatarModel } from '../player/AvatarModel';
 import { AvatarBody } from '../player/AvatarBody';
 import { CampusSign } from './CampusSign';
+
+// Tap-to-walk target on the classroom floor (null = none). Module state: only one hall is ever open.
+const walkTarget = { current: null as [number, number] | null };
 
 // Furniture is shared by every seat in every hall: one geometry/material set, not 30 copies.
 // Layout per seat (z toward the back of the room): desk top at z ±0.3, chair centred at
@@ -44,7 +51,7 @@ const DeskStudyItems: React.FC<{ seatNumber: number }> = ({ seatNumber }) => (
     <mesh position={[seatNumber % 2 ? -0.36 : 0.38, 0.023, -0.04]} rotation={[0, 0.25, 0]} geometry={bookGeometry} material={bookMaterials[seatNumber % bookMaterials.length]} />
   </group>
 );
-const BOARD_POINT = new THREE.Vector3(0, 2.4, -7.8);
+const [HALL_DOOR_X, , HALL_DOOR_Z] = HALL_DOOR_SPOT;
 
 export const ClassroomScene: React.FC = () => {
   const currentHallId = useLectureStore((s) => s.currentHallId);
@@ -104,9 +111,30 @@ export const ClassroomScene: React.FC = () => {
   return (
     <group>
       <HallCamera seat={mySeat} />
+      {!mySeat && <HallWalker hall={hall} avatarConfig={user?.avatarConfig} identity={user?.id || 'local'} />}
+      {Object.entries(activeStudentsMap)
+        .filter(([, st]) => !st.seatNumber)
+        .map(([id, st]) => (
+          <StandingClassmate
+            key={id}
+            student={st}
+            avatarConfig={Object.values(players).find((p) => p.username === st.username)?.avatarConfig}
+            fallbackCollege={hall.collegeCode}
+          />
+        ))}
 
       {/* ─── ROOM ENCLOSURE (shared; wall tint and accents come from the hall config) ─── */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+      {/* Tap the floor to walk there while standing (a drag to look around is not a tap). */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0, 0]}
+        receiveShadow
+        onClick={(e) => {
+          if (mySeat || e.delta > 8) return;
+          e.stopPropagation();
+          walkTarget.current = [e.point.x, e.point.z];
+        }}
+      >
         <planeGeometry args={[14, 16]} />
         <meshStandardMaterial color="#334155" roughness={0.6} />
       </mesh>
@@ -278,36 +306,166 @@ export const ClassroomScene: React.FC = () => {
   );
 };
 
-// Standing: overview from the back door. Seated: over your own shoulder, looking at the board.
-// Orbit target sits 1m ahead of the eye so dragging feels like turning your head.
+// Full 360° look-around: drag to turn, pinch/scroll to zoom. The orbit centre is your own head,
+// seated or standing, and it follows you as you walk.
+const headOf = (seat: HallSeat | null) =>
+  seat ? new THREE.Vector3(seat.pos[0], 1.35, seat.pos[2] + CHAIR_OFFSET_Z - 0.1) : new THREE.Vector3(hallSpot.x, 1.55, hallSpot.z);
+
 const HallCamera: React.FC<{ seat: HallSeat | null }> = ({ seat }) => {
   const camera = useThree((s) => s.camera);
   const controls = useRef<any>(null);
-  const eye = useMemo(
-    // Seated: just behind and above your own head, so you see yourself at the desk and the board.
-    () => (seat ? new THREE.Vector3(seat.pos[0] + 0.2, 2.05, seat.pos[2] + CHAIR_OFFSET_Z + 0.85) : new THREE.Vector3(...HALL_STANDING_VIEW)),
-    [seat]
-  );
-  const target = useMemo(() => eye.clone().add(BOARD_POINT.clone().sub(eye).setY(seat ? -1.3 : -3.2).normalize()), [eye, seat]);
-  const azimuth = Math.atan2(eye.x - target.x, eye.z - target.z);
 
+  // On sitting down or standing up, start behind your head looking toward the board.
   useEffect(() => {
-    camera.position.copy(eye);
-    controls.current?.target.copy(target);
+    const head = headOf(seat);
+    const back = seat ? 1.6 : 3.4;
+    camera.position.set(head.x + 0.2, head.y + (seat ? 0.6 : 1.25), head.z + back);
+    controls.current?.target.copy(head);
     controls.current?.update();
-  }, [camera, eye, target]);
+  }, [camera, seat]);
+
+  useFrame(() => {
+    const c = controls.current;
+    if (!c) return;
+    // Carry the camera along with you as you walk (keeps the angle you dragged to).
+    const head = headOf(seat);
+    const d = head.sub(c.target);
+    if (d.lengthSq() > 1e-8) {
+      camera.position.add(d);
+      c.target.add(d);
+    }
+    // Never see through the walls, floor or ceiling.
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -6.6, 6.6);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -7.6, 7.6);
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.5, 5.6);
+    c.update();
+  });
 
   return (
     <OrbitControls
       ref={controls}
-      enableZoom={false}
       enablePan={false}
-      rotateSpeed={0.5}
-      minPolarAngle={Math.PI / 2 - 0.55}
-      maxPolarAngle={Math.PI / 2 + 0.45}
-      minAzimuthAngle={azimuth - 1.0}
-      maxAzimuthAngle={azimuth + 1.0}
+      enableZoom
+      minDistance={seat ? 0.9 : 1.2}
+      maxDistance={seat ? 3 : 5}
+      rotateSpeed={0.55}
+      minPolarAngle={0.45}
+      maxPolarAngle={Math.PI / 2 + 0.3}
     />
+  );
+};
+
+const WALK_SPEED = 2.3;
+const isTyping = () => {
+  const el = document.activeElement as HTMLElement | null;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+};
+
+/** You, standing: walk with the joystick, WASD/arrow keys, or by tapping the floor. Moves relative to where the camera looks. */
+const HallWalker: React.FC<{ hall: ReturnType<typeof getLectureHall>; avatarConfig: unknown; identity: string }> = ({ hall, avatarConfig, identity }) => {
+  const group = useRef<THREE.Group>(null);
+  const keys = useRef(new Set<string>());
+  const sent = useRef({ at: 0, x: NaN, z: NaN, moving: false });
+  const camera = useThree((s) => s.camera);
+
+  useEffect(() => {
+    walkTarget.current = null;
+    const down = (e: KeyboardEvent) => { if (!isTyping()) keys.current.add(e.key.toLowerCase()); };
+    const up = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase());
+    const clear = () => keys.current.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', clear);
+      walkTarget.current = null;
+    };
+  }, []);
+
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.05);
+    const k = keys.current;
+    const [jx, jy] = useInputStore.getState().joystick;
+    let ix = jx + ((k.has('d') || k.has('arrowright')) ? 1 : 0) - ((k.has('a') || k.has('arrowleft')) ? 1 : 0);
+    let iy = -jy + ((k.has('w') || k.has('arrowup')) ? 1 : 0) - ((k.has('s') || k.has('arrowdown')) ? 1 : 0);
+    let mx = 0, mz = 0;
+    if (Math.hypot(ix, iy) > 0.08) {
+      walkTarget.current = null;
+      const len = Math.max(1, Math.hypot(ix, iy));
+      ix /= len; iy /= len;
+      // Camera-relative: forward is where you are looking, flattened onto the floor.
+      const fwd = new THREE.Vector3();
+      camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      fwd.normalize();
+      mx = fwd.x * iy - fwd.z * ix;
+      mz = fwd.z * iy + fwd.x * ix;
+    } else if (walkTarget.current) {
+      const [tx, tz] = walkTarget.current;
+      const dx = tx - hallSpot.x, dz = tz - hallSpot.z, d = Math.hypot(dx, dz);
+      if (d < 0.12) walkTarget.current = null;
+      else { mx = dx / d; mz = dz / d; }
+    }
+    const moving = mx !== 0 || mz !== 0;
+    if (moving) {
+      const step = WALK_SPEED * dt;
+      const [nx, nz] = clampToHallFloor(hall, hallSpot.x + mx * step, hallSpot.z + mz * step);
+      // Blocked by a desk or wall while walking to a tapped spot: give up rather than push forever.
+      if (walkTarget.current && Math.hypot(nx - hallSpot.x, nz - hallSpot.z) < step * 0.2) walkTarget.current = null;
+      hallSpot.x = nx;
+      hallSpot.z = nz;
+      // Avatars face +Z at rotation 0.
+      const want = Math.atan2(mx, mz);
+      const diff = Math.atan2(Math.sin(want - hallSpot.ry), Math.cos(want - hallSpot.ry));
+      hallSpot.ry = Math.atan2(Math.sin(hallSpot.ry + diff * Math.min(1, dt * 12)), Math.cos(hallSpot.ry + diff * Math.min(1, dt * 12)));
+    }
+    if (group.current) {
+      group.current.position.set(hallSpot.x, 0, hallSpot.z);
+      group.current.rotation.y = hallSpot.ry;
+    }
+    // Let classmates see you walk: ~6 updates a second while moving, one more when you stop.
+    const s = sent.current, now = performance.now();
+    const lecture = useLectureStore.getState().currentLecture;
+    if (lecture && (moving ? now - s.at > 160 : s.moving || Number.isNaN(s.x))) {
+      if (moving || s.x !== hallSpot.x || s.z !== hallSpot.z || s.moving) {
+        networkManager.sendLectureMove(+hallSpot.x.toFixed(2), +hallSpot.z.toFixed(2), +hallSpot.ry.toFixed(2), moving);
+      }
+      Object.assign(s, { at: now, x: hallSpot.x, z: hallSpot.z, moving });
+    }
+  });
+
+  return (
+    <group ref={group} position={[hallSpot.x, 0, hallSpot.z]} rotation={[0, hallSpot.ry, 0]}>
+      <AvatarBody config={avatarConfig as any} identity={identity} animation="idle" trackMovement />
+    </group>
+  );
+};
+
+type HallStudent = { username: string; college: string; pos?: [number, number, number] };
+
+/** A classmate who is up and about in the hall, eased toward their last reported spot. */
+const StandingClassmate: React.FC<{ student: HallStudent; avatarConfig: unknown; fallbackCollege: string }> = ({ student, avatarConfig, fallbackCollege }) => {
+  const group = useRef<THREE.Group>(null);
+  const [tx, tz, ry] = student.pos ?? [HALL_DOOR_X, HALL_DOOR_Z, Math.PI];
+  useFrame((_, delta) => {
+    const g = group.current;
+    if (!g) return;
+    const a = 1 - Math.exp(-delta * 8);
+    g.position.x += (tx - g.position.x) * a;
+    g.position.z += (tz - g.position.z) * a;
+    g.rotation.y += Math.atan2(Math.sin(ry - g.rotation.y), Math.cos(ry - g.rotation.y)) * a;
+  });
+  return (
+    <group ref={group} position={[tx, 0, tz]} rotation={[0, ry, 0]}>
+      <AvatarModel
+        username={student.username}
+        college={student.college || fallbackCollege}
+        avatarConfig={(avatarConfig as any) || { shirtColor: '#15803d', skinColor: '#8d5524' }}
+        animation="idle"
+      />
+    </group>
   );
 };
 

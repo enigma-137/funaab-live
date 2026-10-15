@@ -415,12 +415,13 @@ class NetworkManager {
       case 'lecture_room_snapshot':
       case 'lecture_student_joined':
       case 'lecture_student_left':
+      case 'lecture_student_moved':
       case 'lecture_hand_raise_sync': {
         const lecture = useLectureStore.getState();
         const state = lecture.classroomState;
         if (!state) break;
         const students = { ...state.activeStudents };
-        const toSeat = (st: any) => ({ connectionId: st.connectionId, username: st.username, college: st.college, seatNumber: st.seatNumber, handRaised: !!st.isHandRaised });
+        const toSeat = (st: any) => ({ connectionId: st.connectionId, username: st.username, college: st.college, seatNumber: st.seatNumber, handRaised: !!st.isHandRaised, pos: Array.isArray(st.pos) ? st.pos : undefined, moving: !!st.moving });
         if (data.type === 'lecture_room_snapshot') {
           if (data.lectureId && data.lectureId !== state.lectureId) break;
           for (const k of Object.keys(students)) delete students[k];
@@ -429,6 +430,9 @@ class NetworkManager {
           if (data.student && data.student.connectionId !== this.connectionId) students[data.student.connectionId] = toSeat(data.student);
         } else if (data.type === 'lecture_student_left') {
           delete students[data.connectionId];
+        } else if (data.type === 'lecture_student_moved') {
+          if (!students[data.connectionId] || !Array.isArray(data.pos)) break;
+          students[data.connectionId] = { ...students[data.connectionId], pos: data.pos, moving: !!data.moving };
         } else if (students[data.connectionId]) {
           students[data.connectionId] = { ...students[data.connectionId], handRaised: !!data.isHandRaised };
         }
@@ -766,6 +770,11 @@ class NetworkManager {
       connectionId: this.connectionId,
       lectureId,
     });
+  }
+
+  /** Where you are standing inside the hall, so classmates see you walk about. */
+  public sendLectureMove(x: number, z: number, ry: number, moving: boolean) {
+    this.send({ type: 'lecture_move', x, z, ry, moving });
   }
 
   public sendHandRaise(lectureId: string, raised: boolean) {

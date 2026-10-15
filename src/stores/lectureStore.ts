@@ -8,7 +8,10 @@ import { useGameStore } from './gameStore';
 import { useInputStore } from './inputStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { getHallScheduleState, normalizeHallLocationId } from '../config/lectureSchedule';
-import { getLectureHall } from '../config/lectureHalls';
+import { getLectureHall, hallSeatPositions, HALL_DOOR_SPOT, CHAIR_OFFSET_Z } from '../config/lectureHalls';
+
+/** Where you stand inside the hall while not seated (x, z, facing). Updated every frame by the walker, so not reactive. */
+export const hallSpot = { x: HALL_DOOR_SPOT[0], z: HALL_DOOR_SPOT[2], ry: Math.PI };
 
 // 'scheduled' joins the timetabled class (allowance-eligible); 'practice' replays it off-schedule.
 export type AttendanceMode = 'scheduled' | 'practice';
@@ -63,6 +66,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     const lecture = getHallScheduleState(hall.id).lecture;
     set({ isTransitioning: true });
     useInputStore.getState().clearTargetDestination();
+    Object.assign(hallSpot, { x: HALL_DOOR_SPOT[0], z: HALL_DOOR_SPOT[2], ry: Math.PI });
 
     setTimeout(() => {
       set({
@@ -107,6 +111,9 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     const { currentLecture, mySeatNumber } = get();
     if (mySeatNumber === null) return;
     get().endAttendance();
+    // Step back into the gap behind your chair, facing the board.
+    const seat = hallSeatPositions(getLectureHall(get().currentHallId)).find((s) => s.seatNumber === mySeatNumber);
+    if (seat) Object.assign(hallSpot, { x: seat.pos[0], z: seat.pos[2] + CHAIR_OFFSET_Z + 0.62, ry: Math.PI });
     // Still inside the hall, just not seated.
     if (currentLecture) networkManager.enterLectureRoom(currentLecture.id, 0);
     set({ mySeatNumber: null, isHandRaised: false });

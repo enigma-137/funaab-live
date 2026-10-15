@@ -20,13 +20,22 @@ async function main(){
     assert.equal(latest()?.currentLectureId,'funaab-erm-201','campus sees the student is inside the hall while still standing');
     assert.equal(w.lectureRooms.get('funaab-erm-201').activeStudents[conn].seatNumber,0,'standing is seat 0');
 
+    // A classmate in the same hall sees you walk about while standing.
+    await watcher.packet({type:'lecture_enter',lectureId:'funaab-erm-201',seatNumber:5});
+    watcher.messages.length=0;
+    await student.packet({type:'lecture_move',x:1.5,z:99,ry:3,moving:true});
+    const moved=watcher.messages.find((m)=>m.type==='lecture_student_moved');
+    assert.deepEqual(moved?.pos,[1.5,8,3],'standing spot relayed (and clamped to the room)');
+    assert.equal(moved?.moving,true);
+    assert.ok(!student.messages.some((m)=>m.type==='lecture_student_moved'),'not echoed to the walker');
+
     await student.packet({type:'lecture_enter',lectureId:'funaab-erm-201',seatNumber:3});
     assert.equal(w.lectureRooms.get('funaab-erm-201').activeStudents[conn].seatNumber,3,'moved to a seat');
     assert.equal(latest()?.currentLectureId,'funaab-erm-201');
 
     await student.packet({type:'lecture_leave',lectureId:'funaab-erm-201'});
     assert.equal(latest()?.currentLectureId,null,'walking out clears it (null, so clients drop it)');
-    console.log('LECTURE PRESENCE PASSED: inside the hall from the door, seat changes keep it, leaving clears it.');
+    console.log('LECTURE PRESENCE PASSED: inside the hall from the door, walking about is relayed, seat changes keep it, leaving clears it.');
   }finally{globalThis.WebSocket=oldWS;globalThis.setInterval=oldInterval;}
 }
 main().then(()=>process.exit(0)).catch((e)=>{console.error(e);process.exit(1);});

@@ -164,6 +164,8 @@ interface LectureRoomState {
     seatNumber: number;
     isHandRaised: boolean;
     joinedAt: number;
+    pos?: [number, number, number]; // standing spot inside the hall (x, z, facing)
+    moving?: boolean;
   }>;
   lecturerSpeech: string;
   boardText: string;
@@ -2012,6 +2014,7 @@ export class WorldRoomDO {
               seatNumber,
               isHandRaised: false,
               joinedAt: Date.now(),
+              pos: roomState.activeStudents[sessionConnId]?.pos,
             };
 
             // Send classroom state to entering student
@@ -2090,6 +2093,23 @@ export class WorldRoomDO {
             };
 
             this.broadcastToRoom(session.room, JSON.stringify(lectureMsg));
+            break;
+          }
+
+          case 'lecture_move': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session || !session.currentLectureId) return;
+            const student = this.lectureRooms.get(session.currentLectureId)?.activeStudents[sessionConnId];
+            if (!student) return;
+            const n = (v: unknown, lim: number) => Math.max(-lim, Math.min(lim, Number(v) || 0));
+            student.pos = [n(data.x, 8), n(data.z, 8), n(data.ry, 7)];
+            student.moving = Boolean(data.moving);
+            this.broadcastToRoom(
+              session.room,
+              JSON.stringify({ type: 'lecture_student_moved', connectionId: sessionConnId, pos: student.pos, moving: student.moving }),
+              webSocket
+            );
             break;
           }
 
