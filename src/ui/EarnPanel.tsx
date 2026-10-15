@@ -44,6 +44,12 @@ export function EarnPanel() {
 
   const ways: Way[] = [
     {
+      id: 'daily', icon: '🎁', title: 'Daily allowance',
+      pays: `${formatNaira(E.DAILY_RESUMPTION_ALLOWANCE)} every day`,
+      how: 'Free money once a day. Just come back tomorrow for more.',
+      action: 'Claim it', go: () => setModal('daily_reward'),
+    },
+    {
       id: 'tasks', icon: '🔥', title: "Today's Plan",
       pays: `${formatNaira(DAILY_PLAN.GOALS_PER_DAY * DAILY_GOALS[0].reward)} a day + ${formatNaira(DAILY_PLAN.ALL_DONE_BONUS)} when all are done`,
       how: 'Three small goals every day. Finish them all to keep your streak going.',
@@ -66,12 +72,6 @@ export function EarnPanel() {
       pays: `${formatNaira(E.ATTENDANCE_ALLOWANCE)} a class, up to ${E.ATTENDANCE_DAILY_LIMIT} a day`,
       how: 'Walk into a live class at a lecture hall and sit through it.',
       action: 'See timetable', go: () => setModal('lecture_hall'),
-    },
-    {
-      id: 'daily', icon: '🎁', title: 'Daily allowance',
-      pays: `${formatNaira(E.DAILY_RESUMPTION_ALLOWANCE)} every day`,
-      how: 'Free money once a day. Just come back tomorrow for more.',
-      action: 'Claim it', go: () => setModal('daily_reward'),
     },
     {
       id: 'game-den', icon: '🎮', title: 'Game Den penalties',

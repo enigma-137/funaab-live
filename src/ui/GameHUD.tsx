@@ -478,6 +478,18 @@ export const GameHUD: React.FC = () => {
                 <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 stroke-[2.5]" />
               </button>
             </div>
+            {/* Phones: a compact Earn button between the wallet and the compass (wider screens have the Jobs Board button). */}
+            {!inRoom && (
+              <button
+                id="btn-hud-earn"
+                aria-label="Earn money"
+                onClick={() => setActiveModal('earn')}
+                className="sm:hidden flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center rounded-2xl bg-[#0c221b]/90 backdrop-blur-xl border border-emerald-400/40 active:scale-95 transition"
+              >
+                <span className="text-[17px] leading-none" aria-hidden>💰</span>
+                <span className="mt-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-300 font-['Outfit']">Earn</span>
+              </button>
+            )}
           </div>
 
           {!inRoom&&<>{/* Campus Jobs Board Quick Button */}
