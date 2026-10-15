@@ -45,6 +45,7 @@ import { openFootball } from '../stores/footballStore';
 import { openCourtGame } from '../stores/courtGameStore';
 import { toast } from '../stores/toastStore';
 import { NavigationArrow } from './NavigationArrow';
+import { MiniMap } from './MiniMap';
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -635,16 +636,15 @@ export const GameHUD: React.FC = () => {
         <Compass className="h-5 w-5" />
       </button>
 
+      {/* Stays on screen while following a route; tap for the full map. */}
+      {!inRoom && navigationDestination && <MiniMap onOpen={() => setActiveModal('campus_map')} />}
       {/* ACTIVE DESTINATION WAYPOINT BANNER */}
       {!inRoom && navigationDestination && (
-        <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-in slide-in-from-top-3">
-          <div className="p-2 sm:p-2.5 rounded-2xl bg-[#091f18]/95 border border-emerald-400/80 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2.5">
+        <div className="mx-auto my-0.5 pointer-events-auto max-w-xs w-full animate-in slide-in-from-top-3">
+          <div className="px-2 py-1 sm:p-2 rounded-xl bg-[#091f18]/80 border border-emerald-400/60 backdrop-blur-md shadow-lg flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xl shrink-0">{navigationDestination.icon || '📍'}</span>
+              <span className="text-base shrink-0">{navigationDestination.icon || '📍'}</span>
               <div className="min-w-0">
-                <div className="text-[9px] text-emerald-300/80 font-semibold uppercase tracking-wider">
-                  Target Destination
-                </div>
                 <div className="text-xs font-black text-white font-['Outfit'] truncate flex items-center gap-1.5">
                   <span>{navigationDestination.shortName}</span>
                   <span className="text-[10px] text-emerald-400 font-mono font-bold">
