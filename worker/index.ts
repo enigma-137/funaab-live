@@ -124,6 +124,9 @@ interface PlayerState {
   isDining?: boolean;
   /** The car they're driving (config/cars id), if any. */
   car?: string | null;
+  /** Getting a lift: the driver's connection id and which passenger seat (0 front, 1 back). */
+  rideWith?: string | null;
+  rideSeat?: number;
   lastUpdated: number;
 }
 
@@ -495,6 +498,7 @@ export class WorldRoomDO {
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
+      this.releaseCarRiders(sessionConnId, 'driver_left');
       this.players.delete(sessionConnId);
       this.broadcastToRoom(
         matchingSession?.room || 'world:funaab:main',
@@ -741,6 +745,8 @@ export class WorldRoomDO {
         kekeRiding: player.kekeRiding,
         kekeId: player.kekeId,
         car: player.car ?? null,
+        rideWith: player.rideWith ?? null,
+        rideSeat: player.rideSeat ?? null,
         // null (not undefined) so clients clear it when a student walks out of a hall.
         currentLectureId: player.currentLectureId ?? null,
         currentZone: player.currentLectureId
@@ -792,6 +798,13 @@ export class WorldRoomDO {
    * trusted position keeps catching up over time. Previously a reconnect (trusted reset to spawn
    * while the client stayed put) froze the trusted position forever, breaking jobs, keke and bets.
    */
+  /** Everyone getting a lift from this driver gets out (driver parked, left or disconnected). */
+  private releaseCarRiders(driverConn: string, reason: string) {
+    const out: string[] = [];
+    for (const [id, p] of this.players) if (p.rideWith === driverConn) { p.rideWith = null; p.rideSeat = undefined; this.dirtyPlayerIds.add(id); out.push(id); }
+    if (out.length) { this.sendToConnections(out, JSON.stringify({ type: 'car_ride_end', reason })); this.scheduleBatchBroadcast(); }
+  }
+
   private advanceTrustedPosition(session: SessionData, now = Date.now()) {
     const claimed = session.claimedPosition;
     if (!claimed) return;
@@ -1737,6 +1750,7 @@ export class WorldRoomDO {
               player.position = data.position;
               player.rotation = rotation;
               player.animation = animation;
+              if (player.car && !car) this.releaseCarRiders(sessionConnId, 'parked');
               player.car = car;
               this.loveGardenGoals(current, animation);
               if (current.posShift && current.trustedPosition && Math.hypot(current.trustedPosition[0] - POS_KIOSK.serviceSpot[0], current.trustedPosition[2] - POS_KIOSK.serviceSpot[2]) > POS_KIOSK.radius + 1) {
@@ -1874,6 +1888,36 @@ export class WorldRoomDO {
             this.holdKeke(current,data);
             break;
           }
+          // Lifts: hop into a stopped car (two passengers at most), or get out.
+          case 'car_ride': {
+            if (!sessionConnId) return;
+            const me = this.players.get(sessionConnId), session = this.sessions.get(webSocket);
+            const driverId = String(data.driver || ''), driver = this.players.get(driverId);
+            const fail = (error: string) => webSocket.send(JSON.stringify({ type: 'car_ride_result', ok: false, error }));
+            if (!me || !session || !driver || driverId === sessionConnId) return fail('That car is not here.');
+            if (!driver.car) return fail('They are not driving.');
+            if (me.car || me.kekeRiding) return fail('Get out of your own ride first.');
+            const driverSession = [...this.sessions.values()].find((x) => x.connectionId === driverId);
+            if (!driverSession || driverSession.room !== session.room) return fail('That car is not here.');
+            if (Math.hypot(me.position[0] - driver.position[0], me.position[2] - driver.position[2]) > 6) return fail('Walk up to the car first.');
+            const taken = [...this.players.values()].filter((p) => p.rideWith === driverId).map((p) => p.rideSeat);
+            const seat = [0, 1].find((n) => !taken.includes(n));
+            if (seat === undefined) return fail('The car is full (two passengers).');
+            me.rideWith = driverId; me.rideSeat = seat; me.animation = 'sit';
+            this.dirtyPlayerIds.add(sessionConnId); this.scheduleBatchBroadcast();
+            webSocket.send(JSON.stringify({ type: 'car_ride_result', ok: true, driver: driverId, seat }));
+            this.sendToConnections([driverId], JSON.stringify({ type: 'car_rider_joined', username: me.username }));
+            break;
+          }
+          case 'car_ride_leave': {
+            if (!sessionConnId) return;
+            const me = this.players.get(sessionConnId);
+            if (!me || !me.rideWith) return;
+            me.rideWith = null; me.rideSeat = undefined;
+            this.dirtyPlayerIds.add(sessionConnId); this.scheduleBatchBroadcast();
+            break;
+          }
+
           case 'keke_exit': {
             if(!sessionConnId)return;
             const k=[...this.kekes.values()].find(k=>k.passengers.includes(sessionConnId!));
@@ -2233,6 +2277,7 @@ export class WorldRoomDO {
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
+        this.releaseCarRiders(sessionConnId, 'driver_left');
         this.players.delete(sessionConnId);
 
         // Broadcast player_left to main world

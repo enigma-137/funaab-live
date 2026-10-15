@@ -170,6 +170,9 @@ export const GameHUD: React.FC = () => {
     setChatInput('');
   };
 
+  const inCar = useCarStore((s) => !!s.driving || !!s.ride);
+  const carView = useCarStore((s) => s.view);
+
   const handleInteractButton = async () => {
     triggerHaptic(25);
 
@@ -185,8 +188,11 @@ export const GameHUD: React.FC = () => {
     }
 
     if (nearbyInteractable?.type === 'car') {
-      if (nearbyInteractable.targetId === 'drive') useCarStore.getState().enter();
-      else if (nearbyInteractable.targetId === 'park') window.dispatchEvent(new Event('car-park'));
+      const t = nearbyInteractable.targetId || '';
+      if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'park') window.dispatchEvent(new Event('car-park'));
+      else if (t === 'unride') useCarStore.getState().leaveRide();
+      else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
       else setActiveModal('fuel');
       return;
     }
@@ -780,6 +786,19 @@ export const GameHUD: React.FC = () => {
             >
               <span>🍲</span>
               <span>Order Food</span>
+            </button>
+          </div>
+        )}
+        {!activeModal && inCar && (
+          // In a car (driving or getting a lift): switch between the view from your seat and from behind.
+          <div className="pointer-events-auto mb-2 flex justify-center">
+            <button
+              onClick={() => { triggerHaptic(15); useCarStore.getState().toggleView(); }}
+              className="flex min-h-[40px] items-center gap-2 rounded-2xl border border-sky-300/70 bg-slate-950/90 px-3 py-1.5 text-xs font-extrabold text-white shadow-xl"
+              aria-label={carView === 'inside' ? 'Outside view' : 'Inside view'}
+            >
+              <span>{carView === 'inside' ? '🚘' : '🪟'}</span>
+              <span>{carView === 'inside' ? 'Outside view' : 'Inside view'}</span>
             </button>
           </div>
         )}

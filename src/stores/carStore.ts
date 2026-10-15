@@ -4,6 +4,7 @@ import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
 import { CAR_HOME, CAR_MODELS, FUEL, isCarId } from '../config/cars';
 import { useEstateStore } from './estateStore';
+import { networkManager } from '../game/multiplayer/networkManager';
 
 type Point = [number, number, number];
 export interface ParkedCar { car: string; position: Point; rotation: number }
@@ -26,6 +27,15 @@ interface CarStore {
   buyFuel: (car: string, litres: number) => Promise<boolean>;
   /** Count metres driven; reports burnt fuel to the database in small steps. */
   drove: (metres: number) => void;
+  /** A lift in someone else's car: their connection id and your seat. */
+  ride: { driver: string; seat: number } | null;
+  /** Camera while in a car: behind it, or from your seat. */
+  view: 'outside' | 'inside';
+  toggleView: () => void;
+  askRide: (driver: string) => void;
+  leaveRide: () => void;
+  rideResult: (r: { ok: boolean; driver?: string; seat?: number; error?: string }) => void;
+  rideEnded: (reason: string) => void;
 }
 
 const storeKey = 'funaab:parked-car:v1';
@@ -39,6 +49,20 @@ let reporting = false;
 
 export const useCarStore = create<CarStore>((set, get) => ({
   fuel: {}, loaded: false, driving: null, parked: readParked(), busy: false, error: null,
+  ride: null, view: 'outside',
+  toggleView: () => set({ view: get().view === 'inside' ? 'outside' : 'inside' }),
+  askRide: (driver) => { if (!get().driving && !get().ride) networkManager.carRide(driver); },
+  leaveRide: () => { if (!get().ride) return; networkManager.carRideLeave(); set({ ride: null, view: 'outside' }); window.dispatchEvent(new Event('car-ride-exit')); },
+  rideResult: (r) => {
+    if (r.ok && r.driver != null && r.seat != null) { set({ ride: { driver: r.driver, seat: r.seat } }); toast({ icon: '🚗', text: 'You hopped in. Tap Get out to leave.', tone: 'info' }); }
+    else toast({ icon: '🚗', text: r.error || 'You could not get in.', tone: 'bad' });
+  },
+  rideEnded: (reason) => {
+    if (!get().ride) return;
+    set({ ride: null, view: 'outside' });
+    window.dispatchEvent(new Event('car-ride-exit'));
+    toast({ icon: '🚗', text: reason === 'driver_left' ? 'The driver left, so you got out.' : 'The driver parked. You got out.', tone: 'info' });
+  },
   load: async () => {
     if (!isSupabaseConfigured) return;
     const { data, error } = await supabase.rpc('car_garage');
@@ -67,14 +91,14 @@ export const useCarStore = create<CarStore>((set, get) => ({
     const p = get().parked;
     if (!p) return;
     if ((get().fuel[p.car] ?? 0) <= 0.01) toast({ icon: '⛽', text: 'The tank is empty. You can sit in it, but you need fuel to move: buy some at the fuel station.', tone: 'bad', ms: 6000 });
-    set({ driving: p.car });
+    set({ driving: p.car, ride: null });
   },
   park: (position, rotation) => {
     const car = get().driving;
     if (!car) return;
     const parked = { car, position, rotation };
     saveParked(parked);
-    set({ driving: null, parked });
+    set({ driving: null, parked, view: 'outside' });
     void flushBurn(car);
   },
   buyFuel: async (car, litres) => {

@@ -1,8 +1,8 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
 import { useCarStore } from '../../stores/carStore';
 import { toast } from '../../stores/toastStore';
-import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION } from '../../config/cars';
-import { CarBody } from '../vehicles/CarBody';
+import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
+import { CarBody, Cockpit } from '../vehicles/CarBody';
 import { ECONOMY_CONFIG } from '../../config/economy';
 import { onDanceFloor, partyOpen } from '../../config/partyHall';
 import { diningSpotAt } from '../../config/campusWorld';
@@ -117,6 +117,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const carPhys = useRef<{ body: any; collider: any; controller: any; car: string } | null>(null);
   const drive = useRef({ x: 0, z: 0, heading: 0, speed: 0, active: false });
   const drivingCar = useCarStore((s) => s.driving);
+  const ride = useCarStore((s) => s.ride);
+  const carView = useCarStore((s) => s.view);
+  const rideCar = useGameStore((s) => (ride ? s.players[ride.driver]?.car ?? null : null));
+  // Getting a lift: smoothed copy of the driver's car position and heading.
+  const rideSmooth = useRef({ x: 0, z: 0, heading: 0, init: false });
   const onCampusNow = useHostelStore((s) => s.roomId === 'world:funaab:main');
 
   const { world, rapier } = useRapier();
@@ -214,6 +219,17 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   };
   useEffect(() => () => removeCarPhys(), []);
   useEffect(() => { const h = () => parkCar(); window.addEventListener('car-park', h); return () => window.removeEventListener('car-park', h); }, []);
+  // Out of a lift: step out on the passenger side.
+  useEffect(() => {
+    const h = () => {
+      const r = rideSmooth.current;
+      if (!r.init) return;
+      r.init = false;
+      useHostelStore.setState({ teleport: [r.x - Math.cos(r.heading) * 2.1, 0, r.z + Math.sin(r.heading) * 2.1] });
+    };
+    window.addEventListener('car-ride-exit', h);
+    return () => window.removeEventListener('car-ride-exit', h);
+  }, []);
   /** Park where you are and step out on the driver's side. */
   const parkCar = () => {
     const d = drive.current, car = useCarStore.getState().driving;
@@ -239,8 +255,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
 
     if (nearbyInteractable?.type === 'car') {
-      if (nearbyInteractable.targetId === 'drive') useCarStore.getState().enter();
-      else if (nearbyInteractable.targetId === 'park') parkCar();
+      const t = nearbyInteractable.targetId || '';
+      if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'park') parkCar();
+      else if (t === 'unride') useCarStore.getState().leaveRide();
+      else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
       else useGameStore.getState().setActiveModal('fuel');
       return;
     }
@@ -368,6 +387,46 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       }
     }
 
+    const setLensFov = (fov: number) => { const lens = camera as THREE.PerspectiveCamera; if (lens.fov !== fov) { lens.fov = fov; lens.updateProjectionMatrix(); } };
+    /** Inside view: from a seat (car-local) looking ahead along the heading, with a little drag-to-look. */
+    const insideCamera = (cx: number, cz: number, heading: number, seat: readonly number[]) => {
+      const c = Math.cos(heading), sn = Math.sin(heading);
+      const ex = cx + seat[0] * c + (seat[2] + 0.05) * sn, ez = cz - seat[0] * sn + (seat[2] + 0.05) * c;
+      const look = heading + Math.atan2(Math.sin(cameraYaw - heading - Math.PI), Math.cos(cameraYaw - heading - Math.PI)) * 0.6;
+      // A phone held upright has a narrow view; widen it so the dashboard and road both fit.
+      setLensFov(size.width < size.height ? 78 : 62);
+      camera.position.set(ex, SEAT_EYE + (seat[1] ?? 0) + 0.15, ez);
+      camera.lookAt(ex + Math.sin(look) * 10, SEAT_EYE - 0.05 - cameraPitch * 2, ez + Math.cos(look) * 10);
+    };
+
+    // 1a. GETTING A LIFT in someone else's car (campus only)
+    const liftState = useCarStore.getState();
+    if (liftState.ride && useHostelStore.getState().roomId === 'world:funaab:main') {
+      const drv = players[liftState.ride.driver];
+      if (!drv || !drv.car) { liftState.rideEnded('driver_left'); }
+      else {
+        const r = rideSmooth.current, k = 1 - Math.exp(-delta * 10);
+        if (!r.init) { r.x = drv.position[0]; r.z = drv.position[2]; r.heading = drv.rotation; r.init = true; }
+        r.x += (drv.position[0] - r.x) * k; r.z += (drv.position[2] - r.z) * k;
+        r.heading += Math.atan2(Math.sin(drv.rotation - r.heading), Math.cos(drv.rotation - r.heading)) * k;
+        const seat = PASSENGER_SEATS[liftState.ride.seat] ?? PASSENGER_SEATS[0], c = Math.cos(r.heading), sn = Math.sin(r.heading);
+        const px = r.x + seat[0] * c + seat[2] * sn, pz = r.z - seat[0] * sn + seat[2] * c;
+        body.setNextKinematicTranslation({ x: px, y: PLAYER_CENTER_OFFSET, z: pz });
+        currentRotation.current = r.heading;
+        if (avatarVisualRef.current) avatarVisualRef.current.rotation.y = r.heading;
+        currentAnimation.current = 'sit';
+        const feet: [number, number, number] = [px, 0, pz];
+        setMyPosition(feet); setMyRotation(r.heading); setMyAnimation('sit');
+        networkManager.sendMove(feet, r.heading, 'sit', false, null);
+        if (liftState.view === 'inside') insideCamera(r.x, r.z, r.heading, seat);
+        else { setLensFov(50); updateOrbitCamera(_camTarget.set(r.x, PLAYER_CENTER_OFFSET, r.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta); }
+        const near: InteractableZone = { id: 'lift', type: 'car', targetId: 'unride', label: CAR_MODELS[drv.car]?.name ?? 'Car', actionText: 'Get out', position: feet, radius: 3 };
+        if (useGameStore.getState().nearbyInteractable?.targetId !== 'unride') setNearbyInteractable(near);
+        setIsOnRestrictedLawn(false);
+        return;
+      }
+    }
+
     // 1b. DRIVING YOUR CAR (campus only)
     const carState = useCarStore.getState();
     if (carState.driving && controller && useHostelStore.getState().roomId === 'world:funaab:main') {
@@ -427,7 +486,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         const behind = d.heading + Math.PI, diff = Math.atan2(Math.sin(behind - cameraYaw), Math.cos(behind - cameraYaw));
         useInputStore.getState().setCameraYaw(cameraYaw + diff * Math.min(1, delta * 1.6));
       }
-      updateOrbitCamera(_camTarget.set(d.x, PLAYER_CENTER_OFFSET, d.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta);
+      if (carState.view === 'inside') insideCamera(d.x, d.z, d.heading, DRIVER_SEAT);
+      else { setLensFov(50); updateOrbitCamera(_camTarget.set(d.x, PLAYER_CENTER_OFFSET, d.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta); }
       // At a pump you can fill up; anywhere else the button parks the car.
       const pump = FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius);
       const near: InteractableZone = pump
@@ -723,6 +783,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
       if (dist < 3.6 && dist < minDistance + 1) { minDistance = dist; closestInteractable = { id: 'my-car', type: 'car', targetId: 'drive', label: CAR_MODELS[myCar.car]?.name ?? 'Your car', actionText: 'Drive', position: myCar.position, radius: 3.6 }; }
     }
+    // Someone driving and stopped nearby: hop in for a lift.
+    for (const p of Object.values(players)) {
+      if (!p.car || !p.connectionId) continue;
+      const dist = Math.hypot(feetPosition[0] - p.position[0], feetPosition[2] - p.position[2]);
+      if (dist < 4.5 && dist < minDistance + 1) { minDistance = dist; closestInteractable = { id: `ride-${p.connectionId}`, type: 'car', targetId: `ride:${p.connectionId}`, label: `${p.username}'s ${CAR_MODELS[p.car]?.name ?? 'car'}`, actionText: `Ride with ${p.username}`, position: p.position, radius: 4.5 }; }
+    }
     for (const q of FUEL_STATION.pumps) {
       const dist = Math.hypot(feetPosition[0] - q[0], feetPosition[2] - q[2]);
       if (dist < 2.2 && dist < minDistance) { minDistance = dist; closestInteractable = { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: q, radius: 2.2 }; }
@@ -827,7 +893,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
       {/* Visual Avatar Mesh attached to physics body with offset to match feet level */}
       <group ref={avatarVisualRef} position={[0, -PLAYER_CENTER_OFFSET, 0]}>
-        {drivingCar && onCampusNow && <CarBody id={drivingCar} />}
+        {drivingCar && onCampusNow && (carView === 'inside' ? <Cockpit id={drivingCar} /> : <CarBody id={drivingCar} />)}
+        {ride && rideCar && onCampusNow && carView === 'inside' && (() => { const seat = PASSENGER_SEATS[ride.seat] ?? PASSENGER_SEATS[0]; return <group position={[-seat[0], -seat[1], -seat[2]]}><Cockpit id={rideCar} /></group>; })()}
         <group position={drivingCar && onCampusNow ? DRIVER_SEAT : [0, 0, 0]}>
         <AvatarModel
           userId={user.id}
@@ -838,6 +905,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           isLocal
           held={myHeldItem}
           table={seatedAt && seatedAt.animation !== 'sleep' ? diningSpotAt(seatedAt.position) : null}
+          hidden={onCampusNow && (!!drivingCar || !!ride)}
         />
         </group>
       </group>

@@ -78,7 +78,8 @@
     "test:lifestyle:db": "tsx scripts/test-lifestyle-shop-db.ts",
     "test:worship": "tsx scripts/test-worship.ts",
     "test:estate:db": "tsx scripts/test-estate-db.ts",
-    "test:cars:db": "tsx scripts/test-cars-db.ts"
+    "test:cars:db": "tsx scripts/test-cars-db.ts",
+    "test:car-rides": "tsx scripts/test-car-rides-worker.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

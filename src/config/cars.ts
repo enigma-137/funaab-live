@@ -43,6 +43,11 @@ export const CAR_HOME = {
 /** Where the driver sits in the car (car-local; the driver's side is the left, +X). */
 export const DRIVER_SEAT: Point = [0.42, 0.02, -0.25];
 
+/** Passenger seats for lifts: front (beside the driver) and back. */
+export const PASSENGER_SEATS: Point[] = [[-0.42, 0.02, -0.25], [-0.42, 0.02, -1.25]];
+/** Eye height above a seat, for the inside view. */
+export const SEAT_EYE = 1.08;
+
 /** Driving feel (metres, seconds, radians). */
 export const DRIVE = {
   accel: 6, brake: 12, drag: 3, reverseMax: 4, turnRate: 1.6,

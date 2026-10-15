@@ -52,6 +52,9 @@ export interface PlayerState {
   isDining?: boolean;
   /** The car they are driving (config/cars id), or null on foot. */
   car?: string | null;
+  /** Getting a lift: the driver's connection id and passenger seat. */
+  rideWith?: string | null;
+  rideSeat?: number | null;
   /** Food or drink they just bought, shown in hand until `until` (local clock). */
   heldItem?: { kind: 'pack' | 'wrap' | 'bowl' | 'water' | 'malt'; until: number };
   lastUpdated: number;

@@ -5,7 +5,8 @@ import { CAR_MODELS } from '../../config/cars';
 const box = new THREE.BoxGeometry(1, 1, 1);
 const wheel = new THREE.CylinderGeometry(0.36, 0.36, 0.26, 14);
 const shared = {
-  glass: new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.2, metalness: 0.4 }),
+  // See-through tint: you can look out from the inside view, and the cabin reads as dark glass outside.
+  glass: new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.45, depthWrite: false }),
   tyre: new THREE.MeshStandardMaterial({ color: '#111111', roughness: 0.9 }),
   rim: new THREE.MeshStandardMaterial({ color: '#cbd5e1', roughness: 0.3, metalness: 0.7 }),
   head: new THREE.MeshBasicMaterial({ color: '#fef3c7' }),
@@ -53,3 +54,56 @@ function CarBodyInner({ id }: { id: string }) {
   );
 }
 export const CarBody = React.memo(CarBodyInner);
+
+// Inside view: everything drawn from both sides, since the camera sits among it.
+const two = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, side: THREE.DoubleSide, ...extra });
+const dash = two('#1f2937');
+const dashTrim = two('#334155', { metalness: 0.3, roughness: 0.5 });
+const gauge = new THREE.MeshBasicMaterial({ color: '#f59e0b' });
+const screen = new THREE.MeshBasicMaterial({ color: '#0e7490' });
+const wheelGeo = new THREE.TorusGeometry(0.15, 0.022, 8, 24);
+const wheelMat = two('#64748b', { metalness: 0.4, roughness: 0.4 });
+const pillar = two('#111827');
+const seatMat = two('#3f2d24', { roughness: 0.9 });
+
+/**
+ * The view from a seat (car-local, facing +Z): bonnet ahead, dashboard with gauges and the steering
+ * wheel, windscreen pillars, roof edge and door sills. Used instead of the outside body when the
+ * camera is inside, so nothing blocks the view of campus.
+ */
+export function Cockpit({ id }: { id: string }) {
+  const m = CAR_MODELS[id] ?? CAR_MODELS.car_corolla;
+  const paint = useMemo(() => two(m.paint, { metalness: 0.4, roughness: 0.35 }), [m.paint]);
+  useEffect(() => () => paint.dispose(), [paint]);
+  const k = m.scale, h = m.suv ? 1.2 : 1, top = 0.95 * h, roof = top + (m.boxy ? 0.75 : 0.52) * h, front = 0.8 * k;
+  const B = ({ s, p, mat, r }: { s: [number, number, number]; p: [number, number, number]; mat: THREE.Material; r?: [number, number, number] }) =>
+    <mesh geometry={box} material={mat} scale={s} position={p} rotation={r} />;
+  return (
+    <group>
+      {/* Bonnet sloping away ahead of the windscreen. */}
+      <B s={[1.76 * k, 0.06, 1.3 * k]} p={[0, top - 0.02, front + 0.7 * k]} mat={paint} r={[-0.06, 0, 0]} />
+      {/* Dashboard, gauges, centre screen. */}
+      <B s={[1.6 * k, 0.24, 0.42]} p={[0, top - 0.14, front - 0.12]} mat={dash} />
+      <B s={[1.6 * k, 0.04, 0.44]} p={[0, top - 0.01, front - 0.12]} mat={dashTrim} />
+      <B s={[0.26, 0.07, 0.02]} p={[0.42, top - 0.08, front - 0.34]} mat={gauge} />
+      <B s={[0.22, 0.12, 0.02]} p={[0, top - 0.1, front - 0.34]} mat={screen} />
+      {/* Steering wheel in front of the driver. */}
+      <group position={[0.42, top - 0.13, front - 0.42]} rotation={[-0.45, 0, 0]}>
+        <mesh geometry={wheelGeo} material={wheelMat} />
+        <B s={[0.28, 0.03, 0.03]} p={[0, 0, 0]} mat={wheelMat} />
+        <B s={[0.03, 0.14, 0.03]} p={[0, -0.07, 0]} mat={wheelMat} />
+      </group>
+      {/* Windscreen pillars (raked back to the roof), roof edge, door sills. */}
+      {[-1, 1].map((sx) => (
+        <group key={sx}>
+          <B s={[0.07, Math.hypot(roof - top, 0.5), 0.07]} p={[sx * 0.78 * k, (top + roof) / 2, front - 0.3]} mat={pillar} r={[-Math.atan2(0.5, roof - top), 0, 0]} />
+          <B s={[0.06, 0.22, 2.2 * k]} p={[sx * 0.8 * k, top + 0.12, -0.3]} mat={paint} />
+        </group>
+      ))}
+      <B s={[1.6 * k, 0.07, 0.18]} p={[0, roof, front - 0.55]} mat={pillar} />
+      <B s={[1.6 * k, 0.03, 1.6 * k]} p={[0, roof + 0.02, -0.95]} mat={pillar} />
+      {/* Front seats either side. */}
+      {[0.42, -0.42].map((x) => <B key={x} s={[0.5, 0.6, 0.1]} p={[x, top + 0.35, -0.6]} mat={seatMat} />)}
+    </group>
+  );
+}

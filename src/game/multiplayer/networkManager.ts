@@ -17,6 +17,7 @@ import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameSt
 import { useRallyStore } from '../../stores/rallyStore';
 import { usePartyStore } from '../../stores/partyStore';
 import { useNoticeStore } from '../../stores/noticeStore';
+import { useCarStore } from '../../stores/carStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 import { useHustleStore } from '../../stores/hustleStore';
 import { toast } from '../../stores/toastStore';
@@ -275,6 +276,9 @@ class NetworkManager {
       case 'level_refresh': void useLevelStore.getState().load(); return;
       case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); void useLevelStore.getState().load(); return; }
       case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
+      case 'car_ride_result': useCarStore.getState().rideResult(data); return;
+      case 'car_ride_end': useCarStore.getState().rideEnded(String(data.reason || '')); return;
+      case 'car_rider_joined': toast({ icon: '🚗', text: `${String(data.username || 'A friend')} hopped in.`, tone: 'info' }); return;
       case 'hustle_notice': toast({ icon: data.icon || '💼', text: String(data.text || ''), tone: 'info', ms: 4500 }); void useHustleStore.getState().loadErrands(); return;
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
 
@@ -678,6 +682,10 @@ class NetworkManager {
       destinationName,
     });
   }
+
+  /** Ask for a lift in someone's car, or get out of it. */
+  public carRide(driver: string) { this.send({ type: 'car_ride', driver }); }
+  public carRideLeave() { this.send({ type: 'car_ride_leave' }); }
 
   public exitKeke(kekeId: string) {
     this.send({
