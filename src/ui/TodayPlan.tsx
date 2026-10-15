@@ -8,6 +8,7 @@ import { DAILY_PLAN, goalTarget } from '../config/dailyPlan';
 import { lectureHallForCollege, LECTURE_HALLS } from '../config/lectureHalls';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
+import { useFirstDayActive } from './FirstDayGuide';
 
 const BADGE_LABEL: Record<string, string> = { streak_3: '3-day', streak_7: '7-day', streak_30: '30-day' };
 
@@ -20,6 +21,8 @@ export function TodayPlan() {
   const onCampus = useHostelStore((s) => s.roomId === 'world:funaab:main');
   const balance = useWalletStore((s) => s.balance);
   const college = useAuthStore((s) => s.user?.college);
+  // New students see the first-day guide in this spot until they finish or hide it.
+  const firstDay = useFirstDayActive();
 
   /** Point the route arrow at the goal's place (or open the sheet that does it), and close the panel. */
   const go = (goalId: string) => {
@@ -42,13 +45,13 @@ export function TodayPlan() {
   useEffect(() => { const t = setTimeout(() => void load(), 800); return () => clearTimeout(t); }, [balance]);
   useEffect(() => { if (open) void load(); }, [open]);
 
-  if (!plan || !plan.goals.length || !orientationDone || modal || riding || !onCampus) return null;
+  if (firstDay === 'open' || !plan || !plan.goals.length || !orientationDone || modal || riding || !onCampus) return null;
   const done = plan.goals.filter((g) => g.claimed).length;
   const ready = plan.goals.some((g) => !g.claimed && g.progress >= g.target);
   const streak = plan.streak.current;
 
   return (
-    <aside className="campus-plan" aria-label="Today's Plan">
+    <aside className={`campus-plan${firstDay ? ' below-first-day' : ''}`} aria-label="Today's Plan">
       <button className="campus-plan-head" onClick={() => setOpen(!open)} aria-expanded={open}>
         <span aria-hidden>📅</span>
         <b>Today's Plan</b>

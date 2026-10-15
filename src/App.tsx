@@ -46,6 +46,7 @@ import { MessagesInbox } from './ui/MessagesInbox';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
+import { FirstDayGuide } from './ui/FirstDayGuide';
 import { LevelSheet } from './ui/LevelSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
@@ -181,6 +182,7 @@ export const App: React.FC = () => {
       {!isInClassroom && <StatusStrip />}
       {!isInClassroom && <NoticeBanner />}
       {!isInClassroom && <TodayPlan />}
+      <FirstDayGuide />
       <FeedbackButton />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />
 

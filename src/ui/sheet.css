@@ -227,3 +227,5 @@ body:has(.classroom-hud.is-seated) .campus-joystick{display:none}
 .fw-done div{font-size:40px}
 .fw-done b{color:#4ade80;font-size:16px}
 .fw-done small{color:#94a3b8}
+.first-day-skip{margin-top:6px;background:none;border:0;color:#94a3b8;font-size:11px;text-decoration:underline;padding:4px 0}
+.campus-plan.below-first-day{top:calc(env(safe-area-inset-top,0px) + 136px)}
