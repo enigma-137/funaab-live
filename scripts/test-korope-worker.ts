@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { WorldRoomDO } from '../worker/index';
 import { locationById } from '../src/config/campusLocations';
-import { KOROPE, KOROPE_ID, routeStops } from '../src/config/kekeRoutes';
+import { KOROPE, KOROPE_ID, routeStops, STOP_DWELL } from '../src/config/kekeRoutes';
 import { KOROPE_BAY, createKorope, seatPosition } from '../src/config/kekeSimulation';
 
 class Socket{static OPEN=1;readyState=1;messages:any[]=[];handlers:Record<string,Function>={};accept(){}addEventListener(e:string,f:Function){this.handlers[e]=f;}send(s:string){this.messages.push(JSON.parse(s));}close(){this.readyState=3;this.handlers.close?.();}async packet(p:object){await this.handlers.message({data:JSON.stringify(p)});}}
@@ -49,8 +49,31 @@ async function main(){
     await tick(KOROPE.doorsMs+1000);assert.equal(bus().phase==='MOVING'||bus().phase==='BOARDING',true);
     await tick(10000);assert(Math.hypot(bus().position[0]-parkedAt[0],bus().position[2]-parkedAt[2])>3,'it left the bay');
 
+    // At a stop with free seats the bus waits 10 s; someone choosing a ride holds it longer.
+    let wasMoving=false;
+    for(let i=0;i<2000;i++){const before=bus().phase;await tick(100);if(before==='MOVING'&&bus().phase==='BOARDING'&&bus().isStopped&&bus().passengers.length<8&&routeStops.some((id)=>{const p=locationById(id).kekeStop;return p[0]===bus().position[0]&&p[2]===bus().position[2];})){wasMoving=true;break;}}
+    assert(wasMoving,'reached a real stop');
+    const stopAt=[...bus().position];assert(bus().deadline-now<=STOP_DWELL.freeSeatsMs&&bus().deadline-now>=STOP_DWELL.freeSeatsMs-300,'about 10 s with free seats: '+(bus().deadline-now));
+    const chooser=await join();chooser.messages.length=0;
+    const cs=w.sessions.get(chooser);cs.trustedPosition=[...stopAt];cs.claimedPosition=[...stopAt];cs.trustedAt=now;w.players.get(cs.connectionId).position=[...stopAt];
+    await chooser.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});
+    for(let i=0;i<6;i++){await tick(5000);cs.trustedAt=now;await chooser.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});}
+    assert.equal(bus().phase,'BOARDING');assert.deepEqual(bus().position,stopAt,'held at the stop while the sheet is open (30 s)');
+    // Paying gives a few seconds to sit down, then it goes.
+    cs.trustedAt=now;await chooser.packet({type:'keke_book',requestId:crypto.randomUUID(),kekeId:KOROPE_ID,destinationId:'coleng'});
+    assert.equal(bus().passengers.includes(cs.connectionId),true);
+    assert(bus().deadline-now>=STOP_DWELL.boardedGraceMs-200,'time to sit down after paying');
+    await tick(STOP_DWELL.boardedGraceMs+1500);assert.equal(bus().phase,'MOVING','leaves once seated');
+    // A sheet that stops reporting stops holding the vehicle.
+    for(let i=0;i<400&&bus().phase!=='BOARDING';i++)await tick(100);
+    const second=await join();const ss=w.sessions.get(second);ss.trustedPosition=[...bus().position];ss.claimedPosition=[...bus().position];ss.trustedAt=now;w.players.get(ss.connectionId).position=[...bus().position];
+    const heldAt=[...bus().position];
+    await second.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});
+    await tick(STOP_DWELL.holdTtlMs-3000);assert.equal(bus().phase,'BOARDING','still held before the timeout');assert.deepEqual(bus().position,heldAt);
+    await tick(STOP_DWELL.holdTtlMs+3000);assert.notDeepEqual(bus().position,heldAt,'a silent sheet is dropped and the vehicle leaves');
+
     // Seats: five riders have five distinct seat spots, all inside the van's footprint.
-    const spots=new Set(bus().passengers.map((id:string)=>seatPosition(bus(),id).join(',')));assert.equal(spots.size,5);
+    const spots=new Set(bus().passengers.map((id:string)=>seatPosition(bus(),id).join(',')));assert.equal(spots.size,bus().passengers.length);
 
     // Riders get off at their own stops and pay nothing more; the bus returns and waits again.
     for(let i=0;i<20000&&!(bus().phase==='WAITING'&&bus().passengers.length===0&&i>50);i++){await tick(100);}

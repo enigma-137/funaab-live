@@ -62,7 +62,7 @@ async function main(){
   source.tickKekeSimulation();
   await source.persistAutonomousKeke();
   const savedPosition=[...source.kekes.get('keke-1').position];
-  now+=10000;
+  now+=30000;
   const restoredSimulation:any=new WorldRoomDO({storage:simulationStorage} as any,{ENABLE_GUEST_MODE:'true'} as any);
   const resumed=new Socket();await restoredSimulation.handleSession(resumed,null,'world:funaab:main');
   await resumed.packet({type:'join',player:{id:'00000000-0000-4000-8000-000000000007',username:'Student7',position:[7,0,78]}});

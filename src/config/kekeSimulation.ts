@@ -1,5 +1,5 @@
 import { campusLocations, locationById, CAR_PARK_BAY, type Point } from './campusLocations';
-import { canAdvance, KOROPE, KOROPE_ID, nodeKey, PARKED_KEKE_ID, publicRoute, roadPath } from './kekeRoutes';
+import { canAdvance, KOROPE, KOROPE_ID, nodeKey, PARKED_KEKE_ID, publicRoute, roadPath, routeStops, STOP_DWELL } from './kekeRoutes';
 export type RidePhase='IDLE'|'BOARDING'|'MOVING'|'ARRIVED'|'RETURNING'|'BLOCKED'|'WAITING';
 export interface TransitState {
   id:string;routeId:string;position:Point;rotation:number;speed:number;currentWaypointIndex:number;
@@ -14,6 +14,10 @@ export function createKorope():TransitState{
   const route:Point[]=[[...KOROPE_BAY],...publicRoute];
   return {id:KOROPE_ID,routeId:'korope',position:[...KOROPE_BAY],rotation:Math.PI,speed:6.5,currentWaypointIndex:1,passengers:[],currentStopName:'Car Park',isStopped:true,phase:'WAITING',route,deadline:0,tripId:'',paid:{},targets:{},capacity:KOROPE.capacity,minRiders:KOROPE.minRiders,waitUntil:0};
 }
+const stopKeys=new Set(routeStops.map(id=>nodeKey(locationById(id).kekeStop)));
+/** How long a route vehicle stays at a node: real stops with free seats wait longest. */
+export const dwellAt=(k:Pick<TransitState,'passengers'|'capacity'>,target:Point):number=>
+  !stopKeys.has(nodeKey(target))?STOP_DWELL.junctionMs:k.passengers.length<(k.capacity??3)?STOP_DWELL.freeSeatsMs:STOP_DWELL.fullMs;
 /** Seats a vehicle carries. */
 export const seatsOf=(k:Pick<TransitState,'capacity'>)=>k.capacity??3;
 export function createKeke(bookable:boolean):TransitState{
@@ -68,7 +72,7 @@ export function tickKeke(k:TransitState,now:number,dt:number):boolean{
   k.currentWaypointIndex=(k.currentWaypointIndex+1)%k.route.length;
   if(k.id!==PARKED_KEKE_ID){
     k.currentStopName=campusLocations.find(l=>nodeKey(l.kekeStop)===nodeKey(target))?.shortName || 'Campus junction';
-    k.phase='BOARDING';k.isStopped=true;k.deadline=now+3500;
+    k.phase='BOARDING';k.isStopped=true;k.deadline=now+dwellAt(k,target);
     return true;
   }return false;
 }
@@ -93,7 +97,7 @@ export function advanceKekeElapsed(k:TransitState,from:number,to:number){
     advanceInTicks();return;
   }
   const routeDistance=k.route.reduce((total,point,index)=>{const next=k.route[(index+1)%k.route.length];return total+Math.hypot(next[0]-point[0],next[2]-point[2]);},0);
-  const cycleDuration=routeDistance/k.speed*1000+k.route.length*3500;
+  const cycleDuration=routeDistance/k.speed*1000+k.route.reduce((total,point)=>total+dwellAt(k,point),0);
   if(cycleDuration<=0){advanceInTicks();return;}
   while(remaining>0){
     if(k.phase==='BOARDING'){
@@ -131,6 +135,6 @@ export function advanceKekeElapsed(k:TransitState,from:number,to:number){
     k.position=[...target];
     k.currentWaypointIndex=(k.currentWaypointIndex+1)%k.route.length;
     k.currentStopName=campusLocations.find(l=>nodeKey(l.kekeStop)===nodeKey(target))?.shortName||'Campus junction';
-    k.phase='BOARDING';k.isStopped=true;k.deadline=simulationTime+3500;
+    k.phase='BOARDING';k.isStopped=true;k.deadline=simulationTime+dwellAt(k,target);
   }
 }

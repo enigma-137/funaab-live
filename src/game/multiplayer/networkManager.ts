@@ -107,6 +107,11 @@ class NetworkManager {
       this.send({type:'keke_book',requestId,kekeId,destinationId});
     });
   }
+  /** Tell the server a booking sheet is open (or closed) so the route vehicle waits at its stop. */
+  public holdKeke(kekeId:string,holding:boolean){
+    if(this.ws?.readyState!==WebSocket.OPEN)return;
+    this.send({type:'keke_hold',kekeId,holding});
+  }
   /** Campus Bet: the Worker validates and the database decides results and payouts. */
   public campusBet(op:'state'|'place',payload:Record<string,unknown>={}):Promise<any>{
     if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error('Reconnect to campus to use Campus Bet'));
