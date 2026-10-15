@@ -8,6 +8,7 @@ import { HostelThumbnail } from "./HostelThumbnail";
 import { RoomControls } from "./RoomControls";
 import React, { useEffect, useRef, useState } from "react";
 import { useHostelStore } from "../stores/hostelStore";
+import { useCarStore } from "../stores/carStore";
 import { useAuthStore } from "../stores/authStore";
 import { useGameStore } from "../stores/gameStore";
 import { useWalletStore } from "../stores/walletStore";
@@ -17,6 +18,14 @@ import { HOSTEL_SHOP, hostelItem } from "../config/hostelShop";
 import { WEARABLES, isKeepsake } from "../config/hostelItems";
 import { FLOORS, PAINTS, ROOM_EXPANSION_PRICE, floorById, paintById, roomSizeOf } from "../config/roomMakeover";
 import "./hostel.css";
+import { ESTATE_HOUSES, houseDoor } from "../config/estate";
+
+/** Leaving an estate room puts you outside the estate house; a hostel room, in the hostel courtyard. */
+export const leaveRoom = () => {
+  const s = useHostelStore.getState();
+  if (s.snapshot?.room.style === "estate") return s.travel("campus", undefined, houseDoor(ESTATE_HOUSES[0]));
+  return s.travel("hostel");
+};
 export const openHostel = (
   panel: "home" | "shop" | "decorate" | "debts" | "invites" = "home",
 ) => {
@@ -181,7 +190,7 @@ export function HostelLife() {
           <button onClick={() => { setDockOpen(false); openHostel("shop"); }}><ShoppingBag size={16}/>Shop</button>
           <button onClick={() => { setDockOpen(false); openHostel("decorate"); }}><Backpack size={16}/>Items</button>
           <button onClick={() => { setDockOpen(false); openHostel("invites"); }}><Users size={16}/>Invite</button>
-          {s.owner && <button onClick={() => { setDockOpen(false); s.travel('hostel'); }}>Leave room</button>}
+          {s.owner && <button onClick={() => { setDockOpen(false); leaveRoom(); }}>Leave room</button>}
         </div>
       )}
       {!away && nearGate && modal === null && (
@@ -409,16 +418,17 @@ export function HostelLife() {
                                 </button>
                               );
                             })() : owned && i.category === "Cars" ? (
-                              <button disabled>In your garage · driving opens with the estate</button>
+                              <button onClick={() => { useGameStore.getState().setActiveModal("garage"); }}>Owned · open Garage to drive</button>
                             ) : (
                             <button
                               disabled={owned}
-                              onClick={() =>
-                                s.command("purchase", {
+                              onClick={async () => {
+                                await s.command("purchase", {
                                   item: i.id,
                                   credit: false,
-                                })
-                              }
+                                });
+                                if (i.category === "Cars") void useCarStore.getState().load();
+                              }}
                             >
                               {owned ? "Owned" : "Pay Now"}
                             </button>

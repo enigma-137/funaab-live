@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
-import { CAR_HOME, FUEL, isCarId } from '../config/cars';
+import { CAR_HOME, CAR_MODELS, FUEL, isCarId } from '../config/cars';
+import { useEstateStore } from './estateStore';
 
 type Point = [number, number, number];
 export interface ParkedCar { car: string; position: Point; rotation: number }
@@ -48,6 +49,14 @@ export const useCarStore = create<CarStore>((set, get) => ({
     // A parked car you no longer own disappears.
     const p = get().parked;
     if (p && !(p.car in fuel)) { saveParked(null); set({ parked: null }); }
+    // Own a car but none is out: park it at home (the estate if you rent there) so you can see it.
+    const first = Object.keys(fuel).find((id) => CAR_MODELS[id]);
+    if (!get().parked && !get().driving && first) {
+      if (!useEstateStore.getState().state) await useEstateStore.getState().load();
+      const estate = !!useEstateStore.getState().state?.renting;
+      get().takeOut(first, estate);
+      toast({ icon: '🚗', text: `Your ${CAR_MODELS[first].name} is parked at ${estate ? 'the Royal Gardens Estate car park' : 'the campus car park'}. Phone → Garage → Show me my car.`, tone: 'info', ms: 7000 });
+    }
   },
   takeOut: (car, estate) => {
     const parked: ParkedCar = { car, position: estate ? CAR_HOME.estate : CAR_HOME.campus, rotation: estate ? -Math.PI / 2 : 0 };

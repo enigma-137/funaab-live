@@ -85,6 +85,8 @@ interface HostelState {
   travel: (
     target: "campus" | "hostel" | "room",
     owner?: string,
+    /** Campus only: where to arrive (e.g. outside the estate house) instead of the main gate. */
+    at?: [number, number, number],
   ) => Promise<void>;
 }
 const requests = new Map<string, string>();
@@ -275,7 +277,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
       set({ busy: false });
     }
   },
-  travel: async (target, owner) => {
+  travel: async (target, owner, at) => {
     const user = useAuthStore.getState().user;
     if (!user || get().transition) return;
     if (useLectureStore.getState().isInClassroom) {
@@ -309,7 +311,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
     useGameStore.setState({
       myPosition:
         target === "campus"
-          ? CAMPUS_SPAWN
+          ? at ?? CAMPUS_SPAWN
           : target === "room"
             ? [0, 0, 2]
             : HOSTEL_SPAWN,

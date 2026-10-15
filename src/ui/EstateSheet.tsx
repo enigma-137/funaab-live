@@ -5,6 +5,8 @@ import { useHostelStore } from '../stores/hostelStore';
 import { useEstateStore } from '../stores/estateStore';
 import { toast } from '../stores/toastStore';
 import { ESTATE } from '../config/estate';
+import { useCarStore } from '../stores/carStore';
+import { CAR_HOME } from '../config/cars';
 
 const naira = (n: number) => `₦${n.toLocaleString()}`;
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -52,7 +54,13 @@ export function EstateSheet() {
               <li>⏳ Pay a week at a time (up to 2 weeks ahead). When it runs out, you move back to the hostel.</li>
             </ul>
             {s.lodge && <p className="academic-note">You rent the lodge now. Move out there first (Phone → Lodge).</p>}
-            <button className="academic-primary academic-wide" disabled={busy || s.lodge} onClick={async () => { if (await act('rent_estate')) toast({ icon: '🏡', text: 'Welcome to Royal Gardens Estate!', amount: -ESTATE.weeklyRent, tone: 'good' }); }}>
+            <button className="academic-primary academic-wide" disabled={busy || s.lodge} onClick={async () => {
+              if (!(await act('rent_estate'))) return;
+              toast({ icon: '🏡', text: 'Welcome to Royal Gardens Estate!', amount: -ESTATE.weeklyRent, tone: 'good' });
+              // A car waiting at the campus car park moves to the estate car park.
+              const c = useCarStore.getState(), p = c.parked;
+              if (p && !c.driving && p.position[0] === CAR_HOME.campus[0] && p.position[2] === CAR_HOME.campus[2]) c.takeOut(p.car, true);
+            }}>
               Rent for {naira(ESTATE.weeklyRent)} (first week)
             </button>
             <button className="hustle-btn is-quiet academic-wide" onClick={directions}>Show me the way</button>
