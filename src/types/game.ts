@@ -14,6 +14,9 @@ export interface AvatarConfig {
   hairColor?: string;
   headwear?: string;
   headwearColor?: string;
+  /** Bought in the shop (migration 041). */
+  watch?: string;
+  bag?: string;
   hairStyle?: string;
   gender?: string;
 }

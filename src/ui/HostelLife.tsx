@@ -14,6 +14,7 @@ import { useWalletStore } from "../stores/walletStore";
 import { useSocialStore } from "../stores/socialStore";
 import { toast } from "../stores/toastStore";
 import { HOSTEL_SHOP, hostelItem } from "../config/hostelShop";
+import { WEARABLES, isKeepsake } from "../config/hostelItems";
 import { FLOORS, PAINTS, ROOM_EXPANSION_PRICE, floorById, paintById, roomSizeOf } from "../config/roomMakeover";
 import "./hostel.css";
 export const openHostel = (
@@ -370,6 +371,8 @@ export function HostelLife() {
                     "Appliances",
                     "Foodstuff",
                     "Basics",
+                    "Fashion",
+                    "Cars",
                   ].map((c) => (
                     <button
                       key={c}
@@ -395,8 +398,19 @@ export function HostelLife() {
                             {inventory.find((x) => x.itemId === i.id)
                               ?.quantity || 0}
                           </p>
-                          <strong>₦{i.price}</strong>
+                          <strong>{formatNaira(i.price)}</strong>
                           <div className="hostel-actions">
+                            {owned && WEARABLES[i.id] ? (() => {
+                              const w = WEARABLES[i.id];
+                              const on = user?.avatarConfig?.[w.slot] === w.value;
+                              return (
+                                <button onClick={() => void useAuthStore.getState().updateAvatar({ [w.slot]: on ? "none" : w.value })}>
+                                  {on ? "Take off" : "Wear"}
+                                </button>
+                              );
+                            })() : owned && i.category === "Cars" ? (
+                              <button disabled>In your garage · driving opens with the estate</button>
+                            ) : (
                             <button
                               disabled={owned}
                               onClick={() =>
@@ -408,6 +422,7 @@ export function HostelLife() {
                             >
                               {owned ? "Owned" : "Pay Now"}
                             </button>
+                            )}
                             {i.credit && canBuyOnCredit(i.price) && (
                               <button
                                 disabled={owned}
@@ -440,7 +455,7 @@ export function HostelLife() {
                 )}
                 <div className="hostel-items">
                   {inventory
-                    .filter((i) => hostelItem(i.itemId))
+                    .filter((i) => hostelItem(i.itemId) && !isKeepsake(hostelItem(i.itemId)!.category))
                     .map((i) => {
                       const c = hostelItem(i.itemId)!;
                       const placed = s.snapshot?.placements.find(

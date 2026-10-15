@@ -25,6 +25,9 @@ export const avatarOptions = {
   shoeStyle: ['sneakers', 'flats', 'sandals', 'heels', 'boots'],
   // Worn over the hair. Hijab and headscarf cover it; hijab also covers the neck down to the chest.
   headwear: ['none', 'face-cap', 'head-band', 'beanie', 'kufi', 'hijab', 'headscarf'],
+  // Bought in the shop and put on from there (hostelItems WEARABLES).
+  watch: ['none', 'casio', 'smart', 'gold'],
+  bag: ['none', 'backpack', 'handbag', 'designer'],
 } as const;
 // Friendlier names for the editor; anything missing shows its id with spaces.
 export const optionLabels: Record<string, string> = {
@@ -114,6 +117,8 @@ export function normalizeAvatar(input?: Partial<AvatarConfig> | null): StudentAv
     shoeColor: color(a.shoeColor, '#eeeeea'),
     headwear: option(avatarOptions.headwear, a.headwear, 'none'),
     headwearColor: color(a.headwearColor, '#3b4f7a'),
+    watch: option(avatarOptions.watch, a.watch, 'none'),
+    bag: option(avatarOptions.bag, a.bag, 'none'),
     shirtColor: topColor,
     skinColor: skinTone,
   };

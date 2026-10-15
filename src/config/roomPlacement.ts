@@ -1,4 +1,4 @@
-import { hostelItem, ROOM_ANCHORS } from "./hostelItems";
+import { BED_FRAMES, hostelItem, ROOM_ANCHORS } from "./hostelItems";
 import { ROOM_REACH_Z, ROOM_SIZES, SURFACES, roomReachX, type RoomSize } from "./roomMakeover";
 export interface RoomTransform {
   item_id: string;
@@ -113,7 +113,10 @@ export function placementError(
       ? "Wall space is occupied."
       : null;
   }
-  if (i.placementType === "bed") return null;
+  if (i.placementType === "bed")
+    return BED_FRAMES.includes(p.item) && placed.some((q) => q.item_id !== p.item && BED_FRAMES.includes(q.item_id))
+      ? "Take the other bed frame out first."
+      : null;
   if (p.y > 0) {
     if (!isStackable(p.item)) return "This item goes on the floor.";
     const onIt = placed.some((q) => {

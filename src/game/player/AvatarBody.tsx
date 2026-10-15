@@ -1,3 +1,4 @@
+import { BodyBag, HandBag, WristWatch } from './AvatarAccessories';
 import React, { memo, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -317,6 +318,7 @@ export const AvatarBody = memo(
             {part("embroidery", "gold")}
             {part("drape", "headwear")}
             {accessory === "security" && part("badge", "white")}
+            <BodyBag kind={a.bag} width={width} />
             <group ref={head} position={[0, HEAD_Y, 0]} scale={HEAD_SCALE}>
               {part("head", "skin")}
               {part("white", "white")}
@@ -357,6 +359,8 @@ export const AvatarBody = memo(
                 >
                   {part("forearm", armMaterial)}
                   {part("hand", "skin")}
+                  {i === 1 && <WristWatch kind={a.watch} />}
+                  {i === 1 && <HandBag kind={a.bag} />}
                   {i === 0 && held && (
                     <group ref={heldRef} position={[0, -0.31, 0.02]} scale={1.3} visible={false}>
                       <HeldProp kind={held.kind} />

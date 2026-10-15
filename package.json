@@ -74,7 +74,8 @@
     "test:hustles": "tsx scripts/test-hustles-worker.ts",
     "test:hustles:browser": "tsx scripts/test-hustles-browser.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
-    "sim:economy": "tsx scripts/simulate-economy.ts"
+    "sim:economy": "tsx scripts/simulate-economy.ts",
+    "test:lifestyle:db": "tsx scripts/test-lifestyle-shop-db.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
