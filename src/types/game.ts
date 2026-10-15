@@ -50,6 +50,8 @@ export interface PlayerState {
   seatNumber?: number;
   handRaised?: boolean;
   isDining?: boolean;
+  /** The car they are driving (config/cars id), or null on foot. */
+  car?: string | null;
   /** Food or drink they just bought, shown in hand until `until` (local clock). */
   heldItem?: { kind: 'pack' | 'wrap' | 'bowl' | 'water' | 'malt'; until: number };
   lastUpdated: number;
@@ -113,7 +115,7 @@ export interface WorldLocation {
 
 export interface InteractableZone {
   id: string;
-  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade';
+  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'car' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade';
   label: string;
   actionText: string;
   position: [number, number, number];

@@ -9,6 +9,7 @@ import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
 import { ECONOMY_CONFIG } from '../src/config/economy';
+import { isCarId } from '../src/config/cars';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
 
@@ -121,6 +122,8 @@ interface PlayerState {
   seatNumber?: number;
   handRaised?: boolean;
   isDining?: boolean;
+  /** The car they're driving (config/cars id), if any. */
+  car?: string | null;
   lastUpdated: number;
 }
 
@@ -737,6 +740,7 @@ export class WorldRoomDO {
         animation: player.animation,
         kekeRiding: player.kekeRiding,
         kekeId: player.kekeId,
+        car: player.car ?? null,
         // null (not undefined) so clients clear it when a student walks out of a hall.
         currentLectureId: player.currentLectureId ?? null,
         currentZone: player.currentLectureId
@@ -1725,12 +1729,15 @@ export class WorldRoomDO {
                 this.endPSMatchesFor(current.id, 'walked_away');
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
               const animation = ['idle','walk','run','sit','sleep','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
+              const car = isCarId(data.car) ? data.car : null;
               if (player.position.some((value, index) => value !== data.position[index])
                 || player.rotation !== rotation
-                || player.animation !== animation) this.dirtyPlayerIds.add(sessionConnId);
+                || player.animation !== animation
+                || (player.car ?? null) !== car) this.dirtyPlayerIds.add(sessionConnId);
               player.position = data.position;
               player.rotation = rotation;
               player.animation = animation;
+              player.car = car;
               this.loveGardenGoals(current, animation);
               if (current.posShift && current.trustedPosition && Math.hypot(current.trustedPosition[0] - POS_KIOSK.serviceSpot[0], current.trustedPosition[2] - POS_KIOSK.serviceSpot[2]) > POS_KIOSK.radius + 1) {
                 current.posShift = undefined;

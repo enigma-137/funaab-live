@@ -3,6 +3,8 @@ export interface MovementSnapshot {
   rotation: number;
   animation: string;
   kekeRiding: boolean;
+  /** The car you're driving (config/cars id), or null on foot. */
+  car?: string | null;
 }
 
 export function hasMeaningfulMovementChange(
@@ -20,5 +22,6 @@ export function hasMeaningfulMovementChange(
   return dx * dx + dy * dy + dz * dz >= 0.12 * 0.12
     || rotationDelta >= 0.06
     || next.animation !== previous.animation
-    || next.kekeRiding !== previous.kekeRiding;
+    || next.kekeRiding !== previous.kekeRiding
+    || (next.car ?? null) !== (previous.car ?? null);
 }

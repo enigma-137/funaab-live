@@ -15,6 +15,7 @@ import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
 import { LODGE } from './lodge';
 import { ESTATE, ESTATE_HOUSES, houseDoor } from './estate';
+import { FUEL_STATION } from './cars';
 import { WORSHIP_PLACES, chapelPewSeats, worshipBounds } from './worship';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
@@ -155,6 +156,7 @@ const outsideGateZones=[
   {id:'food-vendor-plaza',name:'Food Court',type:'plaza',restricted:false,bounds:VENDOR_PLAZA},
   {id:'lodge-frontage',name:LODGE.name,type:'plaza',restricted:false,bounds:LODGE.frontage},
   {id:'estate-road',name:'Estate road',type:'road',restricted:false,bounds:ESTATE.accessRoad},
+  {id:'fuel-station',name:FUEL_STATION.name,type:'plaza',restricted:false,bounds:{minX:FUEL_STATION.centre[0]-FUEL_STATION.size[0]/2-2,maxX:FUEL_STATION.centre[0]+FUEL_STATION.size[0]/2+2,minZ:97,maxZ:FUEL_STATION.centre[2]+FUEL_STATION.size[1]/2+1}},
 ];
 const world={...base,spawn:CAMPUS_SPAWN,bounds:WORLD_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,floralCounter,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,...chapelPewSeats,penaltySpot,freeThrowLine,serveLine,

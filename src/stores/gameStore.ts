@@ -112,6 +112,8 @@ interface GameState {
     | 'hustles'
     | 'lodge'
     | 'estate'
+    | 'fuel'
+    | 'garage'
     | 'league'
     | null;
 
@@ -201,6 +203,8 @@ interface GameState {
       | 'hustles'
       | 'lodge'
       | 'estate'
+      | 'fuel'
+      | 'garage'
       | 'league'
       | null
   ) => void;

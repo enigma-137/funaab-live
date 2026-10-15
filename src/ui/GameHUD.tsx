@@ -1,4 +1,5 @@
 import {useHostelStore} from '../stores/hostelStore';
+import { useCarStore } from '../stores/carStore';
 import { usePartyStore } from '../stores/partyStore';
 import type { ArcadeTableId } from '../config/partyHall';
 import { useHustleStore } from '../stores/hustleStore';
@@ -183,6 +184,13 @@ export const GameHUD: React.FC = () => {
       return;
     }
 
+    if (nearbyInteractable?.type === 'car') {
+      if (nearbyInteractable.targetId === 'drive') useCarStore.getState().enter();
+      else if (nearbyInteractable.targetId === 'park') window.dispatchEvent(new Event('car-park'));
+      else setActiveModal('fuel');
+      return;
+    }
+
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
         case 'atm':
@@ -279,6 +287,7 @@ export const GameHUD: React.FC = () => {
   const getInteractIcon = () => {
     if (isRidingKeke) return '🛺';
     if (!nearbyInteractable) return '💬';
+    if (nearbyInteractable.type === 'car') return nearbyInteractable.targetId === 'fuel' ? '⛽' : '🚗';
     switch (nearbyInteractable.type) {
       case 'library': return '📚';
       case 'keke_stop':
@@ -322,6 +331,7 @@ export const GameHUD: React.FC = () => {
   const getInteractLabel = () => {
     if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
+    if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
         case 'keke_stop':
@@ -366,6 +376,7 @@ export const GameHUD: React.FC = () => {
   const getTouchInteractLabel = () => {
     if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
+    if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';
       case 'keke_stop':
