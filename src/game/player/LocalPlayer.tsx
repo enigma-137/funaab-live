@@ -602,7 +602,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
     for(const k of Object.values(kekes)){
       const dist=Math.hypot(feetPosition[0]-k.position[0],feetPosition[2]-k.position[2]);
-      if(k.isStopped&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
+      if(k.isStopped&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='korope-1'?'Korope Bus':k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:k.id==='korope-1'?(k.phase==='WAITING'?'Join Korope':'Hop On'):k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
     }
     if(useGameStore.getState().activeModal!=='keke_destination')setNearbyInteractable(closestInteractable);
 

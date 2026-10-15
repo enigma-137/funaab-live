@@ -1,8 +1,8 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound, type PSLastRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
-import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
-import { createKeke, bookRide, tickKeke, advanceKekeElapsed, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
+import { fareFor, kekeDestinations, KOROPE, KOROPE_ID, PARKED_KEKE_ID, ROUTE_FARE, routeStops } from '../src/config/kekeRoutes';
+import { createKeke, createKorope, bookRide, tickKeke, advanceKekeElapsed, seatPosition, seatsOf, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
 import { HELD_ITEM_KINDS, HELD_ITEM_MS, TABLE_ITEM_MS } from '../src/config/heldItems';
 import { summarizeCampus } from '../src/config/campusSummary';
@@ -411,6 +411,7 @@ export class WorldRoomDO {
 
     this.kekes.set('keke-1',createKeke(false));
     this.kekes.set(PARKED_KEKE_ID,createKeke(true));
+    this.kekes.set(KOROPE_ID,createKorope());
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
@@ -603,6 +604,11 @@ export class WorldRoomDO {
         if(arrived && (k.id===PARKED_KEKE_ID || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
       if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');
+      if(k.id===KOROPE_ID){
+        // Riders who waited too long for a full load get their fare back and the bus starts over.
+        if(k.phase==='WAITING'&&k.passengers.length&&k.waitUntil&&Date.now()>=k.waitUntil){for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');k.waitUntil=0;this.kekesDirty=true;}
+        if(k.phase==='BLOCKED'&&!k.passengers.length){Object.assign(k,createKorope());this.kekesDirty=true;}
+      }
     }
   }
   private async settleTicket(ticket:string,action:'complete'|'refund') {
@@ -633,11 +639,14 @@ export class WorldRoomDO {
     if(p.kekeRiding)return {kekeId:p.kekeId};
     this.advanceTrustedPosition(session);
     if(!session.trustedPosition||Date.now()-(session.trustedAt||0)>5000||Math.hypot(session.trustedPosition[0]-k.position[0],session.trustedPosition[2]-k.position[2])>8)throw new Error('Walk closer to the Keke');
-    if(k.passengers.length>=3)throw new Error('This Keke is full');
-    if(!['IDLE','BOARDING'].includes(k.phase))throw new Error('Wait for the Keke to stop');
+    const korope=k.id===KOROPE_ID;
+    if(k.passengers.length>=seatsOf(k))throw new Error(korope?'The Korope is full':'This Keke is full');
+    if(!['IDLE','BOARDING',...(korope?['WAITING']:[])].includes(k.phase))throw new Error(korope?'The Korope is on its way. Wait at a stop.':'Wait for the Keke to stop');
     const destinationId=k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'?k.destinationId:data.destinationId;
     if(!kekeDestinations.some(d=>d.id===destinationId)||destinationId==='car-park')throw new Error('Choose a campus destination');
-    const fare=k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
+    // Route vehicles only stop at route stops; a rider asking for anywhere else would never get off.
+    if(k.id!==PARKED_KEKE_ID&&!routeStops.includes(destinationId))throw new Error('This ride does not stop there. Choose a stop on the route.');
+    const fare=korope?KOROPE.fare:k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
     const ticket=String(data.requestId||'');if(!/^[0-9a-f-]{36}$/i.test(ticket))throw new Error('Invalid ride request');
     this.transitBusy=true;
     try{
@@ -649,6 +658,7 @@ export class WorldRoomDO {
         await this.settleTicket(ticket,'refund');throw new Error('Ride cancelled after disconnect');
       }
       if(k.phase==='IDLE')bookRide(k,destinationId,Date.now(),crypto.randomUUID());
+      if(korope&&k.phase==='WAITING'&&!k.passengers.length)k.waitUntil=Date.now()+KOROPE.waitMs;
       k.passengers.push(session.connectionId);k.paid[session.connectionId]=ticket;k.targets[session.connectionId]=destinationId;
       p.kekeRiding=true;p.kekeId=k.id;p.animation='sit';p.position=seatPosition(k,session.connectionId);
       this.dirtyPlayerIds.add(session.connectionId);

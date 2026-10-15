@@ -1,6 +1,9 @@
 import { campusLocations, locationById, CAR_PARK_BAY, type Point } from './campusLocations';
 export const PARKED_KEKE_ID='keke-carpark';
 export const ROUTE_KEKE_ID='keke-1';
+export const KOROPE_ID='korope-1';
+/** Korope shared bus: waits at the Car Park until MIN_RIDERS have paid, then runs the public loop. */
+export const KOROPE={capacity:8,minRiders:5,fare:30,/** Ms the bus waits for riders before it refunds them and starts over. */waitMs:150000,doorsMs:4000};
 export const ROUTE_FARE=50;
 export const nodeKey=(p:Point)=>`${p[0]}:${p[2]}`;
 export const roadNodes:Record<string,Point>={};
