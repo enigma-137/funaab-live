@@ -509,7 +509,7 @@ const CATALOG = [
     id: "hostel_bed_king",
     name: "King-size Bed",
     category: "Room",
-    price: 180000,
+    price: 100000,
     placementType: "bed",
     modelKey: "hostel_bed_king",
     description: "Big padded-headboard bed. The best sleep on campus. Virtual game item.",
