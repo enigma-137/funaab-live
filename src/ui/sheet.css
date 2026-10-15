@@ -202,3 +202,28 @@ body:has(.hostel-dock) .campus-joystick{bottom:calc(env(safe-area-inset-bottom,0
 /* In a lecture hall the lecturer's caption and action bar fill the bottom; stand the stick above them. */
 body:has(.classroom-hud) .campus-joystick{left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 206px);z-index:61}
 body:has(.classroom-hud.is-seated) .campus-joystick{display:none}
+
+/* Floral World menu: one tappable row per dish, order buttons pinned at the bottom. */
+.fw-wallet{color:#4ade80}
+.fw-menu{list-style:none;margin:0;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.fw-menu button{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:#0f172a;border:1.5px solid #1e293b;color:#f1f5f9;text-align:left}
+.fw-menu button.is-on{border-color:#f59e0b;background:#1c1a12}
+.fw-ico{font-size:22px;width:28px;text-align:center}
+.fw-name{flex:1;min-width:0;font-weight:700;font-size:14px;line-height:1.2}
+.fw-name small{display:block;font-weight:500;font-size:11px;color:#94a3b8;margin-top:2px}
+.fw-menu b{font-size:14px;color:#fbbf24;white-space:nowrap}
+.fw-actions{display:flex;flex-direction:column;gap:8px}
+.fw-picked{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#cbd5e1}
+.fw-picked span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-picked b{color:#4ade80}
+.fw-short{margin:0;font-size:12px;color:#fca5a5}
+.fw-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fw-btn{min-height:46px;border-radius:12px;font-weight:800;font-size:14px;color:#fff;border:0}
+.fw-btn.is-away{background:#2563eb}
+.fw-btn.is-sit{background:#059669}
+.fw-btn:disabled{opacity:.5}
+.fw-error{margin:10px 10px 0;padding:8px 10px;border-radius:10px;background:#450a0a;border:1px solid #f8717166;color:#fecaca;font-size:12px}
+.fw-done{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 16px;text-align:center}
+.fw-done div{font-size:40px}
+.fw-done b{color:#4ade80;font-size:16px}
+.fw-done small{color:#94a3b8}

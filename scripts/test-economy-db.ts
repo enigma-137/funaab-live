@@ -134,9 +134,11 @@ async function main() {
     const items = await rows('select id,name,price from food_vendor_items where vendor_id=$1 order by id', [v.id]);
     assert.deepEqual(items, [...v.items].sort((a, b) => a.id.localeCompare(b.id)).map(({ id, name, price }) => ({ id, name, price })), `${v.id} drift`);
   }
-  // Every ordinary meal is in the ₦2,500–₦6,000 band and drinks in ₦500–₦2,000.
-  const meals = [...E.FLORAL_WORLD_MENU, ...E.FOOD_COURT_MENU, ...FOOD_VENDOR_LIST.flatMap((v) => v.items.map((i) => ({ ...i, type: 'food' })))];
-  for (const m of meals) assert(m.type === 'drink' ? m.price >= 500 && m.price <= 2000 : m.price >= 2500 && m.price <= 6000, `${m.id} price band`);
+  // Every ordinary meal is in the ₦2,500–₦4,000 band and drinks in ₦200–₦1,000.
+  const bar = FOOD_VENDOR_LIST.filter((v) => v.id === 'party_bar').flatMap((v) => v.items);
+  const meals = [...E.FLORAL_WORLD_MENU, ...E.FOOD_COURT_MENU, ...FOOD_VENDOR_LIST.filter((v) => v.id !== 'party_bar').flatMap((v) => v.items.map((i) => ({ ...i, type: 'food' })))];
+  assert(bar.length > 0 && bar.every((i) => i.price >= 200 && i.price <= 1500), 'Arena bar drinks ₦200–₦1,500');
+  for (const m of meals) assert(m.type === 'drink' ? m.price >= 200 && m.price <= 1000 : m.price >= 2500 && m.price <= 4000, `${m.id} price band`);
 
   // ---------- Lawn fine ₦5,000 ----------
   assert.equal(E.LAWN_FINE, 5000);

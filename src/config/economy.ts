@@ -38,21 +38,21 @@ export const ECONOMY_CONFIG = {
 
   // Floral World Restaurant (COLFHEC area). Ids are stable database keys.
   FLORAL_WORLD_MENU: [
-    { id: 'fw_jollof_chicken', name: 'Jollof Rice + Chicken', price: 5000, icon: '🍗', type: 'food' },
-    { id: 'fw_fried_chicken', name: 'Fried Rice + Chicken', price: 5000, icon: '🍚', type: 'food' },
-    { id: 'fw_rice_beef', name: 'Rice + Beef', price: 4500, icon: '🥩', type: 'food' },
-    { id: 'fw_spaghetti', name: 'Spaghetti Special', price: 3500, icon: '🍝', type: 'food' },
-    { id: 'fw_water', name: 'Chilled Bottled Water', price: 500, icon: '💧', type: 'drink' },
-    { id: 'fw_malt', name: 'Chilled Malt Drink', price: 1500, icon: '🥤', type: 'drink' },
+    { id: 'fw_jollof_chicken', name: 'Jollof Rice + Chicken', price: 4000, icon: '🍗', type: 'food' },
+    { id: 'fw_fried_chicken', name: 'Fried Rice + Chicken', price: 4000, icon: '🍚', type: 'food' },
+    { id: 'fw_rice_beef', name: 'Rice + Beef', price: 3500, icon: '🥩', type: 'food' },
+    { id: 'fw_spaghetti', name: 'Spaghetti Special', price: 3000, icon: '🍝', type: 'food' },
+    { id: 'fw_water', name: 'Chilled Bottled Water', price: 200, icon: '💧', type: 'drink' },
+    { id: 'fw_malt', name: 'Chilled Malt Drink', price: 600, icon: '🥤', type: 'drink' },
   ] as MenuItem[],
 
   // Tantalizers / Mama Buka food court stall.
   FOOD_COURT_MENU: [
-    { id: 'jollof_chicken', name: 'Jollof Rice & Crispy Chicken', price: 5000, icon: '🍗', type: 'food' },
-    { id: 'shawarma_beef', name: 'Campus Special Beef Shawarma', price: 6000, icon: '🌯', type: 'food' },
-    { id: 'suya_spicy', name: 'FUNAAB Evening Beef Suya', price: 4000, icon: '🥩', type: 'food' },
-    { id: 'cold_water', name: 'Chilled Bottle Water', price: 500, icon: '💧', type: 'drink' },
-    { id: 'malt_drink', name: 'Chilled Malt Drink', price: 1500, icon: '🥤', type: 'drink' },
+    { id: 'jollof_chicken', name: 'Jollof Rice & Crispy Chicken', price: 4000, icon: '🍗', type: 'food' },
+    { id: 'shawarma_beef', name: 'Campus Special Beef Shawarma', price: 4000, icon: '🌯', type: 'food' },
+    { id: 'suya_spicy', name: 'FUNAAB Evening Beef Suya', price: 3000, icon: '🥩', type: 'food' },
+    { id: 'cold_water', name: 'Chilled Bottle Water', price: 200, icon: '💧', type: 'drink' },
+    { id: 'malt_drink', name: 'Chilled Malt Drink', price: 600, icon: '🥤', type: 'drink' },
   ] as MenuItem[],
 
   // Campus job pay (database ids). Delivery pay comes from DELIVERY_REWARD_TIERS by route length.
