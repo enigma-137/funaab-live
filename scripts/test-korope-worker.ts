@@ -15,7 +15,9 @@ async function main(){
   const ledger=new Map<string,any>(),pending=new Map<string,any>();
   const storage={put:async(k:string,v:any)=>pending.set(k,v),delete:async(k:string)=>pending.delete(k),setAlarm:async()=>{},list:async({prefix}:any)=>new Map([...pending].filter(([k])=>k.startsWith(prefix)))};
   globalThis.fetch=async(url:any,init:any)=>{const body=JSON.parse(init.body);
-    if(String(url).endsWith('keke_reserve_trusted')){ledger.set(body.p_ticket,{...body,status:'reserved'});return new Response(JSON.stringify({balance:5000-body.p_fare}));}
+    if(String(url).endsWith('keke_reserve_trusted')){
+      if([...ledger.values()].some((t)=>t.p_user===body.p_user&&t.status==='reserved'))return new Response(JSON.stringify({message:'duplicate key value violates unique constraint "one_reserved_keke_ticket"'}),{status:400});
+      ledger.set(body.p_ticket,{...body,status:'reserved'});return new Response(JSON.stringify({balance:5000-body.p_fare}));}
     if(String(url).endsWith('keke_settle_trusted')){const t=ledger.get(body.p_ticket);if(t?.status==='reserved')t.status=body.p_action;}
     return new Response('true');};
   let w:any;
@@ -103,6 +105,18 @@ async function main(){
     // A rider who disconnects while waiting is refunded too.
     ledger.clear();await board(riders[2]);assert.equal(bus().passengers.length,1);
     riders[2].close();await new Promise((r)=>setTimeout(r,0));assert.equal(bus().passengers.length,0);assert([...ledger.values()].every((t)=>t.status==='refund'));
+    // A restart loses the ride but leaves the ticket reserved; boarding again must clear it, not fail.
+    ledger.clear();now+=1000;
+    await board(riders[3]);const lostUser=w.sessions.get(riders[3]).id;
+    assert.equal([...ledger.values()].filter((t)=>t.p_user===lostUser&&t.status==='reserved').length,1);
+    const restarted:any=new WorldRoomDO({storage} as any,{ENABLE_GUEST_MODE:'true',SUPABASE_SERVICE_ROLE_KEY:'synthetic',SUPABASE_URL:'https://transit.invalid'} as any);
+    const back=new Socket();await restarted.handleSession(back,null,'world:funaab:main');
+    await back.packet({type:'join',player:{id:lostUser,username:'Student4',position:[7,0,78]}});
+    const bs=restarted.sessions.get(back);bs.trustedPosition=[...KOROPE_BAY];bs.claimedPosition=[...KOROPE_BAY];bs.trustedAt=now;restarted.players.get(bs.connectionId).position=[...KOROPE_BAY];
+    await back.packet({type:'keke_book',requestId:crypto.randomUUID(),kekeId:KOROPE_ID,destinationId:'library'});
+    assert.equal(back.messages.at(-1).error,undefined,'boards again after a lost ride');
+    assert.equal([...ledger.values()].filter((t)=>t.status==='refund').length,1,'the lost ride was refunded');
+    assert.equal([...ledger.values()].filter((t)=>t.status==='reserved').length,1,'only the new ticket is reserved');
     assert.equal(createKorope().phase,'WAITING');
     console.log('KOROPE WORKER PASSED: waits for 5 paid riders, 8 seats, flat fare, route stops only, stops and drops at destinations, returns to wait, refunds if never filled or on disconnect.');
   }finally{globalThis.WebSocket=oldWS;globalThis.fetch=oldFetch;globalThis.setInterval=oldInterval;Date.now=oldNow;}

@@ -632,21 +632,22 @@ export class WorldRoomDO {
       }
       // Dwell depends on free seats, which riders getting off at this stop have just freed.
       if(arrived&&previousPhase==='MOVING'&&k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID)k.deadline=Date.now()+dwellAt(k,k.position);
-      if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');
+      if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund','The road ahead was blocked. Your fare was refunded.');
       if(k.id===KOROPE_ID){
         // Riders who waited too long for a full load get their fare back and the bus starts over.
-        if(k.phase==='WAITING'&&k.passengers.length&&k.waitUntil&&Date.now()>=k.waitUntil){for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');k.waitUntil=0;this.kekesDirty=true;}
+        if(k.phase==='WAITING'&&k.passengers.length&&k.waitUntil&&Date.now()>=k.waitUntil){for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund','The Korope did not fill up, so your fare was refunded. Try again when more students are around.');k.waitUntil=0;this.kekesDirty=true;}
         if(k.phase==='BLOCKED'&&!k.passengers.length){Object.assign(k,createKorope());this.kekesDirty=true;}
       }
     }
   }
   private async settleTicket(ticket:string,action:'complete'|'refund') {
     const key='keke-settle:'+ticket,body={p_ticket:ticket,p_action:action};
-    await this.state.storage.put(key,{body,due:Date.now()});
+    const storage:any=this.state.storage,previous=typeof storage.get==='function'?await storage.get(key):undefined;
+    await this.state.storage.put(key,{body,due:Date.now(),user:previous?.user});
     await this.state.storage.setAlarm(Date.now()+60000);
     try{await this.dbRpc('keke_settle_trusted',body);await this.state.storage.delete(key);}catch{/* Durable alarm retries idempotently. */}
   }
-  private async dropPassenger(k:TransitState,id:string,action:'complete'|'refund') {
+  private async dropPassenger(k:TransitState,id:string,action:'complete'|'refund',message?:string) {
     const ticket=k.paid[id];delete k.paid[id];delete k.targets[id];
     k.passengers=k.passengers.filter(p=>p!==id);
     const p=this.players.get(id),position=exitPosition(k);
@@ -654,11 +655,18 @@ export class WorldRoomDO {
     this.kekesDirty = true;
     for(const [socket,session] of this.sessions)if(session.connectionId===id){
       session.trustedPosition=position;session.claimedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
-      socket.send(JSON.stringify({type:'keke_dropoff',position,reason:action==='complete'?'Arrived':'Ride ended'}));
+      socket.send(JSON.stringify({type:'keke_dropoff',position,reason:message??(action==='complete'?'Arrived':'Ride ended')}));
     }
     if(action==='refund'&&k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'&&k.passengers.length===0)Object.assign(k,createKeke(true));
     if(ticket)await this.settleTicket(ticket,action);
     this.sendToConnections([id],JSON.stringify({type:'wallet_refresh'}));
+  }
+  private async settleStaleTickets(userId:string) {
+    const left=await this.state.storage.list<any>({prefix:'keke-settle:'});
+    for(const [key,entry] of left){
+      if(entry?.user!==userId)continue;
+      try{await this.dbRpc('keke_settle_trusted',entry.body);await this.state.storage.delete(key);}catch{/* The durable alarm retries. */}
+    }
   }
   private async boardKeke(socket:WebSocket,session:SessionData,data:any) {
     if(this.transitBusy)throw new Error('Another student is boarding. Try again.');
@@ -680,9 +688,17 @@ export class WorldRoomDO {
     this.transitBusy=true;
     try{
       // Write recovery intent before charging. A Worker restart refunds interrupted rides.
-      await this.state.storage.put('keke-settle:'+ticket,{body:{p_ticket:ticket,p_action:'refund'},due:Date.now()+600000});
+      // Rides lost to a restart leave a reserved ticket behind, and the database allows one reserved
+      // ticket per student. This student isn't riding (checked above), so settle any they left behind.
+      await this.settleStaleTickets(session.id);
+      await this.state.storage.put('keke-settle:'+ticket,{body:{p_ticket:ticket,p_action:'refund'},due:Date.now()+600000,user:session.id});
       await this.state.storage.setAlarm(Date.now()+60000);
-      const receipt=await this.dbRpc('keke_reserve_trusted',{p_ticket:ticket,p_user:session.id,p_destination:destinationId,p_fare:fare});
+      let receipt:any;
+      try{receipt=await this.dbRpc('keke_reserve_trusted',{p_ticket:ticket,p_user:session.id,p_destination:destinationId,p_fare:fare});}
+      catch(e){
+        if(/one_reserved_keke_ticket/.test(String((e as Error).message)))throw new Error('Your last ride is still being settled. Try again in a minute.');
+        throw e;
+      }
       if(socket.readyState!==WebSocket.OPEN||!this.players.has(session.connectionId)){
         await this.settleTicket(ticket,'refund');throw new Error('Ride cancelled after disconnect');
       }

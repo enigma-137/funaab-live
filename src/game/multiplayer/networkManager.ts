@@ -363,7 +363,9 @@ class NetworkManager {
 
       case 'keke_dropoff': {
         gameStore.setRidingKeke(false,null,null);useInputStore.getState().clearTargetDestination();
-        useHostelStore.setState({teleport:data.position});gameStore.setMyPosition(data.position);return;
+        useHostelStore.setState({teleport:data.position});gameStore.setMyPosition(data.position);
+        if(data.reason&&data.reason!=='Arrived'&&data.reason!=='Ride ended')toast({icon:'🚐',text:String(data.reason),tone:'info',ms:6000});
+        return;
       }
       case 'players_batch': {
         if(data.kekes){

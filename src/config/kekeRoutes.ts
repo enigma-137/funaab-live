@@ -5,7 +5,7 @@ export const KOROPE_ID='korope-1';
 /** How long a route vehicle waits at a stop: longer while it has free seats, and while someone is booking. */
 export const STOP_DWELL={freeSeatsMs:10000,fullMs:3500,junctionMs:3500,/** A booking sheet that stops reporting is dropped after this. */holdTtlMs:15000,/** One person can hold a vehicle at most this long. */holdMaxMs:60000,/** Time to sit down after paying, so it doesn't pull away mid-boarding. */boardedGraceMs:3000};
 /** Korope shared bus: waits at the Car Park until MIN_RIDERS have paid, then runs the public loop. */
-export const KOROPE={capacity:8,minRiders:5,fare:30,/** Ms the bus waits for riders before it refunds them and starts over. */waitMs:150000,doorsMs:4000};
+export const KOROPE={capacity:8,minRiders:5,fare:30,/** Ms the bus waits for riders before it refunds them and starts over. */waitMs:240000,doorsMs:4000};
 export const ROUTE_FARE=50;
 export const nodeKey=(p:Point)=>`${p[0]}:${p[2]}`;
 export const roadNodes:Record<string,Point>={};
