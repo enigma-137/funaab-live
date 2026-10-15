@@ -98,7 +98,8 @@ export const ClassroomScene: React.FC = () => {
 
   const currentBoard = classroomState?.currentBoardText || currentLecture?.timeline[0]?.boardTopic || `${currentLecture?.courseCode}: ${currentLecture?.title}`;
   const mySeat = seats.find((s) => s.seatNumber === mySeatNumber) ?? null;
-  const canPickSeat = !attendanceMode;
+  // Free seats can always be picked, including to move closer to the front mid-lecture.
+  const canPickSeat = true;
 
   return (
     <group>

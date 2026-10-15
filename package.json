@@ -33,6 +33,7 @@
     "test:campus": "tsx scripts/test-campus-transit.ts",
     "test:keke:worker": "tsx scripts/test-keke-worker.ts",
     "test:korope:worker": "tsx scripts/test-korope-worker.ts",
+    "test:lecture:presence": "tsx scripts/test-lecture-presence.ts",
     "test:movement-sync": "tsx scripts/test-movement-sync.ts",
     "test:keke:db": "node scripts/test-keke-db.cjs",
     "test:campus:browser": "node scripts/test-campus-browser.cjs",

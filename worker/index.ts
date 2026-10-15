@@ -734,7 +734,8 @@ export class WorldRoomDO {
         animation: player.animation,
         kekeRiding: player.kekeRiding,
         kekeId: player.kekeId,
-        currentLectureId: player.currentLectureId,
+        // null (not undefined) so clients clear it when a student walks out of a hall.
+        currentLectureId: player.currentLectureId ?? null,
         currentZone: player.currentLectureId
           ? getZoneName(0, 0, player.currentLectureId)
           : (player.currentZone || getZoneName(player.position?.[0] || 0, player.position?.[2] || 0)),
@@ -1974,7 +1975,8 @@ export class WorldRoomDO {
             if (!session) return;
 
             const lectureId = String(data.lectureId || '');
-            const seatNumber = Number(data.seatNumber) || 1;
+            // 0 = standing inside the hall (not seated yet).
+            const seatNumber = Math.max(0, Math.min(99, Math.floor(Number(data.seatNumber) || 0)));
 
             session.room = `world:funaab:lecture:${lectureId}`;
             session.currentLectureId = lectureId;
@@ -1985,6 +1987,9 @@ export class WorldRoomDO {
               player.currentLectureId = lectureId;
               player.seatNumber = seatNumber;
               player.currentZone = getZoneName(0, 0, lectureId);
+              // Campus clients hide students who are inside a hall and count them at its door.
+              this.dirtyPlayerIds.add(sessionConnId);
+              this.broadcastBatchPlayers();
             }
 
             let roomState = this.lectureRooms.get(lectureId);
@@ -2058,6 +2063,8 @@ export class WorldRoomDO {
               player.currentLectureId = undefined;
               player.seatNumber = undefined;
               player.currentZone = getZoneName(player.position[0], player.position[2]);
+              this.dirtyPlayerIds.add(sessionConnId);
+              this.broadcastBatchPlayers();
             }
             break;
           }

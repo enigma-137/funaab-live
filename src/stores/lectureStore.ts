@@ -89,13 +89,15 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         },
       });
       useGameStore.getState().setActiveModal(null);
+      // Seat 0 = standing inside. The server hides you from campus and counts you in this class.
+      networkManager.enterLectureRoom(lecture.id, 0);
     }, 400);
   },
 
   sitDown: (seatNumber: number) => {
     const { currentLecture, isInClassroom, mySeatNumber } = get();
     if (!isInClassroom || !currentLecture || mySeatNumber === seatNumber) return;
-    if (mySeatNumber !== null) get().standUp();
+    // Moving to another seat keeps your attendance running; only standing up ends it.
     set({ mySeatNumber: seatNumber, isHandRaised: false });
     // Seated players join the lecture's multiplayer room so classmates see them in their seat.
     networkManager.enterLectureRoom(currentLecture.id, seatNumber);
@@ -105,7 +107,8 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     const { currentLecture, mySeatNumber } = get();
     if (mySeatNumber === null) return;
     get().endAttendance();
-    if (currentLecture) networkManager.leaveLectureRoom(currentLecture.id);
+    // Still inside the hall, just not seated.
+    if (currentLecture) networkManager.enterLectureRoom(currentLecture.id, 0);
     set({ mySeatNumber: null, isHandRaised: false });
   },
 
@@ -145,6 +148,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     if (!state.currentLecture || state.isTransitioning) return;
 
     get().standUp();
+    networkManager.leaveLectureRoom(state.currentLecture.id);
     useGameStore.setState((game) => ({
       myPosition: state.classroomReturnPosition || game.myPosition,
       myAnimation: 'idle',

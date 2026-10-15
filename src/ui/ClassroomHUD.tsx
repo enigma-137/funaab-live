@@ -111,7 +111,8 @@ export const ClassroomHUD: React.FC = () => {
       ...Object.values(classroomState?.activeStudents || {}).map((s) => s.seatNumber),
       ...Object.values(players).filter((p) => p.currentLectureId === currentLecture.id && p.seatNumber).map((p) => p.seatNumber!),
     ];
-    const seat = freeHallSeats(hall, taken)[0];
+    // Front rows first, then the middle of the row.
+    const seat = freeHallSeats(hall, taken).sort((a, b) => a.pos[2] - b.pos[2] || Math.abs(a.pos[0]) - Math.abs(b.pos[0]))[0];
     if (seat) sitDown(seat.seatNumber);
   };
   // One primary action that walks the player through the attendance flow, plus a secondary
@@ -123,7 +124,7 @@ export const ClassroomHUD: React.FC = () => {
       : { label: 'End Attendance', short: 'End', icon: StopCircle, onClick: endAttendance, tone: 'bg-slate-900/90 hover:bg-slate-800 text-white border-slate-600' };
   const PrimaryIcon = primary.icon;
   const statusText = !isSeated
-    ? 'Standing — tap a highlighted seat or Take a Seat'
+    ? 'Standing — tap any highlighted seat, or Take a Seat for the front'
     : !isAttending
       ? `Seat #${mySeatNumber} — Join the lecture to start attendance`
       : attendanceMode === 'scheduled'

@@ -75,7 +75,8 @@ export const WorldScene: React.FC = () => {
             {/* Remote Multiplayer Players */}
             {Object.entries(players).map(([key, playerState]) => {
               const playerKey = playerState.connectionId || key;
-              if (playerKey === myConnectionId) return null;
+              // Students inside a lecture hall are counted at its door, not drawn standing outside.
+              if (playerKey === myConnectionId || playerState.currentLectureId) return null;
               return <RemotePlayer key={playerKey} player={playerState} />;
             })}
 

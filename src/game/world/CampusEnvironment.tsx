@@ -897,6 +897,7 @@ export const CampusEnvironment: React.FC = () => {
       {LECTURE_HALLS.map((hall) => (
         <LectureHallEntrance
           key={hall.id}
+          hallId={hall.id}
           position={hall.arch}
           facing={hall.facing ?? 0}
           builtInArch={hall.builtInArch}
@@ -913,7 +914,7 @@ export const CampusEnvironment: React.FC = () => {
 
 // Shared entrance arch for every lecture hall. The wayfinding label is only shown nearby so ten
 // halls don't keep ten DOM overlays positioned every frame across the whole campus.
-const LectureHallEntrance: React.FC<{ position: [number, number, number]; facing: number; builtInArch?: boolean; title: string; course: string }> = ({ position, facing, builtInArch, title, course }) => {
+const LectureHallEntrance: React.FC<{ hallId: string; position: [number, number, number]; facing: number; builtInArch?: boolean; title: string; course: string }> = ({ hallId, position, facing, builtInArch, title, course }) => {
   const labelRef = useRef<HTMLDivElement>(null);
   const labelPoint = useMemo(() => new THREE.Vector3(position[0], 4.7, position[2]), [position]);
   useFrame(({ camera }) => {
@@ -944,11 +945,19 @@ const LectureHallEntrance: React.FC<{ position: [number, number, number]; facing
           <div className="text-[8.5px] font-bold text-amber-300">
             {course} • [E] Enter Hall
           </div>
+          <InClassCount hallId={hallId} />
         </div>
       </Html>
     </group>
   );
 };
+/** How many students are inside this hall right now (they aren't drawn outside while in class). */
+const lectureHallOf = new Map(LECTURE_SCHEDULE.map((l) => [l.id, l.locationId]));
+function InClassCount({ hallId }: { hallId: string }) {
+  const count = useGameStore((s) => Object.values(s.players).filter((p) => p.currentLectureId && lectureHallOf.get(p.currentLectureId) === hallId).length);
+  if (!count) return null;
+  return <div className="text-[8.5px] font-bold text-sky-300">👥 {count} in class now</div>;
+}
 const archPillarGeometry = new THREE.CylinderGeometry(0.22, 0.25, 4.0, 12);
 const archPillarMaterial = new THREE.MeshStandardMaterial({ color: '#047857', roughness: 0.4 });
 const archLintelGeometry = new THREE.BoxGeometry(3.8, 0.4, 0.6);
