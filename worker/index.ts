@@ -1766,6 +1766,10 @@ export class WorldRoomDO {
 
           case 'ping': {
             webSocket.send(JSON.stringify({ type: 'pong', t: data.t }));
+            // Standing still sends no moves: check the Love Garden goals on the heartbeat too, so
+            // someone already in the garden when Campus Night starts at 8pm still gets it.
+            const pinger = this.sessions.get(webSocket), still = sessionConnId ? this.players.get(sessionConnId) : undefined;
+            if (pinger && still && !still.kekeRiding) { this.advanceTrustedPosition(pinger); this.loveGardenGoals(pinger, still.animation); }
             break;
           }
 
