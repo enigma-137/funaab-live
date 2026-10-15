@@ -79,7 +79,8 @@
     "test:worship": "tsx scripts/test-worship.ts",
     "test:estate:db": "tsx scripts/test-estate-db.ts",
     "test:cars:db": "tsx scripts/test-cars-db.ts",
-    "test:car-rides": "tsx scripts/test-car-rides-worker.ts"
+    "test:car-rides": "tsx scripts/test-car-rides-worker.ts",
+    "test:groups:db": "tsx scripts/test-group-chat-db.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

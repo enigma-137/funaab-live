@@ -1909,6 +1909,21 @@ export class WorldRoomDO {
             this.sendToConnections([driverId], JSON.stringify({ type: 'car_rider_joined', username: me.username }));
             break;
           }
+          // Group chats: the sender tells online members to fetch the new message from the database
+          // (only members can read it there), so this carries no message text.
+          case 'group_ping': {
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+            const groupId = String(data.groupId || '').slice(0, 64);
+            const to = new Set((Array.isArray(data.to) ? data.to : []).slice(0, 20).map((x: unknown) => String(x)));
+            if (!groupId || to.size === 0) return;
+            const ping = JSON.stringify({ type: 'group_ping', groupId, from: session.username });
+            for (const [ws, s] of this.sessions) {
+              if (ws === webSocket || !to.has(s.id)) continue;
+              try { ws.send(ping); } catch { /* closed */ }
+            }
+            break;
+          }
           case 'car_ride_leave': {
             if (!sessionConnId) return;
             const me = this.players.get(sessionConnId);

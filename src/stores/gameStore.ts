@@ -114,6 +114,8 @@ interface GameState {
     | 'estate'
     | 'fuel'
     | 'garage'
+    | 'group_chat'
+    | 'new_group'
     | 'league'
     | null;
 
@@ -205,6 +207,8 @@ interface GameState {
       | 'estate'
       | 'fuel'
       | 'garage'
+      | 'group_chat'
+      | 'new_group'
       | 'league'
       | null
   ) => void;

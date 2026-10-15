@@ -10,6 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useWalletStore } from '../stores/walletStore';
+import { useGroupStore } from '../stores/groupStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useJobStore } from '../stores/jobStore';
 import { useInputStore } from '../stores/inputStore';
@@ -105,7 +106,7 @@ export const GameHUD: React.FC = () => {
   // Classroom messages belong to the class chat only.
   const allMessages = useSocialStore((s) => s.messages);
   const messages = useMemo(() => allMessages.filter((m) => !m.lectureId), [allMessages]);
-  const unreadDmCount = useSocialStore((s) => s.unreadDmCount);
+  const unreadDmCount = useSocialStore((s) => s.unreadDmCount) + useGroupStore((s) => s.unread);
   // Whole metres only, so walking re-renders the HUD at most once per metre.
   const waypointDistance = useGameStore((s) => s.navigationDestination
     ? Math.round(Math.hypot(s.myPosition[0] - s.navigationDestination.position[0], s.myPosition[2] - s.navigationDestination.position[2]))

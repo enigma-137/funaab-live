@@ -8,6 +8,7 @@ import { CampusPhone } from './CampusPhone';
 import { PhoneLauncherArt } from './phoneIcons';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
+import { useGroupStore } from '../stores/groupStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useStudentStore } from '../stores/studentStore';
 import { useInputStore } from '../stores/inputStore';
@@ -47,7 +48,7 @@ export function StudentCampusTools() {
   const setModal = useGameStore((s) => s.setActiveModal);
   const { journey, saving, error } = useStudentStore();
   const friends = useSocialStore((s) => s.friends);
-  const unreadDms = useSocialStore((s) => s.unreadDmCount);
+  const unreadDms = useSocialStore((s) => s.unreadDmCount) + useGroupStore((s) => s.unread);
   const [editing, setEditing] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
   const [avatar, setAvatar] = useState(() => normalizeAvatar(user.avatarConfig));

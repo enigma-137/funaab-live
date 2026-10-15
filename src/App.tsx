@@ -57,6 +57,7 @@ import { Joystick } from './ui/Joystick';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { EstateSheet, EstateWatcher } from './ui/EstateSheet';
 import { CarWatcher, FuelSheet, GarageSheet } from './ui/CarSheets';
+import { GroupChatSheet, GroupWatcher, NewGroupSheet } from './ui/GroupChat';
 import { LeagueSheet } from './ui/LeagueSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
@@ -213,6 +214,9 @@ export const App: React.FC = () => {
       {activeModal === 'league' && <LeagueSheet />}
       {!isInClassroom && <EstateWatcher />}
       <CarWatcher />
+      <GroupWatcher />
+      {activeModal === 'group_chat' && <GroupChatSheet />}
+      {activeModal === 'new_group' && <NewGroupSheet />}
       {!isInClassroom && <BackgroundGate />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}

@@ -54,7 +54,12 @@ async function main(){
     driver.close();
     await new Promise((r)=>setTimeout(r,0));
     assert(last(a,'car_ride_end'),'driver left: rider is let out');
-    console.log('CAR RIDES WORKER PASSED: only a driving car, next to it, not your own; two seats then full; seat freed on leaving; batch shows riders; park or disconnect lets everyone out.');
+    // Group chat pings go only to the listed members (by account id), never back to the sender, and carry no text.
+    const g1=await join(11,[50,0,40]),g2=await join(12,[51,0,40]),g3=await join(13,[52,0,40]);
+    await g1.packet({type:'group_ping',groupId:'g-1',to:['00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000012'],text:'ignored'});
+    assert.deepEqual(last(g2,'group_ping'),{type:'group_ping',groupId:'g-1',from:'S11'},'member pinged, no message text');
+    assert(!last(g1,'group_ping')&&!last(g3,'group_ping'),'not the sender, not outsiders');
+    console.log('CAR RIDES WORKER PASSED (+ group pings): only a driving car, next to it, not your own; two seats then full; seat freed on leaving; batch shows riders; park or disconnect lets everyone out.');
   }finally{globalThis.WebSocket=oldWS;globalThis.setInterval=oldInterval;}
 }
 main().then(()=>process.exit(0)).catch((e)=>{console.error(e);process.exit(1);});

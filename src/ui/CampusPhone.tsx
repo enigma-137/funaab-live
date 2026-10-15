@@ -3,6 +3,7 @@ import { useSugStore } from '../stores/sugStore';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
+import { useGroupStore } from '../stores/groupStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useWalletStore } from '../stores/walletStore';
 import { formatNaira } from '../config/economy';
@@ -29,7 +30,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
   const user = useAuthStore((s) => s.user)!;
   const setModal = useGameStore((s) => s.setActiveModal);
   const balance = useWalletStore((s) => s.balance);
-  const unread = useSocialStore((s) => s.unreadDmCount);
+  const unread = useSocialStore((s) => s.unreadDmCount) + useGroupStore((s) => s.unread);
   const soundOn = useSoundStore((s) => s.enabled);
   const goalsReady = useDailyPlanStore((s) => s.plan?.goals.filter((g) => !g.claimed && g.progress >= g.target).length ?? 0);
   const [time, setTime] = useState(lagosTime);
