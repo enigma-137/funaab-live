@@ -56,6 +56,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'friends', label: 'Friends', glyph: 'friends', colors: ['#60a5fa', '#2563eb'], open: () => setModal('friends') },
     { id: 'league', label: 'League', glyph: 'league', colors: ['#facc15', '#a16207'], open: () => setModal('league') },
     { id: 'lodge', label: 'Lodge', glyph: 'hostel', colors: ['#fbbf24', '#b45309'], open: () => setModal('lodge') },
+    { id: 'estate', label: 'Estate', glyph: 'hostel', colors: ['#c4b5fd', '#6d28d9'], open: () => setModal('estate') },
     { id: 'hustles', label: 'Hustles', glyph: 'hustles', colors: ['#4ade80', '#15803d'], open: () => setModal('hustles') },
     { id: 'jobs', label: 'Jobs', glyph: 'jobs', colors: ['#a78bfa', '#6d28d9'], open: () => setModal('campus_jobs') },
     { id: 'level', label: 'Level', glyph: 'level', colors: ['#fbbf24', '#d97706'], open: () => useLevelStore.getState().open() },

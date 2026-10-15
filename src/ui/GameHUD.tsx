@@ -231,7 +231,7 @@ export const GameHUD: React.FC = () => {
           else setActiveModal('hustles');
           break;
         case 'lodge':
-          setActiveModal('lodge');
+          setActiveModal(nearbyInteractable.targetId === 'estate' ? 'estate' : 'lodge');
           break;
         case 'party':
           setActiveModal('party');
@@ -299,7 +299,7 @@ export const GameHUD: React.FC = () => {
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? '🏧' : nearbyInteractable.targetId?.startsWith('farm') ? FARM_STEPS.find((s) => `farm-${s.id}` === nearbyInteractable.targetId)?.icon ?? '🌱' : '📸';
       case 'lodge':
-        return '🏘️';
+        return nearbyInteractable.targetId === 'estate' ? '🏡' : '🏘️';
       case 'party':
         return '🪩';
       case 'arcade':
@@ -398,7 +398,7 @@ export const GameHUD: React.FC = () => {
           : nearbyInteractable.targetId?.startsWith('farm-') ? nearbyInteractable.actionText.replace(' here', '')
           : 'Photos';
       case 'lodge':
-        return 'Lodge';
+        return nearbyInteractable.targetId === 'estate' ? 'Estate' : 'Lodge';
       case 'party':
         return 'Arena';
       case 'arcade':

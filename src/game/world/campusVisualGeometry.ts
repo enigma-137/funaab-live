@@ -118,6 +118,16 @@ export const campusMaterials = {
   stainRed: mat("#b8322f", 0.4),
   stainAmber: mat("#d99a2b", 0.4),
   aisleRed: mat("#8b1e2a", 1),
+  // Royal Gardens Estate (config/estate.ts).
+  estateA: mat("#f1e3c6"),
+  estateB: mat("#e9d9e6"),
+  estateC: mat("#dfe8d8"),
+  estateD: mat("#f3dcc4"),
+  estateE: mat("#e4e6ee"),
+  estateRoof: mat("#7a3b2e", 0.8),
+  estateTrim: mat("#5b4636", 0.7),
+  asphalt: mat("#3b3f42", 1),
+  lawnBright: mat("#7fa25a", 1),
 };
 // Fronds must remain visible when the ground-level camera looks up through a crown.
 campusMaterials.foliage.side = THREE.DoubleSide;

@@ -257,7 +257,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           setActiveModal('hustles');
           break;
         case 'lodge':
-          setActiveModal('lodge');
+          setActiveModal(nearbyInteractable.targetId === 'estate' ? 'estate' : 'lodge');
           break;
       }
     } else if (selectedPlayer) {

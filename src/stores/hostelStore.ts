@@ -20,7 +20,7 @@ import { roomSizeOf } from "../config/roomMakeover";
 import { hostelItem } from "../config/hostelShop";
 export interface Placement extends RoomTransform {}
 /** The current room's size (standard until the owner pays to expand it). */
-export const roomSizeNow = () => roomSizeOf(useHostelStore.getState().snapshot?.room.room_size);
+export const roomSizeNow = () => { const r = useHostelStore.getState().snapshot?.room; return roomSizeOf(r?.room_size, r?.style); };
 export interface RoomSnapshot {
   room: {
     owner_id: string;

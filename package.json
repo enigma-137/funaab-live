@@ -76,7 +76,8 @@
     "test:economy:db": "tsx scripts/test-economy-db.ts",
     "sim:economy": "tsx scripts/simulate-economy.ts",
     "test:lifestyle:db": "tsx scripts/test-lifestyle-shop-db.ts",
-    "test:worship": "tsx scripts/test-worship.ts"
+    "test:worship": "tsx scripts/test-worship.ts",
+    "test:estate:db": "tsx scripts/test-estate-db.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

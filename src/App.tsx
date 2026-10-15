@@ -56,6 +56,7 @@ import { NoticeBanner } from './ui/NoticeBanner';
 import { Joystick } from './ui/Joystick';
 import { HustlesSheet } from './ui/HustlesSheet';
 import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
+import { EstateSheet, EstateWatcher } from './ui/EstateSheet';
 import { LeagueSheet } from './ui/LeagueSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
@@ -207,8 +208,10 @@ export const App: React.FC = () => {
       <Joystick />
       {activeModal === 'hustles' && <HustlesSheet />}
       {activeModal === 'lodge' && <LodgeSheet />}
+      {activeModal === 'estate' && <EstateSheet />}
       {activeModal === 'league' && <LeagueSheet />}
       {!isInClassroom && <LodgeWatcher />}
+      {!isInClassroom && <EstateWatcher />}
       {!isInClassroom && <BackgroundGate />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}

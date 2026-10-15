@@ -10,7 +10,8 @@ export const ROOM_SIZES: Record<RoomSize, { halfX: number; halfZ: number }> = {
   large: { halfX: 5.5, halfZ: 4 },
 };
 export const ROOM_EXPANSION_PRICE = 50000;
-export const roomSizeOf = (size?: string | null): RoomSize => (size === 'large' ? 'large' : 'standard');
+/** An estate room (migration 044) is large while it's rented, whatever the hostel room's own size. */
+export const roomSizeOf = (size?: string | null, style?: string | null): RoomSize => (size === 'large' || style === 'estate' ? 'large' : 'standard');
 /** How far from the centre line furniture may reach along X (walls are 0.2 m in). */
 export const roomReachX = (size: RoomSize) => ROOM_SIZES[size].halfX - 0.2;
 export const ROOM_REACH_Z = 3.8;

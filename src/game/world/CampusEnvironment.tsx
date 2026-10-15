@@ -2,6 +2,7 @@ import { CampusArchitecture } from './CampusArchitecture';
 import { FpyFarm } from './FpyFarm';
 import { PartyHall } from './PartyHall';
 import { WorshipPlaces } from './WorshipPlaces';
+import { EstateGrounds } from './EstateGrounds';
 import { HealthCentre } from './HealthCentre';
 import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
 import { campusMaterials } from './campusVisualGeometry';
@@ -49,12 +50,17 @@ export const CampusEnvironment: React.FC = () => {
       <RigidBody type="fixed" colliders={false}>
         <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.01,-17.5]} receiveShadow><planeGeometry args={[300,270]}/><primitive object={campusMaterials.grass} attach="material"/></mesh>
         <CuboidCollider args={[150,.5,135]} position={[0,-.5,-17.5]}/>
-        <CuboidCollider args={[146,4,1]} position={[0,4,-146]}/><CuboidCollider args={[146,4,1]} position={[0,4,111]}/>
+        <CuboidCollider args={[146,4,1]} position={[0,4,-146]}/>
         <CuboidCollider args={[1,4,130]} position={[-146,4,-17]}/><CuboidCollider args={[1,4,130]} position={[146,4,-17]}/>
+        {/* Off-campus land north of the gate road (Royal Gardens Estate): ground and its outer edge. */}
+        <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.012,149]} receiveShadow><planeGeometry args={[300,64]}/><primitive object={campusMaterials.grass} attach="material"/></mesh>
+        <CuboidCollider args={[150,.5,32]} position={[0,-.5,149]}/>
+        <CuboidCollider args={[146,4,1]} position={[0,4,178]}/>
+        <CuboidCollider args={[1,4,34]} position={[-146,4,144]}/><CuboidCollider args={[1,4,34]} position={[146,4,144]}/>
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
-      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><WorshipPlaces/><HustleProps/><LodgeBuilding/><LeagueBanner/>
+      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><WorshipPlaces/><EstateGrounds/><HustleProps/><LodgeBuilding/><LeagueBanner/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}

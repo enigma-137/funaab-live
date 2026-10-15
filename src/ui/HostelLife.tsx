@@ -643,7 +643,7 @@ function Makeover({ mine, balance }: { mine: boolean; balance: number }) {
         <button onClick={() => s.travel("room")}>Go to my room</button>
       </p>
     );
-  const paint = paintById(room.wall_paint), floor = floorById(room.floor_style), large = roomSizeOf(room.room_size) === "large";
+  const paint = paintById(room.wall_paint), floor = floorById(room.floor_style), large = roomSizeOf(room.room_size) === "large"; // the paid expansion itself (estate rooms are big only while rented)
   return (
     <>
       <h2>Wall paint</h2>

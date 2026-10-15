@@ -111,6 +111,7 @@ interface GameState {
     | 'background'
     | 'hustles'
     | 'lodge'
+    | 'estate'
     | 'league'
     | null;
 
@@ -199,6 +200,7 @@ interface GameState {
       | 'background'
       | 'hustles'
       | 'lodge'
+      | 'estate'
       | 'league'
       | null
   ) => void;
