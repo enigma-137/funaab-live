@@ -46,6 +46,10 @@ import { openCourtGame } from '../stores/courtGameStore';
 import { toast } from '../stores/toastStore';
 import { NavigationArrow } from './NavigationArrow';
 import { MiniMap } from './MiniMap';
+import { locationById } from '../config/campusLocations';
+
+const FLORAL = locationById('floral-world').position;
+const atFloralTable = (p: [number, number, number]) => Math.hypot(p[0] - FLORAL[0], p[2] - FLORAL[2]) < 6;
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -756,6 +760,18 @@ export const GameHUD: React.FC = () => {
           // On narrower desktops the centred button would sit on the chat input; lift it above.
           : narrowDesktop ? { bottom: `${chatClearance + 8}px` } : undefined}
       >
+        {!activeModal && seatedAt && atFloralTable(seatedAt.position) && (
+          // Seated at the Floral World terrace: order without getting up (the main button is Stand Up).
+          <div className="pointer-events-auto mb-2 flex justify-center">
+            <button
+              onClick={() => { triggerHaptic(25); setActiveModal('floral_world'); }}
+              className="flex min-h-[44px] items-center gap-2 rounded-2xl border border-amber-300/80 bg-amber-500 px-4 py-2 text-sm font-extrabold text-slate-950 shadow-xl transition active:scale-95"
+            >
+              <span>🍲</span>
+              <span>Order Food</span>
+            </button>
+          </div>
+        )}
         {!activeModal && (nearbyInteractable || selectedPlayer || isRidingKeke) && (
           <div className="pointer-events-auto flex justify-center">
             <button
