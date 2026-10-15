@@ -55,7 +55,7 @@ async function main() {
   let b = await balance(ada);
   await buy(ada, 'fashion_watch_gold'); b -= 120000; assert.equal(await balance(ada), b);
   await assert.rejects(() => buy(ada, 'fashion_watch_gold'), /already own/, 'one of each');
-  await buy(ada, 'car_corolla'); b -= 450000; assert.equal(await balance(ada), b);
+  await buy(ada, 'car_corolla'); b -= 150000; assert.equal(await balance(ada), b);
   await assert.rejects(() => cmd(ada, 'purchase', { item: 'car_camry', credit: true }), /pay-now only/, 'no cars on credit');
   await assert.rejects(() => place(ada, 'car_corolla', { x: 0, y: 0, z: 0 }), /./, 'a car is not room furniture');
   const poor = await student('Poor', 10000);

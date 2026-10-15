@@ -20,8 +20,8 @@ insert into public.hostel_catalog(id,name,category,price,placement_type,credit,c
  ('car_camry','Toyota Camry','Cars',750000,'none',false,false),
  ('car_lexus','Lexus RX 350','Cars',1500000,'none',false,false),
  ('car_gwagon','Mercedes G-Wagon','Cars',4000000,'none',false,false)
-on conflict(id) do update set name=excluded.name,category=excluded.category,price=excluded.price,
- placement_type=excluded.placement_type,credit=excluded.credit,consumable=excluded.consumable;
+-- Re-running never undoes later price changes (043).
+on conflict(id) do nothing;
 
 -- Function edits, applied only if not already there (so the file can be re-run).
 create or replace function pg_temp.patch041(p_fn text, p_old text, p_new text) returns void language plpgsql as $$
