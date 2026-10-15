@@ -71,6 +71,7 @@ assert.deepEqual(
 // COLFHEC's four departments, and HTM reaches the database through migration 022.
 assert.deepEqual(courses.filter((c) => c.college === 'COLFHEC').map((c) => c.id).sort(), ['CTX', 'FST', 'HSM', 'HTM', 'NTD']);
 assert(courses.some((c) => c.id === 'AAD' && c.college === 'COLAMRUD') && readFileSync('supabase/migrations/036_agricultural_administration.sql', 'utf8').includes("('AAD', 'Agricultural Administration', 'COLAMRUD', 48)"), 'AAD in 036');
+assert(courses.some((c) => c.id === 'ZOO' && c.college === 'COLBIOS') && readFileSync('supabase/migrations/042_colbios_zoology.sql', 'utf8').includes("('ZOO', 'Zoology', 'COLBIOS', 55)"), 'ZOO in 042');
 assert(readFileSync('supabase/migrations/035_clothing_textiles.sql', 'utf8').includes("('CTX', 'Clothing and Textiles', 'COLFHEC', 50)"));
 assert(readFileSync('supabase/migrations/022_colfhec_htm.sql', 'utf8').includes("('HTM', 'Hospitality and Tourism Management', 'COLFHEC', 55)"));
 // COLERM is offered (its building and lecture hall exist): five departments, in migrations 025 and 026.
