@@ -12,6 +12,8 @@ export interface AvatarConfig {
   shirtColor: string;
   skinColor: string;
   hairColor?: string;
+  headwear?: string;
+  headwearColor?: string;
   hairStyle?: string;
   gender?: string;
 }

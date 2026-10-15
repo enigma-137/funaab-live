@@ -99,6 +99,10 @@ export const AvatarBody = memo(
           color: new THREE.Color(a.topColor).multiplyScalar(0.76),
           roughness: 0.9,
         }),
+        headwear: new THREE.MeshStandardMaterial({
+          color: a.headwearColor,
+          roughness: 0.9,
+        }),
         gold: new THREE.MeshStandardMaterial({
           color: "#d4a017",
           roughness: 0.35,
@@ -293,6 +297,7 @@ export const AvatarBody = memo(
           {part("torso", "top")}
           {part("farSkin", "skin")}
           {part("farHair", look.hairMaterial)}
+          {part("farHeadwear", "headwear")}
           {part("farLegs", look.legMaterial)}
           {part("farHips", look.hipsMaterial)}
           {part("farShoes", "shoe")}
@@ -310,6 +315,7 @@ export const AvatarBody = memo(
             {part("trim", "trim")}
             {part("inner", "white")}
             {part("embroidery", "gold")}
+            {part("drape", "headwear")}
             {accessory === "security" && part("badge", "white")}
             <group ref={head} position={[0, HEAD_Y, 0]} scale={HEAD_SCALE}>
               {part("head", "skin")}
@@ -318,6 +324,7 @@ export const AvatarBody = memo(
               {part("lips", "lips")}
               {part("earrings", "gold")}
               {part("hair", look.hairMaterial)}
+              {part("headwear", "headwear")}
               {accessory === "security" && part("beret", "bottom")}
             </group>
           </group>

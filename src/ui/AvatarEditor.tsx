@@ -94,6 +94,7 @@ export default function AvatarEditor({
                     topStyle: 'Top',
                     bottomStyle: 'Bottom',
                     shoeStyle: 'Shoes',
+                    headwear: 'Headwear',
                   } as Record<string, string>
                 )[key]
               }
@@ -111,7 +112,7 @@ export default function AvatarEditor({
           ))}
         </div>
         <div className="student-colors">
-          {(['hairColor', 'topColor', 'bottomColor', 'shoeColor'] as const).map((key) => (
+          {(['hairColor', 'topColor', 'bottomColor', 'shoeColor', 'headwearColor'] as const).map((key) => (
             <label key={key}>
               {key.replace('Color', '')}
               <input

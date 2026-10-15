@@ -23,6 +23,8 @@ export const avatarOptions = {
   topStyle: ['t-shirt', 'polo', 'shirt', 'hoodie', 'blouse', 'jacket', 'jersey', 'kaftan', 'tank-top', 'gown', 'jumpsuit'],
   bottomStyle: ['trousers', 'jeans', 'joggers', 'skirt', 'shorts', 'long-skirt'],
   shoeStyle: ['sneakers', 'flats', 'sandals', 'heels', 'boots'],
+  // Worn over the hair. Hijab and headscarf cover it; hijab also covers the neck down to the chest.
+  headwear: ['none', 'face-cap', 'head-band', 'beanie', 'kufi', 'hijab', 'headscarf'],
 } as const;
 // Friendlier names for the editor; anything missing shows its id with spaces.
 export const optionLabels: Record<string, string> = {
@@ -41,6 +43,12 @@ export const optionLabels: Record<string, string> = {
   jumpsuit: 'Jumpsuit / FPY coverall',
   'long-skirt': 'Long skirt',
   flats: 'Flats / loafers',
+  none: 'None',
+  'face-cap': 'Face cap',
+  'head-band': 'Headband',
+  kufi: 'Kufi (prayer cap)',
+  hijab: 'Hijab (covers neck)',
+  headscarf: 'Headscarf',
 };
 // What NPCs of each body type are dressed in; players can still wear anything.
 export const typicalStyles = {
@@ -71,6 +79,8 @@ export type StudentAvatar = Required<
     | 'bottomColor'
     | 'shoeStyle'
     | 'shoeColor'
+    | 'headwear'
+    | 'headwearColor'
   >
 > &
   AvatarConfig;
@@ -102,6 +112,8 @@ export function normalizeAvatar(input?: Partial<AvatarConfig> | null): StudentAv
     bottomColor: color(a.bottomColor, '#27364a'),
     shoeStyle: option(avatarOptions.shoeStyle, a.shoeStyle, 'sneakers'),
     shoeColor: color(a.shoeColor, '#eeeeea'),
+    headwear: option(avatarOptions.headwear, a.headwear, 'none'),
+    headwearColor: color(a.headwearColor, '#3b4f7a'),
     shirtColor: topColor,
     skinColor: skinTone,
   };
@@ -178,6 +190,35 @@ export const stylePresets: Record<string, Partial<AvatarConfig>> = {
     shoeStyle: 'heels',
     shoeColor: '#d4a017',
   },
+  'Cap Day': {
+    headwear: 'face-cap',
+    headwearColor: '#1d4ed8',
+    topStyle: 't-shirt',
+    topColor: '#e6dfcd',
+    bottomStyle: 'jeans',
+    shoeStyle: 'sneakers',
+    shoeColor: '#eeeeea',
+  },
+  Hijab: {
+    headwear: 'hijab',
+    headwearColor: '#6d5a8a',
+    topStyle: 'blouse',
+    topColor: '#f3e6c4',
+    bottomStyle: 'long-skirt',
+    bottomColor: '#3b4f7a',
+    shoeStyle: 'flats',
+    shoeColor: '#2a1d16',
+  },
+  "Jumu'ah": {
+    headwear: 'kufi',
+    headwearColor: '#f3f1ea',
+    topStyle: 'kaftan',
+    topColor: '#f3f1ea',
+    bottomStyle: 'trousers',
+    bottomColor: '#f3f1ea',
+    shoeStyle: 'sandals',
+    shoeColor: '#5a3a22',
+  },
   FPY: {
     topStyle: 'jumpsuit',
     topColor: '#2f6b2f',
@@ -199,4 +240,6 @@ export const presetBodyType: Record<string, 'masculine' | 'feminine'> = {
   'Owambe Gele': 'feminine',
   'Sunday Best': 'feminine',
   Soft: 'feminine',
+  Hijab: 'feminine',
+  "Jumu'ah": 'masculine',
 };
