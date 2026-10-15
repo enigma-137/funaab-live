@@ -13,7 +13,6 @@ import { VOLLEYBALL_COURT } from './volleyball';
 import { courtBenchSeats } from './courtBenches';
 import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
-import { LODGE } from './lodge';
 import { ESTATE, ESTATE_HOUSES, houseDoor } from './estate';
 import { FUEL_STATION } from './cars';
 import { WORSHIP_PLACES, chapelPewSeats, worshipBounds } from './worship';
@@ -154,7 +153,6 @@ const outsideGateZones=[
   {id:'gate-road',name:'Gate Road',type:'road',restricted:false,bounds:OUTSIDE_GATE.road},
   {id:'campus-bet-frontage',name:'Campus Bet',type:'plaza',restricted:false,bounds:OUTSIDE_GATE.betFrontage},
   {id:'food-vendor-plaza',name:'Food Court',type:'plaza',restricted:false,bounds:VENDOR_PLAZA},
-  {id:'lodge-frontage',name:LODGE.name,type:'plaza',restricted:false,bounds:LODGE.frontage},
   {id:'estate-road',name:'Estate road',type:'road',restricted:false,bounds:ESTATE.accessRoad},
   {id:'fuel-station',name:FUEL_STATION.name,type:'plaza',restricted:false,bounds:{minX:FUEL_STATION.centre[0]-FUEL_STATION.size[0]/2-2,maxX:FUEL_STATION.centre[0]+FUEL_STATION.size[0]/2+2,minZ:97,maxZ:FUEL_STATION.centre[2]+FUEL_STATION.size[1]/2+1}},
 ];
@@ -162,7 +160,7 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:WORLD_BOUNDS,colleges:collegeCata
   interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,floralCounter,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,...chapelPewSeats,penaltySpot,freeThrowLine,serveLine,
     {id:'estate-office',type:'lodge',label:ESTATE.name,actionText:'Estate office · rent or go home',position:ESTATE.officeDoor,radius:3,targetId:'estate'},
     ...ESTATE_HOUSES.map(h=>({id:`estate-house-${h.id}`,type:'lodge' as const,label:ESTATE.name,actionText:'Your estate room',position:houseDoor(h),radius:2.4,targetId:'estate'})),
-    {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
+
     {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦5,000',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
     ...ARCADE_TABLES.map(t=>({id:`arcade-${t.id}`,type:'arcade',label:t.label,actionText:t.game==='pool'?'Play pool':'Play tic-tac-toe',position:t.at,radius:2.6,targetId:t.id})),
     {id:'hustle-fpy-farm',type:'hustle',label:'FPY Farm · Hustle',actionText:'Farm shift',position:FPY_FARM.gate,radius:4,targetId:'farm'},

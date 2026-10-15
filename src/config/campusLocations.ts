@@ -1,7 +1,6 @@
 import { ESTATE, inEstate } from './estate';
 import base from '../worlds/funaab/world.json';
 import { LOVE_GARDEN, isInLoveGarden } from './loveGarden';
-import { LODGE } from './lodge';
 
 export type Point = [number, number, number];
 export interface CampusLocation {
@@ -97,7 +96,6 @@ export const CAMPUS_BOUNDS={minX:-145,maxX:145,minZ:-145,maxZ:110};
 export const WORLD_BOUNDS={...CAMPUS_BOUNDS,maxZ:177};
 export const campusZoneName=(x:number,z:number)=>{
   if(isInLoveGarden(x,z))return LOVE_GARDEN.name;
-  if(Math.hypot(x-LODGE.position[0],z-LODGE.position[2])<10)return LODGE.name;
   if(inEstate([x,0,z]))return ESTATE.name;
   if(z>111)return 'Off campus';
   const nearest=[...campusLocations].sort((a,b)=>Math.hypot(x-a.position[0],z-a.position[2])-Math.hypot(x-b.position[0],z-b.position[2]))[0];

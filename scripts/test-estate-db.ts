@@ -57,7 +57,7 @@ async function main() {
   assert.equal(await style(ada), 'estate');
   assert.equal((await one(`select room_capacity_trusted('${ada}') c`)).c, 12);
   await fails(ada, 'select rent_estate()', /already rent an estate/);
-  await fails(ada, 'select rent_lodge()', /Royal Gardens/);
+  await fails(ada, 'select rent_lodge()', /Royal Gardens/); // closed (046) or blocked while renting here
   // Furniture can use the big room's width while renting.
   await call(ada, "select hostel_command('purchase','{\"item\":\"hostel_chair\",\"credit\":false}'::jsonb)");
   await call(ada, "select hostel_command('place','{\"item\":\"hostel_chair\",\"x\":4.8,\"y\":0,\"z\":0,\"rotation\":0}'::jsonb)");
@@ -83,9 +83,9 @@ async function main() {
   await call(ada, 'select rent_estate()');
   await call(ada, 'select leave_estate()');
   assert.equal(await style(ada), 'resumption');
-  await call(ada, 'select rent_lodge()');
-  await fails(ada, 'select rent_estate()', /lodge first/);
-  assert.equal((await call(ada, 'select estate_state() s')).s.lodge, true);
+  // The lodge closed (046): it can't be rented any more.
+  await fails(ada, 'select rent_lodge()', /lodge has closed/);
+  assert.equal((await call(ada, 'select estate_state() s')).s.lodge, false);
 
   // No money, no room.
   const broke = await student('Broke');

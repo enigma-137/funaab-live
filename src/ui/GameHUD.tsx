@@ -239,7 +239,7 @@ export const GameHUD: React.FC = () => {
           else setActiveModal('hustles');
           break;
         case 'lodge':
-          setActiveModal(nearbyInteractable.targetId === 'estate' ? 'estate' : 'lodge');
+          setActiveModal('estate');
           break;
         case 'party':
           setActiveModal('party');
