@@ -5,9 +5,9 @@ const profile = { id: ID, username: 'Emmanuel', college: 'COLENG',
   avatar_config: { bodyType: 'masculine', skinTone: '#8d5524', hairstyle: 'fade', topStyle: 'jersey', topColor: '#15803d', bottomStyle: 'joggers', bottomColor: '#1e293b', shoeStyle: 'sneakers', shoeColor: '#eeeeea', shirtColor: '#15803d', skinColor: '#8d5524' },
   onboarding_completed: true, course_id: 'FST', game_matric_number: 'FST/26/1001' };
 const journey = { beta_player: false, draft: {}, orientation_steps: ['a','b','c','d','e'], orientation_completed: true, admission_story_completed: true };
-async function launch({ width = 1920, height = 1080, peers = [] } = {}) {
+async function launch({ width = 1920, height = 1080, scale = 1, peers = [] } = {}) {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const context = await browser.newContext({ viewport: { width, height } });
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale });
   await context.route('https://student-test.supabase.co/**', async (route) => {
     const req = route.request(), url = new URL(req.url());
     let data = [];
@@ -19,6 +19,8 @@ async function launch({ width = 1920, height = 1080, peers = [] } = {}) {
     if (p.endsWith('/wallets')) data = { balance: 7500 };
     if (p.endsWith('/friends')) data = [];
     if (p.endsWith('/job_runs')) data = null;
+    if (p.endsWith('/car_garage')) data = { cars: [{ car: 'car_gwagon', litres: 40 }, { car: 'car_lexus', litres: 20 }] };
+    if (p.endsWith('/group_list')) data = [];
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
   await context.route('**/campus-summary', (r) => r.fulfill({ status: 200, contentType: 'application/json',
@@ -38,8 +40,8 @@ async function launch({ width = 1920, height = 1080, peers = [] } = {}) {
       if (pk.type === 'ping') ws.send(JSON.stringify({ type: 'pong', t: pk.t }));
     });
   });
-  const session = { access_token: 'fake.test.signature', refresh_token: 'fake-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600 * 24,
-    expires_in: 3600, token_type: 'bearer', user: { id: ID, email: 'test@example.invalid', app_metadata: { provider: 'email' },
+  const session = { access_token: 'fake.test.signature', refresh_token: 'fake-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600 * 24 * 30,
+    expires_in: 3600 * 24 * 30, token_type: 'bearer', user: { id: ID, email: 'test@example.invalid', app_metadata: { provider: 'email' },
     user_metadata: { username: profile.username, college: profile.college }, aud: 'authenticated', created_at: new Date().toISOString() } };
   await context.addInitScript((s) => {
     localStorage.setItem('sb-student-test-auth-token', JSON.stringify(s));

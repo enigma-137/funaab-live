@@ -5,7 +5,8 @@
   const realDateNow = Date.now.bind(Date);
   let manual = false, vt = 0, vtBase = 0, dateBase = 0, n = 1e6, queue = [];
   performance.now = () => (manual ? vt : realNow());
-  Date.now = () => (manual ? dateBase + (vt - vtBase) : realDateNow());
+  window.__dayShift = 0;
+  Date.now = () => (manual ? dateBase + (vt - vtBase) : realDateNow()) + window.__dayShift;
   window.requestAnimationFrame = (cb) => {
     if (!manual) return realRaf(cb);
     const id = ++n; queue.push({ id, cb }); return id;

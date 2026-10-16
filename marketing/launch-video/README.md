@@ -49,3 +49,15 @@ To re-render it, use the same steps as above with these changes:
 - Encode `out2/` with `music2.wav`.
 
 `render2.cjs` sets day or night per shot, so the output doesn't depend on the real Lagos clock.
+
+## "Even more on campus" (second update video)
+
+`funaab-live-more-new.mp4` is 30 s long, 1080p, with music only. Its shots are your own car, the mosque and church, Royal Gardens Estate and group chats, then the end card. `more-new-poster.jpg` is its thumbnail.
+
+To re-render it:
+- Run `node render3.cjs car mosque chapel estate`.
+- Run `node render3.cjs group` separately. It renders at 960×540 @2x so the chat text is sharp.
+- Generate the music with `python3 music.py 30 -1 -1 music3.wav`.
+- Lay out the frames with `PAGE=compose3.html OUT=/out3 node compose.cjs`, then encode `out3/` with `music3.wav`.
+
+The chapel only opens on Sundays, so its shot moves the game clock two days ahead (`window.__dayShift` in `vtime.js`).
