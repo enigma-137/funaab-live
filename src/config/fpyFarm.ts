@@ -36,6 +36,6 @@ export const FARM_SHIFT = {
   minStepSeconds: 12,
   /** A shift left half-done expires. */
   expireMinutes: 10,
-  pay: 300,
+  pay: 3000,
   cooldownMinutes: 5,
 };

@@ -27,7 +27,7 @@ export function HustlesSheet() {
   const h = useHustleStore();
   const [now, setNow] = useState(Date.now());
   const [kind, setKind] = useState<ErrandKind>('buy_food');
-  const [reward, setReward] = useState(200);
+  const [reward, setReward] = useState(2000);
   useEffect(() => { void h.loadShop(); void h.loadErrands(); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   const onCampus = room === 'world:funaab:main';
@@ -166,7 +166,7 @@ export function HustlesSheet() {
             <select aria-label="Errand" value={kind} onChange={(e) => setKind(e.target.value as ErrandKind)}>
               {ERRAND_KINDS.map((k) => <option key={k.id} value={k.id}>{k.icon} {k.title}</option>)}
             </select>
-            <input aria-label="Reward in Naira" type="number" inputMode="numeric" min={ERRAND_RULES.minReward} max={ERRAND_RULES.maxReward} step={10} value={reward}
+            <input aria-label="Reward in Naira" type="number" inputMode="numeric" min={ERRAND_RULES.minReward} max={ERRAND_RULES.maxReward} step={100} value={reward}
               onChange={(e) => setReward(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
             <button className="hustle-btn" disabled={!!h.busy || reward < ERRAND_RULES.minReward || reward > ERRAND_RULES.maxReward} onClick={() => h.postErrand(kind, reward)}>Post</button>
           </div>

@@ -89,6 +89,30 @@ function LodgeDecor({ halfX }: { halfX: number }) {
   );
 }
 
+/** Royal Gardens Estate finishes: marble tiles, crown moulding, framed art and pendant lights.
+ *  Wall-mounted only, so placement rules stay those of a large room. */
+function EstateDecor({ halfX, marble }: { halfX: number; marble: boolean }) {
+  return (
+    <group name="estate-decor">
+      {marble && [-3, -1, 1, 3].map((v) => <Box key={`z${v}`} pos={[0, 0.005, v]} size={[halfX * 2, 0.005, 0.02]} color="#cfc7b8" />)}
+      {marble && Array.from({ length: Math.floor(halfX) * 2 + 1 }, (_, i) => i - Math.floor(halfX)).map((v) => (
+        <Box key={`x${v}`} pos={[v * 1, 0.005, 0]} size={[0.02, 0.005, 8]} color="#cfc7b8" />
+      ))}
+      <Box pos={[0, 2.92, -3.9]} size={[halfX * 2, 0.12, 0.1]} color="#d6c8a8" />
+      {[-1, 1].map((s) => <Box key={s} pos={[s * (halfX - 0.08), 2.92, 0]} size={[0.1, 0.12, 8]} color="#d6c8a8" />)}
+      <Box pos={[2.6, 1.8, -3.9]} size={[1.6, 1.0, 0.04]} color="#8a6a3b" />
+      <Box pos={[2.6, 1.8, -3.87]} size={[1.4, 0.82, 0.02]} color="#2f6f8f" />
+      <Box pos={[2.6, 1.62, -3.86]} size={[1.4, 0.3, 0.02]} color="#d39b4a" />
+      {[-halfX / 2, halfX / 2].map((x) => (
+        <group key={x} position={[x, 0, 0.5]}>
+          <Box pos={[0, 2.75, 0]} size={[0.02, 0.5, 0.02]} color="#111827" />
+          <mesh position={[0, 2.45, 0]}><sphereGeometry args={[0.16, 12, 8]} /><meshBasicMaterial color="#fde9b3" toneMapped={false} /></mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 function FloorFinish({ style, width }: { style: FloorStyle; width: number }) {
   const material = useFloorMaterial(style, width, 8);
   return (
@@ -144,7 +168,8 @@ export function HostelEnvironment() {
   };
   if (!owner) return <HostelCompound myRoom={user ? hostelRoomFor(user.id).room : null} />;
   const lodge = snapshot?.room.style === "lodge";
-  const size = roomSizeOf(snapshot?.room.room_size);
+  const estate = snapshot?.room.style === "estate";
+  const size = roomSizeOf(snapshot?.room.room_size, snapshot?.room.style);
   const { halfX } = ROOM_SIZES[size];
   const width = halfX * 2;
   const paint = paintById(snapshot?.room.wall_paint);
@@ -163,16 +188,16 @@ export function HostelEnvironment() {
       <RigidBody type="fixed" colliders="cuboid" key={size}>
         <mesh position={[0, -0.15, 0]} receiveShadow castShadow>
           <boxGeometry args={[width, 0.3, 8]} />
-          <meshStandardMaterial color={lodge && floorStyle.id === "default" ? "#d8c39c" : "#a9a99a"} />
+          <meshStandardMaterial color={estate && floorStyle.id === "default" ? "#ece7dc" : lodge && floorStyle.id === "default" ? "#d8c39c" : "#a9a99a"} />
         </mesh>
         {/* Paint: lodge keeps its warm finish until you repaint. */}
-        <Box pos={[0, 1.5, -4]} size={[width, 3, 0.15]} color={lodge && paint.id === "default" ? "#f3dfb8" : paint.back} />
-        <Box pos={[-halfX, 1.5, 0]} size={[0.15, 3, 8]} color={lodge && paint.id === "default" ? "#e8cfa1" : paint.side} />
-        <Box pos={[halfX, 1.5, 0]} size={[0.15, 3, 8]} color={lodge && paint.id === "default" ? "#e8cfa1" : paint.side} />
+        <Box pos={[0, 1.5, -4]} size={[width, 3, 0.15]} color={paint.id !== "default" ? paint.back : estate ? "#f4eee4" : lodge ? "#f3dfb8" : paint.back} />
+        <Box pos={[-halfX, 1.5, 0]} size={[0.15, 3, 8]} color={paint.id !== "default" ? paint.side : estate ? "#ebe3d6" : lodge ? "#e8cfa1" : paint.side} />
+        <Box pos={[halfX, 1.5, 0]} size={[0.15, 3, 8]} color={paint.id !== "default" ? paint.side : estate ? "#ebe3d6" : lodge ? "#e8cfa1" : paint.side} />
         <Box pos={[-(1 + (halfX - 1) / 2), 0.4, 4]} size={[halfX - 1, 0.8, 0.15]} color="#b8c4b4" />
         <Box pos={[1 + (halfX - 1) / 2, 0.4, 4]} size={[halfX - 1, 0.8, 0.15]} color="#b8c4b4" />
       </RigidBody>
-      {(!lodge || floorStyle.id !== "default") && <FloorFinish style={floorStyle} width={width} />}
+      {((!lodge && !estate) || floorStyle.id !== "default") && <FloorFinish style={floorStyle} width={width} />}
       <RoomWindow />
       <RoomLights halfX={halfX} />
       <Box pos={[1, 0.95, 3.92]} size={[0.08, 1.9, 0.12]} color="#7e8b79" />
@@ -191,6 +216,7 @@ export function HostelEnvironment() {
         </RigidBody>
       </group>
       {lodge && <LodgeDecor halfX={halfX} />}
+      {estate && <EstateDecor halfX={halfX} marble={floorStyle.id === "default"} />}
       {snapshot?.placements
         .filter((p) => p.item_id !== preview?.item)
         .map((p) => {

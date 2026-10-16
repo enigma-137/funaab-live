@@ -46,6 +46,7 @@ import { MessagesInbox } from './ui/MessagesInbox';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
+import { FirstDayGuide } from './ui/FirstDayGuide';
 import { LevelSheet } from './ui/LevelSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
@@ -54,7 +55,9 @@ import { ControlsSheet } from './ui/ControlsSheet';
 import { NoticeBanner } from './ui/NoticeBanner';
 import { Joystick } from './ui/Joystick';
 import { HustlesSheet } from './ui/HustlesSheet';
-import { LodgeSheet, LodgeWatcher } from './ui/LodgeSheet';
+import { EstateSheet, EstateWatcher } from './ui/EstateSheet';
+import { CarWatcher, FuelSheet, GarageSheet } from './ui/CarSheets';
+import { GroupChatSheet, GroupWatcher, NewGroupSheet } from './ui/GroupChat';
 import { LeagueSheet } from './ui/LeagueSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
@@ -181,6 +184,7 @@ export const App: React.FC = () => {
       {!isInClassroom && <StatusStrip />}
       {!isInClassroom && <NoticeBanner />}
       {!isInClassroom && <TodayPlan />}
+      <FirstDayGuide />
       <FeedbackButton />
       {hostelRoomId !== LIBRARY_ROOM && <HostelLife />}<LibraryLife />
 
@@ -204,9 +208,15 @@ export const App: React.FC = () => {
       {activeModal === 'controls' && <ControlsSheet />}
       <Joystick />
       {activeModal === 'hustles' && <HustlesSheet />}
-      {activeModal === 'lodge' && <LodgeSheet />}
+      {activeModal === 'estate' && <EstateSheet />}
+      {activeModal === 'garage' && <GarageSheet />}
+      {activeModal === 'fuel' && <FuelSheet />}
       {activeModal === 'league' && <LeagueSheet />}
-      {!isInClassroom && <LodgeWatcher />}
+      {!isInClassroom && <EstateWatcher />}
+      <CarWatcher />
+      <GroupWatcher />
+      {activeModal === 'group_chat' && <GroupChatSheet />}
+      {activeModal === 'new_group' && <NewGroupSheet />}
       {!isInClassroom && <BackgroundGate />}
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}

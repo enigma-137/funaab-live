@@ -1,6 +1,9 @@
 import { CampusArchitecture } from './CampusArchitecture';
 import { FpyFarm } from './FpyFarm';
 import { PartyHall } from './PartyHall';
+import { WorshipPlaces } from './WorshipPlaces';
+import { EstateGrounds } from './EstateGrounds';
+import { CarWorld } from '../vehicles/CarWorld';
 import { HealthCentre } from './HealthCentre';
 import { CampusTrees, CampusGardens, avenueTrees } from './CampusLandscape';
 import { campusMaterials } from './campusVisualGeometry';
@@ -11,7 +14,6 @@ import { FoodVendorStalls } from './FoodVendorStalls';
 import { SportsPenaltyArea } from './SportsPenaltyArea';
 import { LoveGarden } from './LoveGarden';
 import { HustleProps } from './HustleProps';
-import { LodgeBuilding } from './LodgeBuilding';
 import { LeagueBanner } from './LeagueBanner';
 import { SportsCourts } from './SportsCourts';
 import { AcadBuilding } from './AcadBuilding';
@@ -48,12 +50,17 @@ export const CampusEnvironment: React.FC = () => {
       <RigidBody type="fixed" colliders={false}>
         <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.01,-17.5]} receiveShadow><planeGeometry args={[300,270]}/><primitive object={campusMaterials.grass} attach="material"/></mesh>
         <CuboidCollider args={[150,.5,135]} position={[0,-.5,-17.5]}/>
-        <CuboidCollider args={[146,4,1]} position={[0,4,-146]}/><CuboidCollider args={[146,4,1]} position={[0,4,111]}/>
+        <CuboidCollider args={[146,4,1]} position={[0,4,-146]}/>
         <CuboidCollider args={[1,4,130]} position={[-146,4,-17]}/><CuboidCollider args={[1,4,130]} position={[146,4,-17]}/>
+        {/* Off-campus land north of the gate road (Royal Gardens Estate): ground and its outer edge. */}
+        <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.012,149]} receiveShadow><planeGeometry args={[300,64]}/><primitive object={campusMaterials.grass} attach="material"/></mesh>
+        <CuboidCollider args={[150,.5,32]} position={[0,-.5,149]}/>
+        <CuboidCollider args={[146,4,1]} position={[0,4,178]}/>
+        <CuboidCollider args={[1,4,34]} position={[-146,4,144]}/><CuboidCollider args={[1,4,34]} position={[146,4,144]}/>
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
-      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><HustleProps/><LodgeBuilding/><LeagueBanner/>
+      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><WorshipPlaces/><EstateGrounds/><CarWorld/><HustleProps/><LeagueBanner/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
@@ -897,6 +904,7 @@ export const CampusEnvironment: React.FC = () => {
       {LECTURE_HALLS.map((hall) => (
         <LectureHallEntrance
           key={hall.id}
+          hallId={hall.id}
           position={hall.arch}
           facing={hall.facing ?? 0}
           builtInArch={hall.builtInArch}
@@ -913,7 +921,7 @@ export const CampusEnvironment: React.FC = () => {
 
 // Shared entrance arch for every lecture hall. The wayfinding label is only shown nearby so ten
 // halls don't keep ten DOM overlays positioned every frame across the whole campus.
-const LectureHallEntrance: React.FC<{ position: [number, number, number]; facing: number; builtInArch?: boolean; title: string; course: string }> = ({ position, facing, builtInArch, title, course }) => {
+const LectureHallEntrance: React.FC<{ hallId: string; position: [number, number, number]; facing: number; builtInArch?: boolean; title: string; course: string }> = ({ hallId, position, facing, builtInArch, title, course }) => {
   const labelRef = useRef<HTMLDivElement>(null);
   const labelPoint = useMemo(() => new THREE.Vector3(position[0], 4.7, position[2]), [position]);
   useFrame(({ camera }) => {
@@ -944,11 +952,19 @@ const LectureHallEntrance: React.FC<{ position: [number, number, number]; facing
           <div className="text-[8.5px] font-bold text-amber-300">
             {course} • [E] Enter Hall
           </div>
+          <InClassCount hallId={hallId} />
         </div>
       </Html>
     </group>
   );
 };
+/** How many students are inside this hall right now (they aren't drawn outside while in class). */
+const lectureHallOf = new Map(LECTURE_SCHEDULE.map((l) => [l.id, l.locationId]));
+function InClassCount({ hallId }: { hallId: string }) {
+  const count = useGameStore((s) => Object.values(s.players).filter((p) => p.currentLectureId && lectureHallOf.get(p.currentLectureId) === hallId).length);
+  if (!count) return null;
+  return <div className="text-[8.5px] font-bold text-sky-300">👥 {count} in class now</div>;
+}
 const archPillarGeometry = new THREE.CylinderGeometry(0.22, 0.25, 4.0, 12);
 const archPillarMaterial = new THREE.MeshStandardMaterial({ color: '#047857', roughness: 0.4 });
 const archLintelGeometry = new THREE.BoxGeometry(3.8, 0.4, 0.6);

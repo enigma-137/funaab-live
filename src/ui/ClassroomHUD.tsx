@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLectureStore } from '../stores/lectureStore';
+import { useLectureStore, hallSpot } from '../stores/lectureStore';
 import { useSocialStore } from '../stores/socialStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 import { useGameStore } from '../stores/gameStore';
@@ -111,7 +111,10 @@ export const ClassroomHUD: React.FC = () => {
       ...Object.values(classroomState?.activeStudents || {}).map((s) => s.seatNumber),
       ...Object.values(players).filter((p) => p.currentLectureId === currentLecture.id && p.seatNumber).map((p) => p.seatNumber!),
     ];
-    const seat = freeHallSeats(hall, taken)[0];
+    // The free chair nearest where you are standing (walk to the front first for a front seat).
+    const seat = freeHallSeats(hall, taken).sort(
+      (a, b) => Math.hypot(a.pos[0] - hallSpot.x, a.pos[2] + 0.55 - hallSpot.z) - Math.hypot(b.pos[0] - hallSpot.x, b.pos[2] + 0.55 - hallSpot.z)
+    )[0];
     if (seat) sitDown(seat.seatNumber);
   };
   // One primary action that walks the player through the attendance flow, plus a secondary
@@ -123,7 +126,7 @@ export const ClassroomHUD: React.FC = () => {
       : { label: 'End Attendance', short: 'End', icon: StopCircle, onClick: endAttendance, tone: 'bg-slate-900/90 hover:bg-slate-800 text-white border-slate-600' };
   const PrimaryIcon = primary.icon;
   const statusText = !isSeated
-    ? 'Standing — tap a highlighted seat or Take a Seat'
+    ? 'Standing — walk around, drag to look 360°, then Sit at the nearest chair or tap a glowing one'
     : !isAttending
       ? `Seat #${mySeatNumber} — Join the lecture to start attendance`
       : attendanceMode === 'scheduled'
@@ -131,7 +134,7 @@ export const ClassroomHUD: React.FC = () => {
         : 'Practice session (outside class time, no allowance)';
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-40 font-['Plus_Jakarta_Sans'] select-none">
+    <div className={`classroom-hud${isSeated ? ' is-seated' : ''} fixed inset-0 pointer-events-none z-40 font-['Plus_Jakarta_Sans'] select-none`}>
       <div className="hidden sm:flex absolute inset-0 flex-col justify-between p-4 sm:p-6">
       {/* ─── 1. TOP BAR: LECTURE DETAILS & ATTENDANCE ─── */}
       <div className="flex items-start justify-between w-full">

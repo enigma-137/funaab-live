@@ -87,6 +87,22 @@ for (const bodyType of avatarOptions.bodyType)
             geometry.dispose();
           });
         }
+// Headwear: every option builds finite geometry; hijab and headscarf hide the hair, hijab drapes the neck.
+for (const bodyType of avatarOptions.bodyType)
+  for (const hairstyle of ["low-cut", "braids", "long-weave", "big-afro", "headwrap"])
+    for (const headwear of avatarOptions.headwear) {
+      const a = normalizeAvatar({ bodyType, hairstyle, headwear, topStyle: "blouse" });
+      const { g, look } = buildAvatarGeometry(a, 7);
+      const label = `${bodyType}/${hairstyle}/${headwear}`;
+      assert.equal(!!g.headwear, headwear !== "none", label);
+      assert.equal(!!g.drape, headwear === "hijab", label);
+      assert.equal(!!g.hair, look.hair && !["hijab", "headscarf"].includes(headwear), label);
+      assert.equal(!!g.earrings, bodyType === "feminine" && hairstyle !== "long-weave" && !["hijab", "headscarf"].includes(headwear), label);
+      assert.equal(!!g.farHeadwear, headwear !== "none", label);
+      Object.values(g).forEach((geometry) => { finite(geometry, label); geometry.dispose(); });
+    }
+assert.equal(normalizeAvatar({ headwear: "nonsense" as any }).headwear, "none", "unknown headwear falls back");
+assert.equal(normalizeAvatar({ headwear: "hijab", headwearColor: "red" }).headwearColor, "#3b4f7a", "bad colour falls back");
 // Mouth is lips, not a dark bar: no near-black features below the nose.
 for (const bodyType of avatarOptions.bodyType) {
   const { g } = buildAvatarGeometry(normalizeAvatar({ bodyType }), 1);

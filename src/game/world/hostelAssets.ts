@@ -28,6 +28,20 @@ function part(
   return m;
 }
 type Builder = (g: T.Group) => void;
+const torus = new T.TorusGeometry(1, 0.12, 6, 16);
+function watch(g: T.Group, band: string, face: string) {
+  part(g, [0.13, 0.13, 0.13], [0, 0.13, 0], band, new T.TorusGeometry(1, 0.28, 6, 18));
+  part(g, [0.09, 0.03, 0.09], [0, 0.26, 0], face, cylinder).rotation.x = 0;
+}
+function car(g: T.Group, paint: string, scale: number, suv = false, boxy = false) {
+  const k = scale, h = suv ? 1.25 : 1;
+  part(g, [1.8 * k, 0.45 * h, 4.2 * k], [0, 0.5 * h, 0], paint);
+  part(g, [1.6 * k, (boxy ? 0.7 : 0.5) * h, (boxy ? 2.6 : 2.2) * k], [0, (boxy ? 1.05 : 0.95) * h, boxy ? -0.1 : -0.2], paint);
+  part(g, [1.62 * k, (boxy ? 0.5 : 0.36) * h, (boxy ? 2.5 : 2.0) * k], [0, (boxy ? 1.07 : 0.97) * h, boxy ? -0.1 : -0.2], "#1e293b");
+  for (const x of [-0.85 * k, 0.85 * k]) for (const z of [-1.35 * k, 1.35 * k])
+    part(g, [0.36 * h, 0.22, 0.36 * h], [x, 0.36 * h, z], "#111111", cylinder).rotation.z = Math.PI / 2;
+  for (const x of [-0.6 * k, 0.6 * k]) part(g, [0.3, 0.12, 0.03], [x, 0.6 * h, 2.1 * k], "#fef3c7");
+}
 const box = (g: T.Group, s: number[], p: number[], c = green) =>
   part(g, s, p, c);
 const disc = (g: T.Group, r: number, h: number, p: number[], c = dark) =>
@@ -268,6 +282,75 @@ export const HOSTEL_ASSET_REGISTRY: Record<string, Builder> = {
     box(g, [0.32, 0.22, 0.015], [-0.06, 0.15, 0.19], "#2a3438");
     box(g, [0.1, 0.24, 0.015], [0.19, 0.15, 0.19], "#c8c8c2");
   },
+  // Migration 041. Bed frames are placed at the mattress top (y 0.32), so they reach down to the floor.
+  hostel_bed_double: (g) => {
+    box(g, [1.45, 0.22, 2.15], [0, -0.21, 0], "#7a5232");
+    box(g, [1.38, 0.13, 2.06], [0, -0.055, 0], "#e7e2d6");
+    box(g, [1.45, 0.75, 0.08], [0, 0.05, -1.08], "#6b4528");
+    box(g, [1.45, 0.3, 0.06], [0, -0.17, 1.08], "#6b4528");
+    for (const x of [-0.66, 0.66]) for (const z of [-1.02, 1.02]) box(g, [0.07, 0.12, 0.07], [x, -0.29, z], "#4a2f1b");
+  },
+  hostel_bed_king: (g) => {
+    box(g, [1.6, 0.24, 2.25], [0, -0.2, 0], "#3a2f3f");
+    box(g, [1.52, 0.15, 2.16], [0, -0.045, 0], "#f3efe6");
+    box(g, [1.52, 0.03, 0.9], [0, 0.04, 0.55], "#7c3f58");
+    box(g, [1.7, 1.05, 0.14], [0, 0.18, -1.15], "#4b3a52");
+    for (const x of [-0.56, 0, 0.56]) box(g, [0.44, 0.78, 0.05], [x, 0.24, -1.07], "#5d4966");
+    box(g, [1.6, 0.26, 0.08], [0, -0.17, 1.13], "#3a2f3f");
+  },
+  hostel_ac: (g) => {
+    box(g, [0.9, 0.28, 0.22], [0, 0, 0.11], "#f4f6f6");
+    box(g, [0.82, 0.04, 0.02], [0, -0.1, 0.225], "#c9d0d0");
+    box(g, [0.86, 0.02, 0.18], [0, -0.135, 0.12], "#dde3e3");
+    const light = part(g, [0.02, 0.02, 0.01], [0.36, 0.06, 0.225], "#3a3a3a", sphere);
+    light.material = new T.MeshStandardMaterial({ color: "#3a3a3a" });
+    light.name = "fridgeLight";
+  },
+  hostel_fridge_big: (g) => {
+    box(g, [0.85, 1.75, 0.7], [0, 0.875, 0], "#cfd5d8");
+    box(g, [0.012, 1.68, 0.02], [0, 0.88, 0.355], "#9aa3a8");
+    for (const x of [-0.07, 0.07]) box(g, [0.035, 0.5, 0.04], [x, 1.05, 0.38], "#7b858a");
+    const light = part(g, [0.025, 0.025, 0.015], [-0.3, 1.6, 0.36], "#3a3a3a", sphere);
+    light.material = new T.MeshStandardMaterial({ color: "#3a3a3a" });
+    light.name = "fridgeLight";
+  },
+  hostel_laptop: (g) => {
+    box(g, [0.36, 0.02, 0.25], [0, 0.01, 0.01], "#9ca3af");
+    box(g, [0.3, 0.004, 0.12], [0, 0.022, -0.02], "#374151");
+    const lid = new T.Group();
+    lid.position.set(0, 0.02, -0.115);
+    lid.rotation.x = -0.32;
+    g.add(lid);
+    box(lid, [0.36, 0.23, 0.012], [0, 0.115, 0], "#9ca3af");
+    const screen = part(lid, [0.32, 0.19, 0.004], [0, 0.118, 0.008], "#12201d");
+    screen.material = new T.MeshStandardMaterial({ color: "#12201d" });
+    screen.name = "tvScreen";
+  },
+  // Fashion and cars only appear as shop thumbnails.
+  fashion_watch_casio: (g) => watch(g, "#1f2937", "#9ca3af"),
+  fashion_watch_smart: (g) => watch(g, "#0f172a", "#38bdf8"),
+  fashion_watch_gold: (g) => watch(g, "#b8860b", "#fde68a"),
+  fashion_bag_backpack: (g) => {
+    box(g, [0.34, 0.44, 0.18], [0, 0.22, 0], "#1d4ed8");
+    box(g, [0.26, 0.18, 0.06], [0, 0.14, 0.11], "#1e3a8a");
+    box(g, [0.04, 0.4, 0.03], [-0.1, 0.24, -0.1], "#111827");
+    box(g, [0.04, 0.4, 0.03], [0.1, 0.24, -0.1], "#111827");
+  },
+  fashion_bag_handbag: (g) => {
+    box(g, [0.36, 0.26, 0.13], [0, 0.13, 0], "#8b4513");
+    box(g, [0.37, 0.04, 0.14], [0, 0.22, 0], "#6b3410");
+    part(g, [0.13, 0.13, 0.02], [0, 0.36, 0], "#6b3410", torus);
+  },
+  fashion_bag_designer: (g) => {
+    box(g, [0.34, 0.24, 0.14], [0, 0.12, 0], "#f5f0e6");
+    box(g, [0.34, 0.08, 0.15], [0, 0.2, 0.01], "#c9a227");
+    part(g, [0.1, 0.1, 0.02], [0, 0.33, 0], "#c9a227", torus);
+    box(g, [0.06, 0.04, 0.01], [0, 0.17, 0.08], "#b8860b");
+  },
+  car_corolla: (g) => car(g, "#c0c4c8", 1),
+  car_camry: (g) => car(g, "#1f2937", 1.05),
+  car_lexus: (g) => car(g, "#7f1d1d", 1.12, true),
+  car_gwagon: (g) => car(g, "#111111", 1.15, true, true),
 };
 // Non-furniture catalogue previews are still generated from geometry, never external photography.
 for (const id of [

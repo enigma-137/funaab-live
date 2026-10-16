@@ -13,6 +13,7 @@ export const HEAD_SCALE = 0.88;
 const LONG_SLEEVES = ["shirt", "hoodie", "jacket", "kaftan", "jumpsuit"];
 const PUFF_SLEEVES = ["blouse", "gown"];
 const OPEN_NECK = ["tank-top", "gown", "blouse"];
+const COVERS_HAIR: string[] = ["hijab", "headscarf"];
 
 /** Which material each body part wears, derived from the outfit. */
 export function avatarLook(a: StudentAvatar) {
@@ -40,7 +41,9 @@ export function avatarLook(a: StudentAvatar) {
     hairMaterial: a.hairstyle === "headwrap" ? ("top" as const) : ("hair" as const),
     sole: a.shoeStyle === "sneakers",
     foot: a.shoeStyle === "sandals",
-    earrings: a.bodyType === "feminine" && a.hairstyle !== "long-weave",
+    earrings: a.bodyType === "feminine" && a.hairstyle !== "long-weave" && !COVERS_HAIR.includes(a.headwear),
+    /** Hijab and headscarf hide the hair completely. */
+    coversHair: COVERS_HAIR.includes(a.headwear),
   };
 }
 export type AvatarLook = ReturnType<typeof avatarLook>;
@@ -241,12 +244,60 @@ export function buildAvatarGeometry(a: StudentAvatar, seed: number) {
     );
   }
   // The cap hugs the scalp, so it needs the smooth sphere or the skin shows between facets.
-  const hairPieces = [capped && ellipsoids([cap, capBack], true), hair.length && ellipsoids(hair)].filter(
+  const hairPieces = look.coversHair ? [] : [capped && ellipsoids([cap, capBack], true), hair.length && ellipsoids(hair)].filter(
     (p): p is THREE.BufferGeometry => !!p,
   );
   if (hairPieces.length) {
     g.hair = hairPieces.length > 1 ? mergeGeometries(hairPieces)! : hairPieces[0];
     if (hairPieces.length > 1) hairPieces.forEach((p) => p.dispose());
+  }
+
+  // ---- Headwear (head frame; sits over the hair) ----------------------------------------
+  const hz = fw * 1.06;
+  const wear = a.headwear;
+  const hwParts: Part[] = [];
+  if (wear === "face-cap") {
+    hwParts.push(
+      [0, 0.165, -0.012, fw + 0.024, 0.098, hz + 0.022],
+      [0, 0.108, hz + 0.075, fw * 0.86, 0.012, 0.105, -0.12, 0, 0],
+      [0, 0.17, hz - 0.02, 0.03, 0.03, 0.03],
+    );
+  } else if (wear === "head-band") {
+    for (let i = 0; i < 20; i++) {
+      const t = (i * Math.PI * 2) / 20;
+      hwParts.push([Math.cos(t) * (fw + 0.016), 0.128, Math.sin(t) * (hz + 0.012) - 0.018, 0.034, 0.024, 0.034]);
+    }
+  } else if (wear === "beanie") {
+    hwParts.push(
+      [0, 0.172, -0.014, fw + 0.034, 0.118, hz + 0.034],
+      [0, 0.105, -0.014, fw + 0.04, 0.034, hz + 0.04],
+      [0, 0.292, -0.014, 0.04, 0.04, 0.04],
+    );
+  } else if (wear === "kufi") {
+    hwParts.push(
+      [0, 0.19, -0.01, fw * 0.96, 0.07, hz * 0.98],
+      [0, 0.158, -0.01, fw * 0.99, 0.02, hz * 1.0],
+    );
+  } else if (wear === "hijab" || wear === "headscarf") {
+    // Crown over the forehead line, panels framing the cheeks, and a back that falls to the nape.
+    hwParts.push(
+      [0, 0.17, -0.02, fw + 0.034, 0.104, hz + 0.032],
+      [0, 0.12, -0.02, fw + 0.036, 0.05, hz + 0.036],
+      ...both((s) => [[s * (fw + 0.026), wear === "hijab" ? -0.04 : 0.0, -0.045, 0.04, wear === "hijab" ? 0.2 : 0.15, 0.15] as Part]),
+      [0, wear === "hijab" ? -0.04 : -0.01, -0.1, fw + 0.03, wear === "hijab" ? 0.23 : 0.18, 0.1],
+    );
+    if (wear === "hijab") hwParts.push([0, -0.215, 0.012, fw * 0.8, 0.036, hz * 0.8]);
+  }
+  if (hwParts.length) g.headwear = ellipsoids(hwParts, true);
+  if (wear === "hijab") {
+    // Drape over the neck and shoulders down to the chest (torso frame).
+    const dw = width;
+    g.drape = ellipsoids([
+      [0, 1.56, -0.01, 0.15, 0.09, 0.14],
+      [0, 1.47, 0, dw * 0.96, 0.07, 0.15],
+      [0, 1.36, 0.05, dw * 0.74, 0.12, 0.1],
+      [0, 1.3, -0.085, dw * 0.8, 0.18, 0.085],
+    ]);
   }
 
   // ---- Torso ------------------------------------------------------------------------
@@ -430,6 +481,13 @@ export function buildAvatarGeometry(a: StudentAvatar, seed: number) {
   if (["long-weave", "locs", "braids", "bob"].includes(style))
     farHair.push(head(0, -0.02, -0.13, 0.16, style === "bob" ? 0.13 : 0.2, 0.09));
   e("farHair", farHair);
+  if (wear !== "none") {
+    const farWear: Part[] = [];
+    if (wear === "hijab" || wear === "headscarf") farWear.push(head(0, -0.01, -0.03, fw + 0.04, 0.25, fw * 1.06 + 0.04));
+    else farWear.push(head(0, 0.14, -0.02, fw + 0.032, 0.11, fw * 1.06 + 0.03));
+    if (wear === "hijab") farWear.push([0, 1.4, 0, w + 0.05, 0.18, 0.16]);
+    e("farHeadwear", farWear);
+  }
   e("farLegs", [
     [-0.115, 0.48, 0, 0.1, 0.43, 0.1],
     [0.115, 0.48, 0, 0.1, 0.43, 0.1],

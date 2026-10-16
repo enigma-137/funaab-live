@@ -5,6 +5,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { PlayerState } from '../../types/game';
 import { AvatarModel } from './AvatarModel';
+import { CarBody } from '../vehicles/CarBody';
+import { useCarStore } from '../../stores/carStore';
+import { DRIVER_SEAT } from '../../config/cars';
 import { diningSpotAt } from '../../config/campusWorld';
 import { useGameStore } from '../../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -53,6 +56,9 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
     groupRef.current.rotation.y += rotDiff * Math.min(1, delta * 14);
   });
 
+  // Getting a lift in this car with the inside view on: the cockpit replaces the body.
+  const insideThisCar = useCarStore((s) => s.view === 'inside' && s.ride?.driver === player.connectionId);
+
   const handleClick = (e: any) => {
     e.stopPropagation();
     setSelectedPlayer(player);
@@ -67,15 +73,19 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
       onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
     >
-      <AvatarModel
-        userId={player.id}
-        username={player.username || 'Student'}
-        college={player.college || 'COLENG'}
-        avatarConfig={player.avatarConfig}
-        animation={player.animation || 'idle'}
-        held={player.heldItem}
-        table={player.animation === 'sit' ? diningSpotAt(player.position) : null}
-      />
+      {player.car && !insideThisCar && <CarBody id={player.car} />}
+      <group position={player.car ? DRIVER_SEAT : [0, 0, 0]}>
+        <AvatarModel
+          userId={player.id}
+          username={player.username || 'Student'}
+          college={player.college || 'COLENG'}
+          avatarConfig={player.avatarConfig}
+          animation={player.car ? 'sit' : player.animation || 'idle'}
+          held={player.car ? undefined : player.heldItem}
+          table={!player.car && player.animation === 'sit' ? diningSpotAt(player.position) : null}
+          hidden={!!player.car || !!player.rideWith}
+        />
+      </group>
     </group>
   );
 };

@@ -1,13 +1,15 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound, type PSLastRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
-import { fareFor, kekeDestinations, PARKED_KEKE_ID, ROUTE_FARE } from '../src/config/kekeRoutes';
-import { createKeke, bookRide, tickKeke, advanceKekeElapsed, seatPosition, exitPosition, type TransitState } from '../src/config/kekeSimulation';
+import { fareFor, kekeDestinations, KOROPE, KOROPE_ID, PARKED_KEKE_ID, ROUTE_FARE, routeStops, STOP_DWELL } from '../src/config/kekeRoutes';
+import { createKeke, createKorope, bookRide, tickKeke, advanceKekeElapsed, dwellAt, seatPosition, seatsOf, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
 import { HELD_ITEM_KINDS, HELD_ITEM_MS, TABLE_ITEM_MS } from '../src/config/heldItems';
 import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
+import { ECONOMY_CONFIG } from '../src/config/economy';
+import { isCarId } from '../src/config/cars';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
 
@@ -120,6 +122,11 @@ interface PlayerState {
   seatNumber?: number;
   handRaised?: boolean;
   isDining?: boolean;
+  /** The car they're driving (config/cars id), if any. */
+  car?: string | null;
+  /** Getting a lift: the driver's connection id and which passenger seat (0 front, 1 back). */
+  rideWith?: string | null;
+  rideSeat?: number;
   lastUpdated: number;
 }
 
@@ -164,6 +171,8 @@ interface LectureRoomState {
     seatNumber: number;
     isHandRaised: boolean;
     joinedAt: number;
+    pos?: [number, number, number]; // standing spot inside the hall (x, z, facing)
+    moving?: boolean;
   }>;
   lecturerSpeech: string;
   boardText: string;
@@ -411,6 +420,7 @@ export class WorldRoomDO {
 
     this.kekes.set('keke-1',createKeke(false));
     this.kekes.set(PARKED_KEKE_ID,createKeke(true));
+    this.kekes.set(KOROPE_ID,createKorope());
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
@@ -488,6 +498,7 @@ export class WorldRoomDO {
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
+      this.releaseCarRiders(sessionConnId, 'driver_left');
       this.players.delete(sessionConnId);
       this.broadcastToRoom(
         matchingSession?.room || 'world:funaab:main',
@@ -576,6 +587,31 @@ export class WorldRoomDO {
   }
 
   private transitBusy=false;
+  /** Students with the booking sheet open at a stop: kekeId → connectionId → { since, until }. */
+  private kekeHolds=new Map<string,Map<string,{since:number;until:number}>>();
+  private holdActive(kekeId:string,now:number){
+    const holds=this.kekeHolds.get(kekeId);if(!holds)return false;
+    let active=false;
+    for(const [id,h] of [...holds]){
+      if(!this.players.has(id)||h.until<=now||now-h.since>STOP_DWELL.holdMaxMs){holds.delete(id);continue;}
+      active=true;
+    }
+    return active;
+  }
+  /** A student opened (or closed) the booking sheet: the vehicle waits while they choose. */
+  private holdKeke(session:SessionData,data:any){
+    const k=this.kekes.get(String(data.kekeId)),id=session.connectionId;
+    if(!k||k.id===PARKED_KEKE_ID||!id)return;
+    const holds=this.kekeHolds.get(k.id)??new Map();this.kekeHolds.set(k.id,holds);
+    if(!data.holding){holds.delete(id);return;}
+    this.advanceTrustedPosition(session);
+    const pos=session.trustedPosition;
+    if(!pos||Math.hypot(pos[0]-k.position[0],pos[2]-k.position[2])>8||k.passengers.includes(id))return;
+    const now=Date.now(),existing=holds.get(id);
+    // Heartbeats renew the hold, but one student can't keep a vehicle forever.
+    if(existing&&now-existing.since>STOP_DWELL.holdMaxMs)return;
+    holds.set(id,{since:existing?.since??now,until:now+STOP_DWELL.holdTtlMs});
+  }
   private tickKekeSimulation() {
     if(this.transitBusy)return;
     for(const k of this.kekes.values()) {
@@ -585,6 +621,8 @@ export class WorldRoomDO {
       const previousWaypoint = k.currentWaypointIndex;
       const previousDeadline = k.deadline;
       const previousStopped = k.isStopped;
+      // Someone choosing a ride at a stop keeps the vehicle there until they pay or close the sheet.
+      if(k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID&&this.holdActive(k.id,Date.now())&&k.deadline<Date.now()+1000)k.deadline=Date.now()+1000;
       const arrived=tickKeke(k,Date.now(),.1);
       if (previousPosition.some((value, index) => value !== k.position[index])
         || previousRotation !== k.rotation
@@ -602,16 +640,24 @@ export class WorldRoomDO {
         for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.claimedPosition=p.position;session.trustedAt=Date.now();}
         if(arrived && (k.id===PARKED_KEKE_ID || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
-      if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund');
+      // Dwell depends on free seats, which riders getting off at this stop have just freed.
+      if(arrived&&previousPhase==='MOVING'&&k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID)k.deadline=Date.now()+dwellAt(k,k.position);
+      if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund','The road ahead was blocked. Your fare was refunded.');
+      if(k.id===KOROPE_ID){
+        // Riders who waited too long for a full load get their fare back and the bus starts over.
+        if(k.phase==='WAITING'&&k.passengers.length&&k.waitUntil&&Date.now()>=k.waitUntil){for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund','The Korope did not fill up, so your fare was refunded. Try again when more students are around.');k.waitUntil=0;this.kekesDirty=true;}
+        if(k.phase==='BLOCKED'&&!k.passengers.length){Object.assign(k,createKorope());this.kekesDirty=true;}
+      }
     }
   }
   private async settleTicket(ticket:string,action:'complete'|'refund') {
     const key='keke-settle:'+ticket,body={p_ticket:ticket,p_action:action};
-    await this.state.storage.put(key,{body,due:Date.now()});
+    const storage:any=this.state.storage,previous=typeof storage.get==='function'?await storage.get(key):undefined;
+    await this.state.storage.put(key,{body,due:Date.now(),user:previous?.user});
     await this.state.storage.setAlarm(Date.now()+60000);
     try{await this.dbRpc('keke_settle_trusted',body);await this.state.storage.delete(key);}catch{/* Durable alarm retries idempotently. */}
   }
-  private async dropPassenger(k:TransitState,id:string,action:'complete'|'refund') {
+  private async dropPassenger(k:TransitState,id:string,action:'complete'|'refund',message?:string) {
     const ticket=k.paid[id];delete k.paid[id];delete k.targets[id];
     k.passengers=k.passengers.filter(p=>p!==id);
     const p=this.players.get(id),position=exitPosition(k);
@@ -619,11 +665,18 @@ export class WorldRoomDO {
     this.kekesDirty = true;
     for(const [socket,session] of this.sessions)if(session.connectionId===id){
       session.trustedPosition=position;session.claimedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
-      socket.send(JSON.stringify({type:'keke_dropoff',position,reason:action==='complete'?'Arrived':'Ride ended'}));
+      socket.send(JSON.stringify({type:'keke_dropoff',position,reason:message??(action==='complete'?'Arrived':'Ride ended')}));
     }
     if(action==='refund'&&k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'&&k.passengers.length===0)Object.assign(k,createKeke(true));
     if(ticket)await this.settleTicket(ticket,action);
     this.sendToConnections([id],JSON.stringify({type:'wallet_refresh'}));
+  }
+  private async settleStaleTickets(userId:string) {
+    const left=await this.state.storage.list<any>({prefix:'keke-settle:'});
+    for(const [key,entry] of left){
+      if(entry?.user!==userId)continue;
+      try{await this.dbRpc('keke_settle_trusted',entry.body);await this.state.storage.delete(key);}catch{/* The durable alarm retries. */}
+    }
   }
   private async boardKeke(socket:WebSocket,session:SessionData,data:any) {
     if(this.transitBusy)throw new Error('Another student is boarding. Try again.');
@@ -633,22 +686,37 @@ export class WorldRoomDO {
     if(p.kekeRiding)return {kekeId:p.kekeId};
     this.advanceTrustedPosition(session);
     if(!session.trustedPosition||Date.now()-(session.trustedAt||0)>5000||Math.hypot(session.trustedPosition[0]-k.position[0],session.trustedPosition[2]-k.position[2])>8)throw new Error('Walk closer to the Keke');
-    if(k.passengers.length>=3)throw new Error('This Keke is full');
-    if(!['IDLE','BOARDING'].includes(k.phase))throw new Error('Wait for the Keke to stop');
+    const korope=k.id===KOROPE_ID;
+    if(k.passengers.length>=seatsOf(k))throw new Error(korope?'The Korope is full':'This Keke is full');
+    if(!['IDLE','BOARDING',...(korope?['WAITING']:[])].includes(k.phase))throw new Error(korope?'The Korope is on its way. Wait at a stop.':'Wait for the Keke to stop');
     const destinationId=k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'?k.destinationId:data.destinationId;
     if(!kekeDestinations.some(d=>d.id===destinationId)||destinationId==='car-park')throw new Error('Choose a campus destination');
-    const fare=k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
+    // Route vehicles only stop at route stops; a rider asking for anywhere else would never get off.
+    if(k.id!==PARKED_KEKE_ID&&!routeStops.includes(destinationId))throw new Error('This ride does not stop there. Choose a stop on the route.');
+    const fare=korope?KOROPE.fare:k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
     const ticket=String(data.requestId||'');if(!/^[0-9a-f-]{36}$/i.test(ticket))throw new Error('Invalid ride request');
     this.transitBusy=true;
     try{
       // Write recovery intent before charging. A Worker restart refunds interrupted rides.
-      await this.state.storage.put('keke-settle:'+ticket,{body:{p_ticket:ticket,p_action:'refund'},due:Date.now()+600000});
+      // Rides lost to a restart leave a reserved ticket behind, and the database allows one reserved
+      // ticket per student. This student isn't riding (checked above), so settle any they left behind.
+      await this.settleStaleTickets(session.id);
+      await this.state.storage.put('keke-settle:'+ticket,{body:{p_ticket:ticket,p_action:'refund'},due:Date.now()+600000,user:session.id});
       await this.state.storage.setAlarm(Date.now()+60000);
-      const receipt=await this.dbRpc('keke_reserve_trusted',{p_ticket:ticket,p_user:session.id,p_destination:destinationId,p_fare:fare});
+      let receipt:any;
+      try{receipt=await this.dbRpc('keke_reserve_trusted',{p_ticket:ticket,p_user:session.id,p_destination:destinationId,p_fare:fare});}
+      catch(e){
+        if(/one_reserved_keke_ticket/.test(String((e as Error).message)))throw new Error('Your last ride is still being settled. Try again in a minute.');
+        throw e;
+      }
       if(socket.readyState!==WebSocket.OPEN||!this.players.has(session.connectionId)){
         await this.settleTicket(ticket,'refund');throw new Error('Ride cancelled after disconnect');
       }
       if(k.phase==='IDLE')bookRide(k,destinationId,Date.now(),crypto.randomUUID());
+      if(korope&&k.phase==='WAITING'&&!k.passengers.length)k.waitUntil=Date.now()+KOROPE.waitMs;
+      this.kekeHolds.get(k.id)?.delete(session.connectionId);
+      // Time to sit down: a route vehicle doesn't pull away the instant someone pays.
+      if(k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID)k.deadline=Math.max(k.deadline,Date.now()+STOP_DWELL.boardedGraceMs);
       k.passengers.push(session.connectionId);k.paid[session.connectionId]=ticket;k.targets[session.connectionId]=destinationId;
       p.kekeRiding=true;p.kekeId=k.id;p.animation='sit';p.position=seatPosition(k,session.connectionId);
       this.dirtyPlayerIds.add(session.connectionId);
@@ -676,7 +744,11 @@ export class WorldRoomDO {
         animation: player.animation,
         kekeRiding: player.kekeRiding,
         kekeId: player.kekeId,
-        currentLectureId: player.currentLectureId,
+        car: player.car ?? null,
+        rideWith: player.rideWith ?? null,
+        rideSeat: player.rideSeat ?? null,
+        // null (not undefined) so clients clear it when a student walks out of a hall.
+        currentLectureId: player.currentLectureId ?? null,
         currentZone: player.currentLectureId
           ? getZoneName(0, 0, player.currentLectureId)
           : (player.currentZone || getZoneName(player.position?.[0] || 0, player.position?.[2] || 0)),
@@ -726,6 +798,13 @@ export class WorldRoomDO {
    * trusted position keeps catching up over time. Previously a reconnect (trusted reset to spawn
    * while the client stayed put) froze the trusted position forever, breaking jobs, keke and bets.
    */
+  /** Everyone getting a lift from this driver gets out (driver parked, left or disconnected). */
+  private releaseCarRiders(driverConn: string, reason: string) {
+    const out: string[] = [];
+    for (const [id, p] of this.players) if (p.rideWith === driverConn) { p.rideWith = null; p.rideSeat = undefined; this.dirtyPlayerIds.add(id); out.push(id); }
+    if (out.length) { this.sendToConnections(out, JSON.stringify({ type: 'car_ride_end', reason })); this.scheduleBatchBroadcast(); }
+  }
+
   private advanceTrustedPosition(session: SessionData, now = Date.now()) {
     const claimed = session.claimedPosition;
     if (!claimed) return;
@@ -783,7 +862,7 @@ export class WorldRoomDO {
       throw new Error('Walk up to the Campus Bet counter to place a ticket.');
     }
     const stake = data.stake;
-    if (!isValidCampusBetStake(stake)) throw new Error('Stake must be ₦50–₦500 in ₦10 steps.');
+    if (!isValidCampusBetStake(stake)) throw new Error('Stake must be ₦500–₦5,000 in ₦100 steps.');
     const picks = data.picks;
     if (!Array.isArray(picks) || picks.length !== 5 || !picks.every((p) => CAMPUS_BET_PICKS.includes(p))) throw new Error('Pick a result for all 5 matches.');
     const roundId = String(data.roundId || '');
@@ -1662,13 +1741,17 @@ export class WorldRoomDO {
                 && [...this.psMatches.values()].some((m) => m.status !== 'finished' && m.stationId === 'ps5-station-1' && (m.hostId === current.id || m.guestId === current.id)))
                 this.endPSMatchesFor(current.id, 'walked_away');
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
-              const animation = ['idle','walk','run','sit','sleep','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
+              const animation = ['idle','walk','run','sit','sleep','pray','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
+              const car = isCarId(data.car) ? data.car : null;
               if (player.position.some((value, index) => value !== data.position[index])
                 || player.rotation !== rotation
-                || player.animation !== animation) this.dirtyPlayerIds.add(sessionConnId);
+                || player.animation !== animation
+                || (player.car ?? null) !== car) this.dirtyPlayerIds.add(sessionConnId);
               player.position = data.position;
               player.rotation = rotation;
               player.animation = animation;
+              if (player.car && !car) this.releaseCarRiders(sessionConnId, 'parked');
+              player.car = car;
               this.loveGardenGoals(current, animation);
               if (current.posShift && current.trustedPosition && Math.hypot(current.trustedPosition[0] - POS_KIOSK.serviceSpot[0], current.trustedPosition[2] - POS_KIOSK.serviceSpot[2]) > POS_KIOSK.radius + 1) {
                 current.posShift = undefined;
@@ -1683,6 +1766,10 @@ export class WorldRoomDO {
 
           case 'ping': {
             webSocket.send(JSON.stringify({ type: 'pong', t: data.t }));
+            // Standing still sends no moves: check the Love Garden goals on the heartbeat too, so
+            // someone already in the garden when Campus Night starts at 8pm still gets it.
+            const pinger = this.sessions.get(webSocket), still = sessionConnId ? this.players.get(sessionConnId) : undefined;
+            if (pinger && still && !still.kekeRiding) { this.advanceTrustedPosition(pinger); this.loveGardenGoals(pinger, still.animation); }
             break;
           }
 
@@ -1800,6 +1887,56 @@ export class WorldRoomDO {
             catch(e){webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:(e as Error).message}));}
             break;
           }
+          case 'keke_hold': {
+            const current=this.sessions.get(webSocket);if(!current||current.room!=='world:funaab:main')return;
+            this.holdKeke(current,data);
+            break;
+          }
+          // Lifts: hop into a stopped car (two passengers at most), or get out.
+          case 'car_ride': {
+            if (!sessionConnId) return;
+            const me = this.players.get(sessionConnId), session = this.sessions.get(webSocket);
+            const driverId = String(data.driver || ''), driver = this.players.get(driverId);
+            const fail = (error: string) => webSocket.send(JSON.stringify({ type: 'car_ride_result', ok: false, error }));
+            if (!me || !session || !driver || driverId === sessionConnId) return fail('That car is not here.');
+            if (!driver.car) return fail('They are not driving.');
+            if (me.car || me.kekeRiding) return fail('Get out of your own ride first.');
+            const driverSession = [...this.sessions.values()].find((x) => x.connectionId === driverId);
+            if (!driverSession || driverSession.room !== session.room) return fail('That car is not here.');
+            if (Math.hypot(me.position[0] - driver.position[0], me.position[2] - driver.position[2]) > 6) return fail('Walk up to the car first.');
+            const taken = [...this.players.values()].filter((p) => p.rideWith === driverId).map((p) => p.rideSeat);
+            const seat = [0, 1].find((n) => !taken.includes(n));
+            if (seat === undefined) return fail('The car is full (two passengers).');
+            me.rideWith = driverId; me.rideSeat = seat; me.animation = 'sit';
+            this.dirtyPlayerIds.add(sessionConnId); this.scheduleBatchBroadcast();
+            webSocket.send(JSON.stringify({ type: 'car_ride_result', ok: true, driver: driverId, seat }));
+            this.sendToConnections([driverId], JSON.stringify({ type: 'car_rider_joined', username: me.username }));
+            break;
+          }
+          // Group chats: the sender tells online members to fetch the new message from the database
+          // (only members can read it there), so this carries no message text.
+          case 'group_ping': {
+            const session = this.sessions.get(webSocket);
+            if (!session) return;
+            const groupId = String(data.groupId || '').slice(0, 64);
+            const to = new Set((Array.isArray(data.to) ? data.to : []).slice(0, 20).map((x: unknown) => String(x)));
+            if (!groupId || to.size === 0) return;
+            const ping = JSON.stringify({ type: 'group_ping', groupId, from: session.username });
+            for (const [ws, s] of this.sessions) {
+              if (ws === webSocket || !to.has(s.id)) continue;
+              try { ws.send(ping); } catch { /* closed */ }
+            }
+            break;
+          }
+          case 'car_ride_leave': {
+            if (!sessionConnId) return;
+            const me = this.players.get(sessionConnId);
+            if (!me || !me.rideWith) return;
+            me.rideWith = null; me.rideSeat = undefined;
+            this.dirtyPlayerIds.add(sessionConnId); this.scheduleBatchBroadcast();
+            break;
+          }
+
           case 'keke_exit': {
             if(!sessionConnId)return;
             const k=[...this.kekes.values()].find(k=>k.passengers.includes(sessionConnId!));
@@ -1911,7 +2048,8 @@ export class WorldRoomDO {
             if (!session) return;
 
             const lectureId = String(data.lectureId || '');
-            const seatNumber = Number(data.seatNumber) || 1;
+            // 0 = standing inside the hall (not seated yet).
+            const seatNumber = Math.max(0, Math.min(99, Math.floor(Number(data.seatNumber) || 0)));
 
             session.room = `world:funaab:lecture:${lectureId}`;
             session.currentLectureId = lectureId;
@@ -1922,6 +2060,9 @@ export class WorldRoomDO {
               player.currentLectureId = lectureId;
               player.seatNumber = seatNumber;
               player.currentZone = getZoneName(0, 0, lectureId);
+              // Campus clients hide students who are inside a hall and count them at its door.
+              this.dirtyPlayerIds.add(sessionConnId);
+              this.broadcastBatchPlayers();
             }
 
             let roomState = this.lectureRooms.get(lectureId);
@@ -1944,6 +2085,7 @@ export class WorldRoomDO {
               seatNumber,
               isHandRaised: false,
               joinedAt: Date.now(),
+              pos: roomState.activeStudents[sessionConnId]?.pos,
             };
 
             // Send classroom state to entering student
@@ -1995,6 +2137,8 @@ export class WorldRoomDO {
               player.currentLectureId = undefined;
               player.seatNumber = undefined;
               player.currentZone = getZoneName(player.position[0], player.position[2]);
+              this.dirtyPlayerIds.add(sessionConnId);
+              this.broadcastBatchPlayers();
             }
             break;
           }
@@ -2020,6 +2164,23 @@ export class WorldRoomDO {
             };
 
             this.broadcastToRoom(session.room, JSON.stringify(lectureMsg));
+            break;
+          }
+
+          case 'lecture_move': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket);
+            if (!session || !session.currentLectureId) return;
+            const student = this.lectureRooms.get(session.currentLectureId)?.activeStudents[sessionConnId];
+            if (!student) return;
+            const n = (v: unknown, lim: number) => Math.max(-lim, Math.min(lim, Number(v) || 0));
+            student.pos = [n(data.x, 8), n(data.z, 8), n(data.ry, 7)];
+            student.moving = Boolean(data.moving);
+            this.broadcastToRoom(
+              session.room,
+              JSON.stringify({ type: 'lecture_student_moved', connectionId: sessionConnId, pos: student.pos, moving: student.moving }),
+              webSocket
+            );
             break;
           }
 
@@ -2055,7 +2216,7 @@ export class WorldRoomDO {
                 type: 'activity_event',
                 eventType: 'lawn_fine',
                 username: session.username,
-                amount: 500,
+                amount: ECONOMY_CONFIG.LAWN_FINE,
                 timestamp: Date.now(),
               })
             );
@@ -2074,7 +2235,7 @@ export class WorldRoomDO {
                 eventType: 'campus_job',
                 username: session.username,
                 jobTitle: String(data.jobTitle || 'Errand').slice(0, 50),
-                reward: Number(data.reward) || 300,
+                reward: Number(data.reward) || 3000,
                 timestamp: Date.now(),
               })
             );
@@ -2135,6 +2296,7 @@ export class WorldRoomDO {
       // A Game Den match can't wait for someone who has gone; a second open tab keeps it alive.
       if (session?.id && ![...this.sessions.entries()].some(([ws, s]) => ws !== webSocket && s.id === session.id)) this.endPSMatchesFor(session.id, 'disconnected');
 
+        this.releaseCarRiders(sessionConnId, 'driver_left');
         this.players.delete(sessionConnId);
 
         // Broadcast player_left to main world

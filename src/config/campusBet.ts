@@ -7,8 +7,8 @@ export type CampusBetStatus = 'OPEN' | 'LOCKED' | 'SETTLED';
 export const CAMPUS_BET_PICKS: readonly CampusBetPick[] = ['HOME', 'DRAW', 'AWAY'];
 
 export const CAMPUS_BET_FIXTURES_PER_ROUND = 5;
-/** Stakes are whole multiples of ₦10 so every payout (including half-stake) is a whole Naira. */
-export const CAMPUS_BET_STAKE = { min: 50, max: 500, step: 10, default: 100, presets: [50, 100, 200, 300, 500] } as const;
+/** Stakes are whole multiples of ₦100 so every payout (including half-stake) is a whole Naira. */
+export const CAMPUS_BET_STAKE = { min: 500, max: 5000, step: 100, default: 1000, presets: [500, 1000, 2000, 3000, 5000] } as const;
 
 /**
  * Payout multiplier of the stake, indexed by number of correct picks (0–5).

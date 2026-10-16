@@ -17,8 +17,10 @@ async function main() {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
-  const sql = fs.readFileSync(path.join(dir, '024_room_makeover.sql'), 'utf8');
+  let sql = fs.readFileSync(path.join(dir, '024_room_makeover.sql'), 'utf8');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  // Amounts may have been rescaled since (039): also check the live functions as they are now.
+  sql += (await db.query("select string_agg(pg_get_functiondef(p.oid), chr(10)) d from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f'")).rows[0].d + fs.readFileSync(path.join(dir, '039_economy_x10.sql'), 'utf8');
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const one = async (q: string, p: unknown[] = []) => (await rows(q, p))[0];
   const call = async (user: string | null, q: string, p: unknown[] = []) => {
@@ -26,7 +28,7 @@ async function main() {
     try { return (await rows(q, p))[0]; } finally { await db.exec("reset role; select set_config('request.jwt.claim.sub','',false);"); }
   };
   let n = 0;
-  const student = async (name: string, money = 50000) => {
+  const student = async (name: string, money = 500000) => {
     const id = `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
     await db.query('insert into auth.users values($1)', [id]);
     await db.query("insert into profiles(id,username,college) values($1,$2,'COLENG')", [id, name]);
@@ -60,17 +62,17 @@ async function main() {
   const before = await balance(moyin);
   await cmd(moyin, 'decorate', { wall: 'lilac' });
   assert.equal((await room(moyin)).wall_paint, 'lilac');
-  assert.equal(await balance(moyin), before - 300, 'paint costs ₦300');
+  assert.equal(await balance(moyin), before - 3000, 'paint costs ₦3,000');
   await cmd(moyin, 'decorate', { wall: 'lilac', floor: 'wood' });
-  assert.equal(await balance(moyin), before - 300 - 800, 'only what changes is charged');
+  assert.equal(await balance(moyin), before - 3000 - 8000, 'only what changes is charged');
   assert.equal((await room(moyin)).floor_style, 'wood');
   await cmd(moyin, 'decorate', { wall: 'default' });
-  assert.equal(await balance(moyin), before - 1100, 'back to hostel white is free');
+  assert.equal(await balance(moyin), before - 11000, 'back to hostel white is free');
   await assert.rejects(() => cmd(moyin, 'decorate', { wall: 'gold' }), /Unknown paint/);
   await assert.rejects(() => cmd(moyin, 'decorate', {}), /Choose a paint or a floor/);
   const ledger = await one("select * from wallet_transactions where user_id=$1 and type='hostel_makeover' order by created_at desc limit 1", [moyin]);
   assert(ledger.description.includes('Room makeover'), 'ledger entry');
-  const broke = await student('Broke', 100);
+  const broke = await student('Broke', 1000);
   await assert.rejects(() => cmd(broke, 'decorate', { floor: 'carpet' }), /Insufficient funds/);
   assert.equal((await room(broke)).floor_style, 'default');
   // Receipts: a retried request doesn't charge twice.
@@ -78,7 +80,7 @@ async function main() {
   const b0 = await balance(moyin);
   await call(moyin, "select hostel_command('decorate','{\"floor\":\"tiles\"}'::jsonb,$1)", [req]);
   await call(moyin, "select hostel_command('decorate','{\"floor\":\"tiles\"}'::jsonb,$1)", [req]);
-  assert.equal(await balance(moyin), b0 - 700, 'idempotent retry');
+  assert.equal(await balance(moyin), b0 - 7000, 'idempotent retry');
 
   // ── New items, surfaces, switches ──
   const buy = (u: string, item: string) => cmd(u, 'purchase', { item, credit: false });

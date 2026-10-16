@@ -85,6 +85,11 @@ export function RoomControls() {
     );
   }
   if (modal || !id) return null;
+  // Walking up to the bed just shows a small round Sleep icon; tapping furniture opens the full bar.
+  if (bed && !s.selected)
+    return near ? (
+      <button className="room-quick" aria-label="Sleep" title="Sleep" onClick={() => s.rest(id)}>🛏️</button>
+    ) : null;
   return (
     <section className="room-item-bar" aria-label="Furniture actions">
       <strong>{bed ? "Starter mattress" : item?.name}</strong>

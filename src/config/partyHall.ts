@@ -1,4 +1,4 @@
-// The Arena: the campus night party & arcade hall. Opens every night (Lagos clock) with a ₦500
+// The Arena: the campus night party & arcade hall. Opens every night (Lagos clock) with a ₦5,000
 // gate fee for the night; inside are a dance floor with party lights, a bar, tic-tac-toe tables
 // and a pool table. The database sells tickets and drinks (migration 033); the Worker checks you
 // hold tonight's ticket and are inside before letting you play.
@@ -15,7 +15,7 @@ export const PARTY_HALL = {
   doorHalfWidth: 1.8,
   /** Outside the door, where the walkway from the keke stop arrives. */
   entrance: [113, 0, -45] as Point,
-  gateFee: 500,
+  gateFee: 5000,
   /** Open from 19:00 to 05:00, Lagos time. */
   opensMinute: 19 * 60,
   closesMinute: 5 * 60,

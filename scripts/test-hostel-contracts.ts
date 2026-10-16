@@ -3,12 +3,13 @@ import fs from 'node:fs';
 import { HOSTEL_SHOP, ROOM_ANCHORS } from '../src/config/hostelShop';
 import { CAMPUS_JOBS } from '../src/config/campusJobs';
 const sql=fs.readFileSync('supabase/migrations/007_hostel_life.sql','utf8');
-// Items added later (024 room makeover) are catalogued there.
-const catalogueSql=sql+fs.readFileSync('supabase/migrations/024_room_makeover.sql','utf8');
+// Items added later (024 room makeover, 041 lifestyle shop) are catalogued there.
+const catalogueSql=sql+fs.readFileSync('supabase/migrations/024_room_makeover.sql','utf8')+fs.readFileSync('supabase/migrations/041_lifestyle_shop.sql','utf8');
+const esc=(t:string)=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 assert.equal(new Set(HOSTEL_SHOP.map(i=>i.id)).size,HOSTEL_SHOP.length);
 // Identity/placement must match the 007 (and 024) catalogue rows. Prices were rebalanced by 012, so the effective
 // price parity (config = database after every migration) is checked by scripts/test-economy-db.ts.
-for(const i of HOSTEL_SHOP)assert(new RegExp(`\\('${i.id}','${i.name}','${i.category}',\\d+,'${i.placementType}',${i.credit},${i.consumable}\\)`).test(catalogueSql),i.id+' must match trusted catalogue');
+for(const i of HOSTEL_SHOP)assert(new RegExp(`\\('${i.id}','${esc(i.name)}','${i.category}',\\d+,'${i.placementType}',${i.credit},${i.consumable}\\)`).test(catalogueSql),i.id+' must match trusted catalogue');
 const transitSql=fs.readFileSync('supabase/migrations/009_campus_transit.sql','utf8');
 // Job ids/titles exist in the trusted catalogue; rewards and coordinates (moved by 009 and 012) are
 // compared against the replayed database in scripts/test-economy-db.ts.

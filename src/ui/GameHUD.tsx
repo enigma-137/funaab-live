@@ -1,4 +1,5 @@
 import {useHostelStore} from '../stores/hostelStore';
+import { useCarStore } from '../stores/carStore';
 import { usePartyStore } from '../stores/partyStore';
 import type { ArcadeTableId } from '../config/partyHall';
 import { useHustleStore } from '../stores/hustleStore';
@@ -9,6 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useWalletStore } from '../stores/walletStore';
+import { useGroupStore } from '../stores/groupStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useJobStore } from '../stores/jobStore';
 import { useInputStore } from '../stores/inputStore';
@@ -45,6 +47,11 @@ import { openFootball } from '../stores/footballStore';
 import { openCourtGame } from '../stores/courtGameStore';
 import { toast } from '../stores/toastStore';
 import { NavigationArrow } from './NavigationArrow';
+import { MiniMap } from './MiniMap';
+import { locationById } from '../config/campusLocations';
+
+const FLORAL = locationById('floral-world').position;
+const atFloralTable = (p: [number, number, number]) => Math.hypot(p[0] - FLORAL[0], p[2] - FLORAL[2]) < 6;
 
 export const GameHUD: React.FC = () => {
   const inRoom=useHostelStore(s=>!!s.owner || s.roomId === 'world:funaab:library');
@@ -99,7 +106,7 @@ export const GameHUD: React.FC = () => {
   // Classroom messages belong to the class chat only.
   const allMessages = useSocialStore((s) => s.messages);
   const messages = useMemo(() => allMessages.filter((m) => !m.lectureId), [allMessages]);
-  const unreadDmCount = useSocialStore((s) => s.unreadDmCount);
+  const unreadDmCount = useSocialStore((s) => s.unreadDmCount) + useGroupStore((s) => s.unread);
   // Whole metres only, so walking re-renders the HUD at most once per metre.
   const waypointDistance = useGameStore((s) => s.navigationDestination
     ? Math.round(Math.hypot(s.myPosition[0] - s.navigationDestination.position[0], s.myPosition[2] - s.navigationDestination.position[2]))
@@ -164,6 +171,9 @@ export const GameHUD: React.FC = () => {
     setChatInput('');
   };
 
+  const inCar = useCarStore((s) => !!s.driving || !!s.ride);
+  const carView = useCarStore((s) => s.view);
+
   const handleInteractButton = async () => {
     triggerHaptic(25);
 
@@ -175,6 +185,16 @@ export const GameHUD: React.FC = () => {
     if (isRidingKeke && currentKekeId) {
       networkManager.exitKeke(currentKekeId);
 
+      return;
+    }
+
+    if (nearbyInteractable?.type === 'car') {
+      const t = nearbyInteractable.targetId || '';
+      if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'park') window.dispatchEvent(new Event('car-park'));
+      else if (t === 'unride') useCarStore.getState().leaveRide();
+      else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
+      else setActiveModal('fuel');
       return;
     }
 
@@ -226,7 +246,7 @@ export const GameHUD: React.FC = () => {
           else setActiveModal('hustles');
           break;
         case 'lodge':
-          setActiveModal('lodge');
+          setActiveModal('estate');
           break;
         case 'party':
           setActiveModal('party');
@@ -274,6 +294,7 @@ export const GameHUD: React.FC = () => {
   const getInteractIcon = () => {
     if (isRidingKeke) return '🛺';
     if (!nearbyInteractable) return '💬';
+    if (nearbyInteractable.type === 'car') return nearbyInteractable.targetId === 'fuel' ? '⛽' : '🚗';
     switch (nearbyInteractable.type) {
       case 'library': return '📚';
       case 'keke_stop':
@@ -284,7 +305,7 @@ export const GameHUD: React.FC = () => {
       case 'restaurant_dining':
         return '🍲';
       case 'bench':
-        return '🪑';
+        return nearbyInteractable.pose === 'pray' ? '🤲' : '🪑';
       case 'football':
         return '⚽';
       case 'basketball':
@@ -294,7 +315,7 @@ export const GameHUD: React.FC = () => {
       case 'hustle':
         return nearbyInteractable.targetId === 'pos' ? '🏧' : nearbyInteractable.targetId?.startsWith('farm') ? FARM_STEPS.find((s) => `farm-${s.id}` === nearbyInteractable.targetId)?.icon ?? '🌱' : '📸';
       case 'lodge':
-        return '🏘️';
+        return nearbyInteractable.targetId === 'estate' ? '🏡' : '🏘️';
       case 'party':
         return '🪩';
       case 'arcade':
@@ -315,8 +336,9 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
+    if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     if (nearbyInteractable) {
       switch (nearbyInteractable.type) {
         case 'keke_stop':
@@ -359,8 +381,9 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
+    if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';
       case 'keke_stop':
@@ -372,7 +395,7 @@ export const GameHUD: React.FC = () => {
       case 'restaurant_dining':
         return 'Sit';
       case 'bench':
-        return nearbyInteractable.pose === 'sleep' ? 'Lie Down' : 'Sit';
+        return nearbyInteractable.pose === 'sleep' ? 'Lie Down' : nearbyInteractable.pose === 'pray' ? 'Pray' : 'Sit';
       case 'atm':
         return 'Bank';
       case 'job_board':
@@ -393,7 +416,7 @@ export const GameHUD: React.FC = () => {
           : nearbyInteractable.targetId?.startsWith('farm-') ? nearbyInteractable.actionText.replace(' here', '')
           : 'Photos';
       case 'lodge':
-        return 'Lodge';
+        return nearbyInteractable.targetId === 'estate' ? 'Estate' : 'Lodge';
       case 'party':
         return 'Arena';
       case 'arcade':
@@ -478,6 +501,18 @@ export const GameHUD: React.FC = () => {
                 <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 stroke-[2.5]" />
               </button>
             </div>
+            {/* Phones: a compact Earn button between the wallet and the compass (wider screens have the Jobs Board button). */}
+            {!inRoom && (
+              <button
+                id="btn-hud-earn"
+                aria-label="Earn money"
+                onClick={() => setActiveModal('earn')}
+                className="sm:hidden flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center rounded-2xl bg-[#0c221b]/90 backdrop-blur-xl border border-emerald-400/40 active:scale-95 transition"
+              >
+                <span className="text-[17px] leading-none" aria-hidden>💰</span>
+                <span className="mt-0.5 text-[9px] font-black uppercase tracking-wide text-emerald-300 font-['Outfit']">Earn</span>
+              </button>
+            )}
           </div>
 
           {!inRoom&&<>{/* Campus Jobs Board Quick Button */}
@@ -623,16 +658,15 @@ export const GameHUD: React.FC = () => {
         <Compass className="h-5 w-5" />
       </button>
 
+      {/* Stays on screen while following a route; tap for the full map. */}
+      {!inRoom && navigationDestination && <MiniMap onOpen={() => setActiveModal('campus_map')} />}
       {/* ACTIVE DESTINATION WAYPOINT BANNER */}
       {!inRoom && navigationDestination && (
-        <div className="mx-auto my-1 pointer-events-auto max-w-sm w-full animate-in slide-in-from-top-3">
-          <div className="p-2 sm:p-2.5 rounded-2xl bg-[#091f18]/95 border border-emerald-400/80 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2.5">
+        <div className="mx-auto my-0.5 pointer-events-auto max-w-xs w-full animate-in slide-in-from-top-3">
+          <div className="px-2 py-1 sm:p-2 rounded-xl bg-[#091f18]/80 border border-emerald-400/60 backdrop-blur-md shadow-lg flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xl shrink-0">{navigationDestination.icon || '📍'}</span>
+              <span className="text-base shrink-0">{navigationDestination.icon || '📍'}</span>
               <div className="min-w-0">
-                <div className="text-[9px] text-emerald-300/80 font-semibold uppercase tracking-wider">
-                  Target Destination
-                </div>
                 <div className="text-xs font-black text-white font-['Outfit'] truncate flex items-center gap-1.5">
                   <span>{navigationDestination.shortName}</span>
                   <span className="text-[10px] text-emerald-400 font-mono font-bold">
@@ -744,6 +778,31 @@ export const GameHUD: React.FC = () => {
           // On narrower desktops the centred button would sit on the chat input; lift it above.
           : narrowDesktop ? { bottom: `${chatClearance + 8}px` } : undefined}
       >
+        {!activeModal && seatedAt && atFloralTable(seatedAt.position) && (
+          // Seated at the Floral World terrace: order without getting up (the main button is Stand Up).
+          <div className="pointer-events-auto mb-2 flex justify-center">
+            <button
+              onClick={() => { triggerHaptic(25); setActiveModal('floral_world'); }}
+              className="flex min-h-[44px] items-center gap-2 rounded-2xl border border-amber-300/80 bg-amber-500 px-4 py-2 text-sm font-extrabold text-slate-950 shadow-xl transition active:scale-95"
+            >
+              <span>🍲</span>
+              <span>Order Food</span>
+            </button>
+          </div>
+        )}
+        {!activeModal && inCar && (
+          // In a car (driving or getting a lift): switch between the view from your seat and from behind.
+          <div className="pointer-events-auto mb-2 flex justify-center">
+            <button
+              onClick={() => { triggerHaptic(15); useCarStore.getState().toggleView(); }}
+              className="flex min-h-[40px] items-center gap-2 rounded-2xl border border-sky-300/70 bg-slate-950/90 px-3 py-1.5 text-xs font-extrabold text-white shadow-xl"
+              aria-label={carView === 'inside' ? 'Outside view' : 'Inside view'}
+            >
+              <span>{carView === 'inside' ? '🚘' : '🪟'}</span>
+              <span>{carView === 'inside' ? 'Outside view' : 'Inside view'}</span>
+            </button>
+          </div>
+        )}
         {!activeModal && (nearbyInteractable || selectedPlayer || isRidingKeke) && (
           <div className="pointer-events-auto flex justify-center">
             <button

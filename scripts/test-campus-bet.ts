@@ -55,16 +55,16 @@ assert.notEqual(validateMatchday(badP), null, 'rejects uncapped probabilities');
 }
 
 // ---------- Payout + stake rules ----------
-assert.deepEqual([0, 1, 2, 3, 4, 5].map((k) => campusBetPayout(100, k)), [0, 0, 50, 130, 250, 400]);
-assert.equal(campusBetPayout(100, 3), 130, '3/5 is a real win');
-assert.equal(campusBetPayout(100, 4), 250, '4/5 pays 2.5× stake');
-assert.equal(campusBetPayout(500, 5), 2000, 'max possible payout is ₦2,000');
+assert.deepEqual([0, 1, 2, 3, 4, 5].map((k) => campusBetPayout(1000, k)), [0, 0, 500, 1300, 2500, 4000]);
+assert.equal(campusBetPayout(1000, 3), 1300, '3/5 is a real win');
+assert.equal(campusBetPayout(1000, 4), 2500, '4/5 pays 2.5× stake');
+assert.equal(campusBetPayout(5000, 5), 20000, 'max possible payout is ₦20,000');
 for (let s = CAMPUS_BET_STAKE.min; s <= CAMPUS_BET_STAKE.max; s += CAMPUS_BET_STAKE.step)
   for (let k = 0; k <= 5; k++) assert.equal(campusBetPayout(s, k), Math.round(s * CAMPUS_BET_MULTIPLIERS[k]), `whole-Naira payout ${s}/${k}`);
-for (const ok of [50, 100, 130, 500]) assert(isValidCampusBetStake(ok));
-for (const bad of [49, 137, 501, 0, -100, 100.5, NaN, '100', null]) assert(!isValidCampusBetStake(bad));
-assert.equal(campusBetPayout(130, 2), 65, 'half-stake payouts stay whole Naira');
-assert.equal(CAMPUS_BET_STAKE.default, 100);
+for (const ok of [500, 1000, 1300, 5000]) assert(isValidCampusBetStake(ok));
+for (const bad of [499, 1370, 5001, 0, -1000, 1000.5, NaN, '1000', null, 1050]) assert(!isValidCampusBetStake(bad));
+assert.equal(campusBetPayout(1300, 2), 650, 'half-stake payouts stay whole Naira');
+assert.equal(CAMPUS_BET_STAKE.default, 1000);
 
 // ---------- Secure RNG sanity ----------
 {
@@ -96,7 +96,7 @@ const strategies: Record<string, Strategy> = {
 };
 
 const ROUNDS = 50000;
-const STAKE = 100;
+const STAKE = 1000;
 const SHIPPED = `shipped [${CAMPUS_BET_MULTIPLIERS.join(',')}]`;
 const DRAFT = 'spec draft [0,0,1,2,3,5]';
 const tables: Record<string, readonly number[]> = { [DRAFT]: [0, 0, 1, 2, 3, 5], 'no 2/5 [0,0,0,1,3,5]': [0, 0, 0, 1, 3, 5], [SHIPPED]: CAMPUS_BET_MULTIPLIERS };

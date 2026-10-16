@@ -32,7 +32,10 @@
     "test:library:browser": "node scripts/test-library-browser.cjs",
     "test:campus": "tsx scripts/test-campus-transit.ts",
     "test:keke:worker": "tsx scripts/test-keke-worker.ts",
+    "test:korope:worker": "tsx scripts/test-korope-worker.ts",
+    "test:lecture:presence": "tsx scripts/test-lecture-presence.ts",
     "test:movement-sync": "tsx scripts/test-movement-sync.ts",
+    "test:page-visibility": "tsx scripts/test-page-visibility.ts",
     "test:keke:db": "node scripts/test-keke-db.cjs",
     "test:campus:browser": "node scripts/test-campus-browser.cjs",
     "test:camera": "tsx scripts/test-mobile-camera.ts",
@@ -72,7 +75,13 @@
     "test:hustles": "tsx scripts/test-hustles-worker.ts",
     "test:hustles:browser": "tsx scripts/test-hustles-browser.ts",
     "test:economy:db": "tsx scripts/test-economy-db.ts",
-    "sim:economy": "tsx scripts/simulate-economy.ts"
+    "sim:economy": "tsx scripts/simulate-economy.ts",
+    "test:lifestyle:db": "tsx scripts/test-lifestyle-shop-db.ts",
+    "test:worship": "tsx scripts/test-worship.ts",
+    "test:estate:db": "tsx scripts/test-estate-db.ts",
+    "test:cars:db": "tsx scripts/test-cars-db.ts",
+    "test:car-rides": "tsx scripts/test-car-rides-worker.ts",
+    "test:groups:db": "tsx scripts/test-group-chat-db.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",
@@ -87,7 +96,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.173.0",
-    "traceiq-sdk-js": "^0.1.10",
+    "traceiq-sdk-js": "^0.1.11",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

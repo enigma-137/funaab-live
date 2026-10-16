@@ -47,11 +47,19 @@ async function main() {
   await db.query('update wallets set balance=3210.50 where user_id=$1', [veteran]); // played for a while
   const veteranTx = Number((await one('select count(*) n from wallet_transactions where user_id=$1', [veteran])).n);
 
-  await run(files.filter((f) => f >= '012'));
+  await run(files.filter((f) => f >= '012' && f < '039'));
 
   assert.equal(await balance(veteran), 3210.5, 'deployment does not touch existing balances');
   assert.equal((await call(veteran, 'select ensure_player_wallet() r')).r.balance, 3210.5, 'no second starter for existing players');
   assert.equal(Number((await one('select count(*) n from wallet_transactions where user_id=$1', [veteran])).n), veteranTx, 'no new ledger rows');
+
+  // ---------- 039: every balance ×10, one ledger row, no second starter; refuses a second run ----------
+  await run(files.filter((f) => f >= '039'));
+  assert.equal(await balance(veteran), 32105, 'existing balance ×10');
+  assert.deepEqual((await rows("select amount::numeric a,balance_after::numeric b from wallet_transactions where user_id=$1 and type='economy_rescale'", [veteran])).map((r) => [Number(r.a), Number(r.b)]), [[28894.5, 32105]], 'one ledger row for the rescale');
+  assert.equal((await call(veteran, 'select ensure_player_wallet() r')).r.balance, 32105, 'still no second starter');
+  await assert.rejects(() => run(['039_economy_x10.sql']), /already been applied/, '039 cannot be run twice');
+  await db.exec('rollback').catch(() => {});
 
   // ---------- New player: ₦7,500 exactly once ----------
   const fresh = await student('Fresher');
@@ -73,7 +81,7 @@ async function main() {
   assert.equal(await balance(fresh), E.STARTER_BALANCE + E.DAILY_RESUMPTION_ALLOWANCE);
   assert.equal((await call(fresh, 'select claim_daily_reward() r')).r.success, false, 'replay rejected');
   assert.equal((await call(fresh, 'select claim_daily_reward($1) r', [veteran])).r.success, false, 'p_user_id cannot redirect a claim');
-  assert.equal(await balance(veteran), 3210.5);
+  assert.equal(await balance(veteran), 32105);
   await db.query("update wallets set last_daily_reward_at=now()-interval '21 hours' where user_id=$1", [fresh]);
   assert.equal((await call(fresh, 'select claim_daily_reward() r')).r.success, true, 'claimable again the next day');
   let expected = E.STARTER_BALANCE + 2 * E.DAILY_RESUMPTION_ALLOWANCE;
@@ -86,10 +94,10 @@ async function main() {
     `select ensure_player_wallet('${veteran}')`,
     `select transfer_money_p2p('Fresher',1000,'gift','${veteran}')`,
   ]) await assert.rejects(() => call(null, sql), /permission denied/, sql);
-  assert.equal(await balance(veteran), 3210.5, 'P2P sender spoofing closed');
+  assert.equal(await balance(veteran), 32105, 'P2P sender spoofing closed');
   // Authenticated transfers still work, from the caller's own wallet.
   assert.equal((await call(veteran, "select transfer_money_p2p('Fresher',10,'hi',$1) r", [fresh])).r.success, true);
-  assert.equal(await balance(veteran), 3200.5, 'sender is always the caller, never p_sender_id');
+  assert.equal(await balance(veteran), 32095, 'sender is always the caller, never p_sender_id');
   expected += 10;
   assert.equal(await balance(fresh), expected);
 
@@ -112,6 +120,9 @@ async function main() {
   assert.deepEqual(fwDb, [...E.FLORAL_WORLD_MENU].sort((a, b) => a.id.localeCompare(b.id)).map((i) => ({ id: i.id, name: i.name, price: i.price, item_type: i.type })), 'Floral World menu drift');
   const fcDb = await rows("select id,name,price,item_type from campus_food_menu where vendor='food_court' order by id");
   assert.deepEqual(fcDb, [...E.FOOD_COURT_MENU].sort((a, b) => a.id.localeCompare(b.id)).map((i) => ({ id: i.id, name: i.name, price: i.price, item_type: i.type })), 'food court menu drift');
+  // Enough to taste the whole menu once.
+  await db.query('update wallets set balance=balance+50000 where user_id=$1', [fresh]);
+  expected += 50000;
   for (const item of [...E.FLORAL_WORLD_MENU, ...E.FOOD_COURT_MENU]) {
     const r = (await call(fresh, "select process_wallet_purchase('food_purchase',1,'cheap',$1,'Free food',null) r", [item.id])).r;
     assert.equal(r.success, true); assert.equal(Number(r.price), item.price, `${item.id} charged at server price`);
@@ -123,14 +134,16 @@ async function main() {
     const items = await rows('select id,name,price from food_vendor_items where vendor_id=$1 order by id', [v.id]);
     assert.deepEqual(items, [...v.items].sort((a, b) => a.id.localeCompare(b.id)).map(({ id, name, price }) => ({ id, name, price })), `${v.id} drift`);
   }
-  // Every ordinary meal is in the ₦250–₦600 band and drinks in ₦50–₦200.
-  const meals = [...E.FLORAL_WORLD_MENU, ...E.FOOD_COURT_MENU, ...FOOD_VENDOR_LIST.flatMap((v) => v.items.map((i) => ({ ...i, type: 'food' })))];
-  for (const m of meals) assert(m.type === 'drink' ? m.price >= 50 && m.price <= 200 : m.price >= 250 && m.price <= 600, `${m.id} price band`);
+  // Every ordinary meal is in the ₦2,500–₦4,000 band and drinks in ₦200–₦1,000.
+  const bar = FOOD_VENDOR_LIST.filter((v) => v.id === 'party_bar').flatMap((v) => v.items);
+  const meals = [...E.FLORAL_WORLD_MENU, ...E.FOOD_COURT_MENU, ...FOOD_VENDOR_LIST.filter((v) => v.id !== 'party_bar').flatMap((v) => v.items.map((i) => ({ ...i, type: 'food' })))];
+  assert(bar.length > 0 && bar.every((i) => i.price >= 200 && i.price <= 1500), 'Arena bar drinks ₦200–₦1,500');
+  for (const m of meals) assert(m.type === 'drink' ? m.price >= 200 && m.price <= 1000 : m.price >= 2500 && m.price <= 4000, `${m.id} price band`);
 
-  // ---------- Lawn fine still ₦500 ----------
-  assert.equal(E.LAWN_FINE, 500);
+  // ---------- Lawn fine ₦5,000 ----------
+  assert.equal(E.LAWN_FINE, 5000);
   await call(fresh, "select process_wallet_purchase('lawn_fine',$1,'Lawn Fine (Security Enforcement)',null,null,null)", [E.LAWN_FINE]);
-  expected -= 500;
+  expected -= 5000;
   assert.equal(await balance(fresh), expected);
 
   // ---------- Jobs: config = database, server pay, first-job bonus once per Lagos day ----------
@@ -140,7 +153,7 @@ async function main() {
     assert.deepEqual([row.reward, ...['source_x', 'source_z', 'dest_x', 'dest_z'].map((k) => Number(row[k]))],
       [j.reward, j.sourcePos[0], j.sourcePos[2], j.destinationPos[0], j.destinationPos[2]], `${j.id} drift`);
   }
-  assert.deepEqual(CAMPUS_JOBS.map((j) => j.reward), [500, 350, 300, 250], 'jobs pay different amounts');
+  assert.deepEqual(CAMPUS_JOBS.map((j) => j.reward), [5000, 3500, 3000, 2500], 'jobs pay different amounts');
   const doJob = async (u: string, job: typeof CAMPUS_JOBS[number], at = job.destinationPos) => {
     const accepted = (await one("select job_action_trusted($1,'accept',$2) r", [u, job.id])).r;
     await db.query("update job_runs set accepted_at=now()-interval '1 minute' where id=$1", [accepted.id]);
@@ -156,14 +169,14 @@ async function main() {
   await db.query("update job_runs set status='cancelled' where user_id=$1 and status='picked_up'", [worker]);
   // …but standing right at COLENG's door (where students stop) delivers.
   const first = await doJob(worker, delivery, [80, 0, -57.1]);
-  assert.equal(first.done.paid, 500); assert.equal(first.done.bonus, E.FIRST_JOB_DAILY_BONUS);
-  assert.equal(await balance(worker), E.STARTER_BALANCE + 500 + 200, 'job pay + first job bonus');
+  assert.equal(first.done.paid, 5000); assert.equal(first.done.bonus, E.FIRST_JOB_DAILY_BONUS);
+  assert.equal(await balance(worker), E.STARTER_BALANCE + 5000 + 2000, 'job pay + first job bonus');
   const replay = (await one("select job_action_trusted($1,'deliver',null,$2,$3,$4) r", [worker, first.id, delivery.destinationPos[0], delivery.destinationPos[2]])).r;
   assert.equal(replay.bonus, undefined, 'replayed delivery pays nothing');
-  assert.equal(await balance(worker), E.STARTER_BALANCE + 700);
+  assert.equal(await balance(worker), E.STARTER_BALANCE + 7000);
   const second = await doJob(worker, CAMPUS_JOBS[2]);
-  assert.equal(second.done.paid, 300); assert.equal(second.done.bonus, 0, 'bonus only for the first job of the day');
-  assert.equal(await balance(worker), E.STARTER_BALANCE + 1000);
+  assert.equal(second.done.paid, 3000); assert.equal(second.done.bonus, 0, 'bonus only for the first job of the day');
+  assert.equal(await balance(worker), E.STARTER_BALANCE + 10000);
   assert.equal(Number((await one("select count(*) n from wallet_transactions where user_id=$1 and type='campus_job_bonus'", [worker])).n), 1);
   // Yesterday's completions don't block today's bonus.
   await db.query("update job_runs set completed_at=completed_at-interval '30 hours' where user_id=$1", [worker]);
@@ -180,8 +193,8 @@ async function main() {
   await ps('m2', b);
   await db.query("update ps_reward_receipts set created_at=created_at-interval '5 minutes'");
   await ps('m3', a);
-  assert.equal(await balance(a), E.STARTER_BALANCE + 250 + 100, 'third match vs the same opponent unpaid');
-  assert.equal(await balance(b), E.STARTER_BALANCE + 100 + 250);
+  assert.equal(await balance(a), E.STARTER_BALANCE + 2500 + 1000, 'third match vs the same opponent unpaid');
+  assert.equal(await balance(b), E.STARTER_BALANCE + 1000 + 2500);
   const c = await student('Chika');
   await call(c, 'select ensure_player_wallet()');
   await db.query('select ps_reward_trusted($1,$2,$3,null)', ['m4', a, c]);
@@ -193,19 +206,19 @@ async function main() {
   await call(shopper, 'select ensure_player_wallet()');
   const buy = (item: string, credit = false) => call(shopper, "select hostel_command('purchase',$1::jsonb) r", [JSON.stringify({ item, credit })]);
   await buy('hostel_chair');
-  assert.equal(await balance(shopper), E.STARTER_BALANCE - 200);
+  assert.equal(await balance(shopper), E.STARTER_BALANCE - 2000);
   await buy('hostel_tv_basic', true);
-  assert.equal(Number((await one("select amount from game_debts where user_id=$1 and item_id='hostel_tv_basic'", [shopper])).amount), hostelCreditDebt(900));
-  await assert.rejects(() => buy('hostel_ps_console', true), /credit limit/, 'credit limit unchanged at ₦1,500');
-  assert.equal(E.HOSTEL_CREDIT_LIMIT, 1500);
-  // A new player can still buy TV + PS + generator outright only by saving: 900+1500+1200 = 3,600 of 7,500.
-  assert(900 + 1500 + 1200 < E.STARTER_BALANCE && 900 + 1500 + 1200 > E.STARTER_BALANCE / 3);
+  assert.equal(Number((await one("select amount from game_debts where user_id=$1 and item_id='hostel_tv_basic'", [shopper])).amount), hostelCreditDebt(9000));
+  await assert.rejects(() => buy('hostel_ps_console', true), /credit limit/, 'credit limit ₦15,000');
+  assert.equal(E.HOSTEL_CREDIT_LIMIT, 15000);
+  // A new player can buy TV + PS + generator outright only by saving: 9,000+15,000+12,000 = 36,000 vs a ₦15,000 start.
+  assert(9000 + 15000 + 12000 > E.STARTER_BALANCE);
 
   // ---------- Keke stays cheap and within the trusted fare bounds ----------
   const fares = kekeDestinations.map((d) => d.fare);
-  assert(Math.min(...fares) >= 30 && Math.max(...fares) <= 120, 'trusted fare bounds');
-  assert(Math.max(...fares) <= 90, 'no Keke fare increase');
+  assert(Math.min(...fares) >= 300 && Math.max(...fares) <= 1200, 'trusted fare bounds');
+  assert(Math.max(...fares) <= 900, 'Keke fares ×10 only');
 
-  console.log(`ECONOMY DATABASE PASSED: existing balance untouched, ₦${E.STARTER_BALANCE} starter once, ₦${E.DAILY_RESUMPTION_ALLOWANCE} daily once, anon money RPCs closed (incl. P2P sender spoofing), lecture ₦${E.ATTENDANCE_ALLOWANCE} server-priced and capped, ${fwDb.length + fcDb.length} menu items server-priced, vendor/hostel/job drift, first-job bonus once per day, Game Den 250/100 + pair cap, lawn ₦500, Keke ₦${Math.min(...fares)}–₦${Math.max(...fares)}.`);
+  console.log(`ECONOMY DATABASE PASSED: existing balance untouched, ₦${E.STARTER_BALANCE} starter once, ₦${E.DAILY_RESUMPTION_ALLOWANCE} daily once, anon money RPCs closed (incl. P2P sender spoofing), lecture ₦${E.ATTENDANCE_ALLOWANCE} server-priced and capped, ${fwDb.length + fcDb.length} menu items server-priced, vendor/hostel/job drift, first-job bonus once per day, Game Den 2500/1000 + pair cap, lawn ₦5,000, Keke ₦${Math.min(...fares)}–₦${Math.max(...fares)}.`);
 }
 main().catch((e) => { console.error(e); process.exit(1); });

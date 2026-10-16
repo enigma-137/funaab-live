@@ -1,6 +1,6 @@
+import { ESTATE, inEstate } from './estate';
 import base from '../worlds/funaab/world.json';
 import { LOVE_GARDEN, isInLoveGarden } from './loveGarden';
-import { LODGE } from './lodge';
 
 export type Point = [number, number, number];
 export interface CampusLocation {
@@ -51,6 +51,9 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   // Beside the Sports Centre: Acad faces the pitch; the courts sit south of it.
   'acad': [-108,-30, 34,12, -108,-22, -55,-22],
   'sports-courts': [-100,31, 36,18, -100,42, -55,45],
+  // Worship (config/worship.ts): south of the colleges, one each side; doors face the campus (+Z).
+  'mosque': [-62,-126, 22,18, -62,-114.5, -55,-85],
+  'chapel': [62,-125, 16,20, 62,-112.5, 55,-85],
 };
 export const collegeCatalogue = [...base.colleges,
   {code:'COLERM', name:'College of Environmental Resources Management',color:'#0d9488'},
@@ -63,7 +66,7 @@ const additions = ['colvet','colanim','colplant','colcoms','collend','colamrud',
 }));
 const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, colamrud: -Math.PI / 2, 'party-hall': -Math.PI / 2 };
 const arena = [{ id: 'party-hall', name: 'The Arena · Night Party & Arcade', type: 'landmark',
-  description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦500 gate fee for the night.' }];
+  description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦5,000 gate fee for the night.' }];
 const farm = [{ id: 'fpy-farm', name: 'FPY Teaching & Research Farm', type: 'landmark',
   description: 'Teaching & Research Farm where Farm Practical Year (FPY) students plant, water and harvest. Take a farm shift to earn.' }];
 const sportsSide = [
@@ -72,10 +75,14 @@ const sportsSide = [
   { id: 'sports-courts', name: 'Basketball & Volleyball Courts', type: 'sports',
     description: 'Hard courts beside the Sports Centre: free-throw challenge on the basketball court, serve challenge on the volleyball court.' },
 ];
-export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena].map(l=>{
+const worship = [
+  { id: 'mosque', name: 'Central Mosque', type: 'landmark', description: "Campus mosque with rows of prayer mats. Open on Fridays for Jumu'ah (Nigeria time)." },
+  { id: 'chapel', name: 'Chapel of Grace', type: 'landmark', description: 'Campus chapel with wooden pews and a pulpit. Open on Sundays (Nigeria time).' },
+];
+export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena,...worship].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
-  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
+  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id==='mosque'?'Mosque':id==='chapel'?'Chapel':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
     interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};
@@ -85,9 +92,12 @@ export const locationPosition=(id:string):Point=>locationById(id).position;
 export const CAMPUS_SPAWN:Point=[7,0,78];
 export const CAR_PARK_BAY:Point=[-64,0,64];
 export const CAMPUS_BOUNDS={minX:-145,maxX:145,minZ:-145,maxZ:110};
+/** Where you can walk: the campus plus the off-campus land north of the gate road (Royal Gardens Estate). */
+export const WORLD_BOUNDS={...CAMPUS_BOUNDS,maxZ:177};
 export const campusZoneName=(x:number,z:number)=>{
   if(isInLoveGarden(x,z))return LOVE_GARDEN.name;
-  if(Math.hypot(x-LODGE.position[0],z-LODGE.position[2])<10)return LODGE.name;
+  if(inEstate([x,0,z]))return ESTATE.name;
+  if(z>111)return 'Off campus';
   const nearest=[...campusLocations].sort((a,b)=>Math.hypot(x-a.position[0],z-a.position[2])-Math.hypot(x-b.position[0],z-b.position[2]))[0];
   return Math.hypot(x-nearest.position[0],z-nearest.position[2])<24?nearest.shortName:'Campus walkways';
 };

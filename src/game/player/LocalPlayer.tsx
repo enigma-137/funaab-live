@@ -1,4 +1,9 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
+import { useCarStore } from '../../stores/carStore';
+import { toast } from '../../stores/toastStore';
+import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
+import { CarBody, Cockpit } from '../vehicles/CarBody';
+import { ECONOMY_CONFIG } from '../../config/economy';
 import { onDanceFloor, partyOpen } from '../../config/partyHall';
 import { diningSpotAt } from '../../config/campusWorld';
 import { seatPosition } from '../../config/kekeSimulation';
@@ -100,13 +105,24 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const characterControllerRef = useRef<any>(null);
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const currentRotation = useRef<number>(0);
-  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'dance'>('idle');
+  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'dance'>('idle');
   const stuckTimerRef = useRef<number>(0);
   const lastSeatExit = useRef<[number, number, number] | null>(null);
   // Camera rig state: damped follow point + lightly smoothed orbit angles.
   const cameraFollow = useRef(new THREE.Vector3());
   const cameraFollowPrevTarget = useRef(new THREE.Vector3());
   const cameraRig = useRef({ initialized: false, yaw: 0, pitch: 0 });
+  // Driving: the car's own kinematic collider and controller (so the whole car body hits walls),
+  // its ground position, heading and speed.
+  const carPhys = useRef<{ body: any; collider: any; controller: any; car: string } | null>(null);
+  const drive = useRef({ x: 0, z: 0, heading: 0, speed: 0, active: false });
+  const drivingCar = useCarStore((s) => s.driving);
+  const ride = useCarStore((s) => s.ride);
+  const carView = useCarStore((s) => s.view);
+  const rideCar = useGameStore((s) => (ride ? s.players[ride.driver]?.car ?? null : null));
+  // Getting a lift: smoothed copy of the driver's car position and heading.
+  const rideSmooth = useRef({ x: 0, z: 0, heading: 0, init: false });
+  const onCampusNow = useHostelStore((s) => s.roomId === 'world:funaab:main');
 
   const { world, rapier } = useRapier();
   const { camera, size } = useThree();
@@ -195,6 +211,38 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     };
   }, [isRidingKeke, currentKekeId]);
 
+  const removeCarPhys = () => {
+    const cp = carPhys.current;
+    if (!cp) return;
+    try { world.removeCharacterController(cp.controller); world.removeRigidBody(cp.body); } catch { /* world already gone */ }
+    carPhys.current = null;
+  };
+  useEffect(() => () => removeCarPhys(), []);
+  useEffect(() => { const h = () => parkCar(); window.addEventListener('car-park', h); return () => window.removeEventListener('car-park', h); }, []);
+  // Out of a lift: step out on the passenger side.
+  useEffect(() => {
+    const h = () => {
+      const r = rideSmooth.current;
+      if (!r.init) return;
+      r.init = false;
+      useHostelStore.setState({ teleport: [r.x - Math.cos(r.heading) * 2.1, 0, r.z + Math.sin(r.heading) * 2.1] });
+    };
+    window.addEventListener('car-ride-exit', h);
+    return () => window.removeEventListener('car-ride-exit', h);
+  }, []);
+  /** Park where you are and step out on the driver's side. */
+  const parkCar = () => {
+    const d = drive.current, car = useCarStore.getState().driving;
+    if (!car) return;
+    if (Math.abs(d.speed) > 1) { toast({ icon: '🚗', text: 'Slow down to a stop before you park.', tone: 'info' }); return; }
+    useCarStore.getState().park([d.x, 0, d.z], d.heading);
+    d.active = false; d.speed = 0;
+    removeCarPhys();
+    const out = DRIVE.half[0] * (CAR_MODELS[car]?.scale ?? 1) + 0.8;
+    useHostelStore.setState({ teleport: [d.x + Math.cos(d.heading) * out, 0, d.z - Math.sin(d.heading) * out] });
+    setNearbyInteractable(null);
+  };
+
   const handleInteraction = async () => {
     const { nearbyInteractable, selectedPlayer, activeModal } = useGameStore.getState();
     if (activeModal) return;
@@ -203,6 +251,16 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       networkManager.exitKeke(currentKekeId);
 
       currentAnimation.current = 'idle';
+      return;
+    }
+
+    if (nearbyInteractable?.type === 'car') {
+      const t = nearbyInteractable.targetId || '';
+      if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'park') parkCar();
+      else if (t === 'unride') useCarStore.getState().leaveRide();
+      else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
+      else useGameStore.getState().setActiveModal('fuel');
       return;
     }
 
@@ -256,7 +314,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           setActiveModal('hustles');
           break;
         case 'lodge':
-          setActiveModal('lodge');
+          setActiveModal('estate');
           break;
       }
     } else if (selectedPlayer) {
@@ -328,6 +386,120 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         return;
       }
     }
+
+    const setLensFov = (fov: number) => { const lens = camera as THREE.PerspectiveCamera; if (lens.fov !== fov) { lens.fov = fov; lens.updateProjectionMatrix(); } };
+    /** Inside view: from a seat (car-local) looking ahead along the heading, with a little drag-to-look. */
+    const insideCamera = (cx: number, cz: number, heading: number, seat: readonly number[]) => {
+      const c = Math.cos(heading), sn = Math.sin(heading);
+      const ex = cx + seat[0] * c + (seat[2] + 0.05) * sn, ez = cz - seat[0] * sn + (seat[2] + 0.05) * c;
+      const look = heading + Math.atan2(Math.sin(cameraYaw - heading - Math.PI), Math.cos(cameraYaw - heading - Math.PI)) * 0.6;
+      // A phone held upright has a narrow view; widen it so the dashboard and road both fit.
+      setLensFov(size.width < size.height ? 78 : 62);
+      camera.position.set(ex, SEAT_EYE + (seat[1] ?? 0) + 0.15, ez);
+      camera.lookAt(ex + Math.sin(look) * 10, SEAT_EYE - 0.05 - cameraPitch * 2, ez + Math.cos(look) * 10);
+    };
+
+    // 1a. GETTING A LIFT in someone else's car (campus only)
+    const liftState = useCarStore.getState();
+    if (liftState.ride && useHostelStore.getState().roomId === 'world:funaab:main') {
+      const drv = players[liftState.ride.driver];
+      if (!drv || !drv.car) { liftState.rideEnded('driver_left'); }
+      else {
+        const r = rideSmooth.current, k = 1 - Math.exp(-delta * 10);
+        if (!r.init) { r.x = drv.position[0]; r.z = drv.position[2]; r.heading = drv.rotation; r.init = true; }
+        r.x += (drv.position[0] - r.x) * k; r.z += (drv.position[2] - r.z) * k;
+        r.heading += Math.atan2(Math.sin(drv.rotation - r.heading), Math.cos(drv.rotation - r.heading)) * k;
+        const seat = PASSENGER_SEATS[liftState.ride.seat] ?? PASSENGER_SEATS[0], c = Math.cos(r.heading), sn = Math.sin(r.heading);
+        const px = r.x + seat[0] * c + seat[2] * sn, pz = r.z - seat[0] * sn + seat[2] * c;
+        body.setNextKinematicTranslation({ x: px, y: PLAYER_CENTER_OFFSET, z: pz });
+        currentRotation.current = r.heading;
+        if (avatarVisualRef.current) avatarVisualRef.current.rotation.y = r.heading;
+        currentAnimation.current = 'sit';
+        const feet: [number, number, number] = [px, 0, pz];
+        setMyPosition(feet); setMyRotation(r.heading); setMyAnimation('sit');
+        networkManager.sendMove(feet, r.heading, 'sit', false, null);
+        if (liftState.view === 'inside') insideCamera(r.x, r.z, r.heading, seat);
+        else { setLensFov(50); updateOrbitCamera(_camTarget.set(r.x, PLAYER_CENTER_OFFSET, r.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta); }
+        const near: InteractableZone = { id: 'lift', type: 'car', targetId: 'unride', label: CAR_MODELS[drv.car]?.name ?? 'Car', actionText: 'Get out', position: feet, radius: 3 };
+        if (useGameStore.getState().nearbyInteractable?.targetId !== 'unride') setNearbyInteractable(near);
+        setIsOnRestrictedLawn(false);
+        return;
+      }
+    }
+
+    // 1b. DRIVING YOUR CAR (campus only)
+    const carState = useCarStore.getState();
+    if (carState.driving && controller && useHostelStore.getState().roomId === 'world:funaab:main') {
+      const model = CAR_MODELS[carState.driving], k = model.scale, d = drive.current;
+      if (!d.active) {
+        const p = carState.parked;
+        d.x = p?.position[0] ?? body.translation().x; d.z = p?.position[2] ?? body.translation().z;
+        d.heading = p?.rotation ?? currentRotation.current; d.speed = 0; d.active = true;
+      }
+      if (!carPhys.current || carPhys.current.car !== carState.driving) {
+        removeCarPhys();
+        const cb = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased().setTranslation(d.x, 0, d.z));
+        const cc = world.createCollider(rapier.ColliderDesc.cuboid(DRIVE.half[0] * k, DRIVE.half[1], DRIVE.half[2] * k).setTranslation(0, DRIVE.half[1] + 0.12, 0), cb);
+        const ctl = world.createCharacterController(0.05);
+        ctl.setSlideEnabled(true);
+        carPhys.current = { body: cb, collider: cc, controller: ctl, car: carState.driving };
+      }
+      const modal = Boolean(useGameStore.getState().activeModal);
+      const kp = keysPressed.current;
+      const [jx, jy] = modal ? [0, 0] : useInputStore.getState().joystick;
+      const throttle = modal ? 0 : Math.max(-1, Math.min(1, -jy + ((kp['w'] || kp['arrowup']) ? 1 : 0) - ((kp['s'] || kp['arrowdown']) ? 1 : 0)));
+      const steer = modal ? 0 : Math.max(-1, Math.min(1, jx + ((kp['d'] || kp['arrowright']) ? 1 : 0) - ((kp['a'] || kp['arrowleft']) ? 1 : 0)));
+      const fuel = carState.fuel[carState.driving] ?? 0;
+      const top = model.topSpeed;
+      if (fuel > 0 && Math.abs(throttle) > 0.08) {
+        // Throttle against the motion brakes first, then reverses.
+        const braking = Math.sign(throttle) !== Math.sign(d.speed) && Math.abs(d.speed) > 0.3;
+        d.speed += throttle * (braking ? DRIVE.brake : DRIVE.accel) * delta;
+      } else {
+        d.speed -= Math.sign(d.speed) * Math.min(Math.abs(d.speed), (DRIVE.drag + Math.abs(d.speed) * 0.12) * delta);
+      }
+      d.speed = Math.max(-DRIVE.reverseMax, Math.min(top, d.speed));
+      // Steering bites with speed; reversing turns the other way.
+      const grip = Math.min(1, Math.abs(d.speed) / 4) * Math.sign(d.speed);
+      d.heading -= steer * DRIVE.turnRate * grip * delta;
+      const want = { x: Math.sin(d.heading) * d.speed * delta, y: 0, z: Math.cos(d.heading) * d.speed * delta };
+      const cp = carPhys.current;
+      cp.body.setTranslation({ x: d.x, y: 0, z: d.z }, true);
+      cp.body.setRotation({ x: 0, y: Math.sin(d.heading / 2), z: 0, w: Math.cos(d.heading / 2) }, true);
+      const capsule = body.collider(0);
+      cp.controller.computeColliderMovement(cp.collider, want, undefined, undefined, (c: any) => c.handle !== cp.collider.handle && c.handle !== capsule?.handle && !c.isSensor());
+      const moved = cp.controller.computedMovement();
+      const wanted = Math.hypot(want.x, want.z), got = Math.hypot(moved.x, moved.z);
+      if (wanted > 0.001 && got < wanted * 0.35) d.speed *= 0.25; // bumped into something
+      d.x = Math.max(worldData.bounds.minX + 2, Math.min(worldData.bounds.maxX - 2, d.x + moved.x));
+      d.z = Math.max(worldData.bounds.minZ + 2, Math.min(worldData.bounds.maxZ - 2, d.z + moved.z));
+      if (got > 0) carState.drove(got);
+      body.setNextKinematicTranslation({ x: d.x, y: PLAYER_CENTER_OFFSET, z: d.z });
+      currentRotation.current = d.heading;
+      if (avatarVisualRef.current) avatarVisualRef.current.rotation.y = d.heading;
+      currentAnimation.current = 'sit';
+      const feet: [number, number, number] = [d.x, 0, d.z];
+      setMyPosition(feet); setMyRotation(d.heading); setMyAnimation('sit');
+      networkManager.sendMove(feet, d.heading, 'sit', false, carState.driving);
+      // The camera settles in behind the car as you drive.
+      if (Math.abs(d.speed) > 2) {
+        const behind = d.heading + Math.PI, diff = Math.atan2(Math.sin(behind - cameraYaw), Math.cos(behind - cameraYaw));
+        useInputStore.getState().setCameraYaw(cameraYaw + diff * Math.min(1, delta * 1.6));
+      }
+      if (carState.view === 'inside') insideCamera(d.x, d.z, d.heading, DRIVER_SEAT);
+      else { setLensFov(50); updateOrbitCamera(_camTarget.set(d.x, PLAYER_CENTER_OFFSET, d.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta); }
+      // At a pump you can fill up; anywhere else the button parks the car.
+      const pump = FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius);
+      const near: InteractableZone = pump
+        ? { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: pump, radius: FUEL_STATION.pumpRadius }
+        : { id: 'my-car', type: 'car', targetId: 'park', label: model.name, actionText: Math.abs(d.speed) > 1 ? 'Stop to park' : 'Park & get out', position: feet, radius: 3 };
+      if (useGameStore.getState().nearbyInteractable?.actionText !== near.actionText) setNearbyInteractable(near);
+      setIsOnRestrictedLawn(false);
+      return;
+    }
+    // Left campus while driving (hostel, library): the car stays parked where you were.
+    if (carState.driving && drive.current.active) carState.park([drive.current.x, 0, drive.current.z], drive.current.heading);
+    if (drive.current.active) { drive.current.active = false; removeCarPhys(); }
 
     const seatedAt = useGameStore.getState().seatedAt;
     // Getting up from a bed: step beside it rather than inside its collider.
@@ -546,7 +718,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const enforcement = lawnEnforcement.checkEnforcement(feetPosition, officersList);
       if (enforcement.caught && enforcement.officerName) {
         // Player caught on restricted lawn!
-        const fineAmount = enforcement.fineAmount || 500;
+        const fineAmount = enforcement.fineAmount || ECONOMY_CONFIG.LAWN_FINE;
         applyLawnFine(user.id, fineAmount);
         networkManager.reportLawnFine(enforcement.officerName, fineAmount);
         setLawnViolationNotice({
@@ -582,6 +754,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       lodge: 1,
       party: 1,
       arcade: 1,
+      car: 0,
     };
 
     for (const zone of worldData.interactables as InteractableZone[]) {
@@ -602,7 +775,23 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
     for(const k of Object.values(kekes)){
       const dist=Math.hypot(feetPosition[0]-k.position[0],feetPosition[2]-k.position[2]);
-      if(k.isStopped&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
+      if(k.isStopped&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='korope-1'?'Korope Bus':k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:k.id==='korope-1'?(k.phase==='WAITING'?'Join Korope':'Hop On'):k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
+    }
+    // Your parked car and the fuel pumps (on foot you can fill a car you own too).
+    const myCar = useCarStore.getState().parked;
+    if (myCar) {
+      const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
+      if (dist < 3.6 && dist < minDistance + 1) { minDistance = dist; closestInteractable = { id: 'my-car', type: 'car', targetId: 'drive', label: CAR_MODELS[myCar.car]?.name ?? 'Your car', actionText: 'Drive', position: myCar.position, radius: 3.6 }; }
+    }
+    // Someone driving and stopped nearby: hop in for a lift.
+    for (const p of Object.values(players)) {
+      if (!p.car || !p.connectionId) continue;
+      const dist = Math.hypot(feetPosition[0] - p.position[0], feetPosition[2] - p.position[2]);
+      if (dist < 4.5 && dist < minDistance + 1) { minDistance = dist; closestInteractable = { id: `ride-${p.connectionId}`, type: 'car', targetId: `ride:${p.connectionId}`, label: `${p.username}'s ${CAR_MODELS[p.car]?.name ?? 'car'}`, actionText: `Ride with ${p.username}`, position: p.position, radius: 4.5 }; }
+    }
+    for (const q of FUEL_STATION.pumps) {
+      const dist = Math.hypot(feetPosition[0] - q[0], feetPosition[2] - q[2]);
+      if (dist < 2.2 && dist < minDistance) { minDistance = dist; closestInteractable = { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: q, radius: 2.2 }; }
     }
     if(useGameStore.getState().activeModal!=='keke_destination')setNearbyInteractable(closestInteractable);
 
@@ -704,6 +893,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
       {/* Visual Avatar Mesh attached to physics body with offset to match feet level */}
       <group ref={avatarVisualRef} position={[0, -PLAYER_CENTER_OFFSET, 0]}>
+        {drivingCar && onCampusNow && (carView === 'inside' ? <Cockpit id={drivingCar} /> : <CarBody id={drivingCar} />)}
+        {ride && rideCar && onCampusNow && carView === 'inside' && (() => { const seat = PASSENGER_SEATS[ride.seat] ?? PASSENGER_SEATS[0]; return <group position={[-seat[0], -seat[1], -seat[2]]}><Cockpit id={rideCar} /></group>; })()}
+        <group position={drivingCar && onCampusNow ? DRIVER_SEAT : [0, 0, 0]}>
         <AvatarModel
           userId={user.id}
           username={user.username}
@@ -713,7 +905,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           isLocal
           held={myHeldItem}
           table={seatedAt && seatedAt.animation !== 'sleep' ? diningSpotAt(seatedAt.position) : null}
+          hidden={onCampusNow && (!!drivingCar || !!ride)}
         />
+        </group>
       </group>
     </RigidBody>
   );

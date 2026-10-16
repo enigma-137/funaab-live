@@ -14,9 +14,9 @@ export interface BackgroundDef {
 }
 
 export const BACKGROUNDS: BackgroundDef[] = [
-  { id: 'comfortable', title: 'Comfortable home', icon: '🏡', blurb: 'Parents send good money every week. Life is easier, but hustling pays no extra.', welcome: 3000, weekly: 2500, hustleBonusPercent: 0 },
-  { id: 'average', title: 'Average home', icon: '🏠', blurb: 'Something comes from home every week, and a little extra on every job you do.', welcome: 1000, weekly: 1200, hustleBonusPercent: 10 },
-  { id: 'struggling', title: 'Struggling home', icon: '🛖', blurb: 'Home can only send a little. You hustle harder: +20% on every job and hustle.', welcome: 0, weekly: 400, hustleBonusPercent: 20 },
+  { id: 'comfortable', title: 'Comfortable home', icon: '🏡', blurb: 'Parents send good money every week. Life is easier, but hustling pays no extra.', welcome: 30000, weekly: 25000, hustleBonusPercent: 0 },
+  { id: 'average', title: 'Average home', icon: '🏠', blurb: 'Something comes from home every week, and a little extra on every job you do.', welcome: 10000, weekly: 12000, hustleBonusPercent: 10 },
+  { id: 'struggling', title: 'Struggling home', icon: '🛖', blurb: 'Home can only send a little. You hustle harder: +20% on every job and hustle.', welcome: 0, weekly: 4000, hustleBonusPercent: 20 },
 ];
 
 export const background = (id: string | null | undefined) => BACKGROUNDS.find((b) => b.id === id);

@@ -3,6 +3,7 @@ import { useSugStore } from '../stores/sugStore';
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
+import { useGroupStore } from '../stores/groupStore';
 import { useSocialStore } from '../stores/socialStore';
 import { useWalletStore } from '../stores/walletStore';
 import { formatNaira } from '../config/economy';
@@ -29,7 +30,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
   const user = useAuthStore((s) => s.user)!;
   const setModal = useGameStore((s) => s.setActiveModal);
   const balance = useWalletStore((s) => s.balance);
-  const unread = useSocialStore((s) => s.unreadDmCount);
+  const unread = useSocialStore((s) => s.unreadDmCount) + useGroupStore((s) => s.unread);
   const soundOn = useSoundStore((s) => s.enabled);
   const goalsReady = useDailyPlanStore((s) => s.plan?.goals.filter((g) => !g.claimed && g.progress >= g.target).length ?? 0);
   const [time, setTime] = useState(lagosTime);
@@ -55,7 +56,8 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'hostel', label: 'Hostel', glyph: 'hostel', colors: ['#fb923c', '#c2410c'], open: () => openHostel() },
     { id: 'friends', label: 'Friends', glyph: 'friends', colors: ['#60a5fa', '#2563eb'], open: () => setModal('friends') },
     { id: 'league', label: 'League', glyph: 'league', colors: ['#facc15', '#a16207'], open: () => setModal('league') },
-    { id: 'lodge', label: 'Lodge', glyph: 'hostel', colors: ['#fbbf24', '#b45309'], open: () => setModal('lodge') },
+    { id: 'garage', label: 'Garage', glyph: 'hostel', colors: ['#93c5fd', '#1d4ed8'], open: () => setModal('garage') },
+    { id: 'estate', label: 'Estate', glyph: 'hostel', colors: ['#c4b5fd', '#6d28d9'], open: () => setModal('estate') },
     { id: 'hustles', label: 'Hustles', glyph: 'hustles', colors: ['#4ade80', '#15803d'], open: () => setModal('hustles') },
     { id: 'jobs', label: 'Jobs', glyph: 'jobs', colors: ['#a78bfa', '#6d28d9'], open: () => setModal('campus_jobs') },
     { id: 'level', label: 'Level', glyph: 'level', colors: ['#fbbf24', '#d97706'], open: () => useLevelStore.getState().open() },

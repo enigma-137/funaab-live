@@ -137,6 +137,28 @@ export function hallSeatPositions(hall: Pick<LectureHallConfig, 'seating'>): Hal
 /** Where a player stands after walking in through the back door. Clear of desks and NPC spots. */
 export const HALL_STANDING_VIEW: Point = [3.2, 2.5, 7.1];
 
+/** Floor spot just inside the back door where you stand on walking in. */
+export const HALL_DOOR_SPOT: Point = [4.6, 0, 6.2];
+
+// Walkable floor: inside the walls, in front of the stage edge (z -5.24).
+export const HALL_FLOOR = { minX: -6.55, maxX: 6.55, minZ: -4.95, maxZ: 7.55 };
+
+/** Push a standing person (radius `r`) out of the walls, stage and every desk+chair block. */
+export function clampToHallFloor(hall: Pick<LectureHallConfig, 'seating'>, x: number, z: number, r = 0.22): [number, number] {
+  x = Math.min(HALL_FLOOR.maxX, Math.max(HALL_FLOOR.minX, x));
+  z = Math.min(HALL_FLOOR.maxZ, Math.max(HALL_FLOOR.minZ, z));
+  for (const { pos } of hallSeatPositions(hall)) {
+    // Desk top z -0.3..0.3, chair back at +0.84; desk is 1.1m wide.
+    const x0 = pos[0] - 0.56 - r, x1 = pos[0] + 0.56 + r, z0 = pos[2] - 0.32 - r, z1 = pos[2] + 0.86 + r;
+    if (x <= x0 || x >= x1 || z <= z0 || z >= z1) continue;
+    // Leave by the shortest way out.
+    const out = [x - x0, x1 - x, z - z0, z1 - z];
+    const m = Math.min(...out);
+    if (m === out[0]) x = x0; else if (m === out[1]) x = x1; else if (m === out[2]) z = z0; else z = z1;
+  }
+  return [x, z];
+}
+
 // Avatars face +Z by default; the board is at -Z, so anyone facing the lecturer turns by PI.
 export const FACE_BOARD = Math.PI;
 // Desk top spans z ±0.3 around the seat position. The chair sits behind it so a seated avatar's

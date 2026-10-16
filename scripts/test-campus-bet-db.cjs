@@ -25,7 +25,7 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   for (const [id, name] of [[A, 'Ada'], [B, 'Bolu']]) {
     await db.query('insert into auth.users values($1)', [id]);
     await db.query("insert into profiles(id,username,college) values($1,$2,'COLENG')", [id, name]);
-    await db.query('insert into wallets(user_id,balance) values($1,1000)', [id]);
+    await db.query('insert into wallets(user_id,balance) values($1,10000)', [id]);
   }
   const one = async (sql, params) => (await db.query(sql, params)).rows[0];
   const sync = async (user, cand) => (await one('select campus_bet_sync_trusted($1,$2) as s', [user, cand ? JSON.stringify(cand) : null])).s;
@@ -69,24 +69,24 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
 
   // ---------- Ticket ----------
   const picksA = ['HOME', 'DRAW', 'AWAY', 'HOME', 'HOME'];
-  const placed = await place(A, round.id, 100, picksA);
-  assert.equal(Number(placed.balance), 900, '₦1,000 − ₦100 stake');
-  assert.equal(await balance(A), 900);
-  assert.equal(placed.ticket.stake, 100);
-  await assert.rejects(() => place(A, round.id, 100, picksA), /already have a ticket/, 'second ticket rejected');
-  await assert.rejects(() => place(A, round.id, 200, ['AWAY', 'AWAY', 'AWAY', 'AWAY', 'AWAY']), /already have a ticket/);
-  assert.equal(await balance(A), 900, 'rejected retries never charge');
+  const placed = await place(A, round.id, 1000, picksA);
+  assert.equal(Number(placed.balance), 9000, '₦10,000 − ₦1000 stake');
+  assert.equal(await balance(A), 9000);
+  assert.equal(placed.ticket.stake, 1000);
+  await assert.rejects(() => place(A, round.id, 1000, picksA), /already have a ticket/, 'second ticket rejected');
+  await assert.rejects(() => place(A, round.id, 2000, ['AWAY', 'AWAY', 'AWAY', 'AWAY', 'AWAY']), /already have a ticket/);
+  assert.equal(await balance(A), 9000, 'rejected retries never charge');
   for (const [stake, picks, why] of [
-    [100, picksA.slice(0, 4), 'partial ticket'], [100, [...picksA, 'HOME'], '6 picks'], [100, ['HOME', 'WIN', 'AWAY', 'HOME', 'HOME'], 'bad pick'],
-    [100, { 1: 'HOME' }, 'object picks'], [40, picksA, 'below min'], [510, picksA, 'above max'], [105, picksA, 'not ₦10 step'],
+    [1000, picksA.slice(0, 4), 'partial ticket'], [1000, [...picksA, 'HOME'], '6 picks'], [1000, ['HOME', 'WIN', 'AWAY', 'HOME', 'HOME'], 'bad pick'],
+    [1000, { 1: 'HOME' }, 'object picks'], [400, picksA, 'below min'], [5100, picksA, 'above max'], [1050, picksA, 'not ₦100 step'],
   ]) await assert.rejects(() => place(B, round.id, stake, picks), undefined, `rejects ${why}`);
-  await assert.rejects(() => place(B, '00000000-0000-4000-8000-000000000999', 100, picksA), /not found/);
-  await db.query('update wallets set balance=30 where user_id=$1', [B]);
-  await assert.rejects(() => place(B, round.id, 50, picksA), /Insufficient/, 'needs the stake in wallet');
-  await db.query('update wallets set balance=1000 where user_id=$1', [B]);
-  await place(B, round.id, 50, ['AWAY', 'AWAY', 'HOME', 'DRAW', 'AWAY']);
+  await assert.rejects(() => place(B, '00000000-0000-4000-8000-000000000999', 1000, picksA), /not found/);
+  await db.query('update wallets set balance=300 where user_id=$1', [B]);
+  await assert.rejects(() => place(B, round.id, 500, picksA), /Insufficient/, 'needs the stake in wallet');
+  await db.query('update wallets set balance=10000 where user_id=$1', [B]);
+  await place(B, round.id, 500, ['AWAY', 'AWAY', 'HOME', 'DRAW', 'AWAY']);
   assert.equal((await ledger(A)).length, 1);
-  assert.equal(Number((await ledger(A))[0].amount), -100);
+  assert.equal(Number((await ledger(A))[0].amount), -1000);
   assert.match((await ledger(A))[0].description, /Campus Bet ticket — Matchday 1/);
 
   const refreshed = await sync(A, null);
@@ -96,7 +96,7 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   // ---------- RLS ----------
   await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${A}',false);`);
   await assert.rejects(() => sync(A, candidate()), undefined, 'players cannot run the lifecycle');
-  await assert.rejects(() => place(A, round.id, 100, picksA), undefined, 'players cannot call trusted placement');
+  await assert.rejects(() => place(A, round.id, 1000, picksA), undefined, 'players cannot call trusted placement');
   await assert.rejects(() => db.query('select home_probability from campus_bet_fixtures'), undefined, 'hidden probabilities unreadable');
   assert.equal((await db.query('select id,home_team_id,result from campus_bet_fixtures')).rows.length, 5, 'public fixtures readable');
   assert.equal((await db.query('select * from campus_bet_tickets')).rows.length, 1, 'only own ticket visible');
@@ -107,7 +107,7 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   await db.exec('reset role;');
 
   // ---------- Settlement ----------
-  await assert.rejects(() => (closeCurrent().then(() => place(B, round.id, 50, picksA))), /closed/, 'betting closes at closes_at');
+  await assert.rejects(() => (closeCurrent().then(() => place(B, round.id, 500, picksA))), /closed/, 'betting closes at closes_at');
   const lockedView = (await one('select campus_bet_round_json(r) j from campus_bet_rounds r where id=$1', [round.id])).j;
   assert.equal(lockedView.status, 'LOCKED', 'past close reads as LOCKED before settlement');
   const settled = await sync(null, null);
@@ -124,15 +124,15 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   const expectCorrect = picksA.filter((p, i) => p === results[i].result).length;
   const table = [0, 0, 0.5, 1.3, 2.5, 4];
   assert.equal(ticketA.correct_count, expectCorrect);
-  assert.equal(ticketA.payout, Math.floor(100 * table[expectCorrect]));
-  assert.equal(await balance(A), 900 + ticketA.payout, 'payout credited');
+  assert.equal(ticketA.payout, Math.floor(1000 * table[expectCorrect]));
+  assert.equal(await balance(A), 9000 + ticketA.payout, 'payout credited');
   const ledgerAfter = (await ledger(A)).length;
   assert.equal(ledgerAfter, ticketA.payout > 0 ? 2 : 1);
 
   const snapshot = JSON.stringify(results.map((f) => [f.result, f.home_score, f.away_score]));
   for (let i = 0; i < 3; i++) assert.equal((await sync(A, null)).settled ?? 0, 0, 'settlement replay is a no-op');
   assert.equal(Number((await one('select campus_bet_settle_due() n')).n), 0);
-  assert.equal(await balance(A), 900 + ticketA.payout, 'no duplicate payout');
+  assert.equal(await balance(A), 9000 + ticketA.payout, 'no duplicate payout');
   assert.equal((await ledger(A)).length, ledgerAfter, 'no duplicate ledger rows');
   const resultsAgain = (await db.query('select result,home_score,away_score from campus_bet_fixtures where round_id=$1 order by slot', [round.id])).rows;
   assert.equal(JSON.stringify(resultsAgain.map((f) => [f.result, f.home_score, f.away_score])), snapshot, 'refresh never rerolls');
@@ -143,8 +143,8 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   assert.equal(viewA.history[0].fixtures.length, 5);
   assert.equal(Object.keys(viewA.form).length, 10, 'form for all clubs');
 
-  // ---------- Spec scenario: ₦1,000 → stake ₦100 → 4/5 → ₦1,150 ----------
-  await db.query('update wallets set balance=1000 where user_id=$1', [A]);
+  // ---------- Spec scenario: ₦10,000 → stake ₦1000 → 4/5 → ₦11,500 ----------
+  await db.query('update wallets set balance=10000 where user_id=$1', [A]);
   const needs = await sync(A, null);
   assert.equal(needs.needs_round, true);
   assert.equal(needs.recent_pairs.length, 5, 'recent pairings returned for repeat avoidance');
@@ -153,21 +153,21 @@ const candidate = (ps = [0.45, 0.28, 0.27]) => pairs.map(([home_team_id, away_te
   const forced = ['HOME', 'DRAW', 'AWAY', 'HOME', 'AWAY'];
   const scores = { HOME: [2, 1], DRAW: [1, 1], AWAY: [0, 2] };
   for (let i = 0; i < 5; i++) await db.query('update campus_bet_fixtures set result=$1,home_score=$2,away_score=$3 where round_id=$4 and slot=$5', [forced[i], ...scores[forced[i]], round2.id, i + 1]);
-  await place(A, round2.id, 100, ['HOME', 'DRAW', 'AWAY', 'HOME', 'HOME']);
-  assert.equal(await balance(A), 900);
+  await place(A, round2.id, 1000, ['HOME', 'DRAW', 'AWAY', 'HOME', 'HOME']);
+  assert.equal(await balance(A), 9000);
   await closeCurrent();
   await sync(null, null);
   const t2 = await one('select * from campus_bet_tickets where user_id=$1 and round_id=$2', [A, round2.id]);
   assert.equal(t2.correct_count, 4);
-  assert.equal(t2.payout, 250, '4/5 pays 2.5× stake');
-  assert.equal(await balance(A), 1150, '₦900 → ₦1,150');
+  assert.equal(t2.payout, 2500, '4/5 pays 2.5× stake');
+  assert.equal(await balance(A), 11500, '₦9000 → ₦11,500');
   const payoutRow = (await ledger(A)).at(-1);
-  assert.equal(Number(payoutRow.amount), 250);
-  assert.equal(Number(payoutRow.balance_after), 1150);
+  assert.equal(Number(payoutRow.amount), 2500);
+  assert.equal(Number(payoutRow.balance_after), 11500);
   assert.match(payoutRow.description, /Campus Bet Matchday 2 — 4\/5 correct/);
   await sync(null, null);
-  assert.equal(await balance(A), 1150, 'settlement run again: no additional payout');
+  assert.equal(await balance(A), 11500, 'settlement run again: no additional payout');
 
-  console.log('CAMPUS BET DATABASE PASSED: lazy matchday creation, candidate validation, one matchday per slot, hidden probabilities, atomic stake debit, one ticket per round, input validation, RLS, close/lock, single settlement, consistent scorelines, idempotent payouts, identical results for all users and the ₦1,000→₦1,150 4/5 scenario.');
+  console.log('CAMPUS BET DATABASE PASSED: lazy matchday creation, candidate validation, one matchday per slot, hidden probabilities, atomic stake debit, one ticket per round, input validation, RLS, close/lock, single settlement, consistent scorelines, idempotent payouts, identical results for all users and the ₦10,000→₦11,500 4/5 scenario.');
   await db.close();
 })().catch((e) => { console.error(e); process.exit(1); });

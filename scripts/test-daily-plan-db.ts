@@ -41,7 +41,7 @@ async function main() {
   // Drift: catalog and bonus match the client config.
   const catalog = await rows('select id,title,icon,source,target,reward from daily_goal_catalog order by id');
   assert.deepEqual(catalog, [...DAILY_GOALS].sort((a, b) => a.id.localeCompare(b.id)).map(({ id, title, icon, source, target, reward }) => ({ id, title, icon, source, target, reward })), 'catalog matches src/config/dailyPlan.ts');
-  assert.match(fs.readFileSync(path.join(dir, '016_daily_plan.sql'), 'utf8'), new RegExp(`v_bonus := ${DAILY_PLAN.ALL_DONE_BONUS};`), 'all-done bonus matches');
+  assert.match((await rows("select pg_get_functiondef('public.claim_daily_goal(text)'::regprocedure) d"))[0].d, new RegExp(`v_bonus := ${DAILY_PLAN.ALL_DONE_BONUS};`), 'all-done bonus matches');
 
   // Auth and privileges.
   await fails(null, 'select daily_plan() r', /permission denied|Authentication/);
@@ -82,15 +82,15 @@ async function main() {
   const start = await balance(ada);
   await prove(ada, g1);
   const c1 = (await call(ada, 'select claim_daily_goal($1) r', [g1])).r;
-  assert.equal(c1.paid, 100);
-  assert.equal(await balance(ada), start + 100);
+  assert.equal(c1.paid, 1000);
+  assert.equal(await balance(ada), start + 1000);
   await fails(ada, 'select claim_daily_goal($1) r', /Already claimed/, [g1]);
   assert.equal(c1.goals.find((g: any) => g.id === g1).claimed, true);
   await prove(ada, g2); await prove(ada, g3);
   await call(ada, 'select claim_daily_goal($1) r', [g2]);
   const last = (await call(ada, 'select claim_daily_goal($1) r', [g3])).r;
-  assert.equal(last.paid, 100 + DAILY_PLAN.ALL_DONE_BONUS, 'last goal pays the all-done bonus');
-  assert.equal(await balance(ada), start + 300 + DAILY_PLAN.ALL_DONE_BONUS);
+  assert.equal(last.paid, 1000 + DAILY_PLAN.ALL_DONE_BONUS, 'last goal pays the all-done bonus');
+  assert.equal(await balance(ada), start + 3000 + DAILY_PLAN.ALL_DONE_BONUS);
   assert.equal(last.streak.current, 1);
   assert.equal(last.streak.done_today, true);
   assert.equal(Number((await one("select count(*) n from wallet_transactions where user_id=$1 and type in('daily_goal','daily_plan_bonus')", [ada])).n), 4, 'ledgered');

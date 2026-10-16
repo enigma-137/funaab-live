@@ -37,8 +37,8 @@ export const FOOD_VENDORS: Record<FoodVendorId, FoodVendor> = {
     closedMessage: 'Mai Suya has closed for the night.',
     windows: [{ open: hm(19), close: hm(23), label: 'Night' }],
     items: [
-      { id: 'vendor_suya_beef', name: 'Beef Suya', price: 400 },
-      { id: 'vendor_suya_chicken', name: 'Chicken Suya', price: 350 },
+      { id: 'vendor_suya_beef', name: 'Beef Suya', price: 4000 },
+      { id: 'vendor_suya_chicken', name: 'Chicken Suya', price: 3500 },
     ],
     // North of the Food Court walkway (z=32), facing the path.
     position: [-61, 0, 37],
@@ -56,8 +56,8 @@ export const FOOD_VENDORS: Record<FoodVendorId, FoodVendor> = {
       { open: hm(19), close: hm(23), label: 'Evening' },
     ],
     items: [
-      { id: 'vendor_indomie_plain', name: 'Plain Indomie', price: 250 },
-      { id: 'vendor_indomie_egg', name: 'Indomie + Egg', price: 350 },
+      { id: 'vendor_indomie_plain', name: 'Plain Indomie', price: 2500 },
+      { id: 'vendor_indomie_egg', name: 'Indomie + Egg', price: 3500 },
     ],
     position: [-69, 0, 37],
     rotation: Math.PI,
@@ -75,11 +75,11 @@ export const FOOD_VENDORS: Record<FoodVendorId, FoodVendor> = {
       { open: hm(19), close: hm(24), label: 'Night' },
     ],
     items: [
-      { id: 'vendor_party_zobo', name: 'Chilled Zobo', price: 300 },
-      { id: 'vendor_party_soda', name: 'Soft drink', price: 250 },
-      { id: 'vendor_party_malt', name: 'Malt', price: 400 },
-      { id: 'vendor_party_chapman', name: 'Chapman', price: 500 },
-      { id: 'vendor_party_energy', name: 'Energy drink', price: 450 },
+      { id: 'vendor_party_zobo', name: 'Chilled Zobo', price: 800 },
+      { id: 'vendor_party_soda', name: 'Soft drink', price: 500 },
+      { id: 'vendor_party_malt', name: 'Malt', price: 800 },
+      { id: 'vendor_party_chapman', name: 'Chapman', price: 1500 },
+      { id: 'vendor_party_energy', name: 'Energy drink', price: 1200 },
     ],
     position: BAR.centre,
     rotation: 0,

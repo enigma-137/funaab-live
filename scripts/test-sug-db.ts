@@ -16,7 +16,9 @@ async function main() {
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
-  const sql = fs.readFileSync(path.join(dir, '034_sug_elections.sql'), 'utf8');
+  let sql = fs.readFileSync(path.join(dir, '034_sug_elections.sql'), 'utf8');
+  // Amounts may have been rescaled since (039): also check the live functions as they are now.
+  sql += (await db.query("select string_agg(pg_get_functiondef(p.oid), chr(10)) d from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f'")).rows[0].d + fs.readFileSync(path.join(dir, '039_economy_x10.sql'), 'utf8');
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const as = async (u: string | null, q: string, p: unknown[] = []) => {
     await db.exec(u ? `set role authenticated; select set_config('request.jwt.claim.sub','${u}',false);` : `set role anon; select set_config('request.jwt.claim.sub','',false);`);
@@ -24,7 +26,7 @@ async function main() {
   };
   const day = (d: string) => db.exec(`create or replace function public.lagos_today() returns date language sql stable as $$ select date '${d}' $$`);
   let n = 0;
-  const student = async (name: string, xp: number, money = 5000) => {
+  const student = async (name: string, xp: number, money = 50000) => {
     const id = `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
     await db.query('insert into auth.users values($1)', [id]);
     await db.query("insert into profiles(id,username,college) values($1,$2,'COLENG')", [id, name]);
@@ -59,7 +61,7 @@ async function main() {
   await assert.rejects(as(ada, "select sug_nominate('You are all mumu')"), /clean/);
   await assert.rejects(as(ada, `select sug_nominate($1)`, ['x'.repeat(SUG.MANIFESTO_MAX + 1)]), /under 200/);
   await as(ada, "select sug_nominate('Free Wi-Fi in every hostel and later Arena nights')");
-  assert.equal(await balance(ada), 4000, '₦1,000 nomination fee');
+  assert.equal(await balance(ada), 40000, '₦10,000 nomination fee');
   await assert.rejects(as(ada, "select sug_nominate('Again')"), /already running/);
   await as(bisi, "select sug_nominate('More keke routes and cheaper suya')");
   await assert.rejects(as(voters[0], `select sug_vote('${ada}')`), /Thursday to Saturday/);

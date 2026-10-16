@@ -4,11 +4,14 @@ import {Html} from '@react-three/drei';
 import * as THREE from 'three';
 import {useGameStore} from '../../stores/gameStore';
 import {locationById,CAR_PARK_BAY} from '../../config/campusLocations';
+import {KOROPE_ID} from '../../config/kekeRoutes';
+import {KOROPE_BAY,KOROPE_SEATS} from '../../config/kekeSimulation';
 import {renderedKekes} from './kekePresentation';
 import {useDayNight,NIGHT_LIGHTS_FROM} from '../world/dayNight';
 import {glowMap} from '../world/NightLights';
 export function KekeVehicle({id}:{id:string}){
- const initial=useRef(id==='keke-1'?locationById('sports-centre').kekeStop:CAR_PARK_BAY);
+ const koropeBus=id===KOROPE_ID;
+ const initial=useRef(koropeBus?KOROPE_BAY:id==='keke-1'?locationById('sports-centre').kekeStop:CAR_PARK_BAY);
  const k=useGameStore(s=>s.kekes[id]);
  const kekeRef=useRef<THREE.Group>(null),frontWheelRef=useRef<THREE.Mesh>(null),rearLeftWheelRef=useRef<THREE.Mesh>(null),rearRightWheelRef=useRef<THREE.Mesh>(null);
  useFrame((_,dt)=>{
@@ -20,10 +23,10 @@ export function KekeVehicle({id}:{id:string}){
    if(!latest.isStopped)for(const ref of [frontWheelRef,rearLeftWheelRef,rearRightWheelRef])if(ref.current)ref.current.rotation.x+=dt*14;
  },-2);
  if(!k||k.phase==='RETURNING')return null;
- const book=()=>{const store=useGameStore.getState();if(Math.hypot(store.myPosition[0]-k.position[0],store.myPosition[2]-k.position[2])>8)return;store.setNearbyInteractable({id,type:'keke_stop',targetId:id,label:'Campus Keke',actionText:'Book Ride',position:k.position,radius:8});store.setActiveModal('keke_destination');};
+ const book=()=>{const store=useGameStore.getState();if(Math.hypot(store.myPosition[0]-k.position[0],store.myPosition[2]-k.position[2])>8)return;store.setNearbyInteractable({id,type:'keke_stop',targetId:id,label:koropeBus?'Korope Bus':'Campus Keke',actionText:koropeBus?'Join Korope':'Book Ride',position:k.position,radius:8});store.setActiveModal('keke_destination');};
  return <group ref={kekeRef} position={initial.current} onClick={e=>{e.stopPropagation();book();}}>
-   <Html position={[0,2.75,0]} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div style={{whiteSpace:'nowrap',background:'#243c30',color:'#fff6d6',borderRadius:6,padding:'4px 7px',fontSize:10}}>{id==='keke-1'?'Route Keke':k.phase==='IDLE'?'Car Park Keke · Book ride':`${k.currentStopName} · ${3-k.passengers.length} seats`}</div></Html>
-      <KekeBody frontWheelRef={frontWheelRef} rearLeftWheelRef={rearLeftWheelRef} rearRightWheelRef={rearRightWheelRef}/>
+   <Html position={[0,koropeBus?2.6:2.75,0]} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div style={{whiteSpace:'nowrap',background:'#243c30',color:'#fff6d6',borderRadius:6,padding:'4px 7px',fontSize:10}}>{koropeBus?(k.phase==='WAITING'?`Korope · ${k.passengers.length}/${k.minRiders??5} aboard · leaves at ${k.minRiders??5}`:k.phase==='BOARDING'&&k.currentStopName==='Car Park'?'Korope · doors closing':`Korope · ${k.currentStopName}`):id==='keke-1'?'Route Keke':k.phase==='IDLE'?'Car Park Keke · Book ride':`${k.currentStopName} · ${3-k.passengers.length} seats`}</div></Html>
+      {koropeBus?<KoropeBody frontWheelRef={frontWheelRef} rearLeftWheelRef={rearLeftWheelRef} rearRightWheelRef={rearRightWheelRef}/>:<KekeBody frontWheelRef={frontWheelRef} rearLeftWheelRef={rearLeftWheelRef} rearRightWheelRef={rearRightWheelRef}/>}
       <KekeHeadlights/>
     </group>;
 }
@@ -156,5 +159,61 @@ function KekeBody({frontWheelRef,rearLeftWheelRef,rearRightWheelRef}:{frontWheel
   <Wheel ref={frontWheelRef} p={[0,.25,1.45]}/>
   <Wheel ref={rearLeftWheelRef} p={[-.75,.25,-.6]}/>
   <Wheel ref={rearRightWheelRef} p={[.75,.25,-.6]}/>
+ </>;
+}
+
+
+// Korope: a white minibus (Suzuki Every style) with a hollow cabin so riders show inside.
+const K={
+ white:new THREE.MeshStandardMaterial({color:'#f4f5f3',roughness:.5,metalness:.1}),
+ shade:new THREE.MeshStandardMaterial({color:'#d8dbd6',roughness:.6}),
+ window:new THREE.MeshStandardMaterial({color:'#1d2a30',opacity:.55,transparent:true,roughness:.1,depthWrite:false}),
+ seat:new THREE.MeshStandardMaterial({color:'#a8a08f',roughness:.85}),
+ floor:new THREE.MeshStandardMaterial({color:'#6b6f73',roughness:.9}),
+};
+function KoropeBody({frontWheelRef,rearLeftWheelRef,rearRightWheelRef}:{frontWheelRef:React.Ref<THREE.Mesh>;rearLeftWheelRef:React.Ref<THREE.Mesh>;rearRightWheelRef:React.Ref<THREE.Mesh>}){
+ const pillars=[1.1,.4,-.5,-1.4,-2.1];
+ return <>
+  <Box p={[0,.4,-.1]} s={[1.44,.08,4.0]} m={K.floor}/>
+  {[-1,1].map(sx=><React.Fragment key={sx}>
+   <Box p={[sx*.73,.72,-.1]} s={[.06,.6,3.9]} m={K.white}/>
+   <Box p={[sx*.765,.84,-.1]} s={[.01,.06,3.7]} m={M.black}/>
+   <Box p={[sx*.73,1.4,-.5]} s={[.04,.62,3.3]} m={K.window}/>
+   {pillars.map(z=><Box key={z} p={[sx*.73,1.4,z]} s={[.07,.66,.07]} m={K.white}/>)}
+   <Box p={[sx*.73,1.74,-.5]} s={[.07,.06,3.4]} m={K.white}/>
+  </React.Fragment>)}
+  {/* Rear: tailgate, glass and lamps */}
+  <Box p={[0,.78,-2.12]} s={[1.44,.7,.06]} m={K.white}/>
+  <Box p={[0,1.4,-2.12]} s={[1.3,.6,.03]} m={K.window}/>
+  {[-.58,.58].map(x=><Box key={x} p={[x,.9,-2.16]} s={[.2,.12,.02]} m={M.tail}/>)}
+  {/* Roof */}
+  <Box p={[0,1.8,-.45]} s={[1.5,.07,3.5]} m={K.white}/>
+  {/* Bonnet, windscreen, dash and nose */}
+  <Box p={[0,.78,1.6]} s={[1.44,.55,.9]} m={K.white}/>
+  <Box p={[0,1.43,1.15]} s={[1.36,.8,.04]} m={K.window} r={[-.5,0,0]}/>
+  <Box p={[0,1.05,1.2]} s={[1.4,.22,.35]} m={M.black}/>
+  <Box p={[0,.55,2.07]} s={[1.5,.16,.1]} m={K.shade}/>
+  <Box p={[0,.82,2.06]} s={[.7,.14,.02]} m={M.black}/>
+  {[-.5,.5].map(x=><React.Fragment key={x}>
+   <Box p={[x,.95,2.06]} s={[.24,.16,.02]} m={M.lamp}/>
+   <Box p={[x*1.2,.76,2.06]} s={[.08,.08,.02]} m={M.indicator}/>
+  </React.Fragment>)}
+  {/* Seats (tops at .75, matching seatPosition) and the driver */}
+  {KOROPE_SEATS.map(([x,z],i)=><React.Fragment key={i}>
+   <Box p={[x,.66,z-.05]} s={[.42,.14,.44]} m={K.seat}/>
+   <Box p={[x,1.0,z-.3]} s={[.42,.56,.08]} m={K.seat}/>
+  </React.Fragment>)}
+  <Box p={[.4,.66,.8]} s={[.46,.14,.46]} m={K.seat}/>
+  <Box p={[.4,1.0,.52]} s={[.46,.56,.08]} m={K.seat}/>
+  <group position={[.4,.9,.82]}>
+   <Box p={[0,.32,-.04]} s={[.38,.48,.22]} m={M.shirt}/>
+   <mesh position={[0,.7,-.02]} material={M.skin} castShadow><sphereGeometry args={[.14,12,10]}/></mesh>
+   <mesh position={[0,.75,-.05]} material={M.black}><sphereGeometry args={[.135,10,8,0,Math.PI*2,0,1.3]}/></mesh>
+   <Box p={[-.1,.05,.18]} s={[.14,.14,.4]} m={M.shorts}/><Box p={[.1,.05,.18]} s={[.14,.14,.4]} m={M.shorts}/>
+  </group>
+  <Rod p={[.4,1.1,1.1]} len={.5} m={M.black} r={[.5,0,Math.PI/2]} rad={.02}/>
+  {/* Wheels */}
+  <Wheel ref={frontWheelRef} p={[-.74,.27,1.4]}/><Wheel p={[.74,.27,1.4]}/>
+  <Wheel ref={rearLeftWheelRef} p={[-.74,.27,-1.3]}/><Wheel ref={rearRightWheelRef} p={[.74,.27,-1.3]}/>
  </>;
 }

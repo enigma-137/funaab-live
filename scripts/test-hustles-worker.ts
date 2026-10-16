@@ -20,7 +20,7 @@ async function main() {
     if (name === 'tutoring_start_trusted') return new Response(JSON.stringify({ session: '11111111-1111-4111-8111-111111111111', questions: [] }));
     if (name === 'tutoring_submit_trusted') return new Response(JSON.stringify({ score: 1, paid: 80 }));
     if (name === 'errand_for_trusted') return new Response(JSON.stringify(errand));
-    if (name === 'errand_complete_trusted') return new Response(JSON.stringify({ paid: 300 }));
+    if (name === 'errand_complete_trusted') return new Response(JSON.stringify({ paid: 3000 }));
     return new Response('true');
   }) as any;
   const storage = { get: async () => undefined, put: async () => {}, delete: async () => {}, list: async () => new Map(), getAlarm: async () => null, setAlarm: async () => {} };
@@ -54,12 +54,12 @@ async function main() {
     await ada.socket.packet({ type: 'move', position: [...POS_KIOSK.serviceSpot], rotation: 0, animation: 'idle' });
     assert.match((await hustle(ada.socket, { op: 'pos_finish' })).error, /Start a shift/);
     assert.equal(paid('pos').length, 0, 'abandoned shift never paid');
-    // A full shift pays exactly ₦250, once.
+    // A full shift pays exactly ₦2,500, once.
     await hustle(ada.socket, { op: 'pos_start' });
     now += 61000;
     const fin = await hustle(ada.socket, { op: 'pos_finish', amount: 99999 });
-    assert.equal(fin.result.paid, 250);
-    assert.equal(paid('pos').length, 1); assert.equal(paid('pos')[0].body.p_amount, 250);
+    assert.equal(fin.result.paid, 2500);
+    assert.equal(paid('pos').length, 1); assert.equal(paid('pos')[0].body.p_amount, 2500);
     assert.match((await hustle(ada.socket, { op: 'pos_finish' })).error, /Start a shift/);
 
     // ---- FPY farm: three jobs, each at its plot, in order, at a real pace ----
@@ -95,10 +95,10 @@ async function main() {
     const spot = PHOTO_SPOTS[0];
     assert.match((await hustle(ada.socket, { op: 'photo', spot: spot.id })).error, /photo spot/);
     ada.session.trustedPosition = [...spot.position]; ada.session.claimedPosition = [...spot.position];
-    assert.equal((await hustle(ada.socket, { op: 'photo', spot: spot.id, clients: 50 })).result.paid, 100, 'alone: base pay, client count is not taken from the phone');
+    assert.equal((await hustle(ada.socket, { op: 'photo', spot: spot.id, clients: 50 })).result.paid, 1000, 'alone: base pay, client count is not taken from the phone');
     const bisi = await join(B, 'Bisi', [spot.position[0] + 3, 0, spot.position[2]]);
     const far = await join(C, 'Far', [spot.position[0] + 40, 0, spot.position[2]]);
-    assert.equal((await hustle(ada.socket, { op: 'photo', spot: spot.id })).result.paid, 200, 'one real client nearby');
+    assert.equal((await hustle(ada.socket, { op: 'photo', spot: spot.id })).result.paid, 2000, 'one real client nearby');
     void far;
 
     // ---- Tutoring: Library only ----
@@ -116,7 +116,7 @@ async function main() {
     assert.match((await hustle(bisi.socket, { op: 'errand_handover', errand: id })).error, /Walk up to them/);
     bisi.session.trustedPosition = [spot.position[0] + 2, 0, spot.position[2]]; bisi.session.claimedPosition = bisi.session.trustedPosition;
     const handed = await hustle(bisi.socket, { op: 'errand_handover', errand: id });
-    assert.equal(handed.result.paid, 300);
+    assert.equal(handed.result.paid, 3000);
     assert(ada.socket.messages.some((m) => m.type === 'hustle_notice' && /Bisi finished your errand/.test(m.text)), 'poster is told');
     assert.match((await hustle(ada.socket, { op: 'errand_handover', errand: id })).error, /not yours/, 'the poster cannot pay themselves');
     errand = { poster: '00000000-0000-4000-8000-0000000000ff', runner: B, status: 'accepted' };

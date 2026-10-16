@@ -53,7 +53,7 @@ async function main() {
   for (const [id, name] of [[u, 'Chidi'], [other, 'Ngozi']]) {
     await db.query('insert into auth.users values($1)', [id]);
     await db.query("insert into profiles(id,username,college) values($1,$2,'COLENG')", [id, name]);
-    await db.query('insert into wallets(user_id,balance) values($1,2580)', [id]);
+    await db.query('insert into wallets(user_id,balance) values($1,25800)', [id]);
   }
   const as = async (user: string) => db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${user}',false);`);
   const buy = async (user: string, vendor: string, item: string, request = crypto.randomUUID()) => {
@@ -75,12 +75,12 @@ async function main() {
   // Closed: rejected with the vendor's message; wallet untouched. A client clock cannot change this.
   await forceHours('mai_suya', false);
   await assert.rejects(() => buy(u, 'mai_suya', 'vendor_suya_beef'), /Mai Suya has closed for the night/);
-  assert.equal(await balance(u), 2580);
+  assert.equal(await balance(u), 25800);
 
   // Open: exact server price, ledger, inventory.
   await forceHours('mai_suya', true);
   const r1 = await buy(u, 'mai_suya', 'vendor_suya_beef');
-  const afterBeef = 2580 - P('vendor_suya_beef');
+  const afterBeef = 25800 - P('vendor_suya_beef');
   assert.equal(r1.price, P('vendor_suya_beef')); assert.equal(Number(r1.balance), afterBeef); assert.equal(await balance(u), afterBeef);
   const [tx] = await rows("select * from wallet_transactions where user_id=$1 and type='food_purchase' order by created_at desc limit 1", [u]);
   assert.equal(Number(tx.amount), -P('vendor_suya_beef')); assert.equal(Number(tx.balance_after), afterBeef); assert.equal(tx.description, 'Mai Suya: Beef Suya');
@@ -108,7 +108,7 @@ async function main() {
   await forceHours('indomie_egg', true);
   assert.equal((await buy(other, 'indomie_egg', 'vendor_indomie_egg')).price, P('vendor_indomie_egg'));
   assert.equal((await buy(other, 'indomie_egg', 'vendor_indomie_plain')).price, P('vendor_indomie_plain'));
-  const otherAfter = 2580 - P('vendor_indomie_egg') - P('vendor_indomie_plain');
+  const otherAfter = 25800 - P('vendor_indomie_egg') - P('vendor_indomie_plain');
   assert.equal(await balance(other), otherAfter, 'two players, independent wallets');
 
   // Legacy RPC hole closed: a client-priced vendor item is refused.

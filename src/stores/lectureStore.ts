@@ -7,8 +7,12 @@ import { networkManager } from '../game/multiplayer/networkManager';
 import { useGameStore } from './gameStore';
 import { useInputStore } from './inputStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { logTraceIQ } from '../lib/traceiq';
 import { getHallScheduleState, normalizeHallLocationId } from '../config/lectureSchedule';
-import { getLectureHall } from '../config/lectureHalls';
+import { getLectureHall, hallSeatPositions, HALL_DOOR_SPOT, CHAIR_OFFSET_Z } from '../config/lectureHalls';
+
+/** Where you stand inside the hall while not seated (x, z, facing). Updated every frame by the walker, so not reactive. */
+export const hallSpot = { x: HALL_DOOR_SPOT[0], z: HALL_DOOR_SPOT[2], ry: Math.PI };
 
 // 'scheduled' joins the timetabled class (allowance-eligible); 'practice' replays it off-schedule.
 export type AttendanceMode = 'scheduled' | 'practice';
@@ -63,6 +67,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     const lecture = getHallScheduleState(hall.id).lecture;
     set({ isTransitioning: true });
     useInputStore.getState().clearTargetDestination();
+    Object.assign(hallSpot, { x: HALL_DOOR_SPOT[0], z: HALL_DOOR_SPOT[2], ry: Math.PI });
 
     setTimeout(() => {
       set({
@@ -89,13 +94,15 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         },
       });
       useGameStore.getState().setActiveModal(null);
+      // Seat 0 = standing inside. The server hides you from campus and counts you in this class.
+      networkManager.enterLectureRoom(lecture.id, 0);
     }, 400);
   },
 
   sitDown: (seatNumber: number) => {
     const { currentLecture, isInClassroom, mySeatNumber } = get();
     if (!isInClassroom || !currentLecture || mySeatNumber === seatNumber) return;
-    if (mySeatNumber !== null) get().standUp();
+    // Moving to another seat keeps your attendance running; only standing up ends it.
     set({ mySeatNumber: seatNumber, isHandRaised: false });
     // Seated players join the lecture's multiplayer room so classmates see them in their seat.
     networkManager.enterLectureRoom(currentLecture.id, seatNumber);
@@ -105,7 +112,11 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     const { currentLecture, mySeatNumber } = get();
     if (mySeatNumber === null) return;
     get().endAttendance();
-    if (currentLecture) networkManager.leaveLectureRoom(currentLecture.id);
+    // Step back into the gap behind your chair, facing the board.
+    const seat = hallSeatPositions(getLectureHall(get().currentHallId)).find((s) => s.seatNumber === mySeatNumber);
+    if (seat) Object.assign(hallSpot, { x: seat.pos[0], z: seat.pos[2] + CHAIR_OFFSET_Z + 0.62, ry: Math.PI });
+    // Still inside the hall, just not seated.
+    if (currentLecture) networkManager.enterLectureRoom(currentLecture.id, 0);
     set({ mySeatNumber: null, isHandRaised: false });
   },
 
@@ -145,6 +156,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     if (!state.currentLecture || state.isTransitioning) return;
 
     get().standUp();
+    networkManager.leaveLectureRoom(state.currentLecture.id);
     useGameStore.setState((game) => ({
       myPosition: state.classroomReturnPosition || game.myPosition,
       myAnimation: 'idle',
@@ -216,6 +228,12 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
 
         if (error || (data && !data.success)) {
           console.warn('Lecture attendance allowance claim:', error?.message || data?.error);
+          logTraceIQ('warn', 'Lecture attendance allowance rejected', {
+            service: 'lectures',
+            lectureId: lecture.id,
+            durationSec,
+            reason: error?.message || data?.error,
+          });
           return false;
         }
 
@@ -242,6 +260,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         return true;
       } catch (e) {
         console.error('Attendance allowance RPC error:', e);
+        logTraceIQ('error', 'Lecture attendance allowance failed', { service: 'lectures', lectureId: lecture.id, error: e });
         return false;
       }
     }

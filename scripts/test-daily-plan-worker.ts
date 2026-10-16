@@ -71,6 +71,11 @@ async function main() {
     await ada.packet({ type: 'move', position: [seat0[0], 0, seat0[2] + 0.02], rotation: 0.2, animation: 'sit' });
     await flush();
     assert(kinds(A).includes('campus_night'));
+    // Already sitting in the garden when 8pm comes: no moves are sent, the heartbeat still counts it.
+    assert(!kinds(B).includes('campus_night'));
+    await bisi.packet({ type: 'ping', t: now });
+    await flush();
+    assert(kinds(B).includes('campus_night'), 'standing still through 8pm still counts');
 
     // Visiting a friend's hostel room counts; your own room doesn't.
     events.length = 0;
@@ -87,7 +92,7 @@ async function main() {
     now += 3000; await solo.packet({ type: 'football', requestId: 'x', op: 'practice', aim: 0, power: 0.5 });
     await flush();
     assert.equal(events.length, 0);
-    console.log('DAILY PLAN WORKER PASSED: penalties capped at target, trusted garden position, hangout needs two, campus night window, friend room visits, offline no-op');
+    console.log('DAILY PLAN WORKER PASSED: penalties capped at target, trusted garden position, hangout needs two, campus night window (also when standing still), friend room visits, offline no-op');
   } finally {
     (globalThis as any).WebSocket = oldWS; globalThis.fetch = oldFetch; globalThis.setInterval = oldInterval; Date.now = oldNow;
   }

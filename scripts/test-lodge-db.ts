@@ -15,8 +15,11 @@ async function main() {
   const db = new PGlite();
   await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema public,auth to anon,authenticated,service_role;`);
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
-  const sql = fs.readFileSync(path.join(dir, '020_off_campus_lodge.sql'), 'utf8');
-  for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  let sql = fs.readFileSync(path.join(dir, '020_off_campus_lodge.sql'), 'utf8');
+  // The lodge ran until 046 closed it; replay up to then, then check the closure at the end.
+  for (const f of fs.readdirSync(dir).sort().filter((f) => f < '046')) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  // Amounts may have been rescaled since (039): also check the live functions as they are now.
+  sql += (await db.query("select string_agg(pg_get_functiondef(p.oid), chr(10)) d from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f'")).rows[0].d + fs.readFileSync(path.join(dir, '039_economy_x10.sql'), 'utf8');
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const one = async (q: string, p: unknown[] = []) => (await rows(q, p))[0];
   const call = async (user: string | null, q: string, p: unknown[] = []) => {
@@ -98,6 +101,18 @@ async function main() {
   await call(ada, 'select rent_lodge()');
   await call(ada, 'select leave_lodge()');
   assert.equal(await style(ada), 'resumption');
-  console.log('LODGE DB PASSED: drift, privileges, rent + restyle + furniture kept, prepay limit, broke rejected, overdue grace, late payment, eviction once, Worker capacity, public flag, move out');
+  // 046 closes the lodge: a tenant with a week left is refunded about ₦5,000 and moved back; no new rentals.
+  await db.query('update wallets set balance=5000 where user_id=$1', [ada]);
+  await call(ada, 'select rent_lodge()');
+  const before = await balance(ada);
+  await db.exec(fs.readFileSync(path.join(dir, '046_close_lodge.sql'), 'utf8'));
+  assert.equal(await style(ada), 'resumption');
+  const refund = (await balance(ada)) - before;
+  assert(refund >= 4990 && refund <= 5000, `refund for the unused week (${refund})`);
+  assert.equal(Number((await one("select count(*) n from wallet_transactions where user_id=$1 and type='lodge_refund'", [ada])).n), 1);
+  await fails(ada, 'select rent_lodge()', /lodge has closed/);
+  await db.exec(fs.readFileSync(path.join(dir, '046_close_lodge.sql'), 'utf8'));
+  assert.equal((await balance(ada)) - before, refund, 're-running pays nothing more');
+  console.log('LODGE DB PASSED: drift, privileges, rent + restyle + furniture kept, prepay limit, broke rejected, overdue grace, late payment, eviction once, Worker capacity, public flag, move out, closure with refund (046)');
 }
 main().catch((e) => { console.error(e); process.exit(1); });

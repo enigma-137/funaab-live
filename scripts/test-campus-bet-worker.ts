@@ -64,24 +64,24 @@ async function main() {
     const placeCalls = () => calls.filter((c) => c.name === 'campus_bet_place_trusted');
     // Far from the counter: rejected before touching the database.
     session.trustedPosition = [7, 0, 78];
-    assert.match((await bet({ op: 'place', roundId, stake: 100, picks })).error, /counter/);
+    assert.match((await bet({ op: 'place', roundId, stake: 1000, picks })).error, /counter/);
     // Reconnect while standing at the counter: the server restarts the player at spawn.
     // Its trusted position must catch up at legal speed instead of freezing there.
     session.trustedPosition = [7, 0, 78]; session.movementBudget = 4; session.movementClock = now;
     await socket.packet({ type: 'move', position: [...CAMPUS_BET_SHOP.counter], rotation: 0, animation: 'idle' });
     now += 1000; // ~1–2 s at legal speed covers the ~33 m from spawn; the valid ticket below proves the catch-up.
-    for (const [stake, p] of [[45, picks], [510, picks], [105, picks], ['100', picks], [100, picks.slice(0, 4)], [100, ['HOME', 'WIN', 'AWAY', 'HOME', 'HOME']], [100, 'HOME']] as const) {
+    for (const [stake, p] of [[450, picks], [5100, picks], [1050, picks], ['1000', picks], [1000, picks.slice(0, 4)], [1000, ['HOME', 'WIN', 'AWAY', 'HOME', 'HOME']], [1000, 'HOME']] as const) {
       assert((await bet({ op: 'place', roundId, stake, picks: p })).error, `rejects ${JSON.stringify([stake, p])}`);
     }
-    assert((await bet({ op: 'place', roundId: 'nope', stake: 100, picks })).error);
+    assert((await bet({ op: 'place', roundId: 'nope', stake: 1000, picks })).error);
     assert.equal(placeCalls().length, 0, 'invalid tickets never reach the database');
 
     // Valid ticket: only trusted identity + the three player choices are forwarded.
-    const ok = await bet({ op: 'place', roundId, stake: 100, picks, winner: 'HOME', payout: 2500, correct_count: 5, userId: 'someone-else', p_user: 'x' });
+    const ok = await bet({ op: 'place', roundId, stake: 1000, picks, winner: 'HOME', payout: 2500, correct_count: 5, userId: 'someone-else', p_user: 'x' });
     assert.equal(ok.error, undefined);
     assert.equal(ok.result.balance, 900);
-    assert.deepEqual(placeCalls()[0].body, { p_user: userId, p_round: roundId, p_stake: 100, p_picks: picks });
-    assert.match((await bet({ op: 'place', roundId, stake: 100, picks })).error, /already have a ticket/, 'database rejection is relayed');
+    assert.deepEqual(placeCalls()[0].body, { p_user: userId, p_round: roundId, p_stake: 1000, p_picks: picks });
+    assert.match((await bet({ op: 'place', roundId, stake: 1000, picks })).error, /already have a ticket/, 'database rejection is relayed');
 
     // Off-campus rooms cannot bet.
     const hostel = new Socket(); await w.handleSession(hostel, null, 'world:funaab:hostel');

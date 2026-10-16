@@ -10,6 +10,10 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useWalletStore } from '../../stores/walletStore';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
+import { logTraceIQ } from '../../lib/traceiq';
+import { closedWhileBackgrounded, hiddenDurationMs, trackPageVisibility, visibilitySnapshot } from './pageVisibility';
+
+trackPageVisibility();
 import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
@@ -17,6 +21,8 @@ import { useBasketballStore, useVolleyballStore } from '../../stores/courtGameSt
 import { useRallyStore } from '../../stores/rallyStore';
 import { usePartyStore } from '../../stores/partyStore';
 import { useNoticeStore } from '../../stores/noticeStore';
+import { useGroupStore } from '../../stores/groupStore';
+import { useCarStore } from '../../stores/carStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 import { useHustleStore } from '../../stores/hustleStore';
 import { toast } from '../../stores/toastStore';
@@ -106,6 +112,11 @@ class NetworkManager {
       this.pending.set(requestId,{resolve:v=>{clearTimeout(timer);if(typeof v.balance==='number')useWalletStore.setState({balance:v.balance});resolve(v);},reject:e=>{clearTimeout(timer);reject(e);}});
       this.send({type:'keke_book',requestId,kekeId,destinationId});
     });
+  }
+  /** Tell the server a booking sheet is open (or closed) so the route vehicle waits at its stop. */
+  public holdKeke(kekeId:string,holding:boolean){
+    if(this.ws?.readyState!==WebSocket.OPEN)return;
+    this.send({type:'keke_hold',kekeId,holding});
   }
   /** Campus Bet: the Worker validates and the database decides results and payouts. */
   public campusBet(op:'state'|'place',payload:Record<string,unknown>={}):Promise<any>{
@@ -199,6 +210,16 @@ class NetworkManager {
         this.waitingForSnapshot = true;
         useGameStore.getState().setConnectionStatus('connected');
         console.log('[WS] connected to', this.targetWsUrl);
+        if (this.outageStartedAt !== null) {
+          logTraceIQ('info', 'Multiplayer reconnected', {
+            service: 'multiplayer',
+            room: this.room,
+            downtimeMs: Date.now() - this.outageStartedAt,
+            backgrounded: this.outageBackgrounded,
+          });
+          this.outageStartedAt = null;
+          this.outageBackgrounded = false;
+        }
 
         const store = useGameStore.getState();
         // Send join packet with connectionId, profile, and auth token
@@ -228,6 +249,7 @@ class NetworkManager {
           this.handleMessage(data);
         } catch (e) {
           console.error('Failed to parse WebSocket message:', e);
+          logTraceIQ('error', 'Malformed multiplayer message', { service: 'multiplayer', room: this.room, error: e });
         }
       };
 
@@ -235,6 +257,27 @@ class NetworkManager {
         if(useGameStore.getState().isRidingKeke){
           useGameStore.getState().setRidingKeke(false,null,null);
           useGameStore.getState().setMyPosition(CAMPUS_SPAWN);useHostelStore.setState({teleport:CAMPUS_SPAWN});
+        }
+
+        // One log per outage (the first abnormal close), not one per 2.5s retry.
+        // Drops caused by the app being backgrounded are expected on mobile, so
+        // they are info; a warning means a real network/server drop.
+        if (event.code !== 1000 && event.code !== 1008 && this.outageStartedAt === null) {
+          const now = Date.now();
+          const visibility = visibilitySnapshot();
+          const backgrounded = closedWhileBackgrounded(visibility, now);
+          this.outageStartedAt = now;
+          this.outageBackgrounded = backgrounded;
+          logTraceIQ(backgrounded ? 'info' : 'warn', backgrounded ? 'Multiplayer paused while app was in background' : 'Multiplayer connection lost', {
+            service: 'multiplayer',
+            room: this.room,
+            closeCode: event.code,
+            closeReason: event.reason || undefined,
+            wasClean: event.wasClean,
+            backgrounded,
+            pageHidden: visibility.hidden,
+            hiddenForMs: hiddenDurationMs(visibility, now),
+          });
         }
 
         if(event.code===1008) { window.dispatchEvent(new CustomEvent(this.room === 'world:funaab:library' ? 'library-access-ended' : 'hostel-access-ended',{detail:event.reason})); this.clearPendingMove(); this.stopHeartbeat(); return; }
@@ -250,6 +293,10 @@ class NetworkManager {
       };
     } catch (err) {
       console.warn('Multiplayer connection error:', err);
+      if (this.outageStartedAt === null) {
+        this.outageStartedAt = Date.now();
+        logTraceIQ('error', 'Multiplayer connection could not be opened', { service: 'multiplayer', room: this.room, error: err });
+      }
       useGameStore.getState().setConnectionStatus('disconnected');
       this.scheduleReconnect();
     }
@@ -270,6 +317,10 @@ class NetworkManager {
       case 'level_refresh': void useLevelStore.getState().load(); return;
       case 'wallet_refresh': { const user=useAuthStore.getState().user; if(user) useWalletStore.getState().loadWallet(user.id); void useDailyPlanStore.getState().load(); void useLevelStore.getState().load(); return; }
       case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
+      case 'car_ride_result': useCarStore.getState().rideResult(data); return;
+      case 'car_ride_end': useCarStore.getState().rideEnded(String(data.reason || '')); return;
+      case 'group_ping': useGroupStore.getState().pinged(String(data.groupId || ''), String(data.from || 'Someone')); return;
+      case 'car_rider_joined': toast({ icon: '🚗', text: `${String(data.username || 'A friend')} hopped in.`, tone: 'info' }); return;
       case 'hustle_notice': toast({ icon: data.icon || '💼', text: String(data.text || ''), tone: 'info', ms: 4500 }); void useHustleStore.getState().loadErrands(); return;
       case 'reward_error': window.dispatchEvent(new CustomEvent('hostel-notice',{detail:data.message})); return;
 
@@ -358,7 +409,9 @@ class NetworkManager {
 
       case 'keke_dropoff': {
         gameStore.setRidingKeke(false,null,null);useInputStore.getState().clearTargetDestination();
-        useHostelStore.setState({teleport:data.position});gameStore.setMyPosition(data.position);return;
+        useHostelStore.setState({teleport:data.position});gameStore.setMyPosition(data.position);
+        if(data.reason&&data.reason!=='Arrived'&&data.reason!=='Ride ended')toast({icon:'🚐',text:String(data.reason),tone:'info',ms:6000});
+        return;
       }
       case 'players_batch': {
         if(data.kekes){
@@ -408,12 +461,13 @@ class NetworkManager {
       case 'lecture_room_snapshot':
       case 'lecture_student_joined':
       case 'lecture_student_left':
+      case 'lecture_student_moved':
       case 'lecture_hand_raise_sync': {
         const lecture = useLectureStore.getState();
         const state = lecture.classroomState;
         if (!state) break;
         const students = { ...state.activeStudents };
-        const toSeat = (st: any) => ({ connectionId: st.connectionId, username: st.username, college: st.college, seatNumber: st.seatNumber, handRaised: !!st.isHandRaised });
+        const toSeat = (st: any) => ({ connectionId: st.connectionId, username: st.username, college: st.college, seatNumber: st.seatNumber, handRaised: !!st.isHandRaised, pos: Array.isArray(st.pos) ? st.pos : undefined, moving: !!st.moving });
         if (data.type === 'lecture_room_snapshot') {
           if (data.lectureId && data.lectureId !== state.lectureId) break;
           for (const k of Object.keys(students)) delete students[k];
@@ -422,6 +476,9 @@ class NetworkManager {
           if (data.student && data.student.connectionId !== this.connectionId) students[data.student.connectionId] = toSeat(data.student);
         } else if (data.type === 'lecture_student_left') {
           delete students[data.connectionId];
+        } else if (data.type === 'lecture_student_moved') {
+          if (!students[data.connectionId] || !Array.isArray(data.pos)) break;
+          students[data.connectionId] = { ...students[data.connectionId], pos: data.pos, moving: !!data.moving };
         } else if (students[data.connectionId]) {
           students[data.connectionId] = { ...students[data.connectionId], handRaised: !!data.isHandRaised };
         }
@@ -606,9 +663,9 @@ class NetworkManager {
     }
   }
 
-  public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false) {
+  public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false, car: string | null = null) {
     if (this.ws?.readyState !== WebSocket.OPEN || this.waitingForSnapshot) return;
-    this.pendingMove = { position: [...position], rotation, animation, kekeRiding };
+    this.pendingMove = { position: [...position], rotation, animation, kekeRiding, car };
     this.flushPendingMove();
   }
 
@@ -667,6 +724,11 @@ class NetworkManager {
       destinationName,
     });
   }
+
+  /** Ask for a lift in someone's car, or get out of it. */
+  public carRide(driver: string) { this.send({ type: 'car_ride', driver }); }
+  public carRideLeave() { this.send({ type: 'car_ride_leave' }); }
+  public groupPing(groupId: string, to: string[]) { this.send({ type: 'group_ping', groupId, to: to.slice(0, 20) }); }
 
   public exitKeke(kekeId: string) {
     this.send({
@@ -761,6 +823,11 @@ class NetworkManager {
     });
   }
 
+  /** Where you are standing inside the hall, so classmates see you walk about. */
+  public sendLectureMove(x: number, z: number, ry: number, moving: boolean) {
+    this.send({ type: 'lecture_move', x, z, ry, moving });
+  }
+
   public sendHandRaise(lectureId: string, raised: boolean) {
     this.send({
       type: 'lecture_hand_raise',
@@ -842,6 +909,10 @@ class NetworkManager {
       this.ws.send(JSON.stringify(data));
     }
   }
+
+  // Set while disconnected, so an outage is logged once and its length reported.
+  private outageStartedAt: number | null = null;
+  private outageBackgrounded = false;
 
   private scheduleReconnect() {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);

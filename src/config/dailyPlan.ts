@@ -11,22 +11,22 @@ export type DailyGoalSource = 'db' | 'worker';
 export interface DailyGoalDef { id: string; title: string; icon: string; source: DailyGoalSource; target: number; reward: number }
 
 export const DAILY_GOALS: DailyGoalDef[] = [
-  { id: 'attend_lecture', title: 'Attend a lecture', icon: '🎓', source: 'db', target: 1, reward: 100 },
-  { id: 'finish_job', title: 'Finish a campus job', icon: '💼', source: 'db', target: 1, reward: 100 },
-  { id: 'buy_food', title: 'Buy something to eat', icon: '🍲', source: 'db', target: 1, reward: 100 },
-  { id: 'ride_keke', title: 'Ride a Keke', icon: '🛺', source: 'db', target: 1, reward: 100 },
-  { id: 'game_den_match', title: 'Play a Game Den match', icon: '🎮', source: 'db', target: 1, reward: 100 },
-  { id: 'take_penalties', title: 'Take 3 penalties at the Sports Centre', icon: '⚽', source: 'worker', target: 3, reward: 100 },
-  { id: 'visit_love_garden', title: 'Visit the Love Garden', icon: '🌳', source: 'worker', target: 1, reward: 100 },
-  { id: 'garden_hangout', title: 'Sit in the Love Garden with another student', icon: '🪑', source: 'worker', target: 1, reward: 100 },
-  { id: 'visit_friend_room', title: "Visit a friend's hostel room", icon: '🚪', source: 'worker', target: 1, reward: 100 },
-  { id: 'campus_night', title: 'Show up for Campus Night (8–9pm, Love Garden)', icon: '🌙', source: 'worker', target: 1, reward: 100 },
+  { id: 'attend_lecture', title: 'Attend a lecture', icon: '🎓', source: 'db', target: 1, reward: 1000 },
+  { id: 'finish_job', title: 'Finish a campus job', icon: '💼', source: 'db', target: 1, reward: 1000 },
+  { id: 'buy_food', title: 'Buy something to eat', icon: '🍲', source: 'db', target: 1, reward: 1000 },
+  { id: 'ride_keke', title: 'Ride a Keke', icon: '🛺', source: 'db', target: 1, reward: 1000 },
+  { id: 'game_den_match', title: 'Play a Game Den match', icon: '🎮', source: 'db', target: 1, reward: 1000 },
+  { id: 'take_penalties', title: 'Take 3 penalties at the Sports Centre', icon: '⚽', source: 'worker', target: 3, reward: 1000 },
+  { id: 'visit_love_garden', title: 'Visit the Love Garden', icon: '🌳', source: 'worker', target: 1, reward: 1000 },
+  { id: 'garden_hangout', title: 'Sit in the Love Garden with another student', icon: '🪑', source: 'worker', target: 1, reward: 1000 },
+  { id: 'visit_friend_room', title: "Visit a friend's hostel room", icon: '🚪', source: 'worker', target: 1, reward: 1000 },
+  { id: 'campus_night', title: 'Show up for Campus Night (8–9pm, Love Garden)', icon: '🌙', source: 'worker', target: 1, reward: 1000 },
 ];
 
 export const DAILY_PLAN = {
   GOALS_PER_DAY: 3,
   /** Paid once when all of the day's goals are claimed; also advances the streak. */
-  ALL_DONE_BONUS: 150,
+  ALL_DONE_BONUS: 1500,
   STREAK_BADGES: [3, 7, 30] as const,
   /** Campus Night: Lagos wall-clock hour [start, end). */
   CAMPUS_NIGHT_HOURS: [20, 21] as const,

@@ -1,7 +1,7 @@
 import base from '../worlds/funaab/world.json';
 import { ARCADE_TABLES, HALL_BOUNDS, PARTY_HALL } from './partyHall';
 import { FPY_FARM, FARM_BOUNDS, FARM_STEPS, FARM_SHIFT } from './fpyFarm';
-import { campusLocations, collegeCatalogue, locationById, CAMPUS_BOUNDS, CAMPUS_SPAWN, type Point } from './campusLocations';
+import { campusLocations, collegeCatalogue, locationById, CAMPUS_BOUNDS, CAMPUS_SPAWN, WORLD_BOUNDS, type Point } from './campusLocations';
 import { roadBounds, kekeDestinations, publicRoute, routeStops, ROUTE_FARE } from './kekeRoutes';
 import { LECTURE_HALLS } from './lectureHalls';
 import { CAMPUS_BET_SHOP } from './campusBet';
@@ -13,7 +13,9 @@ import { VOLLEYBALL_COURT } from './volleyball';
 import { courtBenchSeats } from './courtBenches';
 import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
-import { LODGE } from './lodge';
+import { ESTATE, ESTATE_HOUSES, houseDoor } from './estate';
+import { FUEL_STATION } from './cars';
+import { WORSHIP_PLACES, chapelPewSeats, mosqueMatSpots, worshipBounds } from './worship';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
   const a=l.kekeStop,b=l.entrance,w=l.footprint[0]/2,d=l.footprint[1]/2;
@@ -35,6 +37,12 @@ const restaurantDiningSeats = [-2.2, 2.2].flatMap((x, table) =>
     rotation: chair === 0 ? 0 : Math.PI,
   })),
 );
+// Order right at the serving counter too, not only at the entrance (the terrace seats used to win there).
+const floralCounter = {
+  id: 'floral-world-order-counter', type: 'food' as const, label: 'Floral World Restaurant Counter',
+  actionText: 'Order Floral World Specials (from ₦500)',
+  position: [restaurant.position[0], 0, restaurant.position[2] - 0.6] as Point, radius: 1.6,
+};
 const foodCourt = locationById('food-court');
 const foodCourtSeats = [-4.5, 4.5].flatMap((x, table) =>
   [-1, 1].map((side) => ({
@@ -145,12 +153,15 @@ const outsideGateZones=[
   {id:'gate-road',name:'Gate Road',type:'road',restricted:false,bounds:OUTSIDE_GATE.road},
   {id:'campus-bet-frontage',name:'Campus Bet',type:'plaza',restricted:false,bounds:OUTSIDE_GATE.betFrontage},
   {id:'food-vendor-plaza',name:'Food Court',type:'plaza',restricted:false,bounds:VENDOR_PLAZA},
-  {id:'lodge-frontage',name:LODGE.name,type:'plaza',restricted:false,bounds:LODGE.frontage},
+  {id:'estate-road',name:'Estate road',type:'road',restricted:false,bounds:ESTATE.accessRoad},
+  {id:'fuel-station',name:FUEL_STATION.name,type:'plaza',restricted:false,bounds:{minX:FUEL_STATION.centre[0]-FUEL_STATION.size[0]/2-2,maxX:FUEL_STATION.centre[0]+FUEL_STATION.size[0]/2+2,minZ:97,maxZ:FUEL_STATION.centre[2]+FUEL_STATION.size[1]/2+1}},
 ];
-const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
-  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,penaltySpot,freeThrowLine,serveLine,
-    {id:'lodge-door',type:'lodge',label:LODGE.name,actionText:'Lodge agent · rent or go home',position:LODGE.door,radius:3,targetId:'lodge'},
-    {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦500',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
+const world={...base,spawn:CAMPUS_SPAWN,bounds:WORLD_BOUNDS,colleges:collegeCatalogue,locations:campusLocations,
+  interactables:[...base.interactables.filter(i=>i.id!=='floral-world-dining').map(i=>({...i,position:locationById(interactableLocations[i.id]).entrance,label:i.id==='keke-stop-1'?'Car Park Keke':i.label,actionText:i.id==='keke-stop-1'?'Book Ride':i.actionText})),...restaurantDiningSeats,floralCounter,...foodCourtSeats,...libraryFrontSeats,...colfhecForecourtSeats,...bedSpots,...waitingSpots,...loveGardenSeats,...courtBenchSeats,...chapelPewSeats,...mosqueMatSpots,penaltySpot,freeThrowLine,serveLine,
+    {id:'estate-office',type:'lodge',label:ESTATE.name,actionText:'Estate office · rent or go home',position:ESTATE.officeDoor,radius:3,targetId:'estate'},
+    ...ESTATE_HOUSES.map(h=>({id:`estate-house-${h.id}`,type:'lodge' as const,label:ESTATE.name,actionText:'Your estate room',position:houseDoor(h),radius:2.4,targetId:'estate'})),
+
+    {id:'party-door',type:'party',label:'The Arena',actionText:'Night party · ₦5,000',position:PARTY_HALL.entrance,radius:4,targetId:'party-hall'},
     ...ARCADE_TABLES.map(t=>({id:`arcade-${t.id}`,type:'arcade',label:t.label,actionText:t.game==='pool'?'Play pool':'Play tic-tac-toe',position:t.at,radius:2.6,targetId:t.id})),
     {id:'hustle-fpy-farm',type:'hustle',label:'FPY Farm · Hustle',actionText:'Farm shift',position:FPY_FARM.gate,radius:4,targetId:'farm'},
     ...FARM_STEPS.map(s=>({id:`hustle-farm-${s.id}`,type:'hustle',label:`FPY Farm · ${s.label}`,actionText:s.verb,position:s.spot,radius:FARM_SHIFT.stepRadius,targetId:`farm-${s.id}`})),
@@ -176,6 +187,8 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:CAMPUS_BOUNDS,colleges:collegeCat
     // The Arena: inside is a building; its forecourt joins the walkway.
     {id:'party-hall-inside',name:'The Arena',type:'building',restricted:false,bounds:HALL_BOUNDS},
     {id:'party-hall-forecourt',name:'The Arena',type:'plaza',restricted:false,bounds:{minX:PARTY_HALL.entrance[0]-3,maxX:HALL_BOUNDS.minX+0.5,minZ:PARTY_HALL.entrance[2]-4,maxZ:PARTY_HALL.entrance[2]+4}},
+    // Mosque and Chapel of Grace: inside is a building (no lawn fine).
+    ...WORSHIP_PLACES.map(w=>({id:`${w.id}-inside`,name:w.name,type:'building',restricted:false,bounds:worshipBounds(w)})),
     // The farm's soil and paths are open to everyone (no lawn fine).
     {id:'fpy-farm',name:'FPY Farm',type:'plaza',restricted:false,bounds:{...FARM_BOUNDS,minX:FARM_BOUNDS.minX-3}},
     {id:'lawns',name:'Campus lawns',type:'lawn',restricted:true,bounds:CAMPUS_BOUNDS}],

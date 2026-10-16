@@ -30,6 +30,7 @@ export const courses = [
   ['BCH', 'Biochemistry', 'COLBIOS', 60],
   ['MCB', 'Microbiology', 'COLBIOS', 58],
   ['BIO', 'Biological Sciences', 'COLBIOS', 0],
+  ['ZOO', 'Zoology', 'COLBIOS', 55], // migration 042 (a student asked)
   // COLCOMS (migration 028). Computer Science moved here from COLPHYS.
   ['CSC', 'Computer Science', 'COLCOMS', 65],
   ['ICT', 'Information Technology and Information Communication Technology', 'COLCOMS', 58],

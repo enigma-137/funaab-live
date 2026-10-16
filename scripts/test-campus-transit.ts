@@ -17,7 +17,7 @@ for(let i=0;i<publicRoute.length;i++)assert(canAdvance(publicRoute[i],publicRout
 for(const l of campusLocations){
  if(l.mapVisible)assert(publicRoute.some(p=>nodeKey(p)===nodeKey(l.kekeStop)),`Public route must serve ${l.id}`);
  const path=roadPath(nodeKey(CAR_PARK_BAY),nodeKey(l.kekeStop));assert(path.length>0);
- assert(fareFor(l.id)>=30&&fareFor(l.id)<=120);
+ assert(fareFor(l.id)>=300&&fareFor(l.id)<=1200);
  assert(!classifyTerrain(l.entrance[0],l.entrance[2]).restricted,`Inaccessible ${l.id}`);
  if(l.id==='car-park')continue;
  const k=createKeke(true);bookRide(k,l.id,0,'trip');let now=0,arrived=false;

@@ -3,19 +3,29 @@ import { HostelLauncherArt } from './phoneIcons';
 import { ECONOMY_CONFIG, canBuyOnCredit, formatNaira, hostelCreditDebt } from '../config/economy';
 import { SECURITY_POST, SECURITY_RADIUS } from '../config/hostelCompound';
 import { HostelCompoundHud } from './HostelCompoundHud';
-import { ArrowLeft, Home, ShoppingBag, Backpack, Users } from 'lucide-react';
+import { ArrowLeft, Home, ShoppingBag, Backpack, Users, Menu } from 'lucide-react';
 import { HostelThumbnail } from "./HostelThumbnail";
 import { RoomControls } from "./RoomControls";
 import React, { useEffect, useRef, useState } from "react";
 import { useHostelStore } from "../stores/hostelStore";
+import { useCarStore } from "../stores/carStore";
 import { useAuthStore } from "../stores/authStore";
 import { useGameStore } from "../stores/gameStore";
 import { useWalletStore } from "../stores/walletStore";
 import { useSocialStore } from "../stores/socialStore";
 import { toast } from "../stores/toastStore";
 import { HOSTEL_SHOP, hostelItem } from "../config/hostelShop";
+import { WEARABLES, isKeepsake } from "../config/hostelItems";
 import { FLOORS, PAINTS, ROOM_EXPANSION_PRICE, floorById, paintById, roomSizeOf } from "../config/roomMakeover";
 import "./hostel.css";
+import { ESTATE_HOUSES, houseDoor } from "../config/estate";
+
+/** Leaving an estate room puts you outside the estate house; a hostel room, in the hostel courtyard. */
+export const leaveRoom = () => {
+  const s = useHostelStore.getState();
+  if (s.snapshot?.room.style === "estate") return s.travel("campus", undefined, houseDoor(ESTATE_HOUSES[0]));
+  return s.travel("hostel");
+};
 export const openHostel = (
   panel: "home" | "shop" | "decorate" | "debts" | "invites" = "home",
 ) => {
@@ -66,6 +76,13 @@ export function HostelLife() {
   const mine = !!user && s.owner === user.id,
     away = s.roomId !== "world:funaab:main";
   // Sleeping happens in your own room, on the mattress; say so the first time you walk in.
+  const [dockOpen, setDockOpen] = useState(false);
+  // Notices ("Saved.") fade on their own so they never sit over the room.
+  useEffect(() => {
+    if (!s.notice) return;
+    const t = setTimeout(() => useHostelStore.setState({ notice: null }), 3500);
+    return () => clearTimeout(t);
+  }, [s.notice]);
   const sleepHint = useRef("");
   useEffect(() => {
     if (!away || !mine || sleepHint.current === s.roomId) return;
@@ -156,18 +173,24 @@ export function HostelLife() {
             : s.transition}
         </div>
       )}
-      {away && modal !== "hostel" && !s.preview && !s.pose && (
+      {away && modal !== "hostel" && !s.preview && !s.pose && !dockOpen && (
+        <button className="hostel-menu-btn" aria-label="Open room menu" onClick={() => setDockOpen(true)}>
+          <Menu size={18} /> Room menu
+        </button>
+      )}
+      {away && modal !== "hostel" && !s.preview && !s.pose && dockOpen && (
         <div className="hostel-dock">
           <strong>
             {s.owner
               ? `${s.snapshot?.owner_name || "Student"}’s Room`
               : "HOSTEL"}
+            <button className="hostel-dock-close" aria-label="Close room menu" onClick={() => setDockOpen(false)}>×</button>
           </strong>
-          <button onClick={() => openHostel()}><Home size={16}/>Room</button>
-          <button onClick={() => openHostel("shop")}><ShoppingBag size={16}/>Shop</button>
-          <button onClick={() => openHostel("decorate")}><Backpack size={16}/>Items</button>
-          <button onClick={() => openHostel("invites")}><Users size={16}/>Invite</button>
-          {s.owner && <button onClick={() => s.travel('hostel')}>Leave room</button>}
+          <button onClick={() => { setDockOpen(false); openHostel(); }}><Home size={16}/>Room</button>
+          <button onClick={() => { setDockOpen(false); openHostel("shop"); }}><ShoppingBag size={16}/>Shop</button>
+          <button onClick={() => { setDockOpen(false); openHostel("decorate"); }}><Backpack size={16}/>Items</button>
+          <button onClick={() => { setDockOpen(false); openHostel("invites"); }}><Users size={16}/>Invite</button>
+          {s.owner && <button onClick={() => { setDockOpen(false); leaveRoom(); }}>Leave room</button>}
         </div>
       )}
       {!away && nearGate && modal === null && (
@@ -357,6 +380,8 @@ export function HostelLife() {
                     "Appliances",
                     "Foodstuff",
                     "Basics",
+                    "Fashion",
+                    "Cars",
                   ].map((c) => (
                     <button
                       key={c}
@@ -382,19 +407,32 @@ export function HostelLife() {
                             {inventory.find((x) => x.itemId === i.id)
                               ?.quantity || 0}
                           </p>
-                          <strong>₦{i.price}</strong>
+                          <strong>{formatNaira(i.price)}</strong>
                           <div className="hostel-actions">
+                            {owned && WEARABLES[i.id] ? (() => {
+                              const w = WEARABLES[i.id];
+                              const on = user?.avatarConfig?.[w.slot] === w.value;
+                              return (
+                                <button onClick={() => void useAuthStore.getState().updateAvatar({ [w.slot]: on ? "none" : w.value })}>
+                                  {on ? "Take off" : "Wear"}
+                                </button>
+                              );
+                            })() : owned && i.category === "Cars" ? (
+                              <button onClick={() => { useGameStore.getState().setActiveModal("garage"); }}>Owned · open Garage to drive</button>
+                            ) : (
                             <button
                               disabled={owned}
-                              onClick={() =>
-                                s.command("purchase", {
+                              onClick={async () => {
+                                await s.command("purchase", {
                                   item: i.id,
                                   credit: false,
-                                })
-                              }
+                                });
+                                if (i.category === "Cars") void useCarStore.getState().load();
+                              }}
                             >
                               {owned ? "Owned" : "Pay Now"}
                             </button>
+                            )}
                             {i.credit && canBuyOnCredit(i.price) && (
                               <button
                                 disabled={owned}
@@ -427,7 +465,7 @@ export function HostelLife() {
                 )}
                 <div className="hostel-items">
                   {inventory
-                    .filter((i) => hostelItem(i.itemId))
+                    .filter((i) => hostelItem(i.itemId) && !isKeepsake(hostelItem(i.itemId)!.category))
                     .map((i) => {
                       const c = hostelItem(i.itemId)!;
                       const placed = s.snapshot?.placements.find(
@@ -615,7 +653,7 @@ function Makeover({ mine, balance }: { mine: boolean; balance: number }) {
         <button onClick={() => s.travel("room")}>Go to my room</button>
       </p>
     );
-  const paint = paintById(room.wall_paint), floor = floorById(room.floor_style), large = roomSizeOf(room.room_size) === "large";
+  const paint = paintById(room.wall_paint), floor = floorById(room.floor_style), large = roomSizeOf(room.room_size) === "large"; // the paid expansion itself (estate rooms are big only while rented)
   return (
     <>
       <h2>Wall paint</h2>

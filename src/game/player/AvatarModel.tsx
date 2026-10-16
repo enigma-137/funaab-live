@@ -19,11 +19,13 @@ interface AvatarModelProps {
   username: string;
   college: string;
   avatarConfig: AvatarConfig;
-  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
+  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance';
   isLocal?: boolean;
   held?: HeldItem | null;
   /** Table spot when seated at a restaurant (see diningSpotAt). */
   table?: { y: number; z: number } | null;
+  /** Inside a car: keep the name tag, don't draw the body. */
+  hidden?: boolean;
 }
 
 export const AvatarModel: React.FC<AvatarModelProps> = ({
@@ -35,6 +37,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
   isLocal = false,
   held,
   table,
+  hidden = false,
 }) => {
   const { unreadDmsByPartner, openDm } = useSocialStore();
   const riding=useGameStore(s=>s.isRidingKeke);
@@ -108,7 +111,7 @@ export const AvatarModel: React.FC<AvatarModelProps> = ({
         </Html>
       )}
 
-      <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement held={held} table={table} />
+      {!hidden && <AvatarBody config={avatarConfig} animation={animation} identity={userId || username} trackMovement held={held} table={table} />}
     </group>
   );
 };
