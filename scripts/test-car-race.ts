@@ -1,20 +1,28 @@
-// Car race (src/config/carRace.ts): the COLENG → COLFHEC route stays on the roads, checkpoints run
-// in order to the finish line, the grid lanes sit inside the curbs, and the rivals' pace leaves room
-// to beat them in a car you can afford.
+// Car race (src/config/carRace.ts): the Campus Grand Prix lap stays on the roads and passes its
+// landmarks, ends where it starts, checkpoints run in order to the line, the lap search never confuses
+// start and finish, the grid lanes sit inside the curbs, and the rivals can be beaten in a cheap car.
 // Run: npm run test:race
 import assert from 'node:assert/strict';
-import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, gridSpot, pointAlong, projectOnto } from '../src/config/carRace';
+import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, crossedFinish, gridSpot, pointAlong, projectOnto } from '../src/config/carRace';
 import { CAR_MODELS, DRIVE, isPaintId } from '../src/config/cars';
 import { locationById } from '../src/config/campusLocations';
 import { roadBounds } from '../src/config/kekeRoutes';
 
 const onRoad = (x: number, z: number) => roadBounds.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ);
-const end = RACE.track[RACE.track.length - 1], colfhec = locationById('colfhec').kekeStop, coleng = locationById('coleng').kekeStop;
-assert.deepEqual([end[0], end[2]], [colfhec[0], colfhec[2]], 'finish at the COLFHEC stop');
+const end = RACE.track[RACE.track.length - 1], coleng = locationById('coleng').kekeStop;
+assert.deepEqual(end, RACE.track[0], 'a lap: finish where it starts');
 assert(Math.hypot(RACE.track[0][0] - coleng[0], RACE.track[0][2] - coleng[2]) <= 12, 'grid beside COLENG');
+for (const id of RACE.landmarks) { const p = locationById(id).kekeStop; assert(projectOnto(RACE.track, p[0], p[2]).off < 0.01, `passes ${id}`); }
+const passAt = RACE.landmarks.map((id) => { const p = locationById(id).kekeStop; return projectOnto(RACE.track, p[0], p[2]).along; });
+assert.deepEqual(passAt, [...passAt].sort((x, y) => x - y), 'landmarks in lap order');
+// Start and finish share a spot: the windowed search reads 0 at the start and the full lap at the end.
+const g = RACE.track[0];
+assert(projectOnto(RACE.track, g[0], g[2] + 1, [-20, RACE.gateSpacing + 20]).along < 2, 'start of the lap');
+assert(projectOnto(RACE.track, g[0], g[2] - 1, [RACE_LENGTH - 30, RACE_LENGTH + 20]).along > RACE_LENGTH - 2, 'end of the lap');
+assert(!crossedFinish(g[0], g[2] - 2) && crossedFinish(g[0], g[2]) && crossedFinish(g[0] + 3, g[2] + 4) && !crossedFinish(g[0] + 9, g[2]), 'finish line crossing');
 for (let d = 0; d <= RACE_LENGTH; d += 0.5) { const p = pointAlong(RACE.track, d); assert(onRoad(p.x, p.z), `on the road at ${d} m`); }
-assert(RACE_LENGTH > 80 && RACE_LENGTH < 200, `a sprint (${RACE_LENGTH} m)`);
-assert(RACE_CORNERS.length >= 1, 'at least one corner');
+assert(RACE_LENGTH > 400 && RACE_LENGTH < 600, `a full lap (${RACE_LENGTH} m)`);
+assert.equal(RACE_CORNERS.length, 6, 'six corners');
 assert.equal(RACE_GATES[RACE_GATES.length - 1], RACE_LENGTH, 'last gate is the finish');
 for (let i = 1; i < RACE_GATES.length; i++) assert(RACE_GATES[i] > RACE_GATES[i - 1] && RACE_GATES[i] - RACE_GATES[i - 1] <= RACE.gateSpacing, 'gates in order, no gaps to cut');
 for (const lane of [-1, 0, 1]) {
@@ -31,7 +39,10 @@ assert((g1.x - g0.x) * left[0] + (g1.z - g0.z) * left[1] < 0, 'lane +1 is on the
 const corner = (dist: number, top: number) => { const n = RACE_CORNERS.find((c) => c > dist - 3); return n === undefined ? top : Math.min(top, Math.sqrt(RACE.cornerSpeed ** 2 + 12 * Math.max(0, n - dist))); };
 const times = RIVALS.map((r) => { let d = 0, v = 0, t = 0; while (d < RACE_LENGTH && t < 120) { v = Math.min(corner(d, r.topSpeed), v + r.accel / 60); d += v / 60; t += 1 / 60; } return t; });
 for (const t of times) assert(t < 60, 'rivals finish');
-const ideal = RACE_LENGTH / CAR_MODELS.car_corolla.topSpeed + CAR_MODELS.car_corolla.topSpeed / DRIVE.accel / 2;
-assert(ideal < Math.min(...times), `beatable (best rival ${Math.min(...times).toFixed(1)} s, flat-out Corolla ${ideal.toFixed(1)} s)`);
+// A human taking each corner at about 6 m/s in the cheapest car: brake into it and accelerate out.
+const human = (top: number) => { let d = 0, v = 0, t = 0; while (d < RACE_LENGTH && t < 300) { const n = RACE_CORNERS.find((c) => c > d - 3); const lim = n === undefined ? top : Math.min(top, Math.sqrt(36 + 2 * DRIVE.brake * 0.6 * Math.max(0, n - d))); v = v > lim ? Math.max(lim, v - DRIVE.brake / 60) : Math.min(lim, v + DRIVE.accel / 60); d += v / 60; t += 1 / 60; } return t; };
+const picanto = human(CAR_MODELS.car_picanto.topSpeed);
+assert(picanto < Math.min(...times), `beatable in a Picanto (best rival ${Math.min(...times).toFixed(1)} s, clean Picanto lap ${picanto.toFixed(1)} s)`);
+assert(picanto > Math.min(...times) - 6, 'but not a walkover');
 for (const r of RIVALS) { assert(r.car in CAR_MODELS, `${r.name} drives a real car`); assert(isPaintId(r.paint), `${r.name}'s paint is a real colour`); }
-console.log(`CAR RACE PASSED: ${RACE_LENGTH} m COLENG → COLFHEC on the roads, ${RACE_GATES.length} gates, grid inside the curbs, rivals in ${times.map((t) => t.toFixed(1)).join(' / ')} s and beatable.`);
+console.log(`CAR RACE PASSED: ${RACE_LENGTH} m lap (${RACE.route}) on the roads, ${RACE_GATES.length} gates, grid inside the curbs, rivals in ${times.map((t) => t.toFixed(1)).join(' / ')} s and beatable.`);

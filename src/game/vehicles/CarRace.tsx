@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { CarBody } from './CarBody';
 import { CampusSign } from '../world/CampusSign';
-import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, pointAlong, projectOnto } from '../../config/carRace';
+import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, crossedFinish, pointAlong, projectOnto } from '../../config/carRace';
+import { locationById } from '../../config/campusLocations';
 import { rivalState, useRaceStore } from '../../stores/raceStore';
 import { useCarStore } from '../../stores/carStore';
 import { useGameStore } from '../../stores/gameStore';
@@ -73,6 +74,14 @@ function RivalCar({ i }: { i: number }) {
 
 const STEP_MS = 1000 / 60;
 const rivalClock = { ms: 0 };
+/** Where you were last frame: a slow phone can jump a few metres a frame, so gates check the whole move. */
+const lastPos = { x: 0, z: 0, set: false };
+/** Closest distance from (px, pz) to the move from a to b. */
+function sweptDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
+  const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2)) : 0;
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
 
 /** Steps the rivals, counts your checkpoints, works out places and ends the race. */
 function RaceRunner() {
@@ -81,7 +90,7 @@ function RaceRunner() {
     if (race.status !== 'countdown' && race.status !== 'racing') return;
     if (!useCarStore.getState().driving) { race.quit('You got out of your car, so the race is off.'); return; }
     const now = performance.now();
-    if (race.status === 'countdown') { rivalClock.ms = 0; if (now >= race.goAt) useRaceStore.setState({ status: 'racing' }); return; }
+    if (race.status === 'countdown') { rivalClock.ms = 0; lastPos.set = false; if (now >= race.goAt) useRaceStore.setState({ status: 'racing' }); return; }
     // Rivals run on the race clock in fixed steps, so a slow phone doesn't slow them down (or speed them up).
     const elapsed = now - race.goAt;
     while (rivalClock.ms + STEP_MS <= elapsed) {
@@ -95,16 +104,20 @@ function RaceRunner() {
       });
     }
     const [x, , z] = useGameStore.getState().myPosition;
-    const me = projectOnto(RACE.track, x, z);
-    if (me.off > RACE.offTrack) { race.quit('You left the race route, so the race is off.'); return; }
+    const fromX = lastPos.set ? lastPos.x : x, fromZ = lastPos.set ? lastPos.z : z;
+    Object.assign(lastPos, { x, z, set: true });
     let gate = race.gate;
     while (gate < RACE_GATES.length) {
       const g = pointAlong(RACE.track, RACE_GATES[gate]);
       // The finish counts once you're over the line; other gates when you pass close by.
-      const passed = gate === RACE_GATES.length - 1 ? me.along >= RACE_LENGTH - 0.5 && me.off < RACE.gateRadius : Math.hypot(g.x - x, g.z - z) < RACE.gateRadius;
+      const passed = gate === RACE_GATES.length - 1 ? crossedFinish(x, z) : sweptDistance(g.x, g.z, fromX, fromZ, x, z) < RACE.gateRadius;
       if (!passed) break;
       gate++;
     }
+    // Where you are on the lap, looking only around your last checkpoint (start and finish share a spot).
+    const last = gate > 0 ? RACE_GATES[gate - 1] : 0;
+    const me = projectOnto(RACE.track, x, z, [last - 20, last + RACE.gateSpacing + 20]);
+    if (me.off > RACE.offTrack) { race.quit('You left the race route, so the race is off.'); return; }
     const ahead = rivalState.filter((s) => s.finishMs !== null || s.dist > me.along).length;
     if (gate >= RACE_GATES.length) { race.finish(Math.round(elapsed), 1 + rivalState.filter((s) => s.finishMs !== null).length); return; }
     if (gate !== race.gate || ahead + 1 !== race.place) useRaceStore.setState({ gate, place: ahead + 1 });
@@ -112,13 +125,26 @@ function RaceRunner() {
   return null;
 }
 
-/** The race route's start and finish arches, plus the rivals while a race is on. */
+/** A roadside board where the lap passes a landmark, so you know you're on the route. */
+function RouteBoard({ id, n }: { id: string; n: number }) {
+  const stop = locationById(id).kekeStop, p = projectOnto(RACE.track, stop[0], stop[2]), s = pointAlong(RACE.track, p.along);
+  // On the right-hand verge, facing oncoming racers.
+  const side = 5.6, x = s.x - s.dz * side, z = s.z + s.dx * side;
+  return (
+    <group position={[x, 0, z]} rotation={[0, Math.atan2(s.dx, s.dz) + Math.PI, 0]}>
+      <mesh position={[0, 1.2, 0]} material={post}><boxGeometry args={[0.15, 2.4, 0.15]} /></mesh>
+      <group position={[0, 2.7, 0]}><CampusSign width={2.6} height={0.8} title={`${n} · ${locationById(id).shortName.toUpperCase()}`} subtitle={RACE.name} /></group>
+    </group>
+  );
+}
+
+/** The race route's start/finish arch and landmark boards, plus the rivals while a race is on. */
 export function CarRace() {
   const status = useRaceStore((s) => s.status);
   const arches = useMemo(() => (
     <>
-      <Arch at={0} title="START" subtitle={RACE.name} />
-      <Arch at={RACE_LENGTH} title="FINISH" subtitle="COLFHEC" />
+      <Arch at={0} title="START · FINISH" subtitle={RACE.name} />
+      {RACE.landmarks.map((id, i) => <RouteBoard key={id} id={id} n={i + 1} />)}
     </>
   ), []);
   return (

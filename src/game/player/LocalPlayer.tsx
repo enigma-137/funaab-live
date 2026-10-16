@@ -509,7 +509,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const atStart = race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(start[0] - d.x, start[2] - d.z) < RACE.startRadius;
       const near: InteractableZone = pump
         ? { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: pump, radius: FUEL_STATION.pumpRadius }
-        : atStart ? { id: 'race-start', type: 'car', targetId: 'race', label: RACE.name, actionText: 'Race to COLFHEC', position: start, radius: RACE.startRadius }
+        : atStart ? { id: 'race-start', type: 'car', targetId: 'race', label: RACE.name, actionText: 'Start the race', position: start, radius: RACE.startRadius }
         : { id: 'my-car', type: 'car', targetId: 'park', label: model.name, actionText: Math.abs(d.speed) > 1 ? 'Stop to park' : 'Park & get out', position: feet, radius: 3 };
       if (useGameStore.getState().nearbyInteractable?.actionText !== near.actionText) setNearbyInteractable(near);
       setIsOnRestrictedLawn(false);

@@ -92,8 +92,8 @@ export function GarageSheet() {
         {error && <p className="academic-error" role="alert">{error}</p>}
         {!!owned.length && (
           <section className="hustle-card">
-            <h3>🏁 Race: {RACE.name}</h3>
-            <p className="academic-note">Drive to the START arch on the road beside COLENG, stop under it and tap Race. Beat Tunde and Amaka to the FINISH arch at COLFHEC. Stay on the road: every checkpoint counts.</p>
+            <h3>🏁 {RACE.name}</h3>
+            <p className="academic-note">One lap of campus: {RACE.route}. Drive to the START arch on the road beside COLENG, stop under it and tap Race, then beat Tunde and Amaka back to the line. Follow the numbered boards and stay on the road: every checkpoint counts. A lap burns about 2 litres.</p>
             {best !== null && <p className="academic-note">Your best time: <b>{formatRaceTime(best)}</b></p>}
             <button className="hustle-btn" onClick={() => go(RACE.track[0], 'Race start (COLENG)')}>Show me the start line</button>
           </section>

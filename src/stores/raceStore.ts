@@ -26,7 +26,7 @@ interface RaceStore {
   dismiss: () => void;
 }
 
-const bestKey = 'funaab:race-best:coleng-colfhec:v1';
+const bestKey = 'funaab:race-best:grand-prix:v1';
 const readBest = () => { try { const n = Number(localStorage.getItem(bestKey)); return n > 0 ? n : null; } catch { return null; } };
 const saveBest = (ms: number) => { try { localStorage.setItem(bestKey, String(ms)); } catch { /* private mode */ } };
 const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
@@ -36,7 +36,7 @@ export const useRaceStore = create<RaceStore>((set, get) => ({
   start: () => {
     const car = useCarStore.getState();
     if (!car.driving) return;
-    if ((car.fuel[car.driving] ?? 0) < 1) { toast({ icon: '⛽', text: 'You need at least 1 litre of fuel to race. Fill up at the fuel station.', tone: 'bad' }); return; }
+    if ((car.fuel[car.driving] ?? 0) < RACE.minFuel) { toast({ icon: '⛽', text: `You need at least ${RACE.minFuel} litres of fuel for a lap. Fill up at the fuel station.`, tone: 'bad' }); return; }
     for (const r of rivalState) { r.dist = 0; r.speed = 0; r.finishMs = null; }
     set({ status: 'countdown', goAt: performance.now() + RACE.countdownMs, gridPending: true, gate: 0, place: 1, finishMs: null });
   },

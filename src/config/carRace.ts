@@ -1,20 +1,23 @@
-// Car race: COLENG → COLFHEC on the campus roads, against two AI rivals. Drive your own car to the
-// start line beside COLENG, stop, and tap Race. Purely for fun and bragging rights: nothing is paid
-// out, so the whole race runs on the client (your best time is kept on this device).
+// Car race: the Campus Grand Prix, one lap of the campus roads against two AI rivals. Start and finish
+// on the road beside COLENG; the lap runs north up the east road, across past the W landmark, down the
+// central boulevard past the Library, west past COLFHEC, south to the Mosque corner, along the south
+// road and back up to COLENG. Drive your own car to the START arch, stop, and tap Race. Purely for fun:
+// nothing is paid out, so the whole race runs on the client (your best time is kept on this device).
 import { locationById, type Point } from './campusLocations';
-import { nodeKey, pathLength, roadPath } from './kekeRoutes';
+import { pathLength } from './kekeRoutes';
 
-const from = locationById('coleng').kekeStop, to = locationById('colfhec').kekeStop;
-/** The grid sits a little south of the COLENG stop so there's a run-up to the first corner. */
-const gridBack = 10;
-const road = roadPath(nodeKey(from), nodeKey(to));
-const [a, b] = road;
-const back: Point = [a[0] - Math.sign(b[0] - a[0]) * gridBack, 0, a[2] - Math.sign(b[2] - a[2]) * gridBack];
-
+const coleng = locationById('coleng').kekeStop, mosque = locationById('mosque').kekeStop;
+/** The grid sits a little south of the COLENG stop. */
+const grid: Point = [coleng[0], 0, coleng[2] - 10];
 export const RACE = {
-  name: 'COLENG → COLFHEC',
-  /** The racing line: grid, then the road route, finish at the COLFHEC stop. */
-  track: [back, ...road] as Point[],
+  name: 'Campus Grand Prix',
+  route: 'COLENG → Library → COLFHEC → Mosque → COLENG',
+  /** The racing line, corner to corner along the road centre lines; it ends where it starts. */
+  track: [grid, [55, 0, 45], [0, 0, 45], [0, 0, -40], [mosque[0], 0, -40], mosque, [55, 0, -85], grid] as Point[],
+  /** Landmarks passed on the lap, for the signs and the progress bar. */
+  landmarks: ['w-landmark', 'library', 'colfhec', 'mosque'],
+  /** You need this much fuel in the tank to start (a lap burns about 2 litres). */
+  minFuel: 3,
   countdownMs: 3000,
   /** Stop within this distance of the start line to be offered the race. */
   startRadius: 7,
@@ -24,7 +27,7 @@ export const RACE = {
   /** Lane offsets from the centre line (right is +) for you and the rivals on the grid. */
   laneOffset: 2.6,
   /** Rivals ease off to this speed for the corners. */
-  cornerSpeed: 7,
+  cornerSpeed: 6,
   /** Further than this from the track and you're out of the race. */
   offTrack: 18,
 };
@@ -32,8 +35,8 @@ export const RACE_LENGTH = pathLength(RACE.track);
 
 export interface Rival { name: string; car: string; paint: string; topSpeed: number; accel: number; lane: number }
 export const RIVALS: Rival[] = [
-  { name: 'Tunde', car: 'car_camry', paint: 'red', topSpeed: 11.8, accel: 5, lane: -1 },
-  { name: 'Amaka', car: 'car_corolla', paint: 'blue', topSpeed: 10.8, accel: 5.5, lane: 1 },
+  { name: 'Tunde', car: 'car_camry', paint: 'red', topSpeed: 11, accel: 4.5, lane: -1 },
+  { name: 'Amaka', car: 'car_corolla', paint: 'blue', topSpeed: 10.4, accel: 5, lane: 1 },
 ];
 
 /** Point and direction (unit dx, dz) at a distance along a polyline. */
@@ -49,18 +52,31 @@ export function pointAlong(path: Point[], dist: number): { x: number; z: number;
   return { x: path[0][0], z: path[0][2], dx: 0, dz: 1 };
 }
 
-/** Distance along the polyline of the closest point to (x, z), and how far off the line that is. */
-export function projectOnto(path: Point[], x: number, z: number): { along: number; off: number } {
+/**
+ * Distance along the polyline of the closest point to (x, z), and how far off the line that is.
+ * `range` limits the search to part of the line (the lap starts and ends in the same place, so the
+ * race only looks near where you should be).
+ */
+export function projectOnto(path: Point[], x: number, z: number, range: [number, number] = [-Infinity, Infinity]): { along: number; off: number } {
   let best = { along: 0, off: Infinity }, walked = 0;
   for (let i = 1; i < path.length; i++) {
     const p = path[i - 1], q = path[i], len = Math.hypot(q[0] - p[0], q[2] - p[2]);
     if (len === 0) continue;
-    const t = Math.max(0, Math.min(len, ((x - p[0]) * (q[0] - p[0]) + (z - p[2]) * (q[2] - p[2])) / len));
-    const cx = p[0] + (q[0] - p[0]) * t / len, cz = p[2] + (q[2] - p[2]) * t / len, off = Math.hypot(x - cx, z - cz);
-    if (off < best.off) best = { along: walked + t, off };
+    const lo = Math.max(0, range[0] - walked), hi = Math.min(len, range[1] - walked);
+    if (lo <= hi) {
+      const t = Math.max(lo, Math.min(hi, ((x - p[0]) * (q[0] - p[0]) + (z - p[2]) * (q[2] - p[2])) / len));
+      const cx = p[0] + (q[0] - p[0]) * t / len, cz = p[2] + (q[2] - p[2]) * t / len, off = Math.hypot(x - cx, z - cz);
+      if (off < best.off) best = { along: walked + t, off };
+    }
     walked += len;
   }
   return best;
+}
+
+/** Over the finish line: at or past it along the final straight, and on the road. */
+export function crossedFinish(x: number, z: number): boolean {
+  const f = pointAlong(RACE.track, RACE_LENGTH);
+  return (x - f.x) * f.dx + (z - f.z) * f.dz >= -0.3 && Math.abs((x - f.x) * f.dz - (z - f.z) * f.dx) < RACE.gateRadius;
 }
 
 /** Distances along the track of its corners (where rivals slow down and keep to the centre). */
