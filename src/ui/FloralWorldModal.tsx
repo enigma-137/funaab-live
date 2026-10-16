@@ -4,6 +4,7 @@ import { useWalletStore } from '../stores/walletStore';
 import { useAuthStore } from '../stores/authStore';
 import { useSocialStore } from '../stores/socialStore';
 import { Sheet } from './Sheet';
+import { logTraceIQ } from '../lib/traceiq';
 
 interface FloralWorldModalProps {
   isOpen: boolean;
@@ -63,6 +64,7 @@ export const FloralWorldModal: React.FC<FloralWorldModalProps> = ({ isOpen, onCl
       }
     } catch (err: any) {
       console.error('Floral World order error:', err);
+      logTraceIQ('error', 'Floral World order failed', { service: 'shop', error: err });
       setErrorMsg(err?.message || 'Order failed to process.');
       setIsPurchasing(false);
     }

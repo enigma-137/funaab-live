@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { PlayerProfile, AvatarConfig } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
 import { normalizeAvatar } from '../config/avatar';
+import { logTraceIQ } from '../lib/traceiq';
 import worldData from '../config/campusWorld';
 
 interface AuthState {
@@ -158,12 +159,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
           } catch (error) {
             console.warn('Session profile refresh failed', error);
+            logTraceIQ('warn', 'Session profile refresh failed', { service: 'auth', error });
           }
         }, 0);
       }).data.subscription;
     } catch (err: any) {
       initializing = false;
       console.warn('Auth initialization error:', err);
+      logTraceIQ('error', 'Auth initialization failed', { service: 'auth', error: err });
       set({ user: null, isAuthenticated: false, isInitializingAuth: false });
     }
   },

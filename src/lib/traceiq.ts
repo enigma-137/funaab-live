@@ -103,6 +103,24 @@ export function trackTraceIQEvent(eventName: string, properties: Record<string, 
   }
 }
 
+export type TraceIQLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+
+// Sends a structured line to TraceIQ Logs (tagged with the session and player).
+// Never pass tokens, URLs with credentials, or chat text in `attributes`.
+export function logTraceIQ(
+  level: TraceIQLogLevel,
+  message: string,
+  attributes: Record<string, unknown> = {},
+): void {
+  if (!initialized) return;
+
+  try {
+    traceiq.log(level, message, { service: 'game-client', ...attributes });
+  } catch (error) {
+    console.warn('[TraceIQ] log failed.', error);
+  }
+}
+
 export function captureTraceIQException(error: unknown, context: Record<string, unknown> = {}): void {
   if (!initialized) return;
 

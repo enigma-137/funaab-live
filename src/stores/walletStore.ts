@@ -3,6 +3,7 @@ import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { WalletTransaction, InventoryItem, FoodItem } from '../types/game';
 import { supabase, isSupabaseConfigured, localDB } from '../lib/supabase';
 import { holdPurchasedItem } from '../game/player/holdItem';
+import { logTraceIQ } from '../lib/traceiq';
 
 interface WalletState {
   balance: number;
@@ -85,6 +86,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         return;
       } catch (e) {
         console.warn('Supabase wallet fetch failed, fallback to local:', e);
+        logTraceIQ('warn', 'Wallet fetch failed; showing local balance', { service: 'wallet', error: e });
       }
     }
 
@@ -124,14 +126,19 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.rpc('process_wallet_purchase', {
+        // supabase-js returns errors instead of throwing, so check the result too.
+        const { error } = await supabase.rpc('process_wallet_purchase', {
           p_user_id: userId,
           p_type: 'keke_fare',
           p_amount: amount,
           p_description: tx.description,
         });
+        if (error) {
+          logTraceIQ('error', 'Keke fare did not sync to the server', { service: 'wallet', amount, reason: error.message });
+        }
       } catch (e) {
         console.error('Supabase fare sync error:', e);
+        logTraceIQ('error', 'Keke fare did not sync to the server', { service: 'wallet', amount, error: e });
       }
     }
 
@@ -164,14 +171,18 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.rpc('process_wallet_purchase', {
+        const { error } = await supabase.rpc('process_wallet_purchase', {
           p_type: 'lawn_fine',
           p_amount: deducted,
           p_description: tx.description,
           p_user_id: userId,
         });
+        if (error) {
+          logTraceIQ('error', 'Lawn fine did not sync to the server', { service: 'wallet', amount: deducted, reason: error.message });
+        }
       } catch (e) {
         console.error('Supabase fine sync error:', e);
+        logTraceIQ('error', 'Lawn fine did not sync to the server', { service: 'wallet', amount: deducted, error: e });
       }
     }
 
@@ -200,6 +211,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         if (error || (data && !data.success)) {
           const errMsg = error?.message || data?.error || 'Purchase failed';
           console.error('[PURCHASE] process_wallet_purchase error:', errMsg, { error, data });
+          logTraceIQ('warn', 'Food purchase rejected', { service: 'wallet', itemId: item.id, price: item.price, reason: errMsg });
           set({ error: errMsg });
           return { success: false, error: errMsg };
         }
@@ -239,6 +251,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         return { success: true, balance: newBalance };
       } catch (e: any) {
         console.error('Supabase food purchase sync error:', e);
+        logTraceIQ('error', 'Food purchase failed', { service: 'wallet', itemId: item.id, price: item.price, error: e });
         const errMsg = e?.message || 'Network error processing purchase';
         set({ error: errMsg });
         return { success: false, error: errMsg };
@@ -299,6 +312,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
         if (error || (data && !data.success)) {
           set({ error: error?.message || data?.error });
+          logTraceIQ('warn', 'Job reward rejected', { service: 'wallet', jobTitle, amount, reason: error?.message || data?.error });
           return false;
         }
 
@@ -317,6 +331,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         return true;
       } catch (e) {
         console.error('Supabase job reward error:', e);
+        logTraceIQ('error', 'Job reward failed', { service: 'wallet', jobTitle, amount, error: e });
         return false;
       }
     }
