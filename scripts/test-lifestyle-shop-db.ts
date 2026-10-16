@@ -39,7 +39,7 @@ async function main() {
 
   // ── Catalogue: config = database for every new item; re-running 041 changes nothing ──
   const ids = HOSTEL_SHOP.filter((i) => /^(hostel_(bed_|ac$|fridge_big|laptop)|fashion_|car_)/.test(i.id)).map((i) => i.id);
-  assert.equal(ids.length, 15, 'fifteen new items');
+  assert.equal(ids.length, 16, 'fifteen new items, plus the Kia Picanto (048)');
   await db.exec(fs.readFileSync(path.join(dir, '041_lifestyle_shop.sql'), 'utf8'));
   for (const id of ids) {
     const i = HOSTEL_SHOP.find((x) => x.id === id)!, r = await one('select * from hostel_catalog where id=$1', [id]);
@@ -86,6 +86,6 @@ async function main() {
     await cmd(ada, 'toggle', { item: id });
     assert.equal((await one('select active from room_placements where owner_id=$1 and item_id=$2', [ada, id])).active, true, `${id} switches on`);
   }
-  console.log('LIFESTYLE SHOP DB PASSED: 15 items in sync and re-runnable, wearables and cars kept not placed, no cars on credit, funds checked, one bed frame on the mattress (client agrees), AC/fridge/laptop placement and switches.');
+  console.log('LIFESTYLE SHOP DB PASSED: 16 items in sync and re-runnable, wearables and cars kept not placed, no cars on credit, funds checked, one bed frame on the mattress (client agrees), AC/fridge/laptop placement and switches.');
 }
 main().catch((e) => { console.error(e); process.exit(1); });

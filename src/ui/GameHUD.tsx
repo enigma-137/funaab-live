@@ -1,5 +1,7 @@
 import {useHostelStore} from '../stores/hostelStore';
 import { useCarStore } from '../stores/carStore';
+import { useRaceStore } from '../stores/raceStore';
+import { RaceHud } from './RaceHud';
 import { usePartyStore } from '../stores/partyStore';
 import type { ArcadeTableId } from '../config/partyHall';
 import { useHustleStore } from '../stores/hustleStore';
@@ -191,6 +193,7 @@ export const GameHUD: React.FC = () => {
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') window.dispatchEvent(new Event('car-park'));
       else if (t === 'unride') useCarStore.getState().leaveRide();
       else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
@@ -294,7 +297,7 @@ export const GameHUD: React.FC = () => {
   const getInteractIcon = () => {
     if (isRidingKeke) return '🛺';
     if (!nearbyInteractable) return '💬';
-    if (nearbyInteractable.type === 'car') return nearbyInteractable.targetId === 'fuel' ? '⛽' : '🚗';
+    if (nearbyInteractable.type === 'car') return nearbyInteractable.targetId === 'fuel' ? '⛽' : nearbyInteractable.targetId === 'race' ? '🏁' : '🚗';
     switch (nearbyInteractable.type) {
       case 'library': return '📚';
       case 'keke_stop':
@@ -767,6 +770,11 @@ export const GameHUD: React.FC = () => {
         </div>
       )}
 
+
+      {/* Car race (Campus Grand Prix): countdown, clock and place. */}
+      <div className="pointer-events-none fixed left-1/2 z-[55] -translate-x-1/2" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 88px)' }}>
+        <RaceHud />
+      </div>
 
       {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
       <div

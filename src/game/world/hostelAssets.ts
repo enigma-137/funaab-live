@@ -347,6 +347,7 @@ export const HOSTEL_ASSET_REGISTRY: Record<string, Builder> = {
     part(g, [0.1, 0.1, 0.02], [0, 0.33, 0], "#c9a227", torus);
     box(g, [0.06, 0.04, 0.01], [0, 0.17, 0.08], "#b8860b");
   },
+  car_picanto: (g) => car(g, "#f59e0b", 0.88),
   car_corolla: (g) => car(g, "#c0c4c8", 1),
   car_camry: (g) => car(g, "#1f2937", 1.05),
   car_lexus: (g) => car(g, "#7f1d1d", 1.12, true),

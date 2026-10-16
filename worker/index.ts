@@ -9,7 +9,7 @@ import { summarizeCampus } from '../src/config/campusSummary';
 import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src/config/campusBet';
 import { generateMatchday } from '../src/config/campusBetModel';
 import { ECONOMY_CONFIG } from '../src/config/economy';
-import { isCarId } from '../src/config/cars';
+import { isCarId, isPaintId } from '../src/config/cars';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
 
@@ -124,6 +124,8 @@ interface PlayerState {
   isDining?: boolean;
   /** The car they're driving (config/cars id), if any. */
   car?: string | null;
+  /** Its respray colour id (config/cars CAR_PAINTS), or null for the model colour. Purely visual. */
+  carPaint?: string | null;
   /** Getting a lift: the driver's connection id and which passenger seat (0 front, 1 back). */
   rideWith?: string | null;
   rideSeat?: number;
@@ -745,6 +747,7 @@ export class WorldRoomDO {
         kekeRiding: player.kekeRiding,
         kekeId: player.kekeId,
         car: player.car ?? null,
+        carPaint: player.carPaint ?? null,
         rideWith: player.rideWith ?? null,
         rideSeat: player.rideSeat ?? null,
         // null (not undefined) so clients clear it when a student walks out of a hall.
@@ -1743,15 +1746,18 @@ export class WorldRoomDO {
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
               const animation = ['idle','walk','run','sit','sleep','pray','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
               const car = isCarId(data.car) ? data.car : null;
+              const carPaint = car && isPaintId(data.carPaint) ? data.carPaint : null;
               if (player.position.some((value, index) => value !== data.position[index])
                 || player.rotation !== rotation
                 || player.animation !== animation
-                || (player.car ?? null) !== car) this.dirtyPlayerIds.add(sessionConnId);
+                || (player.car ?? null) !== car
+                || (player.carPaint ?? null) !== carPaint) this.dirtyPlayerIds.add(sessionConnId);
               player.position = data.position;
               player.rotation = rotation;
               player.animation = animation;
               if (player.car && !car) this.releaseCarRiders(sessionConnId, 'parked');
               player.car = car;
+              player.carPaint = carPaint;
               this.loveGardenGoals(current, animation);
               if (current.posShift && current.trustedPosition && Math.hypot(current.trustedPosition[0] - POS_KIOSK.serviceSpot[0], current.trustedPosition[2] - POS_KIOSK.serviceSpot[2]) > POS_KIOSK.radius + 1) {
                 current.posShift = undefined;

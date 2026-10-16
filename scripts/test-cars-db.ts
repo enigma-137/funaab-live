@@ -1,12 +1,13 @@
 // Cars and fuel (migration 045): garage with starter fuel, fuel bought at ₦150/L up to a 40 L tank,
 // fuel burnt in small steps and never below empty, only for cars you own; drift with src/config/cars.ts.
+// Migration 048: the ₦80,000 Kia Picanto and paid resprays from the CAR_PAINTS list.
 // Run: npm run test:cars:db
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { CAR_MODELS, FUEL, fuelPrice } from '../src/config/cars';
+import { CAR_MODELS, CAR_PAINTS, FUEL, RESPRAY_PRICE, fuelPrice } from '../src/config/cars';
 import { HOSTEL_SHOP } from '../src/config/hostelItems';
 
 const require = createRequire(import.meta.url);
@@ -18,6 +19,8 @@ async function main() {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
   for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
   await db.exec(fs.readFileSync(path.join(dir, '045_cars_fuel.sql'), 'utf8')); // re-runnable
+  const paintSql = fs.readFileSync(path.join(dir, '048_cheap_car_paint.sql'), 'utf8');
+  await db.exec(paintSql); // re-runnable, and puts paint back into car_garage() after 045 again
   const sql = fs.readFileSync(path.join(dir, '045_cars_fuel.sql'), 'utf8');
   const rows = async (q: string, p: unknown[] = []) => (await db.query(q, p)).rows as any[];
   const one = async (q: string, p: unknown[] = []) => (await rows(q, p))[0];
@@ -40,6 +43,11 @@ async function main() {
 
   // Drift: every car model is a shop car; tank, price, starter fuel and burn cap match.
   for (const id of Object.keys(CAR_MODELS)) assert.equal(HOSTEL_SHOP.find((i) => i.id === id)?.category, 'Cars', `${id} sold in the shop`);
+  const paintList = Object.keys(CAR_PAINTS).map((p) => `'${p}'`).join(',');
+  assert.equal(paintSql.split(paintList).length - 1, 2, 'paint colours match config (table check and paint_car)');
+  assert(paintSql.includes(`cost numeric := ${RESPRAY_PRICE};`), 'respray price matches config');
+  for (const item of HOSTEL_SHOP.filter((i) => i.category === 'Cars'))
+    assert.equal(Number((await one('select price from hostel_catalog where id=$1', [item.id])).price), item.price, `${item.id} price matches the shop`);
   assert(sql.includes(`between 0 and ${FUEL.tankLitres}`) && sql.includes(`*${FUEL.pricePerLitre};`) && sql.includes(`default ${FUEL.starterLitres}`) && sql.includes(`p_litres>${FUEL.maxBurnPerReport}`), 'fuel rules match config');
 
   const ada = await student('Ada', 600000);
@@ -74,6 +82,23 @@ async function main() {
   await db.query('update wallets set balance=100 where user_id=$1', [bisi]);
   await fails(bisi, "select buy_fuel('car_corolla',10)", /Top up/);
   await fails(ada, `select owns_car('${ada}','car_corolla')`, /permission denied/);
-  console.log('CARS DB PASSED: garage with starter fuel, ₦150/L capped at the tank, burn in small steps and never below empty, owners only, funds, drift.');
+  // Respray: ₦5,000 for a colour from the list, kept with the car; not someone else's car, not the same colour twice.
+  const chi = await student('Chi', 100000);
+  await buyCar(chi, 'car_picanto');
+  assert.equal(await balance(chi), 100000 - 80000, 'the Picanto costs ₦80,000');
+  assert.deepEqual((await call(chi, 'select car_garage() g')).g.cars.map((c: any) => [c.car, c.paint]), [['car_picanto', null]], 'factory colour at first');
+  await fails(chi, "select paint_car('car_picanto','gold')", /Choose a colour/);
+  await fails(chi, "select paint_car('car_corolla','red')", /not your car/);
+  const p = (await call(chi, "select paint_car('car_picanto','red') p")).p;
+  assert.equal(p.paint, 'red'); assert.equal(Number(p.cost), RESPRAY_PRICE);
+  assert.equal(await balance(chi), 20000 - RESPRAY_PRICE);
+  assert.equal((await call(chi, 'select car_garage() g')).g.cars[0].paint, 'red', 'the garage keeps the colour');
+  await fails(chi, "select paint_car('car_picanto','red')", /already that colour/);
+  await db.query('update wallets set balance=100 where user_id=$1', [chi]);
+  await fails(chi, "select paint_car('car_picanto','blue')", /Top up/);
+  await fails(null, "select paint_car('car_picanto','blue')", /permission denied|Authentication/);
+  assert.equal(Number((await one("select count(*) n from wallet_transactions where user_id=$1 and type='car_paint'", [chi])).n), 1);
+
+  console.log('CARS DB PASSED: garage with starter fuel, ₦150/L capped at the tank, burn in small steps and never below empty, owners only, funds, drift; ₦80k Picanto; ₦5,000 resprays.');
 }
 main().catch((e) => { console.error(e); process.exit(1); });

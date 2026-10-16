@@ -1,5 +1,7 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
 import { useCarStore } from '../../stores/carStore';
+import { useRaceStore } from '../../stores/raceStore';
+import { RACE, gridSpot } from '../../config/carRace';
 import { toast } from '../../stores/toastStore';
 import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
 import { CarBody, Cockpit } from '../vehicles/CarBody';
@@ -120,6 +122,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const ride = useCarStore((s) => s.ride);
   const carView = useCarStore((s) => s.view);
   const rideCar = useGameStore((s) => (ride ? s.players[ride.driver]?.car ?? null : null));
+  const ridePaint = useGameStore((s) => (ride ? s.players[ride.driver]?.carPaint ?? null : null));
+  const myPaint = useCarStore((s) => (s.driving ? s.paint[s.driving] ?? null : null));
   // Getting a lift: smoothed copy of the driver's car position and heading.
   const rideSmooth = useRef({ x: 0, z: 0, heading: 0, init: false });
   const onCampusNow = useHostelStore((s) => s.roomId === 'world:funaab:main');
@@ -257,6 +261,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') parkCar();
       else if (t === 'unride') useCarStore.getState().leaveRide();
       else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
@@ -444,10 +449,20 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
         ctl.setSlideEnabled(true);
         carPhys.current = { body: cb, collider: cc, controller: ctl, car: carState.driving };
       }
+      // Race: the car is put on the grid and held there until the lights go green.
+      const race = useRaceStore.getState();
+      if (race.gridPending) {
+        const spot = gridSpot(0);
+        d.x = spot.x; d.z = spot.z; d.heading = spot.heading; d.speed = 0;
+        useRaceStore.setState({ gridPending: false });
+        useInputStore.getState().setCameraYaw(spot.heading + Math.PI);
+      }
+      const held = race.status === 'countdown';
+      if (held) d.speed = 0;
       const modal = Boolean(useGameStore.getState().activeModal);
       const kp = keysPressed.current;
       const [jx, jy] = modal ? [0, 0] : useInputStore.getState().joystick;
-      const throttle = modal ? 0 : Math.max(-1, Math.min(1, -jy + ((kp['w'] || kp['arrowup']) ? 1 : 0) - ((kp['s'] || kp['arrowdown']) ? 1 : 0)));
+      const throttle = modal || held ? 0 : Math.max(-1, Math.min(1, -jy + ((kp['w'] || kp['arrowup']) ? 1 : 0) - ((kp['s'] || kp['arrowdown']) ? 1 : 0)));
       const steer = modal ? 0 : Math.max(-1, Math.min(1, jx + ((kp['d'] || kp['arrowright']) ? 1 : 0) - ((kp['a'] || kp['arrowleft']) ? 1 : 0)));
       const fuel = carState.fuel[carState.driving] ?? 0;
       const top = model.topSpeed;
@@ -480,7 +495,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       currentAnimation.current = 'sit';
       const feet: [number, number, number] = [d.x, 0, d.z];
       setMyPosition(feet); setMyRotation(d.heading); setMyAnimation('sit');
-      networkManager.sendMove(feet, d.heading, 'sit', false, carState.driving);
+      networkManager.sendMove(feet, d.heading, 'sit', false, carState.driving, carState.paint[carState.driving] ?? null);
       // The camera settles in behind the car as you drive.
       if (Math.abs(d.speed) > 2) {
         const behind = d.heading + Math.PI, diff = Math.atan2(Math.sin(behind - cameraYaw), Math.cos(behind - cameraYaw));
@@ -490,8 +505,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       else { setLensFov(50); updateOrbitCamera(_camTarget.set(d.x, PLAYER_CENTER_OFFSET, d.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta); }
       // At a pump you can fill up; anywhere else the button parks the car.
       const pump = FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius);
+      const start = RACE.track[0];
+      const atStart = race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(start[0] - d.x, start[2] - d.z) < RACE.startRadius;
       const near: InteractableZone = pump
         ? { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: pump, radius: FUEL_STATION.pumpRadius }
+        : atStart ? { id: 'race-start', type: 'car', targetId: 'race', label: RACE.name, actionText: 'Start the race', position: start, radius: RACE.startRadius }
         : { id: 'my-car', type: 'car', targetId: 'park', label: model.name, actionText: Math.abs(d.speed) > 1 ? 'Stop to park' : 'Park & get out', position: feet, radius: 3 };
       if (useGameStore.getState().nearbyInteractable?.actionText !== near.actionText) setNearbyInteractable(near);
       setIsOnRestrictedLawn(false);
@@ -893,8 +911,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
       {/* Visual Avatar Mesh attached to physics body with offset to match feet level */}
       <group ref={avatarVisualRef} position={[0, -PLAYER_CENTER_OFFSET, 0]}>
-        {drivingCar && onCampusNow && (carView === 'inside' ? <Cockpit id={drivingCar} /> : <CarBody id={drivingCar} />)}
-        {ride && rideCar && onCampusNow && carView === 'inside' && (() => { const seat = PASSENGER_SEATS[ride.seat] ?? PASSENGER_SEATS[0]; return <group position={[-seat[0], -seat[1], -seat[2]]}><Cockpit id={rideCar} /></group>; })()}
+        {drivingCar && onCampusNow && (carView === 'inside' ? <Cockpit id={drivingCar} paint={myPaint} /> : <CarBody id={drivingCar} paint={myPaint} />)}
+        {ride && rideCar && onCampusNow && carView === 'inside' && (() => { const seat = PASSENGER_SEATS[ride.seat] ?? PASSENGER_SEATS[0]; return <group position={[-seat[0], -seat[1], -seat[2]]}><Cockpit id={rideCar} paint={ridePaint} /></group>; })()}
         <group position={drivingCar && onCampusNow ? DRIVER_SEAT : [0, 0, 0]}>
         <AvatarModel
           userId={user.id}

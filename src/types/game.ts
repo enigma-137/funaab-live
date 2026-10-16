@@ -52,6 +52,8 @@ export interface PlayerState {
   isDining?: boolean;
   /** The car they are driving (config/cars id), or null on foot. */
   car?: string | null;
+  /** Its respray colour id (config/cars CAR_PAINTS), or null for the model colour. */
+  carPaint?: string | null;
   /** Getting a lift: the driver's connection id and passenger seat. */
   rideWith?: string | null;
   rideSeat?: number | null;
