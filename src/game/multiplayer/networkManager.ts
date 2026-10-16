@@ -663,9 +663,9 @@ class NetworkManager {
     }
   }
 
-  public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false, car: string | null = null) {
+  public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false, car: string | null = null, carPaint: string | null = null) {
     if (this.ws?.readyState !== WebSocket.OPEN || this.waitingForSnapshot) return;
-    this.pendingMove = { position: [...position], rotation, animation, kekeRiding, car };
+    this.pendingMove = { position: [...position], rotation, animation, kekeRiding, car, carPaint: car ? carPaint : null };
     this.flushPendingMove();
   }
 

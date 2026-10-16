@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { CAR_MODELS } from '../../config/cars';
+import { CAR_MODELS, paintHex } from '../../config/cars';
 
 const box = new THREE.BoxGeometry(1, 1, 1);
 const wheel = new THREE.CylinderGeometry(0.36, 0.36, 0.26, 14);
@@ -17,11 +17,11 @@ const shared = {
 
 /**
  * A car facing +Z, wheels on the ground (y 0). The driver sits on the left (+X), as in Nigeria.
- * `id` picks the model (Corolla, Camry, Lexus, G-Wagon) from config/cars.
+ * `id` picks the model (Picanto, Corolla, Camry, Lexus, G-Wagon) from config/cars; `paint` is a respray colour id.
  */
-function CarBodyInner({ id }: { id: string }) {
-  const m = CAR_MODELS[id] ?? CAR_MODELS.car_corolla;
-  const paint = useMemo(() => new THREE.MeshStandardMaterial({ color: m.paint, roughness: 0.35, metalness: 0.5 }), [m.paint]);
+function CarBodyInner({ id, paint: paintId }: { id: string; paint?: string | null }) {
+  const m = CAR_MODELS[id] ?? CAR_MODELS.car_corolla, colour = paintHex(id, paintId);
+  const paint = useMemo(() => new THREE.MeshStandardMaterial({ color: colour, roughness: 0.35, metalness: 0.5 }), [colour]);
   useEffect(() => () => paint.dispose(), [paint]);
   const k = m.scale, h = m.suv ? 1.2 : 1;
   const B = ({ s, p, mat }: { s: [number, number, number]; p: [number, number, number]; mat: THREE.Material }) => <mesh geometry={box} material={mat} scale={s} position={p} castShadow />;
@@ -71,9 +71,9 @@ const seatMat = two('#3f2d24', { roughness: 0.9 });
  * wheel, windscreen pillars, roof edge and door sills. Used instead of the outside body when the
  * camera is inside, so nothing blocks the view of campus.
  */
-export function Cockpit({ id }: { id: string }) {
-  const m = CAR_MODELS[id] ?? CAR_MODELS.car_corolla;
-  const paint = useMemo(() => two(m.paint, { metalness: 0.4, roughness: 0.35 }), [m.paint]);
+export function Cockpit({ id, paint: paintId }: { id: string; paint?: string | null }) {
+  const m = CAR_MODELS[id] ?? CAR_MODELS.car_corolla, colour = paintHex(id, paintId);
+  const paint = useMemo(() => two(colour, { metalness: 0.4, roughness: 0.35 }), [colour]);
   useEffect(() => () => paint.dispose(), [paint]);
   const k = m.scale, h = m.suv ? 1.2 : 1, top = 0.95 * h, roof = top + (m.boxy ? 0.75 : 0.52) * h, front = 0.8 * k;
   const B = ({ s, p, mat, r }: { s: [number, number, number]; p: [number, number, number]; mat: THREE.Material; r?: [number, number, number] }) =>

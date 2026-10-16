@@ -4,17 +4,19 @@ import { useCarStore } from '../../stores/carStore';
 import { useHostelStore } from '../../stores/hostelStore';
 import { CAR_MODELS, DRIVE, FUEL_STATION } from '../../config/cars';
 import { CarBody } from './CarBody';
+import { CarRace } from './CarRace';
 import { CampusSign } from '../world/CampusSign';
 
 /** Your car where you left it (others see it while you drive). Solid, so people walk round it. */
 function ParkedCar() {
   const parked = useCarStore((s) => s.parked);
   const driving = useCarStore((s) => s.driving);
+  const paint = useCarStore((s) => (parked ? s.paint[parked.car] ?? null : null));
   if (!parked || driving) return null;
   const k = CAR_MODELS[parked.car]?.scale ?? 1;
   return (
     <group position={parked.position} rotation={[0, parked.rotation, 0]}>
-      <CarBody id={parked.car} />
+      <CarBody id={parked.car} paint={paint} />
       <RigidBody type="fixed" colliders={false} key={`${parked.position.join(',')}`}>
         <CuboidCollider position={[0, DRIVE.half[1] + 0.12, 0]} args={[DRIVE.half[0] * k, DRIVE.half[1], DRIVE.half[2] * k]} />
       </RigidBody>
@@ -63,5 +65,5 @@ function FuelStation() {
 export function CarWorld() {
   const onCampus = useHostelStore((s) => s.roomId === 'world:funaab:main');
   if (!onCampus) return null;
-  return (<><FuelStation /><ParkedCar /></>);
+  return (<><FuelStation /><ParkedCar /><CarRace /></>);
 }
