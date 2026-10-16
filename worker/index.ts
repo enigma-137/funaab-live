@@ -1741,7 +1741,7 @@ export class WorldRoomDO {
                 && [...this.psMatches.values()].some((m) => m.status !== 'finished' && m.stationId === 'ps5-station-1' && (m.hostId === current.id || m.guestId === current.id)))
                 this.endPSMatchesFor(current.id, 'walked_away');
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
-              const animation = ['idle','walk','run','sit','sleep','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
+              const animation = ['idle','walk','run','sit','sleep','pray','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
               const car = isCarId(data.car) ? data.car : null;
               if (player.position.some((value, index) => value !== data.position[index])
                 || player.rotation !== rotation

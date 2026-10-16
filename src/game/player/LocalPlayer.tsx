@@ -105,7 +105,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const characterControllerRef = useRef<any>(null);
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const currentRotation = useRef<number>(0);
-  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'dance'>('idle');
+  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'dance'>('idle');
   const stuckTimerRef = useRef<number>(0);
   const lastSeatExit = useRef<[number, number, number] | null>(null);
   // Camera rig state: damped follow point + lightly smoothed orbit angles.

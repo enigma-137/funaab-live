@@ -41,8 +41,8 @@ interface GameState {
   // Local player state
   myPosition: [number, number, number];
   myRotation: number;
-  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
-  seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep'; exit?: [number, number, number] } | null;
+  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance';
+  seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep' | 'pray'; exit?: [number, number, number] } | null;
   /** One-shot facing request (e.g. turn to face the goal); LocalPlayer applies then clears it. */
   faceRotation: number | null;
   isRidingKeke: boolean;
@@ -141,8 +141,8 @@ interface GameState {
   myHeldItem: HeldItem | null;
   setMyHeldItem: (item: HeldItem | null) => void;
   setMyRotation: (rot: number) => void;
-  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance') => void;
-  sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep'; exit?: [number, number, number] }) => void;
+  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance') => void;
+  sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep' | 'pray'; exit?: [number, number, number] }) => void;
   standUp: () => void;
   setFaceRotation: (rotation: number | null) => void;
   setRidingKeke: (isRiding: boolean, kekeId?: string | null, targetDestinationId?: string | null) => void;

@@ -41,7 +41,7 @@ export interface PlayerState {
   avatarConfig: AvatarConfig;
   position: [number, number, number];
   rotation: number;
-  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'wave' | 'cheer' | 'dance';
+  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance';
   kekeRiding?: boolean;
   kekeId?: string;
   seatIndex?: number;
@@ -127,7 +127,7 @@ export interface InteractableZone {
   targetId?: string;
   // Seat pose for 'bench' zones: where the hips/feet go when it differs from the trigger spot,
   // and where to stand on getting up (a bed's collider would otherwise trap the player).
-  pose?: 'sit' | 'sleep';
+  pose?: 'sit' | 'sleep' | 'pray';
   seat?: [number, number, number];
   exit?: [number, number, number];
 }

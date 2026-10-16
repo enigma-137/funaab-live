@@ -132,7 +132,8 @@ export const AvatarBody = memo(
       const distant =
         s.world.distanceToSquared(camera.position) > nearLimit * nearLimit &&
         animation !== "sit" &&
-        animation !== "sleep";
+        animation !== "sleep" &&
+        animation !== "pray";
       if (near.current) near.current.visible = !distant;
       if (far.current) far.current.visible = distant;
       const distance = s.initialized
@@ -142,7 +143,15 @@ export const AvatarBody = memo(
       s.initialized = true;
       const seated = animation === "sit",
         sleep = animation === "sleep",
-        dance = animation === "dance";
+        dance = animation === "dance",
+        pray = animation === "pray";
+      // Prayer on a mat: kneel upright, bow into sujood, rise again (a 10 s cycle).
+      // `bow` tips the body forward about the hips; the thighs stay upright on the knees.
+      let bow = 0;
+      if (pray) {
+        const c = t % 10, ease = (x: number) => x * x * (3 - 2 * x);
+        bow = 1.45 * (c < 4 ? 0 : c < 5 ? ease(c - 4) : c < 8 ? 1 : c < 9 ? 1 - ease(c - 8) : 0);
+      }
       // Dance groove at ~112 BPM: 1.87 beats a second.
       const groove = t * Math.PI * 1.87;
       const requested = animation === "walk" || animation === "run";
@@ -155,7 +164,7 @@ export const AvatarBody = memo(
             ? 9.5
             : 6
           : 0;
-      const moving = !seated && !sleep && speed > 0.035;
+      const moving = !seated && !sleep && !pray && speed > 0.035;
       s.blend = THREE.MathUtils.damp(s.blend, moving ? 1 : 0, 12, delta);
       s.phase += moving ? Math.min(speed, 12) * delta * 4.2 : 0;
       const swing = Math.sin(s.phase) * 0.62 * s.blend;
@@ -175,8 +184,8 @@ export const AvatarBody = memo(
         if (leg) {
           leg.rotation.x = THREE.MathUtils.damp(
             leg.rotation.x,
-            seated ? -Math.PI / 2 : sign * swing,
-            16,
+            seated ? -Math.PI / 2 : pray ? -bow : sign * swing,
+            pray ? 30 : 16,
             delta,
           );
         }
@@ -185,7 +194,7 @@ export const AvatarBody = memo(
             knee.rotation.x,
             dance
               ? 0.18 + Math.abs(Math.sin(groove + (i ? Math.PI / 2 : 0))) * 0.22
-              : seated
+              : seated || pray
               ? Math.PI / 2
               : Math.max(0, -Math.sin(s.phase + (i ? Math.PI : 0))) *
                   0.48 *
@@ -201,7 +210,7 @@ export const AvatarBody = memo(
             s.blend;
           if (ankles.current[i])
             ankles.current[i]!.rotation.x = -leg.rotation.x - knee.rotation.x;
-          leg.position.y = seated
+          leg.position.y = seated || pray
             ? 0.91
             : 0.41 * Math.cos(leg.rotation.x) +
               0.5 * Math.cos(leg.rotation.x + knee.rotation.x) +
@@ -210,7 +219,7 @@ export const AvatarBody = memo(
         if (arm) {
           arm.rotation.x = THREE.MathUtils.damp(
             arm.rotation.x,
-            carry ? -0.45 : dance ? -0.5 - Math.sin(groove + i * Math.PI) * 0.35 : seated ? -0.35 : -sign * swing * 0.72,
+            carry ? -0.45 : dance ? -0.5 - Math.sin(groove + i * Math.PI) * 0.35 : seated ? -0.35 : pray ? -0.25 - bow * 0.75 : -sign * swing * 0.72,
             12,
             delta,
           );
@@ -260,16 +269,19 @@ export const AvatarBody = memo(
         head.current.rotation.y = Math.sin(t * 0.65) * 0.04 * (1 - s.blend);
         head.current.rotation.x = dance ? Math.sin(groove * 2) * 0.09 : 0;
       }
+      // Kneeling puts the hips 0.45 m up (on the knees); bowing turns the body about the hips.
+      const HIP = 0.91, KNEEL = 0.45;
       root.current.position.y = THREE.MathUtils.damp(
         root.current.position.y,
-        seated ? -0.39 : dance ? -0.04 - Math.abs(Math.sin(groove)) * 0.05 : 0,
-        14,
+        seated ? -0.39 : pray ? KNEEL - HIP * Math.cos(bow) : dance ? -0.04 - Math.abs(Math.sin(groove)) * 0.05 : 0,
+        pray ? 30 : 14,
         delta,
       );
+      root.current.position.z = THREE.MathUtils.damp(root.current.position.z, pray ? -HIP * Math.sin(bow) : 0, pray ? 30 : 14, delta);
       root.current.rotation.x = THREE.MathUtils.damp(
         root.current.rotation.x,
-        sleep ? -Math.PI / 2 : 0,
-        12,
+        sleep ? -Math.PI / 2 : pray ? bow : 0,
+        pray ? 30 : 12,
         delta,
       );
       root.current.scale.setScalar(sleep ? 0.9 : 1);

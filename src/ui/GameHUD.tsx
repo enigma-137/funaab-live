@@ -305,7 +305,7 @@ export const GameHUD: React.FC = () => {
       case 'restaurant_dining':
         return '🍲';
       case 'bench':
-        return '🪑';
+        return nearbyInteractable.pose === 'pray' ? '🤲' : '🪑';
       case 'football':
         return '⚽';
       case 'basketball':
@@ -336,7 +336,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     if (nearbyInteractable) {
@@ -381,7 +381,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     switch (nearbyInteractable?.type) {
@@ -395,7 +395,7 @@ export const GameHUD: React.FC = () => {
       case 'restaurant_dining':
         return 'Sit';
       case 'bench':
-        return nearbyInteractable.pose === 'sleep' ? 'Lie Down' : 'Sit';
+        return nearbyInteractable.pose === 'sleep' ? 'Lie Down' : nearbyInteractable.pose === 'pray' ? 'Pray' : 'Sit';
       case 'atm':
         return 'Bank';
       case 'job_board':

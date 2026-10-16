@@ -90,3 +90,14 @@ export const chapelPewSeats = CHAPEL_PEWS.flatMap((p, i) =>
     rotation: Math.PI,
   })),
 );
+/** Every prayer mat: kneel and pray facing the qibla wall (north), on Fridays when the mosque is open. */
+export const mosqueMatSpots = MOSQUE_MATS.map((m, i) => ({
+  id: `mosque-mat-${i}`,
+  type: 'bench' as const,
+  label: 'Prayer mat',
+  actionText: 'Pray',
+  position: worshipPoint(MOSQUE, m.x, m.z),
+  radius: 0.75,
+  rotation: Math.PI,
+  pose: 'pray' as const,
+}));
