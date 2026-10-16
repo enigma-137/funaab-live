@@ -1,12 +1,14 @@
 import { create } from 'zustand';
-import { RACE, RIVALS, formatRaceTime } from '../config/carRace';
+import { RACE, RACE_PRIZE_DAILY_LIMIT, formatRaceTime } from '../config/carRace';
+import { networkManager } from '../game/multiplayer/networkManager';
 import { useCarStore } from './carStore';
+import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
 
 export type RaceStatus = 'idle' | 'countdown' | 'racing' | 'finished';
 
-/** The rivals' live state, stepped every frame by the race runner (not React state: no re-renders). */
-export const rivalState = RIVALS.map(() => ({ dist: 0, speed: 0, finishMs: null as number | null }));
+/** The server's verdict on a lap: what it paid (0 once today's prizes are used up). */
+export interface RacePrize { ok: boolean; place?: number; ms?: number; prize?: number; paidToday?: number; balance?: number; reason?: string }
 
 interface RaceStore {
   status: RaceStatus;
@@ -20,7 +22,11 @@ interface RaceStore {
   place: number;
   finishMs: number | null;
   best: number | null;
+  /** The server's verdict on this race, once it arrives. */
+  prize: RacePrize | null;
   start: () => void;
+  /** From the server: the lap counted (and what it paid), or why it didn't. */
+  prizeResult: (r: RacePrize) => void;
   quit: (why?: string) => void;
   finish: (ms: number, place: number) => void;
   dismiss: () => void;
@@ -32,16 +38,18 @@ const saveBest = (ms: number) => { try { localStorage.setItem(bestKey, String(ms
 const ordinal = (n: number) => `${n}${n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`;
 
 export const useRaceStore = create<RaceStore>((set, get) => ({
-  status: 'idle', goAt: 0, gridPending: false, gate: 0, place: 1, finishMs: null, best: readBest(),
+  status: 'idle', goAt: 0, gridPending: false, gate: 0, place: 1, finishMs: null, best: readBest(), prize: null,
   start: () => {
     const car = useCarStore.getState();
     if (!car.driving) return;
     if ((car.fuel[car.driving] ?? 0) < RACE.minFuel) { toast({ icon: '⛽', text: `You need at least ${RACE.minFuel} litres of fuel for a lap. Fill up at the fuel station.`, tone: 'bad' }); return; }
-    for (const r of rivalState) { r.dist = 0; r.speed = 0; r.finishMs = null; }
-    set({ status: 'countdown', goAt: performance.now() + RACE.countdownMs, gridPending: true, gate: 0, place: 1, finishMs: null });
+    set({ status: 'countdown', goAt: performance.now() + RACE.countdownMs, gridPending: true, gate: 0, place: 1, finishMs: null, prize: null });
+    // The server watches the same lap and pays the prize; it starts its own clock now.
+    networkManager.raceStart();
   },
   quit: (why) => {
     if (get().status === 'idle') return;
+    if (get().status !== 'finished') networkManager.raceQuit();
     set({ status: 'idle', gridPending: false });
     if (why) toast({ icon: '🏁', text: why, tone: 'info' });
   },
@@ -50,6 +58,18 @@ export const useRaceStore = create<RaceStore>((set, get) => ({
     if (record) saveBest(ms);
     set({ status: 'finished', finishMs: ms, place, best: record ? ms : best });
     toast({ icon: place === 1 ? '🏆' : '🏁', text: `${ordinal(place)} place in ${formatRaceTime(ms)}${record ? ' · new best time!' : ''}`, tone: place === 1 ? 'good' : 'info', ms: 6000 });
+  },
+  prizeResult: (r) => {
+    set({ prize: r });
+    if (r.ok && r.prize) {
+      if (typeof r.balance === 'number') useWalletStore.setState({ balance: r.balance });
+      toast({ icon: '💰', text: `Race prize · ${r.paidToday}/${RACE_PRIZE_DAILY_LIMIT} paid races today`, amount: r.prize, tone: 'good', ms: 6000 });
+    } else if (r.ok) {
+      toast({ icon: '🏁', text: `Lap counted, but you've had today's ${RACE_PRIZE_DAILY_LIMIT} paid races. Prizes are back tomorrow.`, tone: 'info', ms: 6000 });
+    } else if (r.reason && get().status !== 'idle') {
+      // (Already out of the race on screen: that message said why.)
+      toast({ icon: '🏁', text: `No prize this time: ${r.reason}`, tone: 'info', ms: 6000 });
+    }
   },
   dismiss: () => set({ status: 'idle' }),
 }));

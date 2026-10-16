@@ -3,7 +3,7 @@
 // start and finish, the grid lanes sit inside the curbs, and the rivals can be beaten in a cheap car.
 // Run: npm run test:race
 import assert from 'node:assert/strict';
-import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, crossedFinish, gridSpot, pointAlong, projectOnto } from '../src/config/carRace';
+import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, RIVAL_FINISH_MS, crossedFinish, finishPlace, gridSpot, minLapMs, pointAlong, projectOnto, rivalProgress, stepRace } from '../src/config/carRace';
 import { CAR_MODELS, DRIVE, isPaintId } from '../src/config/cars';
 import { locationById } from '../src/config/campusLocations';
 import { roadBounds } from '../src/config/kekeRoutes';
@@ -36,9 +36,33 @@ const g0 = gridSpot(0), g1 = gridSpot(1), left = [Math.cos(g0.heading), -Math.si
 assert((g1.x - g0.x) * left[0] + (g1.z - g0.z) * left[1] < 0, 'lane +1 is on the right');
 
 // Rival pace, stepped like the race runner (60 fps): they finish, and a Corolla driven well can win.
-const corner = (dist: number, top: number) => { const n = RACE_CORNERS.find((c) => c > dist - 3); return n === undefined ? top : Math.min(top, Math.sqrt(RACE.cornerSpeed ** 2 + 12 * Math.max(0, n - dist))); };
-const times = RIVALS.map((r) => { let d = 0, v = 0, t = 0; while (d < RACE_LENGTH && t < 120) { v = Math.min(corner(d, r.topSpeed), v + r.accel / 60); d += v / 60; t += 1 / 60; } return t; });
+const times = RIVAL_FINISH_MS.map((ms) => ms / 1000);
 for (const t of times) assert(t < 60, 'rivals finish');
+// Rivals are a function of race time only, so the game and the Worker agree.
+RIVALS.forEach((_, i) => {
+  assert.equal(rivalProgress(i, 0), 0); assert.equal(rivalProgress(i, RIVAL_FINISH_MS[i] + 1000), RACE_LENGTH);
+  for (let ms = 0; ms < RIVAL_FINISH_MS[i]; ms += 500) assert(rivalProgress(i, ms + 500) >= rivalProgress(i, ms), 'never backwards');
+});
+assert.equal(finishPlace(Math.min(...RIVAL_FINISH_MS) - 1), 1); assert.equal(finishPlace(Math.max(...RIVAL_FINISH_MS) + 1), RIVALS.length + 1);
+for (const id of Object.keys(CAR_MODELS)) assert(minLapMs(id) < Math.min(...RIVAL_FINISH_MS), `${id} can win under the speed check`);
+
+// Driving the lap through stepRace: checkpoints in order to the line, even in big jumps (laggy phone).
+for (const stepM of [0.5, 6]) {
+  let gate = 0, x = RACE.track[0][0], z = RACE.track[0][2];
+  for (let d = stepM; d <= RACE_LENGTH + stepM; d += stepM) {
+    const p = pointAlong(RACE.track, Math.min(d, RACE_LENGTH + 0.5));
+    const at = d > RACE_LENGTH ? { x: p.x + p.dx * 1, z: p.z + p.dz * 1 } : p;
+    const st = stepRace(gate, x, z, at.x, at.z);
+    assert(!st.off, `on the route at ${d} m`);
+    gate = st.gate; x = at.x; z = at.z;
+    if (st.finished) break;
+  }
+  assert.equal(gate, RACE_GATES.length, `finished with ${stepM} m steps`);
+}
+// Cutting across: skip from the first corner straight to the Library is off the route.
+{ const lib = locationById('library').kekeStop, st = stepRace(9, 55, 40, lib[0], lib[2]); assert(st.off || st.gate === 9, 'no shortcut'); }
+// Sitting on the grid at the start doesn't count as finishing.
+assert(!stepRace(0, RACE.track[0][0], RACE.track[0][2], RACE.track[0][0], RACE.track[0][2] + 0.5).finished, 'start is not the finish');
 // A human taking each corner at about 6 m/s in the cheapest car: brake into it and accelerate out.
 const human = (top: number) => { let d = 0, v = 0, t = 0; while (d < RACE_LENGTH && t < 300) { const n = RACE_CORNERS.find((c) => c > d - 3); const lim = n === undefined ? top : Math.min(top, Math.sqrt(36 + 2 * DRIVE.brake * 0.6 * Math.max(0, n - d))); v = v > lim ? Math.max(lim, v - DRIVE.brake / 60) : Math.min(lim, v + DRIVE.accel / 60); d += v / 60; t += 1 / 60; } return t; };
 const picanto = human(CAR_MODELS.car_picanto.topSpeed);
