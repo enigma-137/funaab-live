@@ -71,22 +71,29 @@ function RivalCar({ i }: { i: number }) {
   );
 }
 
+const STEP_MS = 1000 / 60;
+const rivalClock = { ms: 0 };
+
 /** Steps the rivals, counts your checkpoints, works out places and ends the race. */
 function RaceRunner() {
-  useFrame((_, delta) => {
+  useFrame(() => {
     const race = useRaceStore.getState();
     if (race.status !== 'countdown' && race.status !== 'racing') return;
     if (!useCarStore.getState().driving) { race.quit('You got out of your car, so the race is off.'); return; }
     const now = performance.now();
-    if (race.status === 'countdown') { if (now >= race.goAt) useRaceStore.setState({ status: 'racing' }); return; }
-    const dt = Math.min(0.1, delta), elapsed = now - race.goAt;
-    RIVALS.forEach((r, i) => {
-      const s = rivalState[i];
-      if (s.finishMs !== null) return;
-      s.speed = Math.min(rivalLimit(s.dist, r.topSpeed), s.speed + r.accel * dt);
-      s.dist += s.speed * dt;
-      if (s.dist >= RACE_LENGTH) { s.dist = RACE_LENGTH; s.finishMs = elapsed; }
-    });
+    if (race.status === 'countdown') { rivalClock.ms = 0; if (now >= race.goAt) useRaceStore.setState({ status: 'racing' }); return; }
+    // Rivals run on the race clock in fixed steps, so a slow phone doesn't slow them down (or speed them up).
+    const elapsed = now - race.goAt;
+    while (rivalClock.ms + STEP_MS <= elapsed) {
+      rivalClock.ms += STEP_MS;
+      RIVALS.forEach((r, i) => {
+        const s = rivalState[i];
+        if (s.finishMs !== null) return;
+        s.speed = Math.min(rivalLimit(s.dist, r.topSpeed), s.speed + r.accel * STEP_MS / 1000);
+        s.dist += s.speed * STEP_MS / 1000;
+        if (s.dist >= RACE_LENGTH) { s.dist = RACE_LENGTH; s.finishMs = rivalClock.ms; }
+      });
+    }
     const [x, , z] = useGameStore.getState().myPosition;
     const me = projectOnto(RACE.track, x, z);
     if (me.off > RACE.offTrack) { race.quit('You left the race route, so the race is off.'); return; }
