@@ -11,6 +11,9 @@ import { useWalletStore } from '../../stores/walletStore';
 import { useLectureStore } from '../../stores/lectureStore';
 import { useAuthStore } from '../../stores/authStore';
 import { logTraceIQ } from '../../lib/traceiq';
+import { closedWhileBackgrounded, hiddenDurationMs, trackPageVisibility, visibilitySnapshot } from './pageVisibility';
+
+trackPageVisibility();
 import { gameSound } from '../audio/gameAudio';
 import { hasMeaningfulMovementChange, type MovementSnapshot } from './movementSync';
 import { useFootballStore } from '../../stores/footballStore';
@@ -208,8 +211,14 @@ class NetworkManager {
         useGameStore.getState().setConnectionStatus('connected');
         console.log('[WS] connected to', this.targetWsUrl);
         if (this.outageStartedAt !== null) {
-          logTraceIQ('info', 'Multiplayer reconnected', { service: 'multiplayer', room: this.room, downtimeMs: Date.now() - this.outageStartedAt });
+          logTraceIQ('info', 'Multiplayer reconnected', {
+            service: 'multiplayer',
+            room: this.room,
+            downtimeMs: Date.now() - this.outageStartedAt,
+            backgrounded: this.outageBackgrounded,
+          });
           this.outageStartedAt = null;
+          this.outageBackgrounded = false;
         }
 
         const store = useGameStore.getState();
@@ -251,14 +260,23 @@ class NetworkManager {
         }
 
         // One log per outage (the first abnormal close), not one per 2.5s retry.
+        // Drops caused by the app being backgrounded are expected on mobile, so
+        // they are info; a warning means a real network/server drop.
         if (event.code !== 1000 && event.code !== 1008 && this.outageStartedAt === null) {
-          this.outageStartedAt = Date.now();
-          logTraceIQ('warn', 'Multiplayer connection lost', {
+          const now = Date.now();
+          const visibility = visibilitySnapshot();
+          const backgrounded = closedWhileBackgrounded(visibility, now);
+          this.outageStartedAt = now;
+          this.outageBackgrounded = backgrounded;
+          logTraceIQ(backgrounded ? 'info' : 'warn', backgrounded ? 'Multiplayer paused while app was in background' : 'Multiplayer connection lost', {
             service: 'multiplayer',
             room: this.room,
             closeCode: event.code,
             closeReason: event.reason || undefined,
             wasClean: event.wasClean,
+            backgrounded,
+            pageHidden: visibility.hidden,
+            hiddenForMs: hiddenDurationMs(visibility, now),
           });
         }
 
@@ -894,6 +912,7 @@ class NetworkManager {
 
   // Set while disconnected, so an outage is logged once and its length reported.
   private outageStartedAt: number | null = null;
+  private outageBackgrounded = false;
 
   private scheduleReconnect() {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);

@@ -35,6 +35,7 @@
     "test:korope:worker": "tsx scripts/test-korope-worker.ts",
     "test:lecture:presence": "tsx scripts/test-lecture-presence.ts",
     "test:movement-sync": "tsx scripts/test-movement-sync.ts",
+    "test:page-visibility": "tsx scripts/test-page-visibility.ts",
     "test:keke:db": "node scripts/test-keke-db.cjs",
     "test:campus:browser": "node scripts/test-campus-browser.cjs",
     "test:camera": "tsx scripts/test-mobile-camera.ts",
