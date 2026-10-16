@@ -10,6 +10,7 @@ import { CAMPUS_BET_PICKS, CAMPUS_BET_SHOP, isValidCampusBetStake } from '../src
 import { generateMatchday } from '../src/config/campusBetModel';
 import { ECONOMY_CONFIG } from '../src/config/economy';
 import { isCarId, isPaintId } from '../src/config/cars';
+import { RACE, finishPlace, minLapMs, stepRace } from '../src/config/carRace';
 import { publicCampusBetTeams } from '../src/config/campusBetTeams';
 import { FEEDBACK_LIMITS, formatFeedbackMessage, parseFeedback } from '../src/config/feedback';
 
@@ -103,6 +104,8 @@ interface SessionData {
   farmShift?: { ref: string; startedAt: number; step: number; lastAt: number };
   /** The Arena: the night (Lagos date) this student holds a ticket for. */
   partyNight?: string;
+  /** Campus Grand Prix: the lap this Worker is watching (its own clock, the trusted position, the car). */
+  race?: { goAt: number; gate: number; car: string; x: number; z: number };
 }
 
 interface PlayerState {
@@ -806,6 +809,38 @@ export class WorldRoomDO {
     const out: string[] = [];
     for (const [id, p] of this.players) if (p.rideWith === driverConn) { p.rideWith = null; p.rideSeat = undefined; this.dirtyPlayerIds.add(id); out.push(id); }
     if (out.length) { this.sendToConnections(out, JSON.stringify({ type: 'car_ride_end', reason })); this.scheduleBatchBroadcast(); }
+  }
+
+  /**
+   * Follows a Grand Prix lap on the trusted position: stay on the grid until the lights go green,
+   * keep to the same car, pass every checkpoint in order, then the database pays the prize for the
+   * place this clock gives (never faster than the car can go).
+   */
+  private raceMove(session: SessionData, webSocket: WebSocket, car: string | null) {
+    const race = session.race, pos = session.trustedPosition;
+    if (!race || !pos) return;
+    const now = Date.now();
+    const fail = (reason: string) => { session.race = undefined; webSocket.send(JSON.stringify({ type: 'race_result', ok: false, reason })); };
+    if (car !== race.car) return fail('you got out of your car.');
+    if (now < race.goAt) {
+      const grid = RACE.track[0];
+      if (Math.hypot(pos[0] - grid[0], pos[2] - grid[2]) > RACE.startRadius + 3) fail('you jumped the start.');
+      return;
+    }
+    const step = stepRace(race.gate, race.x, race.z, pos[0], pos[2]);
+    Object.assign(race, { gate: step.gate, x: pos[0], z: pos[2] });
+    if (step.finished) {
+      session.race = undefined;
+      // A little grace for the trip from your phone to here, which this clock can't see.
+      const ms = Math.max(0, now - race.goAt - 250);
+      if (ms < minLapMs(race.car)) return fail('that lap was faster than your car can go.');
+      const place = finishPlace(ms);
+      void this.dbRpc('race_reward_trusted', { p_user: session.id, p_car: race.car, p_place: place, p_ms: ms })
+        .then((r: any) => webSocket.send(JSON.stringify({ type: 'race_result', ok: true, place, ms, prize: Number(r.prize) || 0, paidToday: Number(r.paid_today) || 0, balance: r.balance == null ? undefined : Number(r.balance) })))
+        .catch((e: Error) => webSocket.send(JSON.stringify({ type: 'race_result', ok: false, reason: /not your car/i.test(e.message) ? 'prizes are for cars you own.' : 'the prize service is busy. Try another lap later.' })));
+      return;
+    }
+    if (step.off) fail('you left the race route.');
   }
 
   private advanceTrustedPosition(session: SessionData, now = Date.now()) {
@@ -1758,6 +1793,7 @@ export class WorldRoomDO {
               if (player.car && !car) this.releaseCarRiders(sessionConnId, 'parked');
               player.car = car;
               player.carPaint = carPaint;
+              if (current.race) this.raceMove(current, webSocket, car);
               this.loveGardenGoals(current, animation);
               if (current.posShift && current.trustedPosition && Math.hypot(current.trustedPosition[0] - POS_KIOSK.serviceSpot[0], current.trustedPosition[2] - POS_KIOSK.serviceSpot[2]) > POS_KIOSK.radius + 1) {
                 current.posShift = undefined;
@@ -1934,6 +1970,25 @@ export class WorldRoomDO {
             }
             break;
           }
+          // Campus Grand Prix: start watching this student's lap from the grid, or stop.
+          case 'race_start': {
+            if (!sessionConnId) return;
+            const session = this.sessions.get(webSocket), me = this.players.get(sessionConnId);
+            if (!session || !me) return;
+            this.advanceTrustedPosition(session);
+            const pos = session.trustedPosition, grid = RACE.track[0];
+            const fail = (reason: string) => { session.race = undefined; webSocket.send(JSON.stringify({ type: 'race_result', ok: false, reason })); };
+            if (session.room !== 'world:funaab:main' || !me.car) return fail('drive your own car to the start line first.');
+            if (!pos || Math.hypot(pos[0] - grid[0], pos[2] - grid[2]) > RACE.startRadius + 3) return fail('start from the START arch beside COLENG.');
+            session.race = { goAt: Date.now() + RACE.countdownMs, gate: 0, car: me.car, x: pos[0], z: pos[2] };
+            break;
+          }
+          case 'race_quit': {
+            const session = this.sessions.get(webSocket);
+            if (session) session.race = undefined;
+            break;
+          }
+
           case 'car_ride_leave': {
             if (!sessionConnId) return;
             const me = this.players.get(sessionConnId);

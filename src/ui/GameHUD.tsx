@@ -772,7 +772,7 @@ export const GameHUD: React.FC = () => {
 
 
       {/* Car race (Campus Grand Prix): countdown, clock and place. */}
-      <div className="pointer-events-none fixed left-1/2 z-[55] -translate-x-1/2" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 88px)' }}>
+      <div className="pointer-events-none fixed left-1/2 z-[55] -translate-x-1/2" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 150px)' }}>
         <RaceHud />
       </div>
 

@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { CarBody } from './CarBody';
 import { CampusSign } from '../world/CampusSign';
-import { RACE, RACE_CORNERS, RACE_GATES, RACE_LENGTH, RIVALS, crossedFinish, pointAlong, projectOnto } from '../../config/carRace';
+import { RACE, RACE_CORNERS, RIVALS, RIVAL_FINISH_MS, finishPlace, pointAlong, projectOnto, rivalProgress, stepRace } from '../../config/carRace';
 import { locationById } from '../../config/campusLocations';
-import { rivalState, useRaceStore } from '../../stores/raceStore';
+import { useRaceStore } from '../../stores/raceStore';
 import { useCarStore } from '../../stores/carStore';
 import { useGameStore } from '../../stores/gameStore';
 
@@ -35,21 +35,19 @@ function Arch({ at, title, subtitle }: { at: number; title: string; subtitle: st
   );
 }
 
-/** Rivals ease off for corners: the fastest they may go this far before the next one. */
-function rivalLimit(dist: number, top: number) {
-  const next = RACE_CORNERS.find((c) => c > dist - 3);
-  if (next === undefined) return top;
-  const gap = Math.max(0, next - dist);
-  // v² = corner² + 2·brake·gap, with a gentle 6 m/s² brake.
-  return Math.min(top, Math.sqrt(RACE.cornerSpeed ** 2 + 12 * gap));
-}
-
 /** Rival positions: on their lane down the straights, drifting to the centre line through corners. */
-function rivalPose(i: number) {
-  const d = rivalState[i].dist, p = pointAlong(RACE.track, d);
+function rivalPose(i: number, ms: number) {
+  const d = rivalProgress(i, ms), p = pointAlong(RACE.track, d);
   const near = Math.min(...RACE_CORNERS.map((c) => Math.abs(c - d)), Infinity);
   const lane = RIVALS[i].lane * RACE.laneOffset * Math.min(1, near / 8);
   return { x: p.x - p.dz * lane, z: p.z + p.dx * lane, heading: Math.atan2(p.dx, p.dz) };
+}
+
+/** Race time now: 0 until the lights go green, frozen at your finish. */
+function raceMs() {
+  const r = useRaceStore.getState();
+  if (r.status === 'finished' && r.finishMs !== null) return r.finishMs;
+  return Math.max(0, performance.now() - r.goAt);
 }
 
 function RivalCar({ i }: { i: number }) {
@@ -57,13 +55,13 @@ function RivalCar({ i }: { i: number }) {
   useFrame(() => {
     const g = ref.current;
     if (!g) return;
-    const pose = rivalPose(i);
+    const pose = rivalPose(i, raceMs());
     g.position.set(pose.x, 0, pose.z);
     // Smooth the heading through the corner instead of snapping 90°.
     const diff = Math.atan2(Math.sin(pose.heading - g.rotation.y), Math.cos(pose.heading - g.rotation.y));
     g.rotation.y += diff * 0.2;
   });
-  const start = rivalPose(i);
+  const start = rivalPose(i, 0);
   return (
     <group ref={ref} position={[start.x, 0, start.z]} rotation={[0, start.heading, 0]}>
       <CarBody id={RIVALS[i].car} paint={RIVALS[i].paint} />
@@ -72,55 +70,26 @@ function RivalCar({ i }: { i: number }) {
   );
 }
 
-const STEP_MS = 1000 / 60;
-const rivalClock = { ms: 0 };
-/** Where you were last frame: a slow phone can jump a few metres a frame, so gates check the whole move. */
+/** Where you were last frame, so a whole move counts towards the checkpoints. */
 const lastPos = { x: 0, z: 0, set: false };
-/** Closest distance from (px, pz) to the move from a to b. */
-function sweptDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
-  const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz;
-  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2)) : 0;
-  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
-}
 
-/** Steps the rivals, counts your checkpoints, works out places and ends the race. */
+/** Follows you round the lap (checkpoints, place, leaving the route) and ends the race on screen. */
 function RaceRunner() {
   useFrame(() => {
     const race = useRaceStore.getState();
     if (race.status !== 'countdown' && race.status !== 'racing') return;
     if (!useCarStore.getState().driving) { race.quit('You got out of your car, so the race is off.'); return; }
     const now = performance.now();
-    if (race.status === 'countdown') { rivalClock.ms = 0; lastPos.set = false; if (now >= race.goAt) useRaceStore.setState({ status: 'racing' }); return; }
-    // Rivals run on the race clock in fixed steps, so a slow phone doesn't slow them down (or speed them up).
+    if (race.status === 'countdown') { lastPos.set = false; if (now >= race.goAt) useRaceStore.setState({ status: 'racing' }); return; }
     const elapsed = now - race.goAt;
-    while (rivalClock.ms + STEP_MS <= elapsed) {
-      rivalClock.ms += STEP_MS;
-      RIVALS.forEach((r, i) => {
-        const s = rivalState[i];
-        if (s.finishMs !== null) return;
-        s.speed = Math.min(rivalLimit(s.dist, r.topSpeed), s.speed + r.accel * STEP_MS / 1000);
-        s.dist += s.speed * STEP_MS / 1000;
-        if (s.dist >= RACE_LENGTH) { s.dist = RACE_LENGTH; s.finishMs = rivalClock.ms; }
-      });
-    }
     const [x, , z] = useGameStore.getState().myPosition;
     const fromX = lastPos.set ? lastPos.x : x, fromZ = lastPos.set ? lastPos.z : z;
     Object.assign(lastPos, { x, z, set: true });
-    let gate = race.gate;
-    while (gate < RACE_GATES.length) {
-      const g = pointAlong(RACE.track, RACE_GATES[gate]);
-      // The finish counts once you're over the line; other gates when you pass close by.
-      const passed = gate === RACE_GATES.length - 1 ? crossedFinish(x, z) : sweptDistance(g.x, g.z, fromX, fromZ, x, z) < RACE.gateRadius;
-      if (!passed) break;
-      gate++;
-    }
-    // Where you are on the lap, looking only around your last checkpoint (start and finish share a spot).
-    const last = gate > 0 ? RACE_GATES[gate - 1] : 0;
-    const me = projectOnto(RACE.track, x, z, [last - 20, last + RACE.gateSpacing + 20]);
-    if (me.off > RACE.offTrack) { race.quit('You left the race route, so the race is off.'); return; }
-    const ahead = rivalState.filter((s) => s.finishMs !== null || s.dist > me.along).length;
-    if (gate >= RACE_GATES.length) { race.finish(Math.round(elapsed), 1 + rivalState.filter((s) => s.finishMs !== null).length); return; }
-    if (gate !== race.gate || ahead + 1 !== race.place) useRaceStore.setState({ gate, place: ahead + 1 });
+    const step = stepRace(race.gate, fromX, fromZ, x, z);
+    if (step.finished) { race.finish(Math.round(elapsed), finishPlace(elapsed)); return; }
+    if (step.off) { race.quit('You left the race route, so the race is off.'); return; }
+    const ahead = RIVALS.filter((_, i) => RIVAL_FINISH_MS[i] <= elapsed || rivalProgress(i, elapsed) > step.along).length;
+    if (step.gate !== race.gate || ahead + 1 !== race.place) useRaceStore.setState({ gate: step.gate, place: ahead + 1 });
   });
   return null;
 }

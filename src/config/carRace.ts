@@ -1,10 +1,14 @@
 // Car race: the Campus Grand Prix, one lap of the campus roads against two AI rivals. Start and finish
 // on the road beside COLENG; the lap runs north up the east road, across past the W landmark, down the
 // central boulevard past the Library, west past COLFHEC, south to the Mosque corner, along the south
-// road and back up to COLENG. Drive your own car to the START arch, stop, and tap Race. Purely for fun:
-// nothing is paid out, so the whole race runs on the client (your best time is kept on this device).
+// road and back up to COLENG. Drive your own car to the START arch, stop, and tap Race.
+// Prizes (₦3,000 / ₦1,500 / ₦500, three paid races a Lagos day) are paid only when the Worker has
+// watched the lap itself: it follows your trusted position through the same checkpoints with
+// stepRace() and works out your place against the same rivals (rivalProgress), then the database
+// pays (migration 050). The game runs the race for the screen; it never says what to pay.
 import { locationById, type Point } from './campusLocations';
 import { pathLength } from './kekeRoutes';
+import { CAR_MODELS } from './cars';
 
 const coleng = locationById('coleng').kekeStop, mosque = locationById('mosque').kekeStop;
 /** The grid sits a little south of the COLENG stop. */
@@ -105,6 +109,67 @@ export function gridSpot(lane: number): { x: number; z: number; heading: number 
   const s = pointAlong(RACE.track, 0);
   // Right of travel direction (dx, dz) is (-dz, dx) when +Z is forward and +X is the car's left.
   return { x: s.x - s.dz * lane * RACE.laneOffset, z: s.z + s.dx * lane * RACE.laneOffset, heading: Math.atan2(s.dx, s.dz) };
+}
+
+/** Prize by place (1st, 2nd, 3rd), paid at most this many times a Lagos day. Mirrored in migration 050. */
+export const RACE_PRIZES = [3000, 1500, 500];
+export const RACE_PRIZE_DAILY_LIMIT = 3;
+/** No car can lap faster than its top speed all the way round: anything quicker is not paid. */
+export const minLapMs = (car: string) => Math.ceil((RACE_LENGTH / (CAR_MODELS[car]?.topSpeed ?? 16)) * 1000);
+
+/** Rivals ease off for corners: the fastest they may go this far before the next one. */
+function rivalLimit(dist: number, top: number) {
+  const next = RACE_CORNERS.find((c) => c > dist - 3);
+  if (next === undefined) return top;
+  // v² = corner² + 2·brake·gap, with a gentle 6 m/s² brake.
+  return Math.min(top, Math.sqrt(RACE.cornerSpeed ** 2 + 12 * Math.max(0, next - dist)));
+}
+
+/** The rivals' laps, stepped once at 60 Hz: distance covered by each 1/60 s, and their finish times. */
+const STEP_MS = 1000 / 60;
+const rivalTables: number[][] = RIVALS.map((r) => {
+  const out = [0];
+  let d = 0, v = 0;
+  while (d < RACE_LENGTH && out.length < 60 * 300) {
+    v = Math.min(rivalLimit(d, r.topSpeed), v + r.accel / 60);
+    d = Math.min(RACE_LENGTH, d + v / 60);
+    out.push(d);
+  }
+  return out;
+});
+/** Where rival i is (metres along the lap) this long after the green light. Same on every device. */
+export function rivalProgress(i: number, ms: number): number {
+  const t = rivalTables[i], k = Math.max(0, ms) / STEP_MS, j = Math.floor(k);
+  if (j >= t.length - 1) return t[t.length - 1];
+  return t[j] + (t[j + 1] - t[j]) * (k - j);
+}
+export const RIVAL_FINISH_MS = rivalTables.map((t) => Math.round((t.length - 1) * STEP_MS));
+/** Your place if you cross the line this long after the green light (1 = won). */
+export const finishPlace = (ms: number) => 1 + RIVAL_FINISH_MS.filter((f) => f < ms).length;
+
+/** Closest distance from (px, pz) to the move from a to b. */
+function sweptDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
+  const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2)) : 0;
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
+
+/**
+ * One move during the race, from (fromX, fromZ) to (x, z): the checkpoints passed (a slow phone can
+ * jump metres in a frame, so the whole move counts), where you are on the lap (looking only near your
+ * last checkpoint, since start and finish share a spot), and whether you've left the route or finished.
+ * The game and the Worker both run this, so they agree on every checkpoint.
+ */
+export function stepRace(gate: number, fromX: number, fromZ: number, x: number, z: number): { gate: number; along: number; off: boolean; finished: boolean } {
+  while (gate < RACE_GATES.length) {
+    const g = pointAlong(RACE.track, RACE_GATES[gate]);
+    const passed = gate === RACE_GATES.length - 1 ? crossedFinish(x, z) : sweptDistance(g.x, g.z, fromX, fromZ, x, z) < RACE.gateRadius;
+    if (!passed) break;
+    gate++;
+  }
+  const last = gate > 0 ? RACE_GATES[gate - 1] : 0;
+  const me = projectOnto(RACE.track, x, z, [last - 20, last + RACE.gateSpacing + 20]);
+  return { gate, along: me.along, off: me.off > RACE.offTrack, finished: gate >= RACE_GATES.length };
 }
 
 export const formatRaceTime = (ms: number) => `${Math.floor(ms / 1000)}.${String(Math.floor((ms % 1000) / 10)).padStart(2, '0')}s`;

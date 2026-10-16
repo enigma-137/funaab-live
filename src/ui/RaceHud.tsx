@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRaceStore, ordinal } from '../stores/raceStore';
-import { RACE, RACE_GATES, RIVALS, formatRaceTime } from '../config/carRace';
+import { RACE, RACE_GATES, RACE_PRIZE_DAILY_LIMIT, RIVALS, formatRaceTime } from '../config/carRace';
 
 /** Countdown lights, race clock and your place; the result when you cross the line. */
 export function RaceHud() {
-  const { status, goAt, place, gate, finishMs, best } = useRaceStore();
+  const { status, goAt, place, gate, finishMs, best, prize } = useRaceStore();
   const [now, setNow] = useState(() => performance.now());
   useEffect(() => {
     if (status !== 'countdown' && status !== 'racing') return;
@@ -44,11 +44,16 @@ export function RaceHud() {
       </div>
     );
   }
+  // The server's place (its own clock) is the official one once it arrives.
+  const shown = prize?.ok && prize.place ? prize.place : place;
   return (
     <div className={card} role="status">
       <div className="text-xs font-bold uppercase tracking-wide text-amber-300">{RACE.name}</div>
-      <div className="text-2xl font-black">{place === 1 ? '🏆 ' : '🏁 '}{ordinal(place)} of {cars}</div>
+      <div className="text-2xl font-black">{shown === 1 ? '🏆 ' : '🏁 '}{ordinal(shown)} of {cars}</div>
       <div className="font-mono text-lg">{finishMs !== null && formatRaceTime(finishMs)}</div>
+      <div className="text-sm font-bold text-emerald-300">
+        {!prize ? 'Checking your prize…' : prize.ok && prize.prize ? `💰 Prize ₦${prize.prize.toLocaleString()} · ${prize.paidToday}/${RACE_PRIZE_DAILY_LIMIT} today` : prize.ok ? `No prize: ${RACE_PRIZE_DAILY_LIMIT} paid races a day` : `No prize: ${prize.reason ?? 'not counted'}`}
+      </div>
       {best !== null && <div className="text-xs text-slate-300">Best on this phone: {formatRaceTime(best)}</div>}
       <button className="mt-1 rounded-xl bg-amber-500 px-3 py-1 text-sm font-extrabold text-slate-950" onClick={() => useRaceStore.getState().dismiss()}>Done</button>
     </div>
