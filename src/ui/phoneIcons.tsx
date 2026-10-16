@@ -43,6 +43,8 @@ export function HostelLauncherArt({ size = 30 }: { size?: number }) {
 const W = '#fff';
 export const APP_GLYPHS: Record<string, React.ReactNode> = {
   profile: <><circle cx="12" cy="8.5" r="4" fill={W} /><path d="M4.5 20c.8-4 3.8-6 7.5-6s6.7 2 7.5 6z" fill={W} /></>,
+  // Shop front with a striped awning.
+  shop: <><path d="M4 9h16l-1.5-4.5h-13z" fill={W} /><path d="M4 9a2 2 0 0 0 4 0a2 2 0 0 0 4 0a2 2 0 0 0 4 0a2 2 0 0 0 4 0" fill={W} /><path d="M5.5 12h13v8h-13z" fill={W} /><rect x="10.5" y="15" width="3" height="5" fill="#00000033" /><path d="M8 4.5 7 9M12 4.5V9M16 4.5l1 4.5" stroke="#00000030" strokeWidth="1.2" /></>,
   hostel: <><path d="M3 11.5 12 4l9 7.5" fill="none" stroke={W} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /><path d="M6 11h12v9H6z" fill={W} /><rect x="10.5" y="14" width="3" height="6" fill="#00000033" /></>,
   friends: <><circle cx="8.5" cy="9" r="3.2" fill={W} /><circle cx="16" cy="8" r="2.7" fill={W} opacity=".8" /><path d="M2.5 19c.6-3.3 3-5 6-5s5.4 1.7 6 5z" fill={W} /><path d="M14 13.2c3.3-.6 6.6 1 7.4 4.8h-5.3c-.4-1.9-1-3.5-2.1-4.8z" fill={W} opacity=".8" /></>,
   messages: <><path d="M4 5h16a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 17h-9l-4.5 3.5V17H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 5z" fill={W} /><circle cx="8" cy="11" r="1.2" fill="#00000040" /><circle cx="12" cy="11" r="1.2" fill="#00000040" /><circle cx="16" cy="11" r="1.2" fill="#00000040" /></>,
