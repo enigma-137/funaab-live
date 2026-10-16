@@ -7,6 +7,7 @@ import { networkManager } from '../game/multiplayer/networkManager';
 import { useGameStore } from './gameStore';
 import { useInputStore } from './inputStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { logTraceIQ } from '../lib/traceiq';
 import { getHallScheduleState, normalizeHallLocationId } from '../config/lectureSchedule';
 import { getLectureHall, hallSeatPositions, HALL_DOOR_SPOT, CHAIR_OFFSET_Z } from '../config/lectureHalls';
 
@@ -227,6 +228,12 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
 
         if (error || (data && !data.success)) {
           console.warn('Lecture attendance allowance claim:', error?.message || data?.error);
+          logTraceIQ('warn', 'Lecture attendance allowance rejected', {
+            service: 'lectures',
+            lectureId: lecture.id,
+            durationSec,
+            reason: error?.message || data?.error,
+          });
           return false;
         }
 
@@ -253,6 +260,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         return true;
       } catch (e) {
         console.error('Attendance allowance RPC error:', e);
+        logTraceIQ('error', 'Lecture attendance allowance failed', { service: 'lectures', lectureId: lecture.id, error: e });
         return false;
       }
     }
