@@ -735,6 +735,9 @@ class NetworkManager {
   public raceQuit() { this.send({ type: 'race_quit' }); }
   public groupPing(groupId: string, to: string[]) { this.send({ type: 'group_ping', groupId, to: to.slice(0, 20) }); }
 
+  /** Korope riders: leave now with whoever is aboard. */
+  public koropeGo() { this.send({ type: 'korope_go' }); }
+
   public exitKeke(kekeId: string) {
     this.send({
       type: 'keke_exit',

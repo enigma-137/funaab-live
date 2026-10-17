@@ -102,6 +102,20 @@ async function main(){
     assert([...ledger.values()].every((t)=>t.status==='refund'),'both fares refunded');
     assert(riders[0].messages.filter((m:any)=>m.type==='keke_dropoff').length>=2);
 
+    // Move now: only someone aboard can send it off; it leaves with two riders instead of five.
+    ledger.clear();now+=1000;
+    await board(riders[4],'library');await board(riders[5],'coleng');assert.equal(bus().passengers.length,2);
+    await riders[6].packet({type:'korope_go'});assert.equal(bus().phase,'WAITING','not aboard: nothing happens');
+    assert(riders[6].messages.at(-1).text.includes('Board the Korope'));
+    riders[5].messages.length=0;
+    await riders[4].packet({type:'korope_go'});
+    assert.equal(bus().phase,'BOARDING','doors closing on Move now');assert.equal(bus().waitUntil,0,'no refund timer');
+    assert(riders[5].messages.some((m:any)=>m.type==='hustle_notice'&&/asked the Korope to move/.test(m.text)),'the other rider is told');
+    await tick(KOROPE.doorsMs+3000);assert.notDeepEqual(bus().position,[...KOROPE_BAY],'it left with two riders');
+    for(let i=0;i<30000&&!(bus().phase==='WAITING'&&bus().passengers.length===0);i++){await tick(100);}
+    assert.equal(bus().phase,'WAITING');assert([...ledger.values()].every((t)=>t.status==='complete'),'both rides completed, not refunded');
+    await riders[4].packet({type:'korope_go'});assert.equal(bus().phase,'WAITING','an empty bus never leaves');
+
     // A rider who disconnects while waiting is refunded too.
     ledger.clear();await board(riders[2]);assert.equal(bus().passengers.length,1);
     riders[2].close();await new Promise((r)=>setTimeout(r,0));assert.equal(bus().passengers.length,0);assert([...ledger.values()].every((t)=>t.status==='refund'));
@@ -118,7 +132,7 @@ async function main(){
     assert.equal([...ledger.values()].filter((t)=>t.status==='refund').length,1,'the lost ride was refunded');
     assert.equal([...ledger.values()].filter((t)=>t.status==='reserved').length,1,'only the new ticket is reserved');
     assert.equal(createKorope().phase,'WAITING');
-    console.log('KOROPE WORKER PASSED: waits for 5 paid riders, 8 seats, flat fare, route stops only, stops and drops at destinations, returns to wait, refunds if never filled or on disconnect.');
+    console.log('KOROPE WORKER PASSED: waits for 5 paid riders or a rider tapping Move now, 8 seats, flat fare, route stops only, stops and drops at destinations, returns to wait, refunds if never filled or on disconnect.');
   }finally{globalThis.WebSocket=oldWS;globalThis.fetch=oldFetch;globalThis.setInterval=oldInterval;Date.now=oldNow;}
 }
 main().then(()=>process.exit(0)).catch((e)=>{console.error(e);process.exit(1);});

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { WorldRoomDO } from '../worker/index';
 import {locationById,CAR_PARK_BAY} from '../src/config/campusLocations';
-import {fareFor} from '../src/config/kekeRoutes';
+import {fareFor,PARKED_KEKES} from '../src/config/kekeRoutes';
 import {advanceKekeElapsed,createKeke,tickKeke} from '../src/config/kekeSimulation';
 class Socket{static OPEN=1;readyState=1;messages:any[]=[];handlers:Record<string,Function>={};accept(){}addEventListener(e:string,f:Function){this.handlers[e]=f;}send(s:string){this.messages.push(JSON.parse(s));}close(){this.readyState=3;this.handlers.close?.();}async packet(p:object){await this.handlers.message({data:JSON.stringify(p)});}}
 async function main(){
@@ -76,7 +76,22 @@ async function main(){
   const reconnectedPosition=restoredSimulation.kekes.get('keke-1').position;
   assert(Math.hypot(reconnectedPosition[0]-disconnectedPosition[0],reconnectedPosition[2]-disconnectedPosition[2])>1,'An in-memory room advances the saved route after disconnect and reconnect');
   resumedAgain.close();await new Promise(resolve=>setTimeout(resolve,0));
-  console.log('KEKE WORKER PASSED: server proximity, spoofed fare/destination, unpaid rejection, payment failure, 3 seats, shared destination, duplicate requests, authoritative movement, late join, arrival/dropoff, reset, disconnect refund and durable restart recovery.');
+  // Three Car Park Kekes: each books on its own, drives out of its bay, and comes back to that bay.
+  ledger.clear();
+  const park:any=new WorldRoomDO({storage} as any,{ENABLE_GUEST_MODE:'true',SUPABASE_SERVICE_ROLE_KEY:'synthetic',SUPABASE_URL:'https://transit.invalid'} as any);
+  assert.deepEqual(PARKED_KEKES.map(p=>park.kekes.get(p.id)?.phase),['IDLE','IDLE','IDLE'],'three Kekes waiting');
+  const parkRiders:Socket[]=[];
+  for(let i=0;i<3;i++){const socket=new Socket();await park.handleSession(socket,null,'world:funaab:main');await socket.packet({type:'join',player:{id:`00000000-0000-4000-8000-0000000001${i}0`,username:`Park${i}`,position:[7,0,78]}});const ps=park.sessions.get(socket);ps.trustedPosition=[...CAR_PARK_BAY];ps.trustedAt=now;park.players.get(ps.connectionId).position=[...CAR_PARK_BAY];parkRiders.push(socket);}
+  const trips=['library','colvet','coleng'];
+  for(let i=0;i<3;i++){park.sessions.get(parkRiders[i]).trustedAt=now;await parkRiders[i].packet({type:'keke_book',requestId:crypto.randomUUID(),kekeId:PARKED_KEKES[i].id,destinationId:trips[i]});}
+  assert.deepEqual(PARKED_KEKES.map(p=>park.kekes.get(p.id).destinationId),trips,'each Keke took its own booking');
+  for(let i=0;i<9000&&!PARKED_KEKES.every(p=>park.kekes.get(p.id).phase==='IDLE'&&!park.kekes.get(p.id).passengers.length&&i>100);i++){now+=100;park.tickKekeSimulation();}
+  await new Promise(resolve=>setTimeout(resolve,0));
+  for(const p of PARKED_KEKES){const pk=park.kekes.get(p.id);assert.equal(pk.phase,'IDLE',`${p.id} back`);assert.deepEqual(pk.position,[...p.bay],`${p.id} in its own bay`);}
+  parkRiders.forEach((r,i)=>assert(r.messages.some(m=>m.type==='keke_dropoff'),`rider ${i} dropped off`));
+  assert.equal([...ledger.values()].length,3);assert([...ledger.values()].every(t=>t.status==='complete'),'three paid trips');
+  for(const r of parkRiders)r.close();
+  console.log('KEKE WORKER PASSED: three Car Park Kekes booked separately and back to their own bays, server proximity, spoofed fare/destination, unpaid rejection, payment failure, 3 seats, shared destination, duplicate requests, authoritative movement, late join, arrival/dropoff, reset, disconnect refund and durable restart recovery.');
  }finally{Date.now=oldNow;globalThis.fetch=oldFetch;globalThis.WebSocket=oldWS;globalThis.setInterval=oldInterval;}
 }
 main().catch(e=>{console.error(e);process.exit(1);});
