@@ -387,7 +387,7 @@ export const GameHUD: React.FC = () => {
 
   const getTouchInteractLabel = () => {
     if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
-    if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
+    if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';

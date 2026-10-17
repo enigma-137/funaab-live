@@ -1,6 +1,7 @@
 import { renderedKekes } from '../vehicles/kekePresentation';
 import { useCarStore } from '../../stores/carStore';
 import { useRaceStore } from '../../stores/raceStore';
+import { isParkedKeke } from '../../config/kekeRoutes';
 import { RACE, gridSpot } from '../../config/carRace';
 import { toast } from '../../stores/toastStore';
 import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
@@ -793,7 +794,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
     for(const k of Object.values(kekes)){
       const dist=Math.hypot(feetPosition[0]-k.position[0],feetPosition[2]-k.position[2]);
-      if(k.isStopped&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='korope-1'?'Korope Bus':k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:k.id==='korope-1'?(k.phase==='WAITING'?'Join Korope':'Hop On'):k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
+      // Route vehicles don't stop on their own any more: hail one as it passes and it pulls over.
+      const passing=k.phase==='MOVING'&&!isParkedKeke(k.id);
+      if((k.isStopped||passing)&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='korope-1'?'Korope Bus':k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:passing?'Stop it & hop on':k.id==='korope-1'?(k.phase==='WAITING'?'Join Korope':'Hop On'):k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
     }
     // Your parked car and the fuel pumps (on foot you can fill a car you own too).
     const myCar = useCarStore.getState().parked;
