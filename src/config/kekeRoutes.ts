@@ -10,8 +10,11 @@ export const isParkedKeke=(id:string|undefined)=>PARKED_KEKES.some(p=>p.id===id)
 export const parkedBay=(id:string):Point=>PARKED_KEKES.find(p=>p.id===id)?.bay??CAR_PARK_BAY;
 export const ROUTE_KEKE_ID='keke-1';
 export const KOROPE_ID='korope-1';
-/** How long a route vehicle waits at a stop: longer while it has free seats, and while someone is booking. */
-export const STOP_DWELL={freeSeatsMs:10000,fullMs:3500,junctionMs:3500,/** A booking sheet that stops reporting is dropped after this. */holdTtlMs:15000,/** One person can hold a vehicle at most this long. */holdMaxMs:60000,/** Time to sit down after paying, so it doesn't pull away mid-boarding. */boardedGraceMs:3000};
+/**
+ * Route vehicles (Keke and Korope) drive straight through stops and junctions. They pull over only
+ * for a rider getting off (alightMs), or when someone close by opens the booking sheet to hop on.
+ */
+export const STOP_DWELL={alightMs:2500,/** Opening the sheet stops a passing vehicle if you're this close. */hailRadius:12,/** A booking sheet that stops reporting is dropped after this. */holdTtlMs:15000,/** One person can hold a vehicle at most this long. */holdMaxMs:60000,/** Time to sit down after paying, so it doesn't pull away mid-boarding. */boardedGraceMs:3000};
 /** Korope shared bus: waits at the Car Park until MIN_RIDERS have paid, then runs the public loop. */
 export const KOROPE={capacity:8,minRiders:5,fare:150,/** Ms the bus waits for riders before it refunds them and starts over. */waitMs:240000,doorsMs:4000};
 export const ROUTE_FARE=200;

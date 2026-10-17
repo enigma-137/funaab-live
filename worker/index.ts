@@ -2,7 +2,7 @@ import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound, type PSLastRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
 import { fareFor, isParkedKeke, kekeDestinations, KOROPE, KOROPE_ID, PARKED_KEKES, ROUTE_FARE, routeStops, STOP_DWELL } from '../src/config/kekeRoutes';
-import { createKeke, createKorope, createParkedKeke, departNow, bookRide, tickKeke, advanceKekeElapsed, dwellAt, seatPosition, seatsOf, exitPosition, type TransitState } from '../src/config/kekeSimulation';
+import { createKeke, createKorope, createParkedKeke, departNow, bookRide, tickKeke, advanceKekeElapsed, seatPosition, seatsOf, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
 import { HELD_ITEM_KINDS, HELD_ITEM_MS, TABLE_ITEM_MS } from '../src/config/heldItems';
 import { summarizeCampus } from '../src/config/campusSummary';
@@ -611,7 +611,7 @@ export class WorldRoomDO {
     if(!data.holding){holds.delete(id);return;}
     this.advanceTrustedPosition(session);
     const pos=session.trustedPosition;
-    if(!pos||Math.hypot(pos[0]-k.position[0],pos[2]-k.position[2])>8||k.passengers.includes(id))return;
+    if(!pos||Math.hypot(pos[0]-k.position[0],pos[2]-k.position[2])>STOP_DWELL.hailRadius||k.passengers.includes(id))return;
     const now=Date.now(),existing=holds.get(id);
     // Heartbeats renew the hold, but one student can't keep a vehicle forever.
     if(existing&&now-existing.since>STOP_DWELL.holdMaxMs)return;
@@ -626,8 +626,12 @@ export class WorldRoomDO {
       const previousWaypoint = k.currentWaypointIndex;
       const previousDeadline = k.deadline;
       const previousStopped = k.isStopped;
-      // Someone choosing a ride at a stop keeps the vehicle there until they pay or close the sheet.
-      if(k.phase==='BOARDING'&&!isParkedKeke(k.id)&&this.holdActive(k.id,Date.now())&&k.deadline<Date.now()+1000)k.deadline=Date.now()+1000;
+      // Someone close by opened the booking sheet: a passing vehicle pulls over, and waits until
+      // they pay or close the sheet. Otherwise route vehicles drive straight through.
+      if(!isParkedKeke(k.id)&&this.holdActive(k.id,Date.now())){
+        if(k.phase==='MOVING'){k.phase='BOARDING';k.isStopped=true;k.deadline=Date.now()+1000;}
+        else if(k.phase==='BOARDING'&&k.deadline<Date.now()+1000)k.deadline=Date.now()+1000;
+      }
       const arrived=tickKeke(k,Date.now(),.1);
       if (previousPosition.some((value, index) => value !== k.position[index])
         || previousRotation !== k.rotation
@@ -643,10 +647,9 @@ export class WorldRoomDO {
         }
         p.position=position;p.rotation=k.rotation;p.animation='sit';
         for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.claimedPosition=p.position;session.trustedAt=Date.now();}
-        if(arrived && (isParkedKeke(k.id) || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
+        if(arrived && k.isStopped && (isParkedKeke(k.id) || k.exitNext?.includes(id) || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
-      // Dwell depends on free seats, which riders getting off at this stop have just freed.
-      if(arrived&&previousPhase==='MOVING'&&k.phase==='BOARDING'&&!isParkedKeke(k.id))k.deadline=Date.now()+dwellAt(k,k.position);
+      if(arrived&&k.isStopped)k.exitNext=undefined;
       if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund','The road ahead was blocked. Your fare was refunded.');
       if(k.id===KOROPE_ID){
         // Riders who waited too long for a full load get their fare back and the bus starts over.
@@ -690,7 +693,9 @@ export class WorldRoomDO {
     if(!k||!p)throw new Error('Keke unavailable');
     if(p.kekeRiding)return {kekeId:p.kekeId};
     this.advanceTrustedPosition(session);
-    if(!session.trustedPosition||Date.now()-(session.trustedAt||0)>5000||Math.hypot(session.trustedPosition[0]-k.position[0],session.trustedPosition[2]-k.position[2])>8)throw new Error('Walk closer to the Keke');
+    // A route vehicle you hailed pulls up a few metres on, so it allows a little more room.
+    const reach=isParkedKeke(k.id)?8:STOP_DWELL.hailRadius;
+    if(!session.trustedPosition||Date.now()-(session.trustedAt||0)>5000||Math.hypot(session.trustedPosition[0]-k.position[0],session.trustedPosition[2]-k.position[2])>reach)throw new Error('Walk closer to the Keke');
     const korope=k.id===KOROPE_ID;
     if(k.passengers.length>=seatsOf(k))throw new Error(korope?'The Korope is full':'This Keke is full');
     if(!['IDLE','BOARDING',...(korope?['WAITING']:[])].includes(k.phase))throw new Error(korope?'The Korope is on its way. Wait at a stop.':'Wait for the Keke to stop');
@@ -2014,6 +2019,11 @@ export class WorldRoomDO {
             if(!sessionConnId)return;
             const k=[...this.kekes.values()].find(k=>k.passengers.includes(sessionConnId!));
             if(k && k.isStopped)await this.dropPassenger(k,sessionConnId,k.phase==='BOARDING'&&isParkedKeke(k.id)?'refund':'complete');
+            // Moving on a route: it pulls over at the next junction or stop to let you off.
+            else if(k && !isParkedKeke(k.id) && k.phase==='MOVING'){
+              k.exitNext=[...new Set([...(k.exitNext??[]),sessionConnId])];
+              webSocket.send(JSON.stringify({type:'hustle_notice',icon:'🛺',text:'The driver will stop at the next junction for you.'}));
+            }
             break;
           }
 

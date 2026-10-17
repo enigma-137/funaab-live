@@ -51,29 +51,52 @@ async function main(){
     await tick(KOROPE.doorsMs+1000);assert.equal(bus().phase==='MOVING'||bus().phase==='BOARDING',true);
     await tick(10000);assert(Math.hypot(bus().position[0]-parkedAt[0],bus().position[2]-parkedAt[2])>3,'it left the bay');
 
-    // At a stop with free seats the bus waits 10 s; someone choosing a ride holds it longer.
-    let wasMoving=false;
-    for(let i=0;i<2000;i++){const before=bus().phase;await tick(100);if(before==='MOVING'&&bus().phase==='BOARDING'&&bus().isStopped&&bus().passengers.length<8&&routeStops.some((id)=>{const p=locationById(id).kekeStop;return p[0]===bus().position[0]&&p[2]===bus().position[2];})){wasMoving=true;break;}}
-    assert(wasMoving,'reached a real stop');
-    const stopAt=[...bus().position];assert(bus().deadline-now<=STOP_DWELL.freeSeatsMs&&bus().deadline-now>=STOP_DWELL.freeSeatsMs-300,'about 10 s with free seats: '+(bus().deadline-now));
+    // It drives straight through stops and junctions where nobody is getting off.
+    const stopKeys=new Set(routeStops.map((id)=>{const p=locationById(id).kekeStop;return `${p[0]}:${p[2]}`;}));
+    const riderStops=new Set(bus().passengers.map((id:string)=>{const p=locationById(bus().targets[id]).kekeStop;return `${p[0]}:${p[2]}`;}));
+    let passedStop=false;
+    for(let i=0;i<3000&&!passedStop;i++){await tick(100);const key=`${bus().position[0]}:${bus().position[2]}`;if(bus().phase==='MOVING'&&!riderStops.has(key)&&[...stopKeys].some((k)=>{const [x,z]=k.split(':').map(Number);return Math.hypot(x-bus().position[0],z-bus().position[2])<1.5;}))passedStop=true;}
+    assert(passedStop,'drove past a stop without stopping');
+    assert.equal(bus().isStopped,false);
+
+    // Hailing: someone close by opens the sheet and the moving bus pulls over, and waits while they choose.
     const chooser=await join();chooser.messages.length=0;
-    const cs=w.sessions.get(chooser);cs.trustedPosition=[...stopAt];cs.claimedPosition=[...stopAt];cs.trustedAt=now;w.players.get(cs.connectionId).position=[...stopAt];
+    const cs=w.sessions.get(chooser);const near=[bus().position[0]+3,0,bus().position[2]];
+    cs.trustedPosition=near;cs.claimedPosition=near;cs.trustedAt=now;w.players.get(cs.connectionId).position=near;
     await chooser.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});
+    await tick(200);assert.equal(bus().phase,'BOARDING','pulled over for the hail');assert(bus().isStopped);
+    const stopAt=[...bus().position];
     for(let i=0;i<6;i++){await tick(5000);cs.trustedAt=now;await chooser.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});}
-    assert.equal(bus().phase,'BOARDING');assert.deepEqual(bus().position,stopAt,'held at the stop while the sheet is open (30 s)');
+    assert.equal(bus().phase,'BOARDING');assert.deepEqual(bus().position,stopAt,'held while the sheet is open (30 s)');
     // Paying gives a few seconds to sit down, then it goes.
     cs.trustedAt=now;await chooser.packet({type:'keke_book',requestId:crypto.randomUUID(),kekeId:KOROPE_ID,destinationId:'coleng'});
     assert.equal(bus().passengers.includes(cs.connectionId),true);
     assert(bus().deadline-now>=STOP_DWELL.boardedGraceMs-200,'time to sit down after paying');
     await tick(STOP_DWELL.boardedGraceMs+1500);assert.equal(bus().phase,'MOVING','leaves once seated');
+    // Too far away to hail: nothing happens.
+    const farAway=await join();const fs=w.sessions.get(farAway);const away=[bus().position[0]+STOP_DWELL.hailRadius+10,0,bus().position[2]];
+    fs.trustedPosition=away;fs.claimedPosition=away;fs.trustedAt=now;w.players.get(fs.connectionId).position=away;
+    await farAway.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});await tick(300);
+    assert.equal(bus().phase==='BOARDING'&&!bus().passengers.some((id:string)=>{const p=locationById(bus().targets[id]).kekeStop;return p[0]===bus().position[0]&&p[2]===bus().position[2];}),false,'too far to hail');
     // A sheet that stops reporting stops holding the vehicle.
-    for(let i=0;i<400&&bus().phase!=='BOARDING';i++)await tick(100);
-    const second=await join();const ss=w.sessions.get(second);ss.trustedPosition=[...bus().position];ss.claimedPosition=[...bus().position];ss.trustedAt=now;w.players.get(ss.connectionId).position=[...bus().position];
-    const heldAt=[...bus().position];
-    await second.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});
+    for(let i=0;i<400&&bus().phase!=='MOVING';i++)await tick(100);
+    const second=await join();const ss=w.sessions.get(second);const by=[bus().position[0]+2,0,bus().position[2]];ss.trustedPosition=by;ss.claimedPosition=by;ss.trustedAt=now;w.players.get(ss.connectionId).position=by;
+    await second.packet({type:'keke_hold',kekeId:KOROPE_ID,holding:true});await tick(200);
+    const heldAt=[...bus().position];assert.equal(bus().phase,'BOARDING');
     await tick(STOP_DWELL.holdTtlMs-3000);assert.equal(bus().phase,'BOARDING','still held before the timeout');assert.deepEqual(bus().position,heldAt);
     await tick(STOP_DWELL.holdTtlMs+3000);assert.notDeepEqual(bus().position,heldAt,'a silent sheet is dropped and the vehicle leaves');
 
+    // A rider can ask to get off early: it pulls over at the next junction or stop.
+    for(let i=0;i<400&&bus().phase!=='MOVING';i++)await tick(100);
+    const earlyId=bus().passengers[0];assert(earlyId,'someone aboard');
+    const [early,es]=[...w.sessions.entries()].find(([,x]:any)=>x.connectionId===earlyId) as [Socket,any];
+    {
+      early.messages.length=0;await early.packet({type:'keke_exit'});
+      assert(early.messages.some((m:any)=>/next junction/.test(m.text)),'told it will stop');
+      for(let i=0;i<300&&bus().passengers.includes(es.connectionId);i++)await tick(100);
+      assert.equal(bus().passengers.includes(es.connectionId),false,'dropped at the next junction');
+      assert(early.messages.some((m:any)=>m.type==='keke_dropoff'));
+    }
     // Seats: five riders have five distinct seat spots, all inside the van's footprint.
     const spots=new Set(bus().passengers.map((id:string)=>seatPosition(bus(),id).join(',')));assert.equal(spots.size,bus().passengers.length);
 
@@ -132,7 +155,7 @@ async function main(){
     assert.equal([...ledger.values()].filter((t)=>t.status==='refund').length,1,'the lost ride was refunded');
     assert.equal([...ledger.values()].filter((t)=>t.status==='reserved').length,1,'only the new ticket is reserved');
     assert.equal(createKorope().phase,'WAITING');
-    console.log('KOROPE WORKER PASSED: waits for 5 paid riders or a rider tapping Move now, 8 seats, flat fare, route stops only, stops and drops at destinations, returns to wait, refunds if never filled or on disconnect.');
+    console.log('KOROPE WORKER PASSED: waits for 5 paid riders or a rider tapping Move now, 8 seats, flat fare, route stops only, drives through stops, pulls over when hailed (not from too far), early exit at the next junction, drops at destinations, returns to wait, refunds if never filled or on disconnect.');
   }finally{globalThis.WebSocket=oldWS;globalThis.fetch=oldFetch;globalThis.setInterval=oldInterval;Date.now=oldNow;}
 }
 main().then(()=>process.exit(0)).catch((e)=>{console.error(e);process.exit(1);});
