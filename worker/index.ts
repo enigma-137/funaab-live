@@ -1,8 +1,8 @@
 import { LIBRARY_ROOM, isLibraryOpen } from '../src/config/library';
 import { PS_DIRECTIONS, PS_TOTAL_ROUNDS, resolvePSRound, type PSLastRound } from '../src/config/psPenalty';
 import { CAMPUS_SPAWN, campusZoneName, locationById } from '../src/config/campusLocations';
-import { fareFor, kekeDestinations, KOROPE, KOROPE_ID, PARKED_KEKE_ID, ROUTE_FARE, routeStops, STOP_DWELL } from '../src/config/kekeRoutes';
-import { createKeke, createKorope, bookRide, tickKeke, advanceKekeElapsed, dwellAt, seatPosition, seatsOf, exitPosition, type TransitState } from '../src/config/kekeSimulation';
+import { fareFor, isParkedKeke, kekeDestinations, KOROPE, KOROPE_ID, PARKED_KEKES, ROUTE_FARE, routeStops, STOP_DWELL } from '../src/config/kekeRoutes';
+import { createKeke, createKorope, createParkedKeke, departNow, bookRide, tickKeke, advanceKekeElapsed, dwellAt, seatPosition, seatsOf, exitPosition, type TransitState } from '../src/config/kekeSimulation';
 import { normalizeAvatar } from '../src/config/avatar';
 import { HELD_ITEM_KINDS, HELD_ITEM_MS, TABLE_ITEM_MS } from '../src/config/heldItems';
 import { summarizeCampus } from '../src/config/campusSummary';
@@ -424,7 +424,7 @@ export class WorldRoomDO {
     this.lectureRooms = new Map();
 
     this.kekes.set('keke-1',createKeke(false));
-    this.kekes.set(PARKED_KEKE_ID,createKeke(true));
+    for(const {id} of PARKED_KEKES)this.kekes.set(id,createParkedKeke(id));
     this.kekes.set(KOROPE_ID,createKorope());
   }
 
@@ -606,7 +606,7 @@ export class WorldRoomDO {
   /** A student opened (or closed) the booking sheet: the vehicle waits while they choose. */
   private holdKeke(session:SessionData,data:any){
     const k=this.kekes.get(String(data.kekeId)),id=session.connectionId;
-    if(!k||k.id===PARKED_KEKE_ID||!id)return;
+    if(!k||isParkedKeke(k.id)||!id)return;
     const holds=this.kekeHolds.get(k.id)??new Map();this.kekeHolds.set(k.id,holds);
     if(!data.holding){holds.delete(id);return;}
     this.advanceTrustedPosition(session);
@@ -627,7 +627,7 @@ export class WorldRoomDO {
       const previousDeadline = k.deadline;
       const previousStopped = k.isStopped;
       // Someone choosing a ride at a stop keeps the vehicle there until they pay or close the sheet.
-      if(k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID&&this.holdActive(k.id,Date.now())&&k.deadline<Date.now()+1000)k.deadline=Date.now()+1000;
+      if(k.phase==='BOARDING'&&!isParkedKeke(k.id)&&this.holdActive(k.id,Date.now())&&k.deadline<Date.now()+1000)k.deadline=Date.now()+1000;
       const arrived=tickKeke(k,Date.now(),.1);
       if (previousPosition.some((value, index) => value !== k.position[index])
         || previousRotation !== k.rotation
@@ -643,10 +643,10 @@ export class WorldRoomDO {
         }
         p.position=position;p.rotation=k.rotation;p.animation='sit';
         for(const session of this.sessions.values())if(session.connectionId===id){session.trustedPosition=p.position;session.claimedPosition=p.position;session.trustedAt=Date.now();}
-        if(arrived && (k.id===PARKED_KEKE_ID || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
+        if(arrived && (isParkedKeke(k.id) || (k.targets[id] && Math.hypot(k.position[0]-locationById(k.targets[id]).kekeStop[0],k.position[2]-locationById(k.targets[id]).kekeStop[2])<.1))) void this.dropPassenger(k,id,'complete');
       }
       // Dwell depends on free seats, which riders getting off at this stop have just freed.
-      if(arrived&&previousPhase==='MOVING'&&k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID)k.deadline=Date.now()+dwellAt(k,k.position);
+      if(arrived&&previousPhase==='MOVING'&&k.phase==='BOARDING'&&!isParkedKeke(k.id))k.deadline=Date.now()+dwellAt(k,k.position);
       if(k.phase==='BLOCKED')for(const id of [...k.passengers])void this.dropPassenger(k,id,'refund','The road ahead was blocked. Your fare was refunded.');
       if(k.id===KOROPE_ID){
         // Riders who waited too long for a full load get their fare back and the bus starts over.
@@ -672,7 +672,7 @@ export class WorldRoomDO {
       session.trustedPosition=position;session.claimedPosition=position;session.trustedAt=Date.now();session.movementBudget=4;
       socket.send(JSON.stringify({type:'keke_dropoff',position,reason:message??(action==='complete'?'Arrived':'Ride ended')}));
     }
-    if(action==='refund'&&k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'&&k.passengers.length===0)Object.assign(k,createKeke(true));
+    if(action==='refund'&&isParkedKeke(k.id)&&k.phase==='BOARDING'&&k.passengers.length===0)Object.assign(k,createParkedKeke(k.id));
     if(ticket)await this.settleTicket(ticket,action);
     this.sendToConnections([id],JSON.stringify({type:'wallet_refresh'}));
   }
@@ -694,11 +694,11 @@ export class WorldRoomDO {
     const korope=k.id===KOROPE_ID;
     if(k.passengers.length>=seatsOf(k))throw new Error(korope?'The Korope is full':'This Keke is full');
     if(!['IDLE','BOARDING',...(korope?['WAITING']:[])].includes(k.phase))throw new Error(korope?'The Korope is on its way. Wait at a stop.':'Wait for the Keke to stop');
-    const destinationId=k.id===PARKED_KEKE_ID&&k.phase==='BOARDING'?k.destinationId:data.destinationId;
+    const destinationId=isParkedKeke(k.id)&&k.phase==='BOARDING'?k.destinationId:data.destinationId;
     if(!kekeDestinations.some(d=>d.id===destinationId)||destinationId==='car-park')throw new Error('Choose a campus destination');
     // Route vehicles only stop at route stops; a rider asking for anywhere else would never get off.
-    if(k.id!==PARKED_KEKE_ID&&!routeStops.includes(destinationId))throw new Error('This ride does not stop there. Choose a stop on the route.');
-    const fare=korope?KOROPE.fare:k.id===PARKED_KEKE_ID?fareFor(destinationId):ROUTE_FARE;
+    if(!isParkedKeke(k.id)&&!routeStops.includes(destinationId))throw new Error('This ride does not stop there. Choose a stop on the route.');
+    const fare=korope?KOROPE.fare:isParkedKeke(k.id)?fareFor(destinationId):ROUTE_FARE;
     const ticket=String(data.requestId||'');if(!/^[0-9a-f-]{36}$/i.test(ticket))throw new Error('Invalid ride request');
     this.transitBusy=true;
     try{
@@ -721,7 +721,7 @@ export class WorldRoomDO {
       if(korope&&k.phase==='WAITING'&&!k.passengers.length)k.waitUntil=Date.now()+KOROPE.waitMs;
       this.kekeHolds.get(k.id)?.delete(session.connectionId);
       // Time to sit down: a route vehicle doesn't pull away the instant someone pays.
-      if(k.phase==='BOARDING'&&k.id!==PARKED_KEKE_ID)k.deadline=Math.max(k.deadline,Date.now()+STOP_DWELL.boardedGraceMs);
+      if(k.phase==='BOARDING'&&!isParkedKeke(k.id))k.deadline=Math.max(k.deadline,Date.now()+STOP_DWELL.boardedGraceMs);
       k.passengers.push(session.connectionId);k.paid[session.connectionId]=ticket;k.targets[session.connectionId]=destinationId;
       p.kekeRiding=true;p.kekeId=k.id;p.animation='sit';p.position=seatPosition(k,session.connectionId);
       this.dirtyPlayerIds.add(session.connectionId);
@@ -1929,6 +1929,18 @@ export class WorldRoomDO {
             catch(e){webSocket.send(JSON.stringify({type:'action_result',requestId:data.requestId,error:(e as Error).message}));}
             break;
           }
+          // Korope riders: leave now with whoever is aboard instead of waiting for a full load.
+          case 'korope_go': {
+            if(!sessionConnId)return;
+            const k=this.kekes.get(KOROPE_ID);
+            if(!k||!k.passengers.includes(sessionConnId)){webSocket.send(JSON.stringify({type:'hustle_notice',icon:'🚐',text:'Board the Korope first.'}));return;}
+            if(departNow(k,Date.now())){
+              this.kekesDirty=true;this.refreshSimulationLoop();this.broadcastBatchPlayers();
+              const me=this.players.get(sessionConnId)?.username||'A rider';
+              this.sendToConnections(k.passengers.filter((id)=>id!==sessionConnId),JSON.stringify({type:'hustle_notice',icon:'🚐',text:`${me} asked the Korope to move. Doors closing!`}));
+            }
+            break;
+          }
           case 'keke_hold': {
             const current=this.sessions.get(webSocket);if(!current||current.room!=='world:funaab:main')return;
             this.holdKeke(current,data);
@@ -2001,7 +2013,7 @@ export class WorldRoomDO {
           case 'keke_exit': {
             if(!sessionConnId)return;
             const k=[...this.kekes.values()].find(k=>k.passengers.includes(sessionConnId!));
-            if(k && k.isStopped)await this.dropPassenger(k,sessionConnId,k.phase==='BOARDING'&&k.id===PARKED_KEKE_ID?'refund':'complete');
+            if(k && k.isStopped)await this.dropPassenger(k,sessionConnId,k.phase==='BOARDING'&&isParkedKeke(k.id)?'refund':'complete');
             break;
           }
 

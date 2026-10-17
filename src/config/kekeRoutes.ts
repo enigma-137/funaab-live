@@ -1,5 +1,13 @@
 import { campusLocations, locationById, CAR_PARK_BAY, type Point } from './campusLocations';
 export const PARKED_KEKE_ID='keke-carpark';
+/** Bookable Kekes waiting at the Car Park, each in its own bay; the first sits on the Car Park stop. */
+export const PARKED_KEKES:Array<{id:string;bay:Point}>=[
+  {id:PARKED_KEKE_ID,bay:CAR_PARK_BAY},
+  {id:'keke-carpark-2',bay:[-67,0,61]},
+  {id:'keke-carpark-3',bay:[-67,0,67]},
+];
+export const isParkedKeke=(id:string|undefined)=>PARKED_KEKES.some(p=>p.id===id);
+export const parkedBay=(id:string):Point=>PARKED_KEKES.find(p=>p.id===id)?.bay??CAR_PARK_BAY;
 export const ROUTE_KEKE_ID='keke-1';
 export const KOROPE_ID='korope-1';
 /** How long a route vehicle waits at a stop: longer while it has free seats, and while someone is booking. */

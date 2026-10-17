@@ -17,6 +17,8 @@ import { useSocialStore } from '../stores/socialStore';
 import { useJobStore } from '../stores/jobStore';
 import { useInputStore } from '../stores/inputStore';
 import { networkManager } from '../game/multiplayer/networkManager';
+import { KOROPE_ID } from '../config/kekeRoutes';
+import { seatsOf } from '../config/kekeSimulation';
 import {
   Users,
   Backpack,
@@ -753,20 +755,29 @@ export const GameHUD: React.FC = () => {
       )}
 
       {isRidingKeke && (
-        <div className="pointer-events-none fixed left-3 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-130px))] rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-4 sm:top-36 sm:translate-x-0">
+        <div className="pointer-events-none fixed left-3 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-130px))] rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-20 sm:top-36 sm:translate-x-0">
           <div className="flex items-center gap-2">
             <span className="text-base leading-none">🛺</span>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-black leading-tight text-white">Campus Keke</div>
+              <div className="truncate text-sm font-black leading-tight text-white">{activeKeke?.id === KOROPE_ID ? 'Korope Bus' : 'Campus Keke'}</div>
               <div className="truncate text-xs leading-tight text-amber-200">
                 To: {destinationName || 'Campus route'}
               </div>
               <div className="truncate text-[11px] leading-tight text-amber-300">
                 Next: {activeKeke?.currentStopName || 'Campus stop'}
-                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length}/3 passengers` : ''}
+                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length}/${seatsOf(activeKeke)} passengers` : ''}
               </div>
             </div>
           </div>
+          {activeKeke?.id === KOROPE_ID && activeKeke.phase === 'WAITING' && (
+            // Waiting for a full load at the Car Park: anyone aboard can send it off now.
+            <button
+              onClick={() => { triggerHaptic(20); networkManager.koropeGo(); }}
+              className="pointer-events-auto mt-2 w-full rounded-lg bg-amber-400 px-3 py-1.5 text-sm font-extrabold text-slate-950 shadow active:scale-95"
+            >
+              🚐 Move now
+            </button>
+          )}
         </div>
       )}
 

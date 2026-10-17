@@ -1,5 +1,5 @@
 import { campusLocations, locationById, CAR_PARK_BAY, type Point } from './campusLocations';
-import { canAdvance, KOROPE, KOROPE_ID, nodeKey, PARKED_KEKE_ID, publicRoute, roadPath, routeStops, STOP_DWELL } from './kekeRoutes';
+import { canAdvance, isParkedKeke, KOROPE, KOROPE_ID, nodeKey, PARKED_KEKE_ID, parkedBay, publicRoute, roadPath, routeStops, STOP_DWELL } from './kekeRoutes';
 export type RidePhase='IDLE'|'BOARDING'|'MOVING'|'ARRIVED'|'RETURNING'|'BLOCKED'|'WAITING';
 export interface TransitState {
   id:string;routeId:string;position:Point;rotation:number;speed:number;currentWaypointIndex:number;
@@ -20,13 +20,19 @@ export const dwellAt=(k:Pick<TransitState,'passengers'|'capacity'>,target:Point)
   !stopKeys.has(nodeKey(target))?STOP_DWELL.junctionMs:k.passengers.length<(k.capacity??3)?STOP_DWELL.freeSeatsMs:STOP_DWELL.fullMs;
 /** Seats a vehicle carries. */
 export const seatsOf=(k:Pick<TransitState,'capacity'>)=>k.capacity??3;
+/** A bookable Keke waiting in its Car Park bay (one of PARKED_KEKES). */
+export function createParkedKeke(id=PARKED_KEKE_ID):TransitState{
+  return {...createKeke(true),id,position:[...parkedBay(id)]};
+}
 export function createKeke(bookable:boolean):TransitState{
   return {id:bookable?PARKED_KEKE_ID:'keke-1',routeId:bookable?'bookable':'route-alpha',position:bookable?[...CAR_PARK_BAY]:[...locationById('sports-centre').kekeStop],rotation:Math.PI,speed:7,currentWaypointIndex:bookable?0:publicRoute.findIndex(p=>nodeKey(p)===nodeKey(locationById('sports-centre').kekeStop)),passengers:[],currentStopName:'Car Park',isStopped:true,phase:bookable?'IDLE':'BOARDING',route:bookable?[]:publicRoute,deadline:0,tripId:'',paid:{},targets:{}};
 }
 export function bookRide(k:TransitState,destinationId:string,now:number,tripId:string){
   if(k.phase!=='IDLE')throw new Error('This Keke already has a destination');
   k.destinationId=destinationId;k.tripId=tripId;k.phase='BOARDING';k.deadline=now+8000;
-  k.route=roadPath(nodeKey(CAR_PARK_BAY),nodeKey(locationById(destinationId).kekeStop));k.currentWaypointIndex=1;k.currentStopName=locationById(destinationId).shortName;
+  // From its bay onto the Car Park stop, then the road route.
+  const road=roadPath(nodeKey(CAR_PARK_BAY),nodeKey(locationById(destinationId).kekeStop)),bay=parkedBay(k.id);
+  k.route=nodeKey(bay)===nodeKey(CAR_PARK_BAY)?road:[[...bay],...road];k.currentWaypointIndex=1;k.currentStopName=locationById(destinationId).shortName;
 }
 // Korope seats [x,z] in the van's own frame: front passenger, two benches of two, a rear bench of three.
 export const KOROPE_SEATS:Array<[number,number]>=[[-.4,.85],[-.4,-.05],[.4,-.05],[-.4,-.95],[.4,-.95],[-.5,-1.85],[0,-1.85],[.5,-1.85]];
@@ -36,6 +42,11 @@ export function seatPosition(k:Pick<TransitState,'position'|'rotation'|'passenge
   // Sitting lowers the avatar pelvis by .39; +.25 aligns its .89 hip with the .75 bench.
   return [k.position[0]+x*Math.cos(k.rotation)+z*Math.sin(k.rotation),k.position[1]+.25,k.position[2]-x*Math.sin(k.rotation)+z*Math.cos(k.rotation)];
 }
+/** Korope riders tap Move now: the doors close and it leaves with whoever is aboard. */
+export function departNow(k:TransitState,now:number):boolean{
+  if(k.id!==KOROPE_ID||k.phase!=='WAITING'||!k.passengers.length)return false;
+  k.phase='BOARDING';k.isStopped=true;k.deadline=now+KOROPE.doorsMs;k.waitUntil=0;return true;
+}
 export const exitPosition=(k:TransitState):Point=>[k.position[0]+3.2,0,k.position[2]];
 export function tickKeke(k:TransitState,now:number,dt:number):boolean{
   if(k.phase==='IDLE'||k.phase==='BLOCKED')return false;
@@ -44,7 +55,7 @@ export function tickKeke(k:TransitState,now:number,dt:number):boolean{
     return false;
   }
   if(k.phase==='RETURNING'){
-    if(now>=k.deadline)Object.assign(k,createKeke(true));return false;
+    if(now>=k.deadline)Object.assign(k,createParkedKeke(k.id));return false;
   }
   if(k.phase==='WAITING'){
     // The Korope leaves only once enough riders have paid; the doors close a few seconds later.
@@ -68,9 +79,9 @@ export function tickKeke(k:TransitState,now:number,dt:number):boolean{
     k.currentWaypointIndex=1;k.phase='WAITING';k.isStopped=true;k.currentStopName='Car Park';k.waitUntil=0;
     return true;
   }
-  if(k.id===PARKED_KEKE_ID&&k.currentWaypointIndex===k.route.length-1){k.phase='ARRIVED';k.isStopped=true;k.deadline=now+5000;return true;}
+  if(isParkedKeke(k.id)&&k.currentWaypointIndex===k.route.length-1){k.phase='ARRIVED';k.isStopped=true;k.deadline=now+5000;return true;}
   k.currentWaypointIndex=(k.currentWaypointIndex+1)%k.route.length;
-  if(k.id!==PARKED_KEKE_ID){
+  if(!isParkedKeke(k.id)){
     k.currentStopName=campusLocations.find(l=>nodeKey(l.kekeStop)===nodeKey(target))?.shortName || 'Campus junction';
     k.phase='BOARDING';k.isStopped=true;k.deadline=now+dwellAt(k,target);
     return true;

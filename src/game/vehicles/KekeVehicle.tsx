@@ -4,14 +4,14 @@ import {Html} from '@react-three/drei';
 import * as THREE from 'three';
 import {useGameStore} from '../../stores/gameStore';
 import {locationById,CAR_PARK_BAY} from '../../config/campusLocations';
-import {KOROPE_ID} from '../../config/kekeRoutes';
+import {KOROPE_ID,parkedBay} from '../../config/kekeRoutes';
 import {KOROPE_BAY,KOROPE_SEATS} from '../../config/kekeSimulation';
 import {renderedKekes} from './kekePresentation';
 import {useDayNight,NIGHT_LIGHTS_FROM} from '../world/dayNight';
 import {glowMap} from '../world/NightLights';
 export function KekeVehicle({id}:{id:string}){
  const koropeBus=id===KOROPE_ID;
- const initial=useRef(koropeBus?KOROPE_BAY:id==='keke-1'?locationById('sports-centre').kekeStop:CAR_PARK_BAY);
+ const initial=useRef(koropeBus?KOROPE_BAY:id==='keke-1'?locationById('sports-centre').kekeStop:parkedBay(id));
  const k=useGameStore(s=>s.kekes[id]);
  const kekeRef=useRef<THREE.Group>(null),frontWheelRef=useRef<THREE.Mesh>(null),rearLeftWheelRef=useRef<THREE.Mesh>(null),rearRightWheelRef=useRef<THREE.Mesh>(null);
  useFrame((_,dt)=>{
@@ -25,7 +25,7 @@ export function KekeVehicle({id}:{id:string}){
  if(!k||k.phase==='RETURNING')return null;
  const book=()=>{const store=useGameStore.getState();if(Math.hypot(store.myPosition[0]-k.position[0],store.myPosition[2]-k.position[2])>8)return;store.setNearbyInteractable({id,type:'keke_stop',targetId:id,label:koropeBus?'Korope Bus':'Campus Keke',actionText:koropeBus?'Join Korope':'Book Ride',position:k.position,radius:8});store.setActiveModal('keke_destination');};
  return <group ref={kekeRef} position={initial.current} onClick={e=>{e.stopPropagation();book();}}>
-   <Html position={[0,koropeBus?2.6:2.75,0]} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div style={{whiteSpace:'nowrap',background:'#243c30',color:'#fff6d6',borderRadius:6,padding:'4px 7px',fontSize:10}}>{koropeBus?(k.phase==='WAITING'?`Korope · ${k.passengers.length}/${k.minRiders??5} aboard · leaves at ${k.minRiders??5}`:k.phase==='BOARDING'&&k.currentStopName==='Car Park'?'Korope · doors closing':`Korope · ${k.currentStopName}`):id==='keke-1'?'Route Keke':k.phase==='IDLE'?'Car Park Keke · Book ride':`${k.currentStopName} · ${3-k.passengers.length} seats`}</div></Html>
+   <Html position={[0,koropeBus?2.6:2.75,0]} center zIndexRange={[5,0]} style={{pointerEvents:'none'}}><div style={{whiteSpace:'nowrap',background:'#243c30',color:'#fff6d6',borderRadius:6,padding:'4px 7px',fontSize:10}}>{koropeBus?(k.phase==='WAITING'?`Korope · ${k.passengers.length} aboard · leaves at ${k.minRiders??5} or on Move now`:k.phase==='BOARDING'&&k.currentStopName==='Car Park'?'Korope · doors closing':`Korope · ${k.currentStopName}`):id==='keke-1'?'Route Keke':k.phase==='IDLE'?'Car Park Keke · Book ride':`${k.currentStopName} · ${3-k.passengers.length} seats`}</div></Html>
       {koropeBus?<KoropeBody frontWheelRef={frontWheelRef} rearLeftWheelRef={rearLeftWheelRef} rearRightWheelRef={rearRightWheelRef}/>:<KekeBody frontWheelRef={frontWheelRef} rearLeftWheelRef={rearLeftWheelRef} rearRightWheelRef={rearRightWheelRef}/>}
       <KekeHeadlights/>
     </group>;
