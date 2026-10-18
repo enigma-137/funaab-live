@@ -34,7 +34,7 @@ export const GATE_PLAZA = {
   /** Upper-floor walkway depth in front of the shops. */
   balcony: 1.6,
   /** Paved forecourt in front of the shops and the walkway out to the Ceremonial Road (world). */
-  forecourt: { minX: -37, maxX: -11, minZ: 57.5, maxZ: 65.5 },
+  forecourt: { minX: -39, maxX: -11, minZ: 56.5, maxZ: 65.5 },
   walkway: { minX: -11.5, maxX: -4, minZ: 59.5, maxZ: 63.5 },
   /** The directory board on the forecourt, by the walkway (world). */
   directory: [-12.8, 0, 61] as Point,
@@ -49,16 +49,58 @@ export const plazaToWorld = ([x, y, z]: Point): Point => {
   return [round(px + x * c + z * s), y, round(pz - x * s + z * c)];
 };
 
+/** Plaza-local box (half extents, centre, optional x-tilt) for the renderer and the physics test. */
+export interface PlazaCollider { id: string; half: Point; pos: Point; rot?: Point }
+/**
+ * One external flight at the west end (local +x, beside the block), like the hostel's: it climbs
+ * toward the building from the forecourt and lands on a slab that joins the upstairs walkway.
+ */
+export const PLAZA_STAIRS = (() => {
+  const hw = GATE_PLAZA.footprint[0] / 2, front = GATE_PLAZA.footprint[1] / 2, topZ = front + GATE_PLAZA.balcony;
+  const minX = hw + 0.2, maxX = hw + 2, bottomZ = topZ + 6, steps = 14, rise = GATE_PLAZA.floorHeight, run = bottomZ - topZ;
+  return { minX, maxX, topZ, bottomZ, steps, rise, run, angle: Math.atan2(rise, run), hyp: Math.hypot(rise, run),
+    stepRise: rise / steps, stepRun: run / steps, width: maxX - minX, cx: (minX + maxX) / 2 };
+})();
+
+/** Every solid part of the plaza, in plaza-local metres (front facing +z). */
+export function gatePlazaColliders(): PlazaCollider[] {
+  const [w, d] = GATE_PLAZA.footprint, hw = w / 2, hd = d / 2, fh = GATE_PLAZA.floorHeight, top = fh * 2 + 0.3;
+  const front = hd, bal = GATE_PLAZA.balcony, s = PLAZA_STAIRS, railY = fh + 0.55;
+  const slabMinX = -hw, slabMaxX = s.maxX, slabCz = front + bal / 2, midY = s.rise / 2, midZ = (s.bottomZ + s.topZ) / 2;
+  const out: PlazaCollider[] = [
+    { id: 'block', half: [hw, top / 2, hd], pos: [0, top / 2, 0] },
+    // Upstairs walkway + stair landing: its top is the first floor.
+    { id: 'upper-slab', half: [(slabMaxX - slabMinX) / 2, 0.1, bal / 2], pos: [(slabMaxX + slabMinX) / 2, fh - 0.1, slabCz] },
+    // Railings: along the front (open where the stair arrives), the east end and the landing's outer side.
+    { id: 'rail-front', half: [(s.minX - slabMinX) / 2, 0.55, 0.05], pos: [(s.minX + slabMinX) / 2, railY, front + bal - 0.05] },
+    { id: 'rail-end', half: [0.05, 0.55, bal / 2], pos: [slabMinX + 0.05, railY, slabCz] },
+    { id: 'rail-landing-side', half: [0.05, 0.55, bal / 2], pos: [slabMaxX - 0.05, railY, slabCz] },
+    { id: 'stair-ramp', half: [s.width / 2, 0.05, s.hyp / 2], pos: [s.cx, midY - 0.05, midZ], rot: [s.angle, 0, 0] },
+    { id: 'stair-rail-outer', half: [0.05, 0.55, s.hyp / 2], pos: [s.maxX, midY + 0.55, midZ], rot: [s.angle, 0, 0] },
+    { id: 'stair-rail-inner', half: [0.05, 0.55, s.hyp / 2], pos: [s.minX, midY + 0.55, midZ], rot: [s.angle, 0, 0] },
+  ];
+  // Posts holding up the walkway, between the shop bays.
+  for (let i = 0; i <= GATE_PLAZA.shopsPerFloor; i++) {
+    out.push({ id: `post-${i}`, half: [0.13, (fh - 0.2) / 2, 0.13], pos: [(i - GATE_PLAZA.shopsPerFloor / 2) * GATE_PLAZA.shopWidth, (fh - 0.2) / 2, front + bal - 0.15] });
+  }
+  // Solid fill under the ramp so nobody walks into the space beneath the stairs.
+  for (let i = 1; i < s.steps; i++) {
+    const h = i * s.stepRise;
+    out.push({ id: `stair-fill-${i}`, half: [s.width / 2, h / 2, s.stepRun / 2], pos: [s.cx, h / 2, s.bottomZ - (i + 0.5) * s.stepRun] });
+  }
+  return out;
+}
+
 export interface PlazaShop extends AdSpot { kind: 'shop'; number: number; floor: 0 | 1; column: number }
 export const PLAZA_SHOPS: PlazaShop[] = Array.from({ length: GATE_PLAZA.shopsPerFloor * 2 }, (_, i) => {
   const floor = (i < GATE_PLAZA.shopsPerFloor ? 0 : 1) as 0 | 1, column = i % GATE_PLAZA.shopsPerFloor;
+  const front = GATE_PLAZA.footprint[1] / 2;
   return {
     id: `plaza-shop-${i + 1}`, kind: 'shop', number: i + 1, floor, column,
     name: `Shop ${i + 1}`,
-    // Ground-floor shops open from their own doorstep; upstairs ones from the directory board
-    // (or by tapping their flyer from anywhere).
-    interactAt: floor === 0 ? plazaToWorld([plazaColumnX(column), 0, GATE_PLAZA.footprint[1] / 2 + 1.6]) : GATE_PLAZA.directory,
-    radius: floor === 0 ? 2.3 : 0,
+    // Each shop opens from its own doorstep: on the forecourt, or on the upstairs walkway.
+    interactAt: plazaToWorld([plazaColumnX(column), floor * GATE_PLAZA.floorHeight, front + (floor ? 0.8 : 1.6)]),
+    radius: 2.3,
   };
 });
 

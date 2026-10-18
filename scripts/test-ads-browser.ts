@@ -9,6 +9,7 @@ const out = path.resolve(process.env.STUDENT_TEST_OUTPUT || 'test-results/ads', 
 fs.mkdirSync(out, { recursive: true });
 const views: Array<[string, [number, number, number], number, number]> = [
   ['plaza', [-24, 0, 50], Math.PI, 0.18],
+  ['plaza-stairs', [-31, 0, 50], Math.PI - 0.45, 0.2],
   ['plaza-back-from-gate', [-6, 0, 86], 0.75, 0.12],
   ['billboard-gate', [14, 0, 64], Math.PI, 0.02],
   ['billboard-sports', [-46, 0, -6], Math.PI / 2, 0.02],
@@ -39,6 +40,27 @@ const views: Array<[string, [number, number, number], number, number]> = [
           await page.waitForTimeout(2500);
           await page.screenshot({ path: path.join(out, `ads-${width}-${name}.png`) });
         }
+        // Climb the stairs in the real game: tap-to-move from the stair foot up to the walkway.
+        // (No named helpers inside evaluate: tsx would inject a __name call the page doesn't have.)
+        const climb = await page.evaluate(async () => {
+          const { PLAZA_STAIRS: st, PLAZA_SHOPS, GATE_PLAZA, plazaToWorld } = await import('/src/config/adSpaces.ts' as any);
+          const { useHostelStore } = await import('/src/stores/hostelStore.ts' as any);
+          const input = (await import('/src/stores/inputStore.ts' as any)).useInputStore.getState();
+          const game = (await import('/src/stores/gameStore.ts' as any)).useGameStore;
+          useHostelStore.setState({ teleport: plazaToWorld([st.cx, 0, st.bottomZ + 1]) });
+          await new Promise((r) => setTimeout(r, 1500));
+          input.setTargetDestination(plazaToWorld([st.cx, 0, GATE_PLAZA.footprint[1] / 2 + 0.8]));
+          await new Promise((r) => setTimeout(r, 6000));
+          const top = game.getState().myPosition;
+          input.setTargetDestination(PLAZA_SHOPS.find((s: any) => s.id === 'plaza-shop-6').interactAt);
+          await new Promise((r) => setTimeout(r, 6000));
+          return { top, at: game.getState().myPosition, near: game.getState().nearbyInteractable?.targetId ?? null };
+        });
+        assert(climb.top[1] > 3.3, `climbed to the walkway: ${JSON.stringify(climb)}`);
+        assert(climb.at[1] > 3.3 && climb.near === 'plaza-shop-6', `upstairs shop 6 in reach: ${JSON.stringify(climb)}`);
+        await page.evaluate(async () => { const { useInputStore } = await import('/src/stores/inputStore.ts' as any); useInputStore.getState().setCameraYaw(Math.PI); useInputStore.getState().setCameraPitch(0.35); });
+        await page.waitForTimeout(2000);
+        await page.screenshot({ path: path.join(out, `ads-${width}-upstairs.png`) });
         await hud.evaluate((el: Element) => el.remove());
         const openSheet = async (id: string) => {
           await page.evaluate(async (id: string) => (await import('/src/stores/adStore.ts' as any)).useAdStore.getState().open(id), id);
