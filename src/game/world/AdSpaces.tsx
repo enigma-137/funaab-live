@@ -255,15 +255,16 @@ function BillboardFace({ board, listing }: { board: Billboard; listing?: AdListi
 }
 
 function CampusBillboard({ board, listing }: { board: Billboard; listing?: AdListing }) {
-  const { width, height, clearance } = BILLBOARD_SIZE, top = clearance + height;
+  const { width, height, clearance } = BILLBOARD_SIZE, top = clearance + height, legTop = clearance - 0.2;
   return (
     <group position={board.position} rotation={[0, board.facing, 0]} name={`billboard_${board.id}`}>
       <RigidBody type="fixed" colliders={false}>
         {/* Two steel legs on concrete pads, a framed double-sided board, a catwalk with lamps */}
         {[-width / 4, width / 4].map((x) => <group key={x}>
           <Block p={[x, 0.2, 0]} s={[1, 0.4, 1]} m={campusMaterials.stone} />
-          <Block p={[x, top / 2, 0]} s={[0.4, top, 0.4]} m={mats.steel} />
-          <CuboidCollider args={[0.5, top / 2, 0.5]} position={[x, top / 2, 0]} />
+          {/* Legs stop under the frame so they never show through the board's faces. */}
+          <Block p={[x, legTop / 2, 0]} s={[0.4, legTop, 0.4]} m={mats.steel} />
+          <CuboidCollider args={[0.5, legTop / 2, 0.5]} position={[x, legTop / 2, 0]} />
         </group>)}
         <Block p={[0, clearance + height / 2, 0]} s={[width + 0.4, height + 0.4, 0.28]} m={mats.frame} />
         {[-1, 1].map((side) => <Block key={side} p={[0, clearance - 0.25, 0.75 * side]} s={[width, 0.08, 1.1]} m={mats.steel} />)}
