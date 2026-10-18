@@ -169,8 +169,8 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:WORLD_BOUNDS,colleges:collegeCata
     {id:'hustle-pos-kiosk',type:'hustle',label:'POS kiosk · Hustle',actionText:'POS kiosk shift',position:POS_KIOSK.serviceSpot,radius:POS_KIOSK.radius,targetId:'pos'},
     ...PHOTO_SPOTS.map(s=>({id:`hustle-${s.id}`,type:'hustle',label:s.title,actionText:'Take photos',position:s.position,radius:s.radius,targetId:s.id})),{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
     ...FOOD_VENDOR_LIST.map(v=>({id:`vendor-${v.id}`,type:'food_vendor',label:v.name,actionText:v.actionLabel,position:vendorCounter(v),radius:2.6,targetId:v.id})),
-    // Gate Plaza shops (ground floor at their doors, the whole plaza at the directory) and billboards.
-    ...PLAZA_SHOPS.filter(s=>s.floor===0).map(s=>({id:`ad-${s.id}`,type:'ad_space' as const,label:`${GATE_PLAZA.name} · ${s.name}`,actionText:'View shop',position:s.interactAt,radius:s.radius,targetId:s.id})),
+    // Gate Plaza shops (each at its own door, upstairs too), the whole plaza at the directory, and billboards.
+    ...PLAZA_SHOPS.map(s=>({id:`ad-${s.id}`,type:'ad_space' as const,label:`${GATE_PLAZA.name} · ${s.name}`,actionText:'View shop',position:s.interactAt,radius:s.radius,targetId:s.id})),
     {id:'ad-plaza-directory',type:'ad_space' as const,label:GATE_PLAZA.name,actionText:'Plaza directory',position:GATE_PLAZA.directory,radius:2.6,targetId:PLAZA_DIRECTORY_ID},
     ...BILLBOARDS.map(b=>({id:`ad-${b.id}`,type:'ad_space' as const,label:`${b.name} billboard`,actionText:'View billboard',position:b.interactAt,radius:b.radius,targetId:b.id})),
     {id:'campus-bet-counter',type:'campus_bet',label:'Campus Bet',actionText:'Open Campus Bet',position:CAMPUS_BET_SHOP.counter,radius:CAMPUS_BET_SHOP.interactionRadius,targetId:CAMPUS_BET_SHOP.id},

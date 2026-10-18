@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import {
-  BILLBOARDS, BILLBOARD_SIZE, GATE_PLAZA, PLAZA_DIRECTORY_ID, PLAZA_SHOPS, plazaColumnX,
+  BILLBOARDS, BILLBOARD_SIZE, GATE_PLAZA, PLAZA_DIRECTORY_ID, PLAZA_SHOPS, PLAZA_STAIRS, gatePlazaColliders, plazaColumnX,
   type AdListing, type Billboard, type PlazaShop,
 } from '../../config/adSpaces';
 import { useAdStore } from '../../stores/adStore';
@@ -171,7 +171,8 @@ export function GatePlaza() {
   const listings = useAdStore((s) => s.listings);
   const [w, d] = GATE_PLAZA.footprint, hw = w / 2, hd = d / 2;
   const fh = GATE_PLAZA.floorHeight, top = fh * 2 + 0.3, front = hd, bal = GATE_PLAZA.balcony;
-  const f = GATE_PLAZA.forecourt, walk = GATE_PLAZA.walkway;
+  const f = GATE_PLAZA.forecourt, walk = GATE_PLAZA.walkway, st = PLAZA_STAIRS;
+  const colliders = useMemo(gatePlazaColliders, []);
   return (
     <group name="gate_plaza_grounds">
       {/* Paved forecourt and the walkway out to the Ceremonial Road (world coordinates). */}
@@ -189,25 +190,32 @@ export function GatePlaza() {
             const x = (i - GATE_PLAZA.shopsPerFloor / 2) * GATE_PLAZA.shopWidth;
             return <Block key={i} p={[x, top / 2, front - 0.15]} s={[0.45, top, 0.3]} m={mats.trim} />;
           })}
-          {/* Upper walkway with its railing, on posts */}
-          <Block p={[0, fh, front + bal / 2]} s={[w, 0.22, bal]} m={mats.slab} />
-          <Block p={[0, fh + 1.0, front + bal - 0.05]} s={[w, 0.08, 0.08]} m={mats.steel} />
-          {Array.from({ length: 25 }, (_, i) => <Block key={i} p={[-hw + i, fh + 0.55, front + bal - 0.05]} s={[0.05, 0.9, 0.05]} m={mats.steel} />)}
+          {/* Upstairs walkway + stair landing, with its railing, on posts */}
+          <Block p={[(st.maxX - hw) / 2, fh - 0.1, front + bal / 2]} s={[st.maxX + hw, 0.2, bal]} m={mats.slab} />
+          <Block p={[(st.minX - hw) / 2, fh + 1.05, front + bal - 0.05]} s={[st.minX + hw, 0.08, 0.08]} m={mats.steel} />
+          {Array.from({ length: 25 }, (_, i) => <Block key={i} p={[-hw + 0.1 + i, fh + 0.55, front + bal - 0.05]} s={[0.05, 1, 0.05]} m={mats.steel} />)}
+          {[-hw + 0.05, st.maxX - 0.05].map((x) => <Block key={x} p={[x, fh + 1.05, front + bal / 2]} s={[0.08, 0.08, bal]} m={mats.steel} />)}
           {Array.from({ length: GATE_PLAZA.shopsPerFloor + 1 }, (_, i) => {
             const x = (i - GATE_PLAZA.shopsPerFloor / 2) * GATE_PLAZA.shopWidth;
             return <Block key={i} p={[x, fh / 2, front + bal - 0.15]} s={[0.22, fh, 0.22]} m={mats.trim} />;
           })}
-          {/* Stair up the end wall to the walkway */}
-          {Array.from({ length: 12 }, (_, i) => <Block key={i} p={[hw + 0.7, 0.15 + i * 0.3, front + bal - 0.3 - i * 0.42]} s={[1.3, 0.3, 0.42]} m={mats.slab} />)}
+          {/* Stair up from the forecourt to the walkway: solid steps and a handrail each side */}
+          {Array.from({ length: st.steps }, (_, i) => {
+            const h = (i + 0.5) * st.stepRise; // half-step down so feet sit evenly on the ramp line
+            return <Block key={i} p={[st.cx, h / 2, st.bottomZ - (i + 0.5) * st.stepRun]} s={[st.width, h, st.stepRun + 0.01]} m={mats.slab} />;
+          })}
+          {[st.minX, st.maxX].map((x) => <group key={x}>
+            <mesh geometry={cube} material={mats.steel} position={[x, st.rise / 2 + 1.0, (st.bottomZ + st.topZ) / 2]} rotation={[st.angle, 0, 0]} scale={[0.06, 0.06, st.hyp]} />
+            {Array.from({ length: 7 }, (_, i) => {
+              const t = (i + 0.5) / 7;
+              return <Block key={i} p={[x, st.rise * t + 0.5, st.bottomZ - st.run * t]} s={[0.04, 1, 0.04]} m={mats.steel} />;
+            })}
+          </group>)}
           {/* Roof parapet */}
           <Block p={[0, top + 0.25, 0]} s={[w + 0.4, 0.5, d + 0.2]} m={mats.trim} />
           <Block p={[0, fh * 2 + 1.3, front + 0.05]} s={[12.4, 2.45, 0.2]} m={mats.trim} />
-          {/* Block, walkway posts and stair are solid. */}
-          <CuboidCollider args={[hw, top / 2, hd]} position={[0, top / 2, 0]} />
-          {Array.from({ length: GATE_PLAZA.shopsPerFloor + 1 }, (_, i) => (
-            <CuboidCollider key={i} args={[0.13, fh / 2, 0.13]} position={[(i - GATE_PLAZA.shopsPerFloor / 2) * GATE_PLAZA.shopWidth, fh / 2, front + bal - 0.15]} />
-          ))}
-          <CuboidCollider args={[0.65, fh / 2, 2.6]} position={[hw + 0.7, fh / 2, front + bal - 2.6]} />
+          {/* Same collider list the physics test walks a capsule through. */}
+          {colliders.map((c) => <CuboidCollider key={c.id} args={c.half} position={c.pos} rotation={c.rot} />)}
         </RigidBody>
         {PLAZA_SHOPS.map((s) => <ShopBay key={s.id} shop={s} listing={listings[s.id]} frontZ={front} />)}
         <PlazaSign position={[0, fh * 2 + 1.3, front + 0.16]} />
