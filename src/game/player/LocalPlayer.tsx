@@ -33,6 +33,7 @@ import { openFootball, useFootballStore, amParticipant } from '../../stores/foot
 import { openCourtGame, courtStores, onCourt } from '../../stores/courtGameStore';
 import { HOSTEL_COURTYARD_BOUND, HOSTEL_SPAWN } from '../../config/hostelCompound';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
+import { useAdStore } from '../../stores/adStore';
 
 const MOVE_SPEED = 6.0;
 const SPRINT_SPEED = 9.5;
@@ -305,6 +306,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           break;
         case 'campus_bet':
           setActiveModal('campus_bet');
+          break;
+        case 'ad_space':
+          useAdStore.getState().open(nearbyInteractable.targetId ?? nearbyInteractable.id);
           break;
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
@@ -765,6 +769,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       player: 6,
       bench: 7,
       campus_bet: 1,
+      ad_space: 1,
       food_vendor: 1,
       football: 1,
       basketball: 1,

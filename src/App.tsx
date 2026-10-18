@@ -59,6 +59,7 @@ import { EstateSheet, EstateWatcher } from './ui/EstateSheet';
 import { CarWatcher, FuelSheet, GarageSheet } from './ui/CarSheets';
 import { GroupChatSheet, GroupWatcher, NewGroupSheet } from './ui/GroupChat';
 import { LeagueSheet } from './ui/LeagueSheet';
+import { AdSpaceSheet } from './ui/AdSpaceSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
@@ -227,6 +228,7 @@ export const App: React.FC = () => {
       {activeModal === 'send_money' && <SendMoneyModal />}
       {activeModal === 'daily_reward' && <DailyRewardModal />}
       {activeModal === 'campus_bet' && <CampusBetModal />}
+      {activeModal === 'ad_space' && <AdSpaceSheet />}
       {activeModal === 'food_vendor' && <FoodVendorSheet />}
       {activeModal === 'timetable' && <MyTimetable />}
       {activeModal === 'lecture_hall' && (
