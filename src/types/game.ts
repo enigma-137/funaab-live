@@ -120,7 +120,7 @@ export interface WorldLocation {
 
 export interface InteractableZone {
   id: string;
-  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'car' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade';
+  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'car' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade' | 'ad_space';
   label: string;
   actionText: string;
   position: [number, number, number];

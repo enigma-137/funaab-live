@@ -53,6 +53,7 @@ import { toast } from '../stores/toastStore';
 import { NavigationArrow } from './NavigationArrow';
 import { MiniMap } from './MiniMap';
 import { locationById } from '../config/campusLocations';
+import { useAdStore } from '../stores/adStore';
 
 const FLORAL = locationById('floral-world').position;
 const atFloralTable = (p: [number, number, number]) => Math.hypot(p[0] - FLORAL[0], p[2] - FLORAL[2]) < 6;
@@ -235,6 +236,9 @@ export const GameHUD: React.FC = () => {
         case 'campus_bet':
           setActiveModal('campus_bet');
           break;
+        case 'ad_space':
+          useAdStore.getState().open(nearbyInteractable.targetId ?? nearbyInteractable.id);
+          break;
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
           break;
@@ -333,6 +337,8 @@ export const GameHUD: React.FC = () => {
         return '🎮';
       case 'campus_bet':
         return '🔴';
+      case 'ad_space':
+        return nearbyInteractable.targetId?.startsWith('billboard') ? '🪧' : '🏬';
       case 'food_vendor':
         return nearVendor?.icon ?? '🍲';
       default:
@@ -409,6 +415,8 @@ export const GameHUD: React.FC = () => {
         return 'Play';
       case 'campus_bet':
         return 'Campus Bet';
+      case 'ad_space':
+        return nearbyInteractable.targetId?.startsWith('billboard') ? 'Billboard' : 'Plaza';
       case 'football':
         return 'Penalty';
       case 'basketball':

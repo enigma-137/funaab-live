@@ -31,6 +31,8 @@
     "test:library": "tsx scripts/test-library.ts && node scripts/test-library-network.cjs",
     "test:library:browser": "node scripts/test-library-browser.cjs",
     "test:campus": "tsx scripts/test-campus-transit.ts",
+    "test:ads": "tsx scripts/test-ad-spaces.ts",
+    "test:ads:browser": "tsx scripts/test-ads-browser.ts",
     "test:keke:worker": "tsx scripts/test-keke-worker.ts",
     "test:korope:worker": "tsx scripts/test-korope-worker.ts",
     "test:lecture:presence": "tsx scripts/test-lecture-presence.ts",

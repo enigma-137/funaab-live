@@ -15,6 +15,7 @@ import { LOVE_GARDEN_PAVING, loveGardenBenches } from './loveGarden';
 import { PHOTO_SPOTS, POS_KIOSK } from './hustles';
 import { ESTATE, ESTATE_HOUSES, houseDoor } from './estate';
 import { FUEL_STATION } from './cars';
+import { GATE_PLAZA, PLAZA_SHOPS, BILLBOARDS, PLAZA_DIRECTORY_ID } from './adSpaces';
 import { WORSHIP_PLACES, chapelPewSeats, mosqueMatSpots, worshipBounds } from './worship';
 const corridor=(a:Point,b:Point,width=3)=>({minX:Math.min(a[0],b[0])-width/2,maxX:Math.max(a[0],b[0])+width/2,minZ:Math.min(a[2],b[2])-width/2,maxZ:Math.max(a[2],b[2])+width/2});
 export const pedestrianPaths=campusLocations.flatMap(l=>{
@@ -168,6 +169,10 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:WORLD_BOUNDS,colleges:collegeCata
     {id:'hustle-pos-kiosk',type:'hustle',label:'POS kiosk · Hustle',actionText:'POS kiosk shift',position:POS_KIOSK.serviceSpot,radius:POS_KIOSK.radius,targetId:'pos'},
     ...PHOTO_SPOTS.map(s=>({id:`hustle-${s.id}`,type:'hustle',label:s.title,actionText:'Take photos',position:s.position,radius:s.radius,targetId:s.id})),{id:'library-visit',type:'library',label:'Library',actionText:'Enter Library',position:library.entrance,radius:5,targetId:'library'},
     ...FOOD_VENDOR_LIST.map(v=>({id:`vendor-${v.id}`,type:'food_vendor',label:v.name,actionText:v.actionLabel,position:vendorCounter(v),radius:2.6,targetId:v.id})),
+    // Gate Plaza shops (ground floor at their doors, the whole plaza at the directory) and billboards.
+    ...PLAZA_SHOPS.filter(s=>s.floor===0).map(s=>({id:`ad-${s.id}`,type:'ad_space' as const,label:`${GATE_PLAZA.name} · ${s.name}`,actionText:'View shop',position:s.interactAt,radius:s.radius,targetId:s.id})),
+    {id:'ad-plaza-directory',type:'ad_space' as const,label:GATE_PLAZA.name,actionText:'Plaza directory',position:GATE_PLAZA.directory,radius:2.6,targetId:PLAZA_DIRECTORY_ID},
+    ...BILLBOARDS.map(b=>({id:`ad-${b.id}`,type:'ad_space' as const,label:`${b.name} billboard`,actionText:'View billboard',position:b.interactAt,radius:b.radius,targetId:b.id})),
     {id:'campus-bet-counter',type:'campus_bet',label:'Campus Bet',actionText:'Open Campus Bet',position:CAMPUS_BET_SHOP.counter,radius:CAMPUS_BET_SHOP.interactionRadius,targetId:CAMPUS_BET_SHOP.id},
     // Every college hall without a hand-placed world.json entry gets the same lecture-hall interaction.
     ...LECTURE_HALLS.filter(h=>!h.legacyInteractable).map(h=>({id:h.interactableId,type:'lecture_hall',label:h.hallName,actionText:'Enter Lecture Hall',position:h.entrance,radius:4.5,targetId:h.id}))],
@@ -181,6 +186,8 @@ const world={...base,spawn:CAMPUS_SPAWN,bounds:WORLD_BOUNDS,colleges:collegeCata
     {id:'acad-apron',name:'Acad',type:'plaza',restricted:false,bounds:{minX:-125,maxX:-91,minZ:-24.5,maxZ:-17.5}},
     // Outside the main gate: the gate walk, the public road and the Campus Bet frontage are paved.
     ...outsideGateZones,
+    {id:'gate-plaza',name:GATE_PLAZA.name,type:'plaza',restricted:false,bounds:GATE_PLAZA.forecourt},
+    {id:'gate-plaza-walk',name:GATE_PLAZA.name,type:'path',restricted:false,bounds:GATE_PLAZA.walkway},
     {id:'love-garden-plaza',name:'Love Garden',type:'plaza',restricted:false,bounds:LOVE_GARDEN_PAVING.plaza},
     {id:'love-garden-walk',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.walkway},
     {id:'love-garden-connector',name:'Love Garden walkway',type:'path',restricted:false,bounds:LOVE_GARDEN_PAVING.connector},
