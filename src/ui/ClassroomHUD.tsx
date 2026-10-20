@@ -25,10 +25,12 @@ export const ClassroomHUD: React.FC = () => {
     currentLecture,
     mySeatNumber,
     isHandRaised,
+    lecturerAside,
     attendanceStartedAt,
     attendanceRewardClaimed,
     classroomState,
     toggleRaiseHand,
+    lowerHand,
     leaveLecture,
     currentHallId,
     attendanceMode,
@@ -102,6 +104,8 @@ export const ClassroomHUD: React.FC = () => {
     if (!chatInput.trim() || !currentLecture || !isSeated) return;
     networkManager.sendClassroomChat(currentLecture.id, chatInput.trim());
     setChatInput('');
+    // You've asked your question: the hand comes down.
+    lowerHand();
   };
 
   if (!currentLecture) return null;
@@ -318,7 +322,7 @@ export const ClassroomHUD: React.FC = () => {
         >
           <div className="mb-0.5 text-xs font-bold text-emerald-300">{currentLecture.lecturerName}</div>
           <div className="line-clamp-4 overflow-hidden text-sm leading-[1.4] text-slate-100">
-            {classroomState?.currentLecturerSpeech || currentLecture.timeline[0]?.text || 'Welcome to class.'}
+            {(lecturerAside && lecturerAside.until > Date.now() ? lecturerAside.text : classroomState?.currentLecturerSpeech) || currentLecture.timeline[0]?.text || 'Welcome to class.'}
           </div>
         </div>
       )}
