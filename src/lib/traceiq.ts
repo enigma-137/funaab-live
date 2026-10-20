@@ -42,6 +42,26 @@ export function getTraceIQConfig() {
   };
 }
 
+/**
+ * Request capture is limited to our backends: Supabase (REST, auth, RPC) and the Worker's HTTP
+ * endpoints. Page loads, assets and other same-site files (like /version.json) are left out.
+ */
+function backendRequestPatterns(): string[] {
+  const patterns = new Set<string>();
+  const origin = (url: string) => new URL(url, window.location.href).origin.replace(/^ws(s?):/, 'http$1:');
+  try {
+    const supabaseUrl = readEnvVar('VITE_SUPABASE_URL');
+    if (supabaseUrl) patterns.add(origin(supabaseUrl));
+  } catch { /* ignore a malformed URL */ }
+  try {
+    const wsUrl = readEnvVar('VITE_WS_URL');
+    // Without VITE_WS_URL the Worker is served from this site, so match its paths, not the whole site.
+    const worker = wsUrl ? origin(wsUrl) : window.location.origin;
+    for (const path of ['/campus-summary', '/announcement', '/api/']) patterns.add(worker + path);
+  } catch { /* ignore a malformed URL */ }
+  return [...patterns];
+}
+
 let initialized = false;
 
 export function initializeTraceIQ(): boolean {
@@ -64,7 +84,7 @@ export function initializeTraceIQ(): boolean {
       autoTrackPageViews: config.autoTrackPageViews,
       autoCaptureExceptions: config.autoCaptureExceptions,
       autoCaptureRageClicks: config.autoCaptureRageClicks,
-      autoCaptureRequests: config.autoCaptureRequests,
+      autoCaptureRequests: config.autoCaptureRequests && { include: backendRequestPatterns() },
     });
     initialized = true;
     return true;
