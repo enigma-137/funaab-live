@@ -1158,7 +1158,8 @@ export class WorldRoomDO {
     this.advanceTrustedPosition(session);
     const pos = session.trustedPosition;
     const place = session.room === 'world:funaab:main' ? (pos ? campusZoneName(pos[0], pos[2]) : 'Campus')
-      : session.room === LIBRARY_ROOM ? 'Library' : session.room.includes('hostel') ? 'Hostel' : 'Off campus';
+      : session.room === LIBRARY_ROOM ? 'Library' : session.room.includes('hostel') ? 'Hostel'
+      : session.room.startsWith('world:funaab:lecture:') ? 'Lecture hall' : 'Off campus';
     const text = formatFeedbackMessage(input, { username: session.username, college: session.college, place }, new Date(now));
     let ok = false;
     try {

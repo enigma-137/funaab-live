@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { LectureDefinition, ClassroomState } from '../types/game';
 import { useWalletStore } from './walletStore';
 import { useAuthStore } from './authStore';
+import { useSocialStore } from './socialStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 import { useGameStore } from './gameStore';
 import { useInputStore } from './inputStore';
@@ -17,6 +18,13 @@ export const hallSpot = { x: HALL_DOOR_SPOT[0], z: HALL_DOOR_SPOT[2], ry: Math.P
 // 'scheduled' joins the timetabled class (allowance-eligible); 'practice' replays it off-schedule.
 export type AttendanceMode = 'scheduled' | 'practice';
 
+// Raising your hand: the lecturer calls on you, and the hand comes down once you ask (or after a while).
+const HAND_ACK_MS = 1500;
+const HAND_AUTO_LOWER_MS = 30_000;
+const LECTURER_ASIDE_MS = 12_000;
+let handTimers: ReturnType<typeof setTimeout>[] = [];
+const clearHandTimers = () => { handTimers.forEach(clearTimeout); handTimers = []; };
+
 interface LectureStoreState {
   isInClassroom: boolean;
   currentHallId: string | null;
@@ -24,6 +32,8 @@ interface LectureStoreState {
   mySeatNumber: number | null; // null while standing
   attendanceMode: AttendanceMode | null; // null while not attending
   isHandRaised: boolean;
+  /** A short line from the lecturer (e.g. calling on you) shown over the script until `until`. */
+  lecturerAside: { text: string; until: number } | null;
   attendanceStartedAt: number | null;
   attendanceRewardClaimed: boolean;
   classroomState: ClassroomState | null;
@@ -37,6 +47,7 @@ interface LectureStoreState {
   endAttendance: () => void;
   leaveLecture: () => void;
   toggleRaiseHand: () => void;
+  lowerHand: () => void;
   syncClassroomState: (state: ClassroomState) => void;
   updateLecturerSpeech: (text: string, boardTopic?: string) => void;
   claimAttendanceAllowance: (userId: string) => Promise<boolean>;
@@ -49,6 +60,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   mySeatNumber: null,
   attendanceMode: null,
   isHandRaised: false,
+  lecturerAside: null,
   attendanceStartedAt: null,
   attendanceRewardClaimed: false,
   classroomState: null,
@@ -77,6 +89,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         mySeatNumber: null,
         attendanceMode: null,
         isHandRaised: false,
+        lecturerAside: null,
         attendanceStartedAt: null,
         attendanceRewardClaimed: false,
         isTransitioning: false,
@@ -103,6 +116,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     const { currentLecture, isInClassroom, mySeatNumber } = get();
     if (!isInClassroom || !currentLecture || mySeatNumber === seatNumber) return;
     // Moving to another seat keeps your attendance running; only standing up ends it.
+    clearHandTimers();
     set({ mySeatNumber: seatNumber, isHandRaised: false });
     // Seated players join the lecture's multiplayer room so classmates see them in their seat.
     networkManager.enterLectureRoom(currentLecture.id, seatNumber);
@@ -117,6 +131,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
     if (seat) Object.assign(hallSpot, { x: seat.pos[0], z: seat.pos[2] + CHAIR_OFFSET_Z + 0.62, ry: Math.PI });
     // Still inside the hall, just not seated.
     if (currentLecture) networkManager.enterLectureRoom(currentLecture.id, 0);
+    clearHandTimers();
     set({ mySeatNumber: null, isHandRaised: false });
   },
 
@@ -148,7 +163,9 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
         get().claimAttendanceAllowance(useAuthStore.getState().user?.id || 'local');
       }
     }
-    set({ attendanceMode: null, attendanceStartedAt: null, isHandRaised: false });
+    // Tell classmates too, not just this screen.
+    get().lowerHand();
+    set({ attendanceMode: null, attendanceStartedAt: null });
   },
 
   leaveLecture: () => {
@@ -175,6 +192,7 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
       mySeatNumber: null,
       attendanceMode: null,
       isHandRaised: false,
+      lecturerAside: null,
       attendanceStartedAt: null,
       attendanceRewardClaimed: false,
       classroomState: null,
@@ -184,13 +202,42 @@ export const useLectureStore = create<LectureStoreState>()((set, get) => ({
   },
 
   toggleRaiseHand: () => {
-    const nextState = !get().isHandRaised;
-    set({ isHandRaised: nextState });
-
-    const lecture = get().currentLecture;
-    if (lecture) {
-      networkManager.sendHandRaise(lecture.id, nextState);
+    const { isHandRaised, currentLecture: lecture, attendanceMode } = get();
+    if (isHandRaised) {
+      get().lowerHand();
+      return;
     }
+    if (!lecture || !attendanceMode) return;
+    clearHandTimers();
+    set({ isHandRaised: true });
+    networkManager.sendHandRaise(lecture.id, true);
+
+    // The lecturer notices and calls on you, in the speech bubble and in the class chat.
+    handTimers.push(setTimeout(() => {
+      if (!get().isHandRaised || get().currentLecture?.id !== lecture.id) return;
+      const me = useAuthStore.getState().user?.username;
+      const text = `Yes${me ? `, @${me}` : ''}? Go ahead, type your question in the class chat.`;
+      set({ lecturerAside: { text, until: Date.now() + LECTURER_ASIDE_MS } });
+      useSocialStore.getState().addMessage({
+        id: `lecturer-${Date.now()}`,
+        senderId: 'classroom',
+        senderName: lecture.lecturerName,
+        college: lecture.college,
+        text: `${lecture.lecturerName}: ${text}`,
+        timestamp: Date.now(),
+        isSystem: true,
+        lectureId: lecture.id,
+      });
+    }, HAND_ACK_MS));
+    handTimers.push(setTimeout(() => get().lowerHand(), HAND_AUTO_LOWER_MS));
+  },
+
+  lowerHand: () => {
+    clearHandTimers();
+    const { isHandRaised, currentLecture } = get();
+    if (!isHandRaised) return;
+    set({ isHandRaised: false });
+    if (currentLecture) networkManager.sendHandRaise(currentLecture.id, false);
   },
 
   syncClassroomState: (state: ClassroomState) => {

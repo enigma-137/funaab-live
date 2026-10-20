@@ -36,7 +36,17 @@ async function main() {
     assert.equal(got(b)[0].text, 'Good afternoon class');
     assert.equal(got(a).length, 1, 'sender sees their own message');
     assert.equal(got(outside).length, 0, 'students outside the class do not');
-    console.log('CLASSROOM CHAT PASSED: real classmates listed in seats, client/Worker message types match, classmates receive, outsiders do not.');
+
+    // Raising a hand: the client's field reaches the Worker, classmates are told, and the client
+    // posts it in class chat (it used to only flip a seat label nobody could see on a phone).
+    await a.packet({ type: 'lecture_hand_raise', lectureId: 'fst-101', raised: true, isHandRaised: true });
+    const hands = (s: Socket) => s.messages.filter((m) => m.type === 'lecture_hand_raise_sync');
+    assert(hands(b).some((m) => m.isHandRaised === true), 'classmate told the hand is up');
+    assert.equal(hands(outside).length, 0, 'students outside the class are not');
+    assert.match(client, /case 'lecture_hand_raise_sync'[\s\S]{0,2000}raised their hand in class/, 'classmates see it in class chat');
+    const store = fs.readFileSync('src/stores/lectureStore.ts', 'utf8');
+    assert.match(store, /toggleRaiseHand[\s\S]{0,1500}Go ahead, type your question/, 'the lecturer calls on you');
+    console.log('CLASSROOM CHAT PASSED: real classmates listed in seats, client/Worker message types match, classmates receive, outsiders do not, raised hands reach the class.');
   } finally { (globalThis as any).WebSocket = oldWS; (globalThis as any).setInterval = oldInterval; }
 }
 main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });

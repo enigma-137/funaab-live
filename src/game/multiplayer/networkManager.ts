@@ -482,7 +482,20 @@ class NetworkManager {
           if (!students[data.connectionId] || !Array.isArray(data.pos)) break;
           students[data.connectionId] = { ...students[data.connectionId], pos: data.pos, moving: !!data.moving };
         } else if (students[data.connectionId]) {
-          students[data.connectionId] = { ...students[data.connectionId], handRaised: !!data.isHandRaised };
+          const student = students[data.connectionId];
+          students[data.connectionId] = { ...student, handRaised: !!data.isHandRaised };
+          if (data.isHandRaised && !student.handRaised) {
+            socialStore.addMessage({
+              id: `msg-hand-${Date.now()}`,
+              senderId: 'classroom',
+              senderName: student.username,
+              college: student.college,
+              text: `✋ @${student.username} raised their hand in class.`,
+              timestamp: Date.now(),
+              isSystem: true,
+              lectureId: state.lectureId,
+            });
+          }
         }
         lecture.syncClassroomState({ ...state, activeStudents: students });
         break;
