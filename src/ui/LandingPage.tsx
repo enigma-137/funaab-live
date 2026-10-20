@@ -13,6 +13,8 @@ export const LandingPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Off by default: students choose to get event emails.
+  const [emailOptIn, setEmailOptIn] = useState(false);
 
   // Custom College Dropdown State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -50,7 +52,7 @@ export const LandingPage: React.FC = () => {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSignUp) {
-      await signup(username, college, email, password);
+      await signup(username, college, email, password, emailOptIn);
     } else {
       await login(email, password);
     }
@@ -412,6 +414,25 @@ export const LandingPage: React.FC = () => {
                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5EAE6] text-[#17211B] placeholder-[#9EA8A1] focus:outline-none focus:border-[#008751] focus:ring-2 focus:ring-[#008751]/15 text-sm font-medium transition"
                   />
                 </div>
+
+                {isSignUp && (
+                  <>
+                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-[#17211B] leading-relaxed">
+                      <input
+                        type="checkbox"
+                        checked={emailOptIn}
+                        onChange={(e) => setEmailOptIn(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 shrink-0 accent-[#008751]"
+                      />
+                      <span>
+                        Email me about College League results, Game Nights and campus events. You can unsubscribe at any time.
+                      </span>
+                    </label>
+                    <p className="text-[11px] text-[#66736B] leading-relaxed">
+                      We use your email to run your account. We never sell it or share it with advertisers.
+                    </p>
+                  </>
+                )}
 
                 <button
                   type="submit"
