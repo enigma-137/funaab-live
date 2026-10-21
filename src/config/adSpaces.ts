@@ -156,3 +156,25 @@ export function cleanListing(row: any): AdListing | null {
     link_url: isHttps(row.link_url) ? row.link_url : null,
   };
 }
+
+/** Renting a spot from the game (migration 052): free during launch, an admin approves every flyer. */
+export const AD_RENT = {
+  DAYS: 7,
+  BUCKET: 'ad-flyers',
+  FLYER_MAX_BYTES: 5 * 1024 * 1024,
+  FLYER_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+  MAX_PENDING: 3,
+};
+/** "Gate Plaza · Shop 2" or "Car Park billboard". */
+export const adSpotLabel = (id: string) => {
+  const spot = adSpotById(id);
+  if (!spot) return id;
+  return spot.kind === 'billboard' ? `${spot.name} billboard` : `${GATE_PLAZA.name} · ${spot.name}`;
+};
+/** Accepts "wa.me/…" or "https://…"; returns an https link, or null when it isn't one. */
+export function normalizeAdLink(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+  return isHttps(withScheme) && withScheme.length <= 300 ? withScheme : null;
+}
