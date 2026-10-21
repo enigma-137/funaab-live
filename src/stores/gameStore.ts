@@ -66,6 +66,9 @@ interface GameState {
   clearNavigationDestination: () => void;
   openMap: () => void;
   closeMap: () => void;
+  /** Open the campus map centred on an online student (a friend from the Friends list). */
+  mapFocusPlayerId: string | null;
+  findOnMap: (playerId: string) => void;
 
   // Active interaction prompt & Modals
   nearbyInteractable: InteractableZone | null;
@@ -518,8 +521,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setNavigationDestination: (navigationDestination) => set({ navigationDestination }),
   clearNavigationDestination: () => set({ navigationDestination: null }),
-  openMap: () => set({ activeModal: 'campus_map' }),
-  closeMap: () => set((state) => ({ activeModal: state.activeModal === 'campus_map' ? null : state.activeModal })),
+  openMap: () => set({ activeModal: 'campus_map', mapFocusPlayerId: null }),
+  closeMap: () => set((state) => ({ activeModal: state.activeModal === 'campus_map' ? null : state.activeModal, mapFocusPlayerId: null })),
+  mapFocusPlayerId: null,
+  findOnMap: (playerId) => set({ activeModal: 'campus_map', mapFocusPlayerId: playerId }),
 
   // Both are re-evaluated every frame; keep the old reference when nothing meaningful changed.
   setNearbyInteractable: (nearbyInteractable) =>
