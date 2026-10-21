@@ -1,17 +1,27 @@
 import { openHostel } from './HostelLife';
 import { Sheet } from './Sheet';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { useGameStore } from '../stores/gameStore';
 import { X, Send, Landmark, History, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+
+type BankTab = 'overview' | 'transfer' | 'history';
+let startTab: BankTab = 'overview';
+/** Open the wallet straight on its History tab. */
+export function openWalletHistory() {
+  startTab = 'history';
+  useGameStore.getState().setActiveModal('bank');
+}
 
 export const BankModal: React.FC = () => {
   const { user } = useAuthStore();
   const { balance, transactions, transferMoney } = useWalletStore();
   const { setActiveModal } = useGameStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'transfer' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<BankTab>(() => { const t = startTab; startTab = 'overview'; return t; });
+  // Hustles, bets and transfers are paid on the server: fetch the latest entries each time the wallet opens.
+  useEffect(() => { if (user) void useWalletStore.getState().loadWallet(user.id); }, [user?.id]);
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
@@ -69,7 +79,7 @@ export const BankModal: React.FC = () => {
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
-            Ledger ({transactions.length})
+            History ({transactions.length})
           </button>
         </div>
 
@@ -116,7 +126,7 @@ export const BankModal: React.FC = () => {
                   onClick={() => setActiveTab('history')}
                   className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
                 >
-                  <History className="w-4 h-4" /> View Ledger
+                  <History className="w-4 h-4" /> View History
                 </button>
               </div>
             </div>
@@ -190,7 +200,7 @@ export const BankModal: React.FC = () => {
                       <div>
                         <div className="font-semibold text-white">{tx.description}</div>
                         <div className="text-[10px] text-slate-500">
-                          {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(tx.createdAt).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
                     </div>

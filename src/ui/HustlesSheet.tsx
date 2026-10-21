@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Sheet } from './Sheet';
+import { openWalletHistory } from './BankModal';
 import { useGameStore } from '../stores/gameStore';
 import { useHostelStore } from '../stores/hostelStore';
 import { useHustleStore } from '../stores/hustleStore';
@@ -18,6 +19,17 @@ function go(name: string, position: [number, number, number], icon: string) {
   g.setActiveModal(null);
 }
 
+/** Room shop sales are paid while you play: check the shelf every minute (only while there's stock). */
+export function RoomShopSales() {
+  useEffect(() => {
+    const settle = () => void useHustleStore.getState().settleShop();
+    settle();
+    const t = setInterval(settle, 60000);
+    return () => clearInterval(t);
+  }, []);
+  return null;
+}
+
 /** All the hustles in one place. The server decides pay; this only shows where/when you can earn. */
 export function HustlesSheet() {
   const setModal = useGameStore((s) => s.setActiveModal);
@@ -28,7 +40,7 @@ export function HustlesSheet() {
   const [now, setNow] = useState(Date.now());
   const [kind, setKind] = useState<ErrandKind>('buy_food');
   const [reward, setReward] = useState(2000);
-  useEffect(() => { void h.loadShop(); void h.loadErrands(); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { void h.loadShop().then(h.settleShop); void h.loadErrands(); const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   const onCampus = room === 'world:funaab:main';
   const atKiosk = onCampus && near(myPosition, POS_KIOSK.serviceSpot, POS_KIOSK.radius);
@@ -36,7 +48,6 @@ export function HustlesSheet() {
   const atFarm = onCampus && inFarm(myPosition);
   const posLeft = h.posEndsAt ? Math.max(0, Math.ceil((h.posEndsAt - now) / 1000)) : null;
   const shop = h.shop;
-  const ready = shop?.items.reduce((n, i) => n + i.ready, 0) ?? 0;
   const busy = (k: string) => h.busy === k;
 
   // Tutoring is a short quiz view inside the same sheet.
@@ -75,7 +86,7 @@ export function HustlesSheet() {
 
         <section className="hustle-card" aria-label="Room shop">
           <h3>🛒 Room shop <small>sells while you’re away</small></h3>
-          <p className="academic-note">Buy stock from Iya Ibeji. One item sells every {SHOP_RULES.MINUTES_PER_SALE} minutes, up to {SHOP_RULES.MAX_SALES_PER_DAY} sales a day.</p>
+          <p className="academic-note">Buy stock from Iya Ibeji and it sells itself: one item every {SHOP_RULES.MINUTES_PER_SALE} minutes, up to {SHOP_RULES.MAX_SALES_PER_DAY} sales a day. The money goes straight to your wallet.</p>
           <ul className="hustle-shop">
             {shop?.items.map((i) => (
               <li key={i.item}>
@@ -84,9 +95,10 @@ export function HustlesSheet() {
               </li>
             ))}
           </ul>
-          <button className="academic-primary academic-wide" disabled={!!h.busy || ready === 0} onClick={h.collect}>
-            {ready > 0 ? `Collect ${ready} sale${ready === 1 ? '' : 's'}` : 'No sales to collect yet'}
-          </button>
+          <div className="hustle-shop-sales">
+            <span>{shop?.sales_today ? `Sold today: ${shop.sales_today} · ${naira(shop.earned_today)}` : 'No sales yet today'}</span>
+            <button className="hustle-btn is-quiet" onClick={openWalletHistory}>Wallet history</button>
+          </div>
         </section>
 
         <section className="hustle-card" aria-label="FPY farm shift">
