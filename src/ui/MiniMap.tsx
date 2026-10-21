@@ -3,6 +3,9 @@ import { useGameStore } from '../stores/gameStore';
 import { useInputStore } from '../stores/inputStore';
 import { campusLocations } from '../config/campusLocations';
 import { roadEdges, roadNodes } from '../config/kekeRoutes';
+import { useAuthStore } from '../stores/authStore';
+import { useSocialStore } from '../stores/socialStore';
+import { mapPeople } from '../config/mapPeople';
 
 const SIZE = 116; // CSS px
 const RANGE = 62; // metres from the student to the edge of the map
@@ -24,7 +27,7 @@ export function MiniMap({ onOpen }: { onOpen: () => void }) {
     if (!ctx) return;
     const half = SIZE / 2, scale = half / RANGE;
     const draw = () => {
-      const { myPosition, navigationDestination } = useGameStore.getState();
+      const { myPosition, navigationDestination, players } = useGameStore.getState();
       const yaw = useInputStore.getState().cameraYaw;
       const cos = Math.cos(yaw), sin = Math.sin(yaw);
       // World offset from the student → map pixels, with the camera's forward direction at the top.
@@ -51,6 +54,14 @@ export function MiniMap({ onOpen }: { onOpen: () => void }) {
         if (!w || Math.hypot(l.position[0] - myPosition[0], l.position[2] - myPosition[2]) > RANGE + 30) continue;
         const corners = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([cx, cz]) => to(l.position[0] + cx, l.position[2] + cz));
         ctx.beginPath(); corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill();
+      }
+      // Other students nearby: friends green, everyone else yellow.
+      const { friends, blockedUserIds } = useSocialStore.getState();
+      for (const p of mapPeople(players, useAuthStore.getState().user, friends, blockedUserIds)) {
+        if (Math.hypot(p.x - myPosition[0], p.z - myPosition[2]) > RANGE) continue;
+        const [x, y] = to(p.x, p.z);
+        ctx.fillStyle = p.friend ? '#22c55e' : '#facc15'; ctx.strokeStyle = p.friend ? '#ffffff' : '#422006'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, p.friend ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
       // Destination: a pin, or an arrow on the rim when it's off the map.
       if (navigationDestination) {

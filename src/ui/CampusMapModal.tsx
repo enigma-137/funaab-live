@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useGameStore, NavigationDestination } from '../stores/gameStore';
+import { useAuthStore } from '../stores/authStore';
+import { useSocialStore } from '../stores/socialStore';
+import { mapPeople, type MapPerson } from '../config/mapPeople';
 import {
   getAllCampusLocations,
   CampusRegistryLocation,
@@ -20,6 +23,7 @@ import {
   Layers,
   Search,
   Check,
+  Users,
 } from 'lucide-react';
 
 // Short names for the zoomed-out whole-campus view; null hides the label (the pin stays).
@@ -43,7 +47,17 @@ export const CampusMapModal: React.FC = () => {
     setNavigationDestination,
     clearNavigationDestination,
     closeMap,
+    mapFocusPlayerId,
   } = useGameStore();
+  const players = useGameStore((s) => s.players);
+  const me = useAuthStore((s) => s.user);
+  const friends = useSocialStore((s) => s.friends);
+  const blockedUserIds = useSocialStore((s) => s.blockedUserIds);
+  const people = useMemo(() => mapPeople(players, me, friends, blockedUserIds), [players, me, friends, blockedUserIds]);
+  const onlineFriends = people.filter((p) => p.friend).length;
+  const [friendsOnly, setFriendsOnly] = useState(false);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const selectedPerson = people.find((p) => p.id === selectedPersonId) ?? null;
 
   const [zoom, setZoom] = useState(1.0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -121,15 +135,18 @@ export const CampusMapModal: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [closeMap]);
 
+  // Pan so a map point sits in the middle of the viewport. Pan is in screen pixels: one map unit
+  // is the fitted scale times the zoom (on a phone the whole campus is shrunk to fit).
+  const centreOn = useCallback((svgX: number, svgY: number, z: number) => {
+    const el = containerRef.current;
+    const fit = el ? Math.min(el.clientWidth / SVG_WIDTH, el.clientHeight / SVG_HEIGHT) || 1 : 1;
+    setPan({ x: (SVG_WIDTH / 2 - svgX) * fit * z, y: (SVG_HEIGHT / 2 - svgY) * fit * z });
+  }, []);
+
   // Center on player smoothly
   const handleRecenterOnPlayer = useCallback(() => {
-    const { svgX, svgY } = playerSvg;
-    // Target SVG center is (500, 440)
-    setPan({
-      x: (SVG_WIDTH / 2 - svgX) * zoom,
-      y: (SVG_HEIGHT / 2 - svgY) * zoom,
-    });
-  }, [playerSvg, zoom]);
+    centreOn(playerSvg.svgX, playerSvg.svgY, zoom);
+  }, [centreOn, playerSvg, zoom]);
 
   // Center on a specific location
   const handleLocateLocation = useCallback(
@@ -137,14 +154,35 @@ export const CampusMapModal: React.FC = () => {
       const { svgX, svgY } = worldToSvgCoords(loc.position[0], loc.position[2], SVG_WIDTH, SVG_HEIGHT, MARGIN);
       const targetZoom = Math.max(zoom, 1.4);
       setZoom(targetZoom);
-      setPan({
-        x: (SVG_WIDTH / 2 - svgX) * targetZoom,
-        y: (SVG_HEIGHT / 2 - svgY) * targetZoom,
-      });
+      centreOn(svgX, svgY, targetZoom);
       setSelectedLocation(loc);
     },
-    [zoom]
+    [centreOn, zoom]
   );
+
+  // Opened from "Find on map": centre on that student once.
+  const focusedOnce = useRef(false);
+  useEffect(() => {
+    if (focusedOnce.current || !mapFocusPlayerId) return;
+    const person = people.find((p) => p.id === mapFocusPlayerId);
+    if (!person) return;
+    focusedOnce.current = true;
+    const { svgX, svgY } = worldToSvgCoords(person.x, person.z, SVG_WIDTH, SVG_HEIGHT, MARGIN);
+    const targetZoom = 1.6;
+    setZoom(targetZoom);
+    centreOn(svgX, svgY, targetZoom);
+    setSelectedLocation(null);
+    setSelectedPersonId(person.id);
+  }, [centreOn, mapFocusPlayerId, people]);
+
+  const selectPerson = (person: MapPerson) => {
+    setSelectedLocation(null);
+    setSelectedPersonId(person.id);
+  };
+  const walkToPerson = (person: MapPerson) => {
+    setNavigationDestination({ id: `player:${person.id}`, name: `@${person.username}`, shortName: `@${person.username}`, position: [person.x, 0, person.z], icon: '🧑🏾‍🎓' });
+    closeMap();
+  };
 
   // Reset map view
   const handleResetView = () => {
@@ -626,6 +664,38 @@ export const CampusMapModal: React.FC = () => {
                 })}
               </g>
 
+              {/* ─── D2. OTHER STUDENTS ON CAMPUS (friends named, everyone else a dot) ─── */}
+              <g>
+                {people.filter((p) => p.friend || !friendsOnly).map((p) => {
+                  const { svgX, svgY } = worldToSvgCoords(p.x, p.z, SVG_WIDTH, SVG_HEIGHT, MARGIN);
+                  const isSelected = p.id === selectedPersonId;
+                  return (
+                    <g
+                      key={p.id}
+                      transform={`translate(${svgX}, ${svgY}) scale(${markerScale})`}
+                      className="cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); selectPerson(p); }}
+                      role="button"
+                      aria-label={p.friend ? `Friend @${p.username}` : `Student @${p.username}`}
+                    >
+                      {/* Larger invisible hit area for fingers */}
+                      <circle r="12" fill="transparent" />
+                      {p.friend ? (
+                        <>
+                          <circle r={isSelected ? 8 : 6.5} fill="#22c55e" stroke="#ffffff" strokeWidth="2" />
+                          <g transform="translate(0, -15)">
+                            <rect x={-(p.username.length * 3.1 + 9)} y="-7" width={p.username.length * 6.2 + 18} height="14" rx="7" fill="#14532d" stroke="#4ade80" strokeWidth="1" />
+                            <text textAnchor="middle" dominantBaseline="central" fontSize="8" fontWeight="800" fill="#dcfce7" className="font-['Outfit']">@{p.username}</text>
+                          </g>
+                        </>
+                      ) : (
+                        <circle r={isSelected ? 6 : 4} fill="#facc15" stroke="#422006" strokeWidth="1.2" opacity="0.95" />
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+
               {/* ─── E. LIVE PLAYER POSITION MARKER ─── */}
               <g transform={`translate(${playerSvg.svgX}, ${playerSvg.svgY}) scale(${markerScale})`}>
                 {/* Radar Waves */}
@@ -656,6 +726,29 @@ export const CampusMapModal: React.FC = () => {
                 </g>
               </g>
             </svg>
+          </div>
+
+          {/* ─── 2b. WHO'S ON CAMPUS (TOP LEFT) ─── */}
+          <div className="absolute top-3 left-3 z-10 pointer-events-auto flex flex-col items-start gap-1.5">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-700 text-[11px] font-bold text-slate-200 shadow-lg flex items-center gap-2">
+              <Users className="w-3.5 h-3.5 text-emerald-300" />
+              <span>{people.length} on campus</span>
+              {onlineFriends > 0 && <span className="text-emerald-300">· {onlineFriends} {onlineFriends === 1 ? 'friend' : 'friends'}</span>}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setFriendsOnly((v) => !v)}
+                aria-pressed={friendsOnly}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border shadow-lg transition ${friendsOnly ? 'bg-emerald-500 text-black border-emerald-300' : 'bg-slate-950/85 text-slate-300 border-slate-700'}`}
+              >
+                {friendsOnly ? 'Friends only' : 'Everyone'}
+              </button>
+              <span className="px-2 py-1 rounded-xl bg-slate-950/70 border border-slate-800 text-[10px] text-slate-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#22c55e]" />Friend
+                <span className="w-2 h-2 rounded-full bg-[#facc15] ml-1" />Student
+              </span>
+            </div>
           </div>
 
           {/* ─── 3. FLOATING MAP NAVIGATION TOOLS (TOP RIGHT) ─── */}
@@ -707,6 +800,47 @@ export const CampusMapModal: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* ─── 5a. BOTTOM DRAWER: SELECTED STUDENT ─── */}
+        {selectedPerson && !selectedLocation && (
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-[#061914] via-[#0b241d] to-[#061914] border-t-2 border-emerald-500/40 shrink-0 shadow-2xl">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-lg font-['Outfit'] shrink-0 ${selectedPerson.friend ? 'bg-emerald-900 text-emerald-200 border border-emerald-400/60' : 'bg-yellow-900/60 text-yellow-200 border border-yellow-400/50'}`}>
+                  {selectedPerson.username[0]?.toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-black text-white font-['Outfit'] truncate">@{selectedPerson.username}</h3>
+                  <p className="text-[11px] text-slate-300">
+                    {selectedPerson.college} · {selectedPerson.friend ? 'Friend' : 'Student'} · 🚶 <strong className="text-emerald-400 font-mono">{Math.round(Math.hypot(myPosition[0] - selectedPerson.x, myPosition[2] - selectedPerson.z))}m</strong> away
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => useSocialStore.getState().openDm({ id: selectedPerson.id, username: selectedPerson.username, college: selectedPerson.college })}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-100 border border-indigo-500/40 text-xs font-bold transition"
+                >
+                  Message
+                </button>
+                <button
+                  onClick={() => walkToPerson(selectedPerson)}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black transition flex items-center gap-1.5 shadow-lg"
+                >
+                  <Navigation className="w-4 h-4" />
+                  <span>Walk there</span>
+                </button>
+                <button
+                  onClick={() => setSelectedPersonId(null)}
+                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white text-xs transition"
+                  title="Dismiss"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ─── 5. BOTTOM DRAWER: SELECTED LOCATION CARD ─── */}
         {selectedLocation && (

@@ -4,12 +4,12 @@ import { useAuthStore } from '../stores/authStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useSocialStore, listConversations } from '../stores/socialStore';
 import { useGameStore } from '../stores/gameStore';
-import { X, Users, UserMinus, UserPlus, Send, MessageSquare } from 'lucide-react';
+import { X, Users, UserMinus, UserPlus, Send, MessageSquare, MapPin } from 'lucide-react';
 
 export const FriendsModal: React.FC = () => {
   const { user } = useAuthStore();
   const { friends, removeFriend, addFriend } = useSocialStore();
-  const { players, setActiveModal, setSendMoneyRecipient } = useGameStore();
+  const { players, setActiveModal, setSendMoneyRecipient, findOnMap } = useGameStore();
   // Students you've chatted with lately who aren't friends yet, so they're easy to find and add.
   const dmParts = useSocialStore(useShallow((s) => ({ directMessages: s.directMessages, dmPartners: s.dmPartners, unreadDmsByPartner: s.unreadDmsByPartner })));
   const recent = React.useMemo(
@@ -41,9 +41,9 @@ export const FriendsModal: React.FC = () => {
               return (
                 <div
                   key={friend.id}
-                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition"
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="relative">
                       <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center font-bold text-emerald-300 text-sm font-['Outfit']">
                         {friend.username[0]?.toUpperCase()}
@@ -74,7 +74,17 @@ export const FriendsModal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+                    {onlinePlayer && !onlinePlayer.currentLectureId && (
+                      <button
+                        onClick={() => findOnMap(onlinePlayer.id)}
+                        className="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition"
+                        title="Find on the campus map"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        Find
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         useSocialStore.getState().openDm({
