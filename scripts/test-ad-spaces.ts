@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { readFileSync } from 'node:fs';
-import { AD_SPOTS, BILLBOARDS, BILLBOARD_SIZE, GATE_PLAZA, PLAZA_SHOPS, PLAZA_STAIRS, cleanListing, gatePlazaColliders, plazaColumnX, plazaToWorld } from '../src/config/adSpaces';
+import { AD_SPOTS, BILLBOARDS, BILLBOARD_SIZE, GATE_PLAZA, PLAZA_SHOPS, PLAZA_STAIRS, adSpotLabel, cleanListing, gatePlazaColliders, normalizeAdLink, plazaColumnX, plazaToWorld } from '../src/config/adSpaces';
 import { roadBounds, campusObstacles, publicRoute } from '../src/config/kekeRoutes';
 import { pedestrianPaths } from '../src/config/campusWorld';
 import worldData from '../src/config/campusWorld';
@@ -22,6 +22,18 @@ assert.equal(new Set(AD_SPOTS.map((s) => s.id)).size, AD_SPOTS.length, 'Unique s
 const sql = readFileSync(new URL('../supabase/migrations/051_ad_spaces.sql', import.meta.url), 'utf8');
 const sqlIds = [...sql.match(/spot_id in \(([^)]*)\)/)![1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
 assert.deepEqual(sqlIds, AD_SPOTS.map((s) => s.id).sort(), 'ad_listings spot ids mirror src/config/adSpaces.ts');
+const requestSql = readFileSync(new URL('../supabase/migrations/052_ad_requests.sql', import.meta.url), 'utf8');
+const requestIds = [...requestSql.match(/spot_id in \(([^)]*)\)/)![1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+assert.deepEqual(requestIds, sqlIds, 'ad_requests spot ids mirror ad_listings');
+
+// Links typed into the rent form: "wa.me/…" gets https://, anything not https is refused.
+assert.equal(normalizeAdLink('wa.me/message/IR27O7WGD3HAG1'), 'https://wa.me/message/IR27O7WGD3HAG1');
+assert.equal(normalizeAdLink('  https://cttaste.com/LeahBellas  '), 'https://cttaste.com/LeahBellas');
+assert.equal(normalizeAdLink(''), null);
+assert.equal(normalizeAdLink('http://insecure.example'), null);
+assert.equal(normalizeAdLink('javascript:alert(1)'), null);
+assert.equal(adSpotLabel('billboard-car-park'), 'Car Park billboard');
+assert.equal(adSpotLabel('plaza-shop-2'), 'Gate Plaza · Shop 2');
 
 // The plaza block (its stair and walkway posts included) stays off roads, paths and other buildings.
 const [w, d] = GATE_PLAZA.footprint;

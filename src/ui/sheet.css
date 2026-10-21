@@ -241,3 +241,16 @@ body:has(.classroom-hud.is-seated) .campus-joystick{display:none}
 .ad-directory{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ad-directory button{width:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:8px 10px;white-space:normal;text-align:left}
 .ad-directory button span{color:#94a3b8;font-weight:600;font-size:11px}
+.ad-form{display:flex;flex-direction:column;gap:10px}
+.ad-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:800;color:#e2e8f0}
+.ad-form label small{color:#94a3b8;font-weight:600}
+.ad-form input:not([type=file]),.ad-form textarea{width:100%;box-sizing:border-box;min-height:40px;padding:8px 10px;border-radius:10px;background:#020617;border:1px solid #334155;color:#f1f5f9;font:inherit;font-size:13px;font-weight:500}
+.ad-form textarea{resize:none}
+.ad-form input[type=file]{font-size:12px;color:#cbd5e1;font-weight:600}
+.ad-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.ad-note{margin:0;padding:8px 10px;border-radius:10px;background:#3b1d0a;color:#fed7aa;font-size:12.5px;font-weight:700}
+.ad-note.is-info{background:#052e2b;color:#a7f3d0}
+.ad-admin-listings{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ad-admin-listings li{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:10px;background:#0f172a;border:1px solid #1e293b}
+.ad-admin-listings li>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ad-admin-listings span{color:#94a3b8;font-size:11px;font-weight:600}
