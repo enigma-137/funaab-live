@@ -8,6 +8,9 @@ import { getActiveLectureForTime } from '../config/lectureSchedule';
 import { campusZoneName } from '../config/campusLocations';
 import { useDailyPlanStore } from '../stores/dailyPlanStore';
 import { useLevelStore, levelLabel } from '../stores/levelStore';
+import { useSocialStore } from '../stores/socialStore';
+import { useShallow } from 'zustand/react/shallow';
+import { mapPeople } from '../config/mapPeople';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -18,7 +21,25 @@ function placeName(roomId: string, owner: string | null, x: number, z: number) {
   return campusZoneName(x, z);
 }
 
-/** Always-visible "where am I in my day" line: Lagos time, place, next class, wallet change. */
+/** Who's on campus right now (same count as the campus map), so nobody has to open the map to check. */
+function OnlineNow() {
+  const user = useAuthStore((s) => s.user);
+  const friendList = useSocialStore((s) => s.friends);
+  const blocked = useSocialStore((s) => s.blockedUserIds);
+  // Counts only, so students walking about don't re-render this.
+  const [count, friends] = useGameStore(useShallow((s) => {
+    const people = mapPeople(s.players, user, friendList, blocked);
+    return [people.length, people.filter((p) => p.friend).length];
+  }));
+  const label = `${count} on campus${friends ? `, ${friends} ${friends === 1 ? 'friend' : 'friends'}` : ''}. Open the campus map.`;
+  return (
+    <button type="button" className={`campus-status-online${friends ? ' has-friends' : ''}`} onClick={() => useGameStore.getState().setActiveModal('campus_map')} aria-label={label} title={label}>
+      <i aria-hidden className={count ? 'is-on' : ''} />{count} online
+    </button>
+  );
+}
+
+/** Always-visible "where am I in my day" line: Lagos time, place, who's online, next class, wallet change. */
 export function StatusStrip() {
   const user = useAuthStore((s) => s.user);
   const activeModal = useGameStore((s) => s.activeModal);
@@ -64,6 +85,8 @@ export function StatusStrip() {
       <span className="campus-status-time">{DAYS[t.dayOfWeek]} {String(t.hour).padStart(2, '0')}:{String(t.minute).padStart(2, '0')}</span>
       <span className="campus-status-dot" aria-hidden>·</span>
       <span className="campus-status-place">{placeName(roomId, owner, x, z)}</span>
+      <span className="campus-status-dot" aria-hidden>·</span>
+      <OnlineNow />
       <span className="campus-status-dot" aria-hidden>·</span>
       <span className={`campus-status-class${lecture.status === 'active' ? ' is-live' : ''}`}>🎓 {lectureText}</span>
       {streak > 0 && <span className="campus-status-streak" title={`${streak}-day streak`}>🔥{streak}</span>}

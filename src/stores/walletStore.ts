@@ -56,7 +56,8 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
           .from('wallet_transactions')
           .select('*')
           .eq('user_id', userId)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100);
 
         const { data: inv } = await supabase
           .from('inventory')

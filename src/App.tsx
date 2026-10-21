@@ -54,7 +54,7 @@ import { SugSheet } from './ui/SugSheet';
 import { ControlsSheet } from './ui/ControlsSheet';
 import { NoticeBanner } from './ui/NoticeBanner';
 import { Joystick } from './ui/Joystick';
-import { HustlesSheet } from './ui/HustlesSheet';
+import { HustlesSheet, RoomShopSales } from './ui/HustlesSheet';
 import { EstateSheet, EstateWatcher } from './ui/EstateSheet';
 import { CarWatcher, FuelSheet, GarageSheet } from './ui/CarSheets';
 import { GroupChatSheet, GroupWatcher, NewGroupSheet } from './ui/GroupChat';
@@ -219,6 +219,7 @@ export const App: React.FC = () => {
       {activeModal === 'group_chat' && <GroupChatSheet />}
       {activeModal === 'new_group' && <NewGroupSheet />}
       {!isInClassroom && <BackgroundGate />}
+      <RoomShopSales />
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}

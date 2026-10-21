@@ -33,6 +33,17 @@ const other = (id: string, username: string, position: number[], extra = {}) =>
       });
       await page.waitForFunction(async () => Object.keys((await import('/src/stores/gameStore.ts' as any)).useGameStore.getState().players).length >= 3);
 
+      // The home screen says who's online without opening the map (same count as the map).
+      const online = page.getByRole('button', { name: '2 on campus, 1 friend. Open the campus map.' });
+      await online.waitFor();
+      assert.equal((await online.innerText()).trim(), '2 online');
+      const ob = await online.boundingBox();
+      assert(ob!.x >= 0 && ob!.x + ob!.width <= width, `online count fits on screen (${JSON.stringify(ob)})`);
+      await page.screenshot({ path: path.join(out, `map-${width}-online-count.png`) });
+      await online.click();
+      await page.getByText('2 on campus').waitFor();
+      await page.evaluate(async () => (await import('/src/stores/gameStore.ts' as any)).useGameStore.getState().setActiveModal(null));
+
       // Friends list → Find on map.
       await page.evaluate(async () => (await import('/src/stores/gameStore.ts' as any)).useGameStore.getState().setActiveModal('friends'));
       const find = page.getByRole('button', { name: /Find/ });
