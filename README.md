@@ -9,6 +9,8 @@ This is an independent community project and is not affiliated with or endorsed 
 - 3D campus world with college buildings, hostels, shops, sports and social spaces.
 - Multiplayer avatars, campus chat, friends, and player safety tools.
 - Campus keke routes, jobs, a virtual wallet, inventory, and activities.
+- A campus gym (₦1,000 pass, mornings 6–10 AM and evenings 4–9 PM) with treadmills, dumbbells, squats, a punching bag and skipping.
+- Home kitchen: cook foodstuff from Iya Ibeji and serve it on your table for visiting friends.
 - Supabase-backed authentication and persistence when configured.
 - A local WebSocket server for development and a Cloudflare Worker/Durable Objects backend for deployment.
 

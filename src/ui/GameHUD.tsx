@@ -2,6 +2,8 @@ import {useHostelStore} from '../stores/hostelStore';
 import { useCarStore } from '../stores/carStore';
 import { useRaceStore } from '../stores/raceStore';
 import { RaceHud } from './RaceHud';
+import { useGymStore } from '../stores/gymStore';
+import { gymStation, isWorkoutPose, type GymStationId } from '../config/gym';
 import { usePartyStore } from '../stores/partyStore';
 import type { ArcadeTableId } from '../config/partyHall';
 import { useHustleStore } from '../stores/hustleStore';
@@ -260,6 +262,12 @@ export const GameHUD: React.FC = () => {
         case 'party':
           setActiveModal('party');
           break;
+        case 'gym':
+          setActiveModal('gym');
+          break;
+        case 'gym_station':
+          void useGymStore.getState().start(nearbyInteractable.targetId as GymStationId);
+          break;
         case 'arcade':
           usePartyStore.getState().openTable(nearbyInteractable.targetId as ArcadeTableId);
           break;
@@ -327,6 +335,10 @@ export const GameHUD: React.FC = () => {
         return nearbyInteractable.targetId === 'estate' ? '🏡' : '🏘️';
       case 'party':
         return '🪩';
+      case 'gym':
+        return '🏋️';
+      case 'gym_station':
+        return gymStation(nearbyInteractable.targetId)?.icon ?? '🏋️';
       case 'arcade':
         return nearbyInteractable.targetId === 'pool' ? '🎱' : '⭕';
       case 'atm':
@@ -347,7 +359,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : isWorkoutPose(seatedAt.animation) ? 'Stop workout' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     if (nearbyInteractable) {
@@ -392,7 +404,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : isWorkoutPose(seatedAt.animation) ? 'Stop workout' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     switch (nearbyInteractable?.type) {
@@ -432,6 +444,10 @@ export const GameHUD: React.FC = () => {
         return nearbyInteractable.targetId === 'estate' ? 'Estate' : 'Lodge';
       case 'party':
         return 'Arena';
+      case 'gym':
+        return 'Gym';
+      case 'gym_station':
+        return 'Work out';
       case 'arcade':
         return nearbyInteractable.targetId === 'pool' ? 'Pool' : 'Tic-tac-toe';
       case 'food_vendor':

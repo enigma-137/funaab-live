@@ -1,3 +1,4 @@
+import type { WorkoutPose } from '../../config/gym';
 import { renderedKekes } from '../vehicles/kekePresentation';
 import { useCarStore } from '../../stores/carStore';
 import { useRaceStore } from '../../stores/raceStore';
@@ -109,7 +110,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const characterControllerRef = useRef<any>(null);
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const currentRotation = useRef<number>(0);
-  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'dance'>('idle');
+  const currentAnimation = useRef<'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'dance' | WorkoutPose>('idle');
   const stuckTimerRef = useRef<number>(0);
   const lastSeatExit = useRef<[number, number, number] | null>(null);
   // Camera rig state: damped follow point + lightly smoothed orbit angles.
@@ -778,6 +779,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       lodge: 1,
       party: 1,
       arcade: 1,
+      gym: 1,
+      gym_station: 1,
       car: 0,
     };
 

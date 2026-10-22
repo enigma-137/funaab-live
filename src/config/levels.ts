@@ -29,6 +29,8 @@ export const XP_RULES = {
     party_ticket: 10,
     arcade_match: 4,
     arcade_win: 8,
+    gym_pass: 10,
+    gym_set: 6,
   },
 } as const;
 export type XpSource = keyof typeof XP_RULES.SOURCES;
@@ -62,5 +64,6 @@ export const XP_GUIDE: Array<{ icon: string; label: string; xp: string }> = [
   { icon: '⚽', label: 'Win a penalty shootout', xp: `${XP_RULES.SOURCES.football_win}` },
   { icon: '🏀', label: 'Court 1v1 or 2v2 rally (more for a win)', xp: `${XP_RULES.SOURCES.court_match}–${XP_RULES.SOURCES.rally_win}` },
   { icon: '🪩', label: 'Night out at The Arena; tic-tac-toe or pool there', xp: `${XP_RULES.SOURCES.arcade_match}–${XP_RULES.SOURCES.party_ticket}` },
+  { icon: '🏋️', label: 'Gym session; each finished set at a station', xp: `${XP_RULES.SOURCES.gym_set}–${XP_RULES.SOURCES.gym_pass}` },
   { icon: '🛺', label: 'Ride a keke, buy food, furnish your room', xp: `${XP_RULES.SOURCES.food_purchase}–${XP_RULES.SOURCES.hostel_expand}` },
 ];

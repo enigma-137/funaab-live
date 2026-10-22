@@ -51,6 +51,7 @@ import { POS_KIOSK, PHOTO_SPOTS, PHOTO_RULES, ERRAND_RULES } from '../src/config
 import { FARM_SHIFT, FARM_STEPS, inFarm } from '../src/config/fpyFarm';
 import { BOT_HELP, BROADCAST, announcementActive, cleanAnnouncement, isBotAdmin, parseBotCommand, type Announcement } from '../src/config/broadcast';
 import { ARCADE_TABLES, PARTY_HALL, TTT_TABLES, inPartyHall, partyNight, partyOpen } from '../src/config/partyHall';
+import { GYM, STATION_REACH, WORKOUT_POSES, gymPassKey, gymStation, inGym } from '../src/config/gym';
 import { createTtt, tttCreate, tttJoin, tttLeave, tttMove, tttRematch, tttExpire, isTttError, type TttState } from '../src/config/ticTacToe';
 import { createPool, poolCreate, poolJoin, poolLeave, poolRematch, poolShoot, poolExpire, isPoolError, poolPlayers, type PoolState } from '../src/config/pool';
 // Cloudflare Worker + Durable Objects Multiplayer Engine for FUNAAB Life (Production Public Beta)
@@ -104,6 +105,9 @@ interface SessionData {
   farmShift?: { ref: string; startedAt: number; step: number; lastAt: number };
   /** The Arena: the night (Lagos date) this student holds a ticket for. */
   partyNight?: string;
+  /** Gym: the session pass this student holds ("2026-10-22-am"), and the set in progress. */
+  gymPass?: string;
+  gymSet?: { station: string; startedAt: number };
   /** Campus Grand Prix: the lap this Worker is watching (its own clock, the trusted position, the car). */
   race?: { goAt: number; gate: number; car: string; x: number; z: number };
 }
@@ -969,7 +973,7 @@ export class WorldRoomDO {
     return this.football;
   }
   /** XP for results only the Worker knows (migration 031); the database caps and dedupes. */
-  private awardXp(userId: string, source: 'court_match' | 'court_win' | 'rally_match' | 'rally_win' | 'arcade_match' | 'arcade_win', ref: string) {
+  private awardXp(userId: string, source: 'court_match' | 'court_win' | 'rally_match' | 'rally_win' | 'arcade_match' | 'arcade_win' | 'gym_set', ref: string) {
     if (!this.env.SUPABASE_SERVICE_ROLE_KEY) return;
     void this.dbRpc('xp_event_trusted', { p_user: userId, p_source: source, p_ref: ref }).then((xp) => {
       if (!xp) return;
@@ -1298,6 +1302,46 @@ export class WorldRoomDO {
     session.partyNight = String(r?.night ?? partyNight(Date.now()));
     if (r?.charged) this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
     return { night: session.partyNight, charged: !!r?.charged };
+  }
+  /**
+   * The gym: `enter` sells (or re-checks) this session's pass at the door; `start` begins a set at a
+   * station (pass holders inside, at the station); `finish` counts it once GYM.setSeconds have passed,
+   * with XP once per station per session (the database dedupes on the reference).
+   */
+  private async gymCommand(session: SessionData, data: any) {
+    const op = String(data.op);
+    const now = Date.now();
+    const pass = gymPassKey(now);
+    if (session.room !== 'world:funaab:main') throw new Error('The gym is on campus.');
+    if (!pass) throw new Error('The gym is closed. It opens 6–10 AM and 4–9 PM.');
+    this.advanceTrustedPosition(session);
+    const pos = session.trustedPosition;
+    if (op === 'enter') {
+      const atDoor = !!pos && Math.hypot(pos[0] - GYM.entrance[0], pos[2] - GYM.entrance[2]) <= 6;
+      if (!atDoor && !inGym(pos)) throw new Error('Go to the gym door to get in.');
+      const r = await this.dbRpc('gym_entry_trusted', { p_user: session.id });
+      session.gymPass = String(r?.pass ?? pass);
+      if (r?.charged) this.sendToConnections([session.connectionId], JSON.stringify({ type: 'wallet_refresh' }));
+      return { pass: session.gymPass, charged: !!r?.charged };
+    }
+    const station = gymStation(data.station);
+    if (!station) throw new Error('Unknown station');
+    if (op === 'stop') { if (session.gymSet?.station === station.id) session.gymSet = undefined; return { ok: true }; }
+    if (session.gymPass !== pass) throw new Error('Show your gym pass at the door first.');
+    if (!inGym(pos) || !pos || Math.hypot(pos[0] - station.spot[0], pos[2] - station.spot[2]) > STATION_REACH) throw new Error(`Walk up to the ${station.label.toLowerCase()}.`);
+    if (op === 'start') {
+      session.gymSet = { station: station.id, startedAt: now };
+      return { station: station.id, startedAt: now };
+    }
+    if (op === 'finish') {
+      const set = session.gymSet;
+      if (!set || set.station !== station.id) throw new Error('Start a set first.');
+      if (now - set.startedAt < (GYM.setSeconds - 2) * 1000) throw new Error('Keep going, the set is not done yet.');
+      session.gymSet = undefined;
+      this.awardXp(session.id, 'gym_set', `${pass}:${station.id}`);
+      return { station: station.id, done: true };
+    }
+    throw new Error('Unknown gym action');
   }
   /** Tic-tac-toe and pool: only ticket holders inside The Arena, at the table, while it is open. */
   private arcadeCommand(session: SessionData, data: any) {
@@ -1719,6 +1763,13 @@ export class WorldRoomDO {
             catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
             break;
           }
+          case 'gym': {
+            const current = this.sessions.get(webSocket);
+            if (!current) return;
+            try { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, result: await this.gymCommand(current, data) })); }
+            catch (e) { webSocket.send(JSON.stringify({ type: 'action_result', requestId: data.requestId, error: (e as Error).message })); }
+            break;
+          }
           case 'party':
           case 'arcade': {
             const current = this.sessions.get(webSocket);
@@ -1785,7 +1836,7 @@ export class WorldRoomDO {
                 && [...this.psMatches.values()].some((m) => m.status !== 'finished' && m.stationId === 'ps5-station-1' && (m.hostId === current.id || m.guestId === current.id)))
                 this.endPSMatchesFor(current.id, 'walked_away');
               const rotation = typeof data.rotation === 'number' && Number.isFinite(data.rotation) ? data.rotation : player.rotation;
-              const animation = ['idle','walk','run','sit','sleep','pray','wave','cheer','dance'].includes(data.animation)?data.animation:'idle';
+              const animation = ['idle','walk','run','sit','sleep','pray','wave','cheer','dance',...WORKOUT_POSES].includes(data.animation)?data.animation:'idle';
               const car = isCarId(data.car) ? data.car : null;
               const carPaint = car && isPaintId(data.carPaint) ? data.carPaint : null;
               if (player.position.some((value, index) => value !== data.position[index])

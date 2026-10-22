@@ -18,6 +18,7 @@ import {
 } from "../config/roomPlacement";
 import { roomSizeOf } from "../config/roomMakeover";
 import { hostelItem } from "../config/hostelShop";
+import { COOK_MS, dishFor } from "../config/homeKitchen";
 export interface Placement extends RoomTransform {}
 /** The current room's size (standard until the owner pays to expand it). */
 export const roomSizeNow = () => { const r = useHostelStore.getState().snapshot?.room; return roomSizeOf(r?.room_size, r?.style); };
@@ -34,6 +35,9 @@ export interface RoomSnapshot {
     room_size?: string;
     rested_at: string | null;
     security_at: string | null;
+    /** Home kitchen (migration 054): what stands on the Small Table. */
+    served_food?: string | null;
+    served_drink?: string | null;
   };
   placements: Placement[];
   owner_name: string;
@@ -60,7 +64,11 @@ interface HostelState {
   busy: boolean;
   error: string | null;
   notice: string | null;
-  panel: "home" | "shop" | "decorate" | "makeover" | "debts" | "invites";
+  panel: "home" | "shop" | "decorate" | "makeover" | "kitchen" | "debts" | "invites";
+  /** A dish on the stove: the pot steams until it's served. */
+  cooking: { item: string; until: number } | null;
+  /** Cook/serve your foodstuff on the table, or eat/drink what's served in the room you're in. */
+  kitchen: (action: "serve" | "eat", data: { item?: string; slot?: "food" | "drink" }) => Promise<boolean>;
   preview: EditPlacement | null;
   transition: string | null;
   selected: string | null;
@@ -100,6 +108,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
   error: null,
   notice: null,
   panel: "home",
+  cooking: null,
   preview: null,
   transition: null,
   selected: null,
@@ -228,6 +237,41 @@ export const useHostelStore = create<HostelState>((set, get) => ({
     if (useAuthStore.getState().user && (!get().owner || get().owner === owner))
       set({ snapshot: data });
     return true;
+  },
+  kitchen: async (action, data) => {
+    if (get().busy) return false;
+    const user = useAuthStore.getState().user, owner = get().owner;
+    if (!user || !owner) return false;
+    const dish = dishFor(data.item);
+    set({ busy: true, error: null });
+    try {
+      // Cooked dishes steam on the stove for a moment first, so you see it being made.
+      if (action === "serve" && dish?.cooked) {
+        set({ cooking: { item: dish.item, until: Date.now() + COOK_MS } });
+        await new Promise((r) => setTimeout(r, COOK_MS));
+      }
+      const { data: result, error } = await supabase.rpc("hostel_kitchen", {
+        p_action: action,
+        p_data: { ...data, owner },
+        p_request: crypto.randomUUID(),
+      });
+      if (error) throw error;
+      if (result?.snapshot && get().owner === owner) set({ snapshot: result.snapshot });
+      if (action === "serve") await useWalletStore.getState().loadWallet(user.id);
+      networkManager.roomChanged();
+      set({
+        notice:
+          action === "serve"
+            ? `${dish?.name || "Food"} is served on the table. Enjoy!`
+            : data.slot === "drink" ? "Ahh, cold water. Refreshing." : "Chop life! The plate is clean.",
+      });
+      return true;
+    } catch (e) {
+      set({ error: (e as Error).message || "Could not reach the kitchen. Try again." });
+      return false;
+    } finally {
+      set({ busy: false, cooking: null });
+    }
   },
   command: async (action, data = {}) => {
     if (get().busy) return false;

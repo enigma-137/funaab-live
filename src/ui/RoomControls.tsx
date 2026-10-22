@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useGameStore } from "../stores/gameStore";
 import { hostelItem } from "../config/hostelItems";
 import { candidate, placementError, position } from "../config/roomPlacement";
+import { HEAT_SOURCES, SERVING_TABLE, dishFor } from "../config/homeKitchen";
 export function RoomControls() {
   const s = useHostelStore(),
     user = useAuthStore((x) => x.user),
@@ -154,6 +155,17 @@ export function RoomControls() {
                 ? "Start Gen"
                 : "Turn On"}
           </button>
+        )}
+        {near && id === SERVING_TABLE &&
+          [dishFor(s.snapshot?.room.served_food), dishFor(s.snapshot?.room.served_drink)].map((d) =>
+            d && (
+              <button key={d.slot} disabled={s.busy} onClick={() => void s.kitchen("eat", { slot: d.slot })}>
+                {d.slot === "drink" ? "Drink" : "Eat"} {d.name}
+              </button>
+            ),
+          )}
+        {mine && (id === SERVING_TABLE || HEAT_SOURCES.includes(id)) && (
+          <button onClick={() => { useHostelStore.setState({ panel: "kitchen", error: null, notice: null }); useGameStore.getState().setActiveModal("hostel"); }}>{s.cooking ? "Cooking…" : "Cook"}</button>
         )}
         {near && id === "hostel_ps_console" && (
           <button

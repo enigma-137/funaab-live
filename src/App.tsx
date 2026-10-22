@@ -48,6 +48,7 @@ import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
 import { FirstDayGuide } from './ui/FirstDayGuide';
 import { LevelSheet } from './ui/LevelSheet';
+import { GymSheet, GymWorkoutBar } from './ui/GymSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
 import { SugSheet } from './ui/SugSheet';
@@ -204,6 +205,8 @@ export const App: React.FC = () => {
       {activeModal === 'volleyball_rally' && <RallyPanel />}
       {activeModal === 'level' && <LevelSheet />}
       {activeModal === 'party' && <PartySheet />}
+      {activeModal === 'gym' && <GymSheet />}
+      <GymWorkoutBar />
       {activeModal === 'arcade' && <ArcadeSheet />}
       {activeModal === 'sug' && <SugSheet />}
       {activeModal === 'controls' && <ControlsSheet />}

@@ -20,6 +20,8 @@ export type SupabaseMocks = Record<string, (body: any, method: string) => unknow
 export async function openStudent(browser: any, student: Student, opts: {
   width: number; height: number; errors: string[];
   socket?: (ws: any) => void; supabase?: SupabaseMocks; journey?: Record<string, unknown>;
+  /** Start the page's clock at this time (ms); it keeps running from there. */
+  at?: number;
 }) {
   const { width, height, errors } = opts;
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 650, isMobile: width < 650 });
@@ -42,6 +44,7 @@ export async function openStudent(browser: any, student: Student, opts: {
   await context.route('https://api.traceiq.run/**', (r: any) => r.abort());
   await context.route('**/campus-summary', (r: any) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ studentsOnline: 2, popular: [] }) }));
   const page = await context.newPage();
+  if (opts.at) await page.clock.install({ time: opts.at });
   page.on('pageerror', (e: Error) => { errors.push(`${student.username}: ${e.message}`); console.error('PAGE ERROR', e.message); });
   await page.routeWebSocket(/:8787\//, opts.socket ?? ((ws: any) => ws.onMessage((raw: string) => {
     const p = JSON.parse(raw);
@@ -49,7 +52,7 @@ export async function openStudent(browser: any, student: Student, opts: {
     if (p.type === 'ping') ws.send(JSON.stringify({ type: 'pong', t: p.t }));
   })));
   const session = {
-    access_token: 'fake.test.signature', refresh_token: 'fake-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer',
+    access_token: 'fake.test.signature', refresh_token: 'fake-refresh', expires_at: Math.floor((opts.at ?? Date.now()) / 1000) + 3600, expires_in: 3600, token_type: 'bearer',
     user: { id: student.id, email: 'test@example.invalid', app_metadata: { provider: 'email' }, user_metadata: { username: student.username, college: student.college }, aud: 'authenticated', created_at: new Date().toISOString() },
   };
   await context.addInitScript((session: any) => {

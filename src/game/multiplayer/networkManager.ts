@@ -150,7 +150,7 @@ class NetworkManager {
     });
   }
   /** Court games (basketball free throws, volleyball serves): aim + power out, verdict back. */
-  public court(game:'basketball'|'volleyball'|'volleyball_rally'|'party'|'arcade',op:string,payload:Record<string,unknown>={}):Promise<any>{
+  public court(game:'basketball'|'volleyball'|'volleyball_rally'|'party'|'arcade'|'gym',op:string,payload:Record<string,unknown>={}):Promise<any>{
     if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error(`Reconnect to campus to play ${game}`));
     const requestId=crypto.randomUUID();
     return new Promise((resolve,reject)=>{

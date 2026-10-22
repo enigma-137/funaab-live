@@ -104,6 +104,10 @@ export const campusMaterials = {
   maize: mat("#c9b23a"),
   arenaWall: mat("#2b1d3f"),
   arenaFloor: mat("#17131d"),
+  // FUNAAB Fitness Gym (config/gym.ts).
+  gymWall: mat("#e9e4da"),
+  gymFloor: mat("#2b2f36", 0.95),
+  gymTrim: mat("#ea580c", 0.6),
   felt: mat("#15803d"),
   // Central Mosque and Chapel of Grace (config/worship.ts).
   mosqueCream: mat("#efe3c2"),

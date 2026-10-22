@@ -45,6 +45,8 @@ const layout: Record<string, [number, number, number, number, number, number, nu
   'fpy-farm': [127,40, 0,0, 113,40, 55,40],
   // The Arena (night party & arcade) east of COLERM; door in the west wall at z=-45.
   'party-hall': [128,-45, 22,24, 113,-45, 55,-45],
+  // FUNAAB Fitness Gym south of The Arena (towards COLCOMS); door in the west wall at z=-78.
+  'gym': [128,-78, 20,16, 113,-78, 55,-78],
   'colbios': [30,-105, 18,12, 30,-95, 30,-85],
   'library': [20,0, 24,16, 20,12, 0,12],
   'colphys': [-35,-108, 22,14, -35,-97, -35,-85],
@@ -64,7 +66,9 @@ const additions = ['colvet','colanim','colplant','colcoms','collend','colamrud',
   id, name: id==='library' ? "'Nimbe Adedipe Library" : collegeCatalogue.find(c=>c.code===id.toUpperCase())!.name,
   type:id==='library'?'academic':'college',description:id==='library'?'Library lobby and student meeting point.':'College forecourt and campus meeting point.',
 }));
-const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, colamrud: -Math.PI / 2, 'party-hall': -Math.PI / 2 };
+const facings: Record<string, number> = { colanim: Math.PI / 2, colplant: -Math.PI / 2, colamrud: -Math.PI / 2, 'party-hall': -Math.PI / 2, gym: -Math.PI / 2 };
+const gym = [{ id: 'gym', name: 'FUNAAB Fitness Gym', type: 'sports',
+  description: 'Campus gym: treadmills, dumbbells, a squat rack, a punching bag and skipping. Open 6–10 AM and 4–9 PM; ₦1,000 pass per session.' }];
 const arena = [{ id: 'party-hall', name: 'The Arena · Night Party & Arcade', type: 'landmark',
   description: 'Night party hall and arcade: dance floor, bar, tic-tac-toe and pool. Open 7 PM–5 AM, ₦5,000 gate fee for the night.' }];
 const farm = [{ id: 'fpy-farm', name: 'FPY Teaching & Research Farm', type: 'landmark',
@@ -79,10 +83,10 @@ const worship = [
   { id: 'mosque', name: 'Central Mosque', type: 'landmark', description: "Campus mosque with rows of prayer mats. Open on Fridays for Jumu'ah (Nigeria time)." },
   { id: 'chapel', name: 'Chapel of Grace', type: 'landmark', description: 'Campus chapel with wooden pews and a pulpit. Open on Sundays (Nigeria time).' },
 ];
-export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena,...worship].map(l=>{
+export const campusLocations: CampusLocation[] = [...base.locations,...additions,...sportsSide,...farm,...arena,...gym,...worship].map(l=>{
   const [x,z,w,d,ex,ez,sx,sz]=layout[l.id];
   const id=l.id==='colerm-colplant'?'colerm':l.id;
-  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id==='mosque'?'Mosque':id==='chapel'?'Chapel':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
+  const shortName=id==='senate-library'?'Senate / Admin':id==='library'?'Library':id==='hostel-social'?'HOSTEL':id==='acad'?'Acad':id==='sports-courts'?'Courts':id==='fpy-farm'?'FPY Farm':id==='party-hall'?'The Arena':id==='gym'?'Gym':id==='mosque'?'Mosque':id==='chapel'?'Chapel':id.startsWith('col')&&!id.includes('hall')?id.toUpperCase():l.name.replace('FUNAAB ','');
   return {...l,id,name:id==='colerm'?collegeCatalogue.find(c=>c.code==='COLERM')!.name:id==='senate-library'?'Senate / Administration':l.name,
     shortName,position:[x,0,z],entrance:[ex,0,ez],kekeStop:[sx,0,sz],footprint:[w,d],
     interactionRadius:5,mapVisible:id!=='ceremonial-road',assetKey:'campus_'+id.replaceAll('-','_'),facing:facings[id]??0};

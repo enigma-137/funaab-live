@@ -13,6 +13,11 @@ function show(kind: HeldKind, ms: number) {
   networkManager.holdItem(kind, ms);
 }
 
+/** Carry something for `ms` (0 puts it away): a job's package, for this student and everyone nearby. */
+export function carryItem(kind: HeldKind, ms: number) {
+  show(kind, ms);
+}
+
 /**
  * Show a just-bought item, for this student and everyone nearby: in hand for a minute, or on the
  * table in front of them when they're seated at Floral World or the Buka.
