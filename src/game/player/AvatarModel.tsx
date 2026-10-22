@@ -1,3 +1,4 @@
+import type { WorkoutPose } from '../../config/gym';
 import React, { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -19,7 +20,7 @@ interface AvatarModelProps {
   username: string;
   college: string;
   avatarConfig: AvatarConfig;
-  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance';
+  animation?: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance' | WorkoutPose;
   isLocal?: boolean;
   held?: HeldItem | null;
   /** Table spot when seated at a restaurant (see diningSpotAt). */

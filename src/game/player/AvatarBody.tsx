@@ -51,7 +51,8 @@ export const AvatarBody = memo(
       skirtLow = useRef<THREE.Group>(null);
     const ankles = useRef<(THREE.Group | null)[]>([]);
     const heldRef = useRef<THREE.Group>(null),
-      servedRef = useRef<THREE.Group>(null);
+      servedRef = useRef<THREE.Group>(null),
+      ropeRef = useRef<THREE.Group>(null);
     const arms = useRef<(THREE.Group | null)[]>([]),
       elbows = useRef<(THREE.Group | null)[]>([]);
     const motion = useRef({
@@ -154,8 +155,17 @@ export const AvatarBody = memo(
       }
       // Dance groove at ~112 BPM: 1.87 beats a second.
       const groove = t * Math.PI * 1.87;
+      // Gym workouts (config/gym.ts): jog runs on the spot; the rest are cycles on the clock.
+      const jog = animation === "jog",
+        lift = animation === "lift",
+        squat = animation === "squat",
+        punch = animation === "punch",
+        skip = animation === "skip";
+      const squatDepth = squat ? 0.5 - 0.5 * Math.cos(t * 2.4) : 0;
+      const hop = skip ? Math.abs(Math.sin(t * 7)) : 0;
+      if (ropeRef.current) ropeRef.current.rotation.x = t * 7;
       const requested = animation === "walk" || animation === "run";
-      const speed = trackMovement
+      const speed = jog ? 7 : trackMovement
         ? distance < 1 && dt > 0
           ? distance / dt
           : 0
@@ -184,7 +194,7 @@ export const AvatarBody = memo(
         if (leg) {
           leg.rotation.x = THREE.MathUtils.damp(
             leg.rotation.x,
-            seated ? -Math.PI / 2 : pray ? -bow : sign * swing,
+            seated ? -Math.PI / 2 : pray ? -bow : squat ? -1.25 * squatDepth : sign * swing,
             pray ? 30 : 16,
             delta,
           );
@@ -196,6 +206,8 @@ export const AvatarBody = memo(
               ? 0.18 + Math.abs(Math.sin(groove + (i ? Math.PI / 2 : 0))) * 0.22
               : seated || pray
               ? Math.PI / 2
+              : squat ? 1.7 * squatDepth
+              : skip ? 0.35 * (1 - hop)
               : Math.max(0, -Math.sin(s.phase + (i ? Math.PI : 0))) *
                   0.48 *
                   s.blend,
@@ -210,21 +222,27 @@ export const AvatarBody = memo(
             s.blend;
           if (ankles.current[i])
             ankles.current[i]!.rotation.x = -leg.rotation.x - knee.rotation.x;
-          leg.position.y = seated || pray
+          leg.position.y = seated || pray || squat
             ? 0.91
             : 0.41 * Math.cos(leg.rotation.x) +
               0.5 * Math.cos(leg.rotation.x + knee.rotation.x) +
               lift;
         }
+        // Punches alternate: a quick jab out, then back to guard.
+        const jabPhase = (t * 1.6 + i * 0.5) % 1,
+          jab = punch && jabPhase < 0.3 ? Math.sin((jabPhase / 0.3) * Math.PI) : 0;
+        const curl = lift ? 0.5 - 0.5 * Math.cos(t * 3.2 + i * Math.PI) : 0;
         if (arm) {
           arm.rotation.x = THREE.MathUtils.damp(
             arm.rotation.x,
+            lift ? -0.12 : squat ? -0.2 - 1.25 * squatDepth : punch ? -1.05 - jab * 0.45 : skip ? -0.3 : jog ? -sign * swing * 0.9 :
             carry ? -0.45 : dance ? -0.5 - Math.sin(groove + i * Math.PI) * 0.35 : seated ? -0.35 : pray ? -0.25 - bow * 0.75 : -sign * swing * 0.72,
             12,
             delta,
           );
           arm.rotation.z = THREE.MathUtils.damp(
             arm.rotation.z,
+            punch ? sign * 0.3 : skip ? sign * 0.5 :
             i === 1 && animation === "wave"
               ? -2.4 + Math.sin(t * 5) * 0.15
               : animation === "cheer"
@@ -237,7 +255,11 @@ export const AvatarBody = memo(
           );
         }
         if (elbow)
-          elbow.rotation.x = carry
+          elbow.rotation.x = lift ? -(0.25 + curl * 1.9)
+            : punch ? THREE.MathUtils.damp(elbow.rotation.x, -1.9 + jab * 1.75, 20, delta)
+            : skip ? -0.7
+            : jog ? -1.2
+            : carry
             ? THREE.MathUtils.damp(elbow.rotation.x, -1.15, 12, delta)
             : dance ? -0.9 - Math.sin(groove * 2) * 0.25
             : -0.12 - s.blend * 0.18;
@@ -263,7 +285,7 @@ export const AvatarBody = memo(
       }
       if (chest.current) {
         chest.current.scale.y = 1 + Math.sin(t * 1.7) * 0.003 * (1 - s.blend);
-        chest.current.rotation.y = dance ? Math.sin(groove * 0.5) * 0.28 : swing * 0.065;
+        chest.current.rotation.y = dance ? Math.sin(groove * 0.5) * 0.28 : punch ? ((t * 1.6) % 1 < 0.5 ? -1 : 1) * 0.15 : swing * 0.065;
       }
       if (head.current) {
         head.current.rotation.y = Math.sin(t * 0.65) * 0.04 * (1 - s.blend);
@@ -273,8 +295,10 @@ export const AvatarBody = memo(
       const HIP = 0.91, KNEEL = 0.45;
       root.current.position.y = THREE.MathUtils.damp(
         root.current.position.y,
-        seated ? -0.39 : pray ? KNEEL - HIP * Math.cos(bow) : dance ? -0.04 - Math.abs(Math.sin(groove)) * 0.05 : 0,
-        pray ? 30 : 14,
+        seated ? -0.39 : pray ? KNEEL - HIP * Math.cos(bow) : dance ? -0.04 - Math.abs(Math.sin(groove)) * 0.05
+          : squat ? 0.41 * Math.cos(1.25 * squatDepth) + 0.5 * Math.cos(0.45 * squatDepth) - HIP
+          : skip ? hop * 0.13 : 0,
+        pray || squat || skip ? 30 : 14,
         delta,
       );
       root.current.position.z = THREE.MathUtils.damp(root.current.position.z, pray ? -HIP * Math.sin(bow) : 0, pray ? 30 : 14, delta);
@@ -306,6 +330,12 @@ export const AvatarBody = memo(
         </group>
       )}
       <group ref={root} dispose={null}>
+        {animation === "skip" && (
+          // Skipping rope: swings from the hands, over the head and under the feet.
+          <group ref={ropeRef} position={[0, 1.0, 0]}>
+            <mesh rotation={[0, 0, Math.PI]} scale={[0.75, 2, 1]}><torusGeometry args={[0.5, 0.006, 4, 24, Math.PI]} /><meshStandardMaterial color="#ef4444" roughness={0.6} /></mesh>
+          </group>
+        )}
         <group ref={far} visible={false}>
           {part("torso", "top")}
           {part("farSkin", "skin")}
@@ -371,6 +401,12 @@ export const AvatarBody = memo(
                 >
                   {part("forearm", armMaterial)}
                   {part("hand", "skin")}
+                  {animation === "lift" && (
+                    <group position={[0, -0.31, 0.02]}>
+                      <mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.015, 0.015, 0.22, 8]} /><meshStandardMaterial color="#9ca3af" metalness={0.6} roughness={0.35} /></mesh>
+                      {[-0.09, 0.09].map((x) => <mesh key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.045, 0.045, 0.05, 12]} /><meshStandardMaterial color="#1f2937" roughness={0.5} /></mesh>)}
+                    </group>
+                  )}
                   {i === 1 && <WristWatch kind={a.watch} />}
                   {i === 1 && <HandBag kind={a.bag} />}
                   {i === 0 && held && (

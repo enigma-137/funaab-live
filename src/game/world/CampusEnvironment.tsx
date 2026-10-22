@@ -1,6 +1,7 @@
 import { CampusArchitecture } from './CampusArchitecture';
 import { FpyFarm } from './FpyFarm';
 import { PartyHall } from './PartyHall';
+import { GymHall } from './GymHall';
 import { WorshipPlaces } from './WorshipPlaces';
 import { EstateGrounds } from './EstateGrounds';
 import { CarWorld } from '../vehicles/CarWorld';
@@ -61,7 +62,7 @@ export const CampusEnvironment: React.FC = () => {
       </RigidBody>
       <CampusRoads/><CampusExpansion/><KekeRouteDebug/>
       <OutsideGateRoad/><CampusBetShop/><FoodVendorStalls/>
-      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><WorshipPlaces/><EstateGrounds/><CarWorld/><HustleProps/><LeagueBanner/><AdSpaces/>
+      <SportsPenaltyArea/><SportsCourts/><AcadBuilding/><CampusDirectionPosts/><LoveGarden/><FpyFarm/><PartyHall/><GymHall/><WorshipPlaces/><EstateGrounds/><CarWorld/><HustleProps/><LeagueBanner/><AdSpaces/>
       <group position={locationPosition('main-gate')}>
         <RigidBody type="fixed" colliders={false}>
           {/* Central Pyramid Monument (White/Grey Textured Granite) */}
