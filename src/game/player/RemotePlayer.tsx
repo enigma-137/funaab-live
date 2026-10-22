@@ -73,7 +73,7 @@ export const RemotePlayer: React.FC<RemotePlayerProps> = ({ player }) => {
       onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
     >
-      {player.car && !insideThisCar && <CarBody id={player.car} />}
+      {player.car && !insideThisCar && <CarBody id={player.car} paint={player.carPaint} />}
       <group position={player.car ? DRIVER_SEAT : [0, 0, 0]}>
         <AvatarModel
           userId={player.id}

@@ -51,6 +51,8 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
 
   const apps: App[] = [
     { id: 'profile', label: 'Profile', glyph: 'profile', colors: ['#34d399', '#059669'], open: onProfile },
+    // Iya Ibeji's shop (beds, AC, laptops, watches, bags, cars…) without opening Hostel first.
+    { id: 'shop', label: 'Shop', glyph: 'shop', colors: ['#f472b6', '#db2777'], open: () => openHostel('shop') },
     { id: 'earn', label: 'Earn', glyph: 'earn', colors: ['#4ade80', '#15803d'], open: () => setModal('earn') },
     { id: 'goals', label: 'Goals', glyph: 'goals', colors: ['#fbbf24', '#d97706'], open: () => { setModal(null); useDailyPlanStore.getState().setOpen(true); }, badge: goalsReady },
     { id: 'hostel', label: 'Hostel', glyph: 'hostel', colors: ['#fb923c', '#c2410c'], open: () => openHostel() },

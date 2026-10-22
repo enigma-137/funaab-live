@@ -1,5 +1,9 @@
 import {useHostelStore} from '../stores/hostelStore';
 import { useCarStore } from '../stores/carStore';
+import { useRaceStore } from '../stores/raceStore';
+import { RaceHud } from './RaceHud';
+import { useGymStore } from '../stores/gymStore';
+import { gymStation, isWorkoutPose, type GymStationId } from '../config/gym';
 import { usePartyStore } from '../stores/partyStore';
 import type { ArcadeTableId } from '../config/partyHall';
 import { useHustleStore } from '../stores/hustleStore';
@@ -15,6 +19,8 @@ import { useSocialStore } from '../stores/socialStore';
 import { useJobStore } from '../stores/jobStore';
 import { useInputStore } from '../stores/inputStore';
 import { networkManager } from '../game/multiplayer/networkManager';
+import { KOROPE_ID } from '../config/kekeRoutes';
+import { seatsOf } from '../config/kekeSimulation';
 import {
   Users,
   Backpack,
@@ -49,6 +55,7 @@ import { toast } from '../stores/toastStore';
 import { NavigationArrow } from './NavigationArrow';
 import { MiniMap } from './MiniMap';
 import { locationById } from '../config/campusLocations';
+import { useAdStore } from '../stores/adStore';
 
 const FLORAL = locationById('floral-world').position;
 const atFloralTable = (p: [number, number, number]) => Math.hypot(p[0] - FLORAL[0], p[2] - FLORAL[2]) < 6;
@@ -191,6 +198,7 @@ export const GameHUD: React.FC = () => {
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') window.dispatchEvent(new Event('car-park'));
       else if (t === 'unride') useCarStore.getState().leaveRide();
       else if (t.startsWith('ride:')) useCarStore.getState().askRide(t.slice(5));
@@ -230,6 +238,9 @@ export const GameHUD: React.FC = () => {
         case 'campus_bet':
           setActiveModal('campus_bet');
           break;
+        case 'ad_space':
+          useAdStore.getState().open(nearbyInteractable.targetId ?? nearbyInteractable.id);
+          break;
         case 'food_vendor':
           openFoodVendor(nearbyInteractable.targetId);
           break;
@@ -250,6 +261,12 @@ export const GameHUD: React.FC = () => {
           break;
         case 'party':
           setActiveModal('party');
+          break;
+        case 'gym':
+          setActiveModal('gym');
+          break;
+        case 'gym_station':
+          void useGymStore.getState().start(nearbyInteractable.targetId as GymStationId);
           break;
         case 'arcade':
           usePartyStore.getState().openTable(nearbyInteractable.targetId as ArcadeTableId);
@@ -294,7 +311,7 @@ export const GameHUD: React.FC = () => {
   const getInteractIcon = () => {
     if (isRidingKeke) return '🛺';
     if (!nearbyInteractable) return '💬';
-    if (nearbyInteractable.type === 'car') return nearbyInteractable.targetId === 'fuel' ? '⛽' : '🚗';
+    if (nearbyInteractable.type === 'car') return nearbyInteractable.targetId === 'fuel' ? '⛽' : nearbyInteractable.targetId === 'race' ? '🏁' : '🚗';
     switch (nearbyInteractable.type) {
       case 'library': return '📚';
       case 'keke_stop':
@@ -318,6 +335,10 @@ export const GameHUD: React.FC = () => {
         return nearbyInteractable.targetId === 'estate' ? '🏡' : '🏘️';
       case 'party':
         return '🪩';
+      case 'gym':
+        return '🏋️';
+      case 'gym_station':
+        return gymStation(nearbyInteractable.targetId)?.icon ?? '🏋️';
       case 'arcade':
         return nearbyInteractable.targetId === 'pool' ? '🎱' : '⭕';
       case 'atm':
@@ -328,6 +349,8 @@ export const GameHUD: React.FC = () => {
         return '🎮';
       case 'campus_bet':
         return '🔴';
+      case 'ad_space':
+        return nearbyInteractable.targetId?.startsWith('billboard') ? '🪧' : '🏬';
       case 'food_vendor':
         return nearVendor?.icon ?? '🍲';
       default:
@@ -336,7 +359,7 @@ export const GameHUD: React.FC = () => {
   };
 
   const getInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : isWorkoutPose(seatedAt.animation) ? 'Stop workout' : 'Stand Up';
     if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     if (nearbyInteractable) {
@@ -381,8 +404,8 @@ export const GameHUD: React.FC = () => {
   };
 
   const getTouchInteractLabel = () => {
-    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : 'Stand Up';
-    if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'In transit';
+    if (seatedAt) return seatedAt.animation === 'sleep' ? 'Get Up' : seatedAt.animation === 'pray' ? 'Finish prayer' : isWorkoutPose(seatedAt.animation) ? 'Stop workout' : 'Stand Up';
+    if (isRidingKeke) return activeKeke?.isStopped?'Exit Keke':'Exit at next stop';
     if (nearbyInteractable?.type === 'car') return nearbyInteractable.actionText;
     switch (nearbyInteractable?.type) {
       case 'library': return 'Library';
@@ -404,6 +427,8 @@ export const GameHUD: React.FC = () => {
         return 'Play';
       case 'campus_bet':
         return 'Campus Bet';
+      case 'ad_space':
+        return nearbyInteractable.targetId?.startsWith('billboard') ? 'Billboard' : 'Plaza';
       case 'football':
         return 'Penalty';
       case 'basketball':
@@ -419,6 +444,10 @@ export const GameHUD: React.FC = () => {
         return nearbyInteractable.targetId === 'estate' ? 'Estate' : 'Lodge';
       case 'party':
         return 'Arena';
+      case 'gym':
+        return 'Gym';
+      case 'gym_station':
+        return 'Work out';
       case 'arcade':
         return nearbyInteractable.targetId === 'pool' ? 'Pool' : 'Tic-tac-toe';
       case 'food_vendor':
@@ -750,23 +779,37 @@ export const GameHUD: React.FC = () => {
       )}
 
       {isRidingKeke && (
-        <div className="pointer-events-none fixed left-3 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-130px))] rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-4 sm:top-36 sm:translate-x-0">
+        <div className="pointer-events-none fixed left-3 top-[calc(env(safe-area-inset-top,0px)+72px)] z-40 w-[min(220px,calc(100vw-130px))] rounded-xl border border-amber-400/70 bg-amber-950/90 px-3 py-2 text-amber-100 shadow-xl backdrop-blur-md sm:left-auto sm:right-20 sm:top-36 sm:translate-x-0">
           <div className="flex items-center gap-2">
             <span className="text-base leading-none">🛺</span>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-black leading-tight text-white">Campus Keke</div>
+              <div className="truncate text-sm font-black leading-tight text-white">{activeKeke?.id === KOROPE_ID ? 'Korope Bus' : 'Campus Keke'}</div>
               <div className="truncate text-xs leading-tight text-amber-200">
                 To: {destinationName || 'Campus route'}
               </div>
               <div className="truncate text-[11px] leading-tight text-amber-300">
                 Next: {activeKeke?.currentStopName || 'Campus stop'}
-                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length}/3 passengers` : ''}
+                {activeKeke?.passengers?.length ? ` · ${activeKeke.passengers.length}/${seatsOf(activeKeke)} passengers` : ''}
               </div>
             </div>
           </div>
+          {activeKeke?.id === KOROPE_ID && activeKeke.phase === 'WAITING' && (
+            // Waiting for a full load at the Car Park: anyone aboard can send it off now.
+            <button
+              onClick={() => { triggerHaptic(20); networkManager.koropeGo(); }}
+              className="pointer-events-auto mt-2 w-full rounded-lg bg-amber-400 px-3 py-1.5 text-sm font-extrabold text-slate-950 shadow active:scale-95"
+            >
+              🚐 Move now
+            </button>
+          )}
         </div>
       )}
 
+
+      {/* Car race (Campus Grand Prix): countdown, clock and place. */}
+      <div className="pointer-events-none fixed left-1/2 z-[55] -translate-x-1/2" style={{ top: 'calc(env(safe-area-inset-top, 0px) + 150px)' }}>
+        <RaceHud />
+      </div>
 
       {/* 2. CONTEXTUAL ACTION BAR (DESKTOP [E] & MOBILE TOUCH PILL) */}
       <div

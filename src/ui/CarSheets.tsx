@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sheet } from './Sheet';
 import { useGameStore } from '../stores/gameStore';
 import { useCarStore } from '../stores/carStore';
 import { useEstateStore } from '../stores/estateStore';
 import { useWalletStore } from '../stores/walletStore';
 import { toast } from '../stores/toastStore';
-import { CAR_MODELS, FUEL, FUEL_STATION, fuelPrice } from '../config/cars';
+import { CAR_MODELS, CAR_PAINTS, FUEL, FUEL_STATION, RESPRAY_PRICE, fuelPrice, paintHex } from '../config/cars';
+import { RACE, formatRaceTime } from '../config/carRace';
+import { useRaceStore } from '../stores/raceStore';
 import { ESTATE } from '../config/estate';
 
 const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
@@ -20,10 +22,35 @@ function FuelBar({ litres }: { litres: number }) {
   );
 }
 
+/** Pick a colour, then pay for the respray. */
+function PaintPicker({ car }: { car: string }) {
+  const current = useCarStore((s) => s.paint[car] ?? null);
+  const { busy, paintCar } = useCarStore();
+  const balance = useWalletStore((s) => s.balance);
+  const [pick, setPick] = useState<string | null>(null);
+  return (
+    <div className="car-paint">
+      <div className="hustle-row" role="radiogroup" aria-label="Respray colour">
+        {Object.entries(CAR_PAINTS).map(([id, p]) => (
+          <button key={id} role="radio" aria-checked={(pick ?? current) === id} title={p.name} aria-label={p.name} onClick={() => setPick(id === current ? null : id)}
+            style={{ width: 30, height: 30, borderRadius: 999, background: p.hex, border: (pick ?? current) === id ? '3px solid #f59e0b' : '2px solid rgba(148,163,184,.6)', boxShadow: id === current ? '0 0 0 2px #0f172a inset' : undefined }} />
+        ))}
+      </div>
+      {pick && pick !== current && (
+        <button className="hustle-btn" disabled={busy || balance < RESPRAY_PRICE} onClick={async () => { if (await paintCar(car, pick)) setPick(null); }}>
+          🎨 Respray {CAR_PAINTS[pick].name} · {naira(RESPRAY_PRICE)}
+        </button>
+      )}
+      {!pick && <p className="academic-note">Colour: <b style={{ color: paintHex(car, current) }}>●</b> {current ? CAR_PAINTS[current]?.name : 'Factory colour'}. Tap a colour to respray ({naira(RESPRAY_PRICE)}).</p>}
+    </div>
+  );
+}
+
 /** Phone → Garage: your cars, their fuel, and where your car is waiting. */
 export function GarageSheet() {
   const setModal = useGameStore((s) => s.setActiveModal);
-  const { fuel, parked, driving, loaded, load, takeOut } = useCarStore();
+  const { fuel, parked, driving, loaded, load, takeOut, error } = useCarStore();
+  const best = useRaceStore((s) => s.best);
   const renting = useEstateStore((s) => !!s.state?.renting);
   useEffect(() => { void load(); void useEstateStore.getState().load(); }, []);
   const owned = Object.keys(fuel).filter((id) => CAR_MODELS[id]);
@@ -45,6 +72,7 @@ export function GarageSheet() {
             <section key={id} className="hustle-card">
               <h3>{m.name} <small>{inUse ? 'driving now' : out ? 'parked' : 'in the garage'}</small></h3>
               <FuelBar litres={fuel[id] ?? 0} />
+              <PaintPicker car={id} />
               {inUse ? <p className="academic-note">Tap Park & get out when you stop.</p> : out ? (
                 <div className="hustle-row">
                   <button className="hustle-btn" onClick={() => go(parked!.position, m.name)}>Show me my car</button>
@@ -61,6 +89,15 @@ export function GarageSheet() {
             </section>
           );
         })}
+        {error && <p className="academic-error" role="alert">{error}</p>}
+        {!!owned.length && (
+          <section className="hustle-card">
+            <h3>🏁 {RACE.name}</h3>
+            <p className="academic-note">One lap of campus: {RACE.route}. Drive to the START arch on the road beside COLENG, stop under it and tap Race, then beat Tunde and Amaka back to the line. Follow the numbered boards and stay on the road: every checkpoint counts. A lap burns about 2 litres.</p>
+            {best !== null && <p className="academic-note">Your best time: <b>{formatRaceTime(best)}</b></p>}
+            <button className="hustle-btn" onClick={() => go(RACE.track[0], 'Race start (COLENG)')}>Show me the start line</button>
+          </section>
+        )}
         <p className="academic-note">⛽ {FUEL_STATION.name} is on the gate road, east of the lodge: {naira(FUEL.pricePerLitre)} a litre, {FUEL.tankLitres} L tank. One litre takes you about {FUEL.metresPerLitre} m.</p>
       </div>
     </Sheet>

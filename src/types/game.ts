@@ -1,3 +1,4 @@
+import type { WorkoutPose } from '../config/gym';
 import type { PSLastRound } from '../config/psPenalty';
 export interface AvatarConfig {
   bodyType?: 'masculine' | 'feminine';
@@ -41,7 +42,7 @@ export interface PlayerState {
   avatarConfig: AvatarConfig;
   position: [number, number, number];
   rotation: number;
-  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance';
+  animation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance' | WorkoutPose;
   kekeRiding?: boolean;
   kekeId?: string;
   seatIndex?: number;
@@ -52,6 +53,8 @@ export interface PlayerState {
   isDining?: boolean;
   /** The car they are driving (config/cars id), or null on foot. */
   car?: string | null;
+  /** Its respray colour id (config/cars CAR_PAINTS), or null for the model colour. */
+  carPaint?: string | null;
   /** Getting a lift: the driver's connection id and passenger seat. */
   rideWith?: string | null;
   rideSeat?: number | null;
@@ -118,7 +121,7 @@ export interface WorldLocation {
 
 export interface InteractableZone {
   id: string;
-  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'car' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade';
+  type: 'atm' | 'food' | 'playstation' | 'keke_stop' | 'player' | 'bench' | 'job_board' | 'lecture_hall' | 'restaurant_dining' | 'library' | 'car' | 'campus_bet' | 'food_vendor' | 'football' | 'basketball' | 'volleyball' | 'hustle' | 'lodge' | 'party' | 'arcade' | 'ad_space' | 'gym' | 'gym_station';
   label: string;
   actionText: string;
   position: [number, number, number];

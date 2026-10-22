@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
-import { CAR_HOME, CAR_MODELS, FUEL, isCarId } from '../config/cars';
+import { CAR_HOME, CAR_MODELS, CAR_PAINTS, FUEL, isCarId, isPaintId } from '../config/cars';
 import { useEstateStore } from './estateStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 
@@ -12,6 +12,8 @@ export interface ParkedCar { car: string; position: Point; rotation: number }
 interface CarStore {
   /** Fuel in litres per owned car (from the database). */
   fuel: Record<string, number>;
+  /** Respray colour id per owned car (null: the model's own colour). */
+  paint: Record<string, string | null>;
   loaded: boolean;
   /** The car you're driving right now, if any. */
   driving: string | null;
@@ -25,6 +27,8 @@ interface CarStore {
   enter: () => void;
   park: (position: Point, rotation: number) => void;
   buyFuel: (car: string, litres: number) => Promise<boolean>;
+  /** Respray one of your cars (₦5,000, kept by the database). */
+  paintCar: (car: string, paint: string) => Promise<boolean>;
   /** Count metres driven; reports burnt fuel to the database in small steps. */
   drove: (metres: number) => void;
   /** A lift in someone else's car: their connection id and your seat. */
@@ -48,7 +52,7 @@ let pendingBurn = 0;
 let reporting = false;
 
 export const useCarStore = create<CarStore>((set, get) => ({
-  fuel: {}, loaded: false, driving: null, parked: readParked(), busy: false, error: null,
+  fuel: {}, paint: {}, loaded: false, driving: null, parked: readParked(), busy: false, error: null,
   ride: null, view: 'outside',
   toggleView: () => set({ view: get().view === 'inside' ? 'outside' : 'inside' }),
   askRide: (driver) => { if (!get().driving && !get().ride) networkManager.carRide(driver); },
@@ -67,9 +71,9 @@ export const useCarStore = create<CarStore>((set, get) => ({
     if (!isSupabaseConfigured) return;
     const { data, error } = await supabase.rpc('car_garage');
     if (error || !data) return;
-    const fuel: Record<string, number> = {};
-    for (const c of (data as { cars: Array<{ car: string; litres: number }> }).cars) fuel[c.car] = Number(c.litres);
-    set({ fuel, loaded: true });
+    const fuel: Record<string, number> = {}, paint: Record<string, string | null> = {};
+    for (const c of (data as { cars: Array<{ car: string; litres: number; paint?: string | null }> }).cars) { fuel[c.car] = Number(c.litres); paint[c.car] = isPaintId(c.paint) ? c.paint : null; }
+    set({ fuel, paint, loaded: true });
     // A parked car you no longer own disappears.
     const p = get().parked;
     if (p && !(p.car in fuel)) { saveParked(null); set({ parked: null }); }
@@ -110,6 +114,18 @@ export const useCarStore = create<CarStore>((set, get) => ({
       set({ fuel: { ...get().fuel, [car]: Number(r.litres) } });
       useWalletStore.setState({ balance: Number(r.balance) });
       toast({ icon: '⛽', text: `Filled ${r.bought} litres`, amount: -r.cost, tone: 'good' });
+      return true;
+    } catch (e) { set({ error: (e as Error).message }); return false; } finally { set({ busy: false }); }
+  },
+  paintCar: async (car, paint) => {
+    set({ busy: true, error: null });
+    try {
+      const { data, error } = await supabase.rpc('paint_car', { p_car: car, p_paint: paint });
+      if (error) throw new Error(error.message);
+      const r = data as { paint: string; cost: number; balance: number };
+      set({ paint: { ...get().paint, [car]: r.paint } });
+      useWalletStore.setState({ balance: Number(r.balance) });
+      toast({ icon: '🎨', text: `${CAR_MODELS[car]?.name ?? 'Your car'} resprayed ${CAR_PAINTS[r.paint]?.name ?? r.paint}`, amount: -r.cost, tone: 'good' });
       return true;
     } catch (e) { set({ error: (e as Error).message }); return false; } finally { set({ busy: false }); }
   },

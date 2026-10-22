@@ -4,6 +4,7 @@ import { useGameStore } from './gameStore';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { networkManager } from '../game/multiplayer/networkManager';
 import { useWalletStore } from './walletStore';
+import { useAuthStore } from './authStore';
 import { toast } from './toastStore';
 import { HUSTLE_RULES, POS_KIOSK, PHOTO_RULES, TUTORING, type ErrandKind, type ShopStockId } from '../config/hustles';
 
@@ -31,7 +32,8 @@ interface HustleStore {
   loadShop: () => Promise<void>;
   loadErrands: () => Promise<void>;
   restock: (item: ShopStockId) => Promise<void>;
-  collect: () => Promise<void>;
+  /** Room shop sales go straight to the wallet: pay whatever has sold since last time. */
+  settleShop: () => Promise<void>;
   startPos: () => Promise<void>;
   finishPos: () => Promise<void>;
   startFarm: () => Promise<void>;
@@ -55,6 +57,8 @@ const rpc = async <T,>(name: string, args?: Record<string, unknown>): Promise<T>
 const validShop = (s: any): s is ShopState => !!s && Array.isArray(s.items);
 const validBoard = (b: any): b is ErrandBoard => !!b && Array.isArray(b.open) && Array.isArray(b.mine);
 const setBalance = (b: unknown) => { if (b != null && Number.isFinite(Number(b))) useWalletStore.setState({ balance: Number(b) }); };
+const onShelf = (s: ShopState) => s.items.reduce((n, i) => n + i.units, 0);
+let settling = false;
 
 export const useHustleStore = create<HustleStore>((set, get) => {
   /** Run an action with a busy flag and a friendly error. */
@@ -76,13 +80,25 @@ export const useHustleStore = create<HustleStore>((set, get) => {
     restock: (item) => run(`restock-${item}`, async () => {
       const r = await rpc<ShopState & { balance: number }>('restock_shop', { p_item: item });
       set({ shop: r }); setBalance(r.balance);
-      toast({ icon: '📦', text: 'Stock is on your shelf. It sells while you’re away.', tone: 'good' });
+      toast({ icon: '📦', text: 'Stock is on your shelf. It sells by itself and the money goes straight to your wallet.', tone: 'good' });
     }),
-    collect: () => run('collect', async () => {
-      const r = await rpc<ShopState & { paid: number; balance: number }>('collect_shop');
-      set({ shop: r }); setBalance(r.balance);
-      toast({ icon: '🛒', text: r.paid > 0 ? 'Room shop sales collected' : 'Nothing sold yet. Check back later.', amount: r.paid > 0 ? r.paid : undefined, tone: r.paid > 0 ? 'good' : 'info' });
-    }),
+    settleShop: async () => {
+      const before = get().shop;
+      // Nothing on the shelf, nothing to sell (restocking fills `shop` again).
+      if (!isSupabaseConfigured || settling || (before && onShelf(before) === 0)) return;
+      settling = true;
+      try {
+        const r = await rpc<ShopState & { paid: number; balance: number }>('collect_shop');
+        if (!validShop(r)) return;
+        set({ shop: r }); setBalance(r.balance);
+        if (r.paid > 0) {
+          const sold = before ? onShelf(before) - onShelf(r) : 0;
+          toast({ icon: '🛒', text: sold > 0 ? `Room shop sold ${sold} · paid to your wallet` : 'Room shop sales paid to your wallet', amount: r.paid, tone: 'good' });
+          const user = useAuthStore.getState().user;
+          if (user) void useWalletStore.getState().loadWallet(user.id); // shows the sale in History
+        }
+      } catch { /* older database or offline: try again next time */ } finally { settling = false; }
+    },
     startPos: () => run('pos', async () => {
       const r = await networkManager.hustle('pos_start');
       set({ posEndsAt: Date.now() + Math.max(0, r.endsAt - Date.now()) });

@@ -75,6 +75,7 @@ async function main() {
   const c1 = (await call(ada, 'select collect_shop() r')).r;
   assert.equal(c1.paid, 3 * 900, '3 sales in an hour'); assert.equal(await balance(ada), start + 2700);
   assert.equal(c1.items.find((i: any) => i.item === 'snacks').units, 27);
+  assert.equal((await one("select description from wallet_transactions where user_id=$1 and type='hustle_pay' order by created_at desc limit 1", [ada])).description, 'Room shop: sold 3 snacks', 'history says what sold (053)');
   assert.equal((await call(ada, 'select collect_shop() r')).r.paid, 0, 'collecting twice pays once');
   await db.query("update room_shops set selling_since=now()-interval '24 hours' where user_id=$1", [ada]);
   assert.equal((await call(ada, 'select collect_shop() r')).r.paid, 12 * 900, 'capped at 15 sales a day (3 already)');

@@ -23,6 +23,7 @@ import { usePartyStore } from '../../stores/partyStore';
 import { useNoticeStore } from '../../stores/noticeStore';
 import { useGroupStore } from '../../stores/groupStore';
 import { useCarStore } from '../../stores/carStore';
+import { useRaceStore } from '../../stores/raceStore';
 import { useDailyPlanStore } from '../../stores/dailyPlanStore';
 import { useHustleStore } from '../../stores/hustleStore';
 import { toast } from '../../stores/toastStore';
@@ -149,7 +150,7 @@ class NetworkManager {
     });
   }
   /** Court games (basketball free throws, volleyball serves): aim + power out, verdict back. */
-  public court(game:'basketball'|'volleyball'|'volleyball_rally'|'party'|'arcade',op:string,payload:Record<string,unknown>={}):Promise<any>{
+  public court(game:'basketball'|'volleyball'|'volleyball_rally'|'party'|'arcade'|'gym',op:string,payload:Record<string,unknown>={}):Promise<any>{
     if(this.ws?.readyState!==WebSocket.OPEN||this.room!=='world:funaab:main')return Promise.reject(new Error(`Reconnect to campus to play ${game}`));
     const requestId=crypto.randomUUID();
     return new Promise((resolve,reject)=>{
@@ -319,6 +320,7 @@ class NetworkManager {
       case 'daily_plan_refresh': void useDailyPlanStore.getState().load(); return;
       case 'car_ride_result': useCarStore.getState().rideResult(data); return;
       case 'car_ride_end': useCarStore.getState().rideEnded(String(data.reason || '')); return;
+      case 'race_result': useRaceStore.getState().prizeResult(data); return;
       case 'group_ping': useGroupStore.getState().pinged(String(data.groupId || ''), String(data.from || 'Someone')); return;
       case 'car_rider_joined': toast({ icon: '🚗', text: `${String(data.username || 'A friend')} hopped in.`, tone: 'info' }); return;
       case 'hustle_notice': toast({ icon: data.icon || '💼', text: String(data.text || ''), tone: 'info', ms: 4500 }); void useHustleStore.getState().loadErrands(); return;
@@ -480,7 +482,20 @@ class NetworkManager {
           if (!students[data.connectionId] || !Array.isArray(data.pos)) break;
           students[data.connectionId] = { ...students[data.connectionId], pos: data.pos, moving: !!data.moving };
         } else if (students[data.connectionId]) {
-          students[data.connectionId] = { ...students[data.connectionId], handRaised: !!data.isHandRaised };
+          const student = students[data.connectionId];
+          students[data.connectionId] = { ...student, handRaised: !!data.isHandRaised };
+          if (data.isHandRaised && !student.handRaised) {
+            socialStore.addMessage({
+              id: `msg-hand-${Date.now()}`,
+              senderId: 'classroom',
+              senderName: student.username,
+              college: student.college,
+              text: `✋ @${student.username} raised their hand in class.`,
+              timestamp: Date.now(),
+              isSystem: true,
+              lectureId: state.lectureId,
+            });
+          }
         }
         lecture.syncClassroomState({ ...state, activeStudents: students });
         break;
@@ -663,9 +678,9 @@ class NetworkManager {
     }
   }
 
-  public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false, car: string | null = null) {
+  public sendMove(position: [number, number, number], rotation: number, animation: string, kekeRiding = false, car: string | null = null, carPaint: string | null = null) {
     if (this.ws?.readyState !== WebSocket.OPEN || this.waitingForSnapshot) return;
-    this.pendingMove = { position: [...position], rotation, animation, kekeRiding, car };
+    this.pendingMove = { position: [...position], rotation, animation, kekeRiding, car, carPaint: car ? carPaint : null };
     this.flushPendingMove();
   }
 
@@ -728,7 +743,13 @@ class NetworkManager {
   /** Ask for a lift in someone's car, or get out of it. */
   public carRide(driver: string) { this.send({ type: 'car_ride', driver }); }
   public carRideLeave() { this.send({ type: 'car_ride_leave' }); }
+  /** Campus Grand Prix: the server watches the lap from now (and pays the prize), or stops watching. */
+  public raceStart() { this.send({ type: 'race_start' }); }
+  public raceQuit() { this.send({ type: 'race_quit' }); }
   public groupPing(groupId: string, to: string[]) { this.send({ type: 'group_ping', groupId, to: to.slice(0, 20) }); }
+
+  /** Korope riders: leave now with whoever is aboard. */
+  public koropeGo() { this.send({ type: 'korope_go' }); }
 
   public exitKeke(kekeId: string) {
     this.send({

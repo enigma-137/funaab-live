@@ -23,6 +23,7 @@ import { PerfProbe } from './PerfProbe';
 import { PerformanceMonitor } from '@react-three/drei';
 import { useGraphicsStore } from '../../stores/graphicsStore';
 import { QUALITY, effectiveDpr } from '../../config/quality';
+import { PARKED_KEKES } from '../../config/kekeRoutes';
 
 export const WorldScene: React.FC = () => {
   const roomId=useHostelStore(s=>s.roomId);
@@ -64,7 +65,7 @@ export const WorldScene: React.FC = () => {
             {roomId === LIBRARY_ROOM ? <LibraryEnvironment /> : hostel ? <HostelEnvironment /> : <><CampusEnvironment /><NightLights /><JobMarkers /><NavigationMarker /></>}
 
             {/* Autonomous Keke Route */}
-            {!hostel && <><KekeVehicle id="keke-1"/><KekeVehicle id="keke-carpark"/><KekeVehicle id="korope-1"/></>}
+            {!hostel && <><KekeVehicle id="keke-1"/>{PARKED_KEKES.map(({id})=><KekeVehicle key={id} id={id}/>)}<KekeVehicle id="korope-1"/></>}
 
             {/* Campus Security Officers (Patrol & Lawn Rule Enforcement) */}
             {!hostel && <SecurityOfficers />}

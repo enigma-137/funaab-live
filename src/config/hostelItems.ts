@@ -626,6 +626,18 @@ const CATALOG = [
     credit: false,
   },
   {
+    id: "car_picanto",
+    name: "Kia Picanto",
+    category: "Cars",
+    price: 80000,
+    placementType: "none",
+    modelKey: "car_picanto",
+    description: "Small, cheap and easy on fuel: the student's first car. Respray it any colour in the Garage. Virtual game item.",
+    interactive: false,
+    consumable: false,
+    credit: false,
+  },
+  {
     id: "car_corolla",
     name: "Toyota Corolla (Tokunbo)",
     category: "Cars",

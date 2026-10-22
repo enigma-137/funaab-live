@@ -1,3 +1,4 @@
+import type { WorkoutPose } from '../config/gym';
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 import {
@@ -41,8 +42,8 @@ interface GameState {
   // Local player state
   myPosition: [number, number, number];
   myRotation: number;
-  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance';
-  seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep' | 'pray'; exit?: [number, number, number] } | null;
+  myAnimation: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance' | WorkoutPose;
+  seatedAt: { position: [number, number, number]; rotation: number; animation?: 'sit' | 'sleep' | 'pray' | WorkoutPose; exit?: [number, number, number] } | null;
   /** One-shot facing request (e.g. turn to face the goal); LocalPlayer applies then clears it. */
   faceRotation: number | null;
   isRidingKeke: boolean;
@@ -66,6 +67,9 @@ interface GameState {
   clearNavigationDestination: () => void;
   openMap: () => void;
   closeMap: () => void;
+  /** Open the campus map centred on an online student (a friend from the Friends list). */
+  mapFocusPlayerId: string | null;
+  findOnMap: (playerId: string) => void;
 
   // Active interaction prompt & Modals
   nearbyInteractable: InteractableZone | null;
@@ -95,6 +99,7 @@ interface GameState {
     | 'report_user'
     | 'campus_map'
     | 'campus_bet'
+    | 'ad_space'
     | 'feedback'
     | 'earn'
     | 'inbox'
@@ -105,6 +110,7 @@ interface GameState {
     | 'volleyball_rally'
     | 'level'
     | 'party'
+    | 'gym'
     | 'arcade'
     | 'sug'
     | 'controls'
@@ -141,8 +147,8 @@ interface GameState {
   myHeldItem: HeldItem | null;
   setMyHeldItem: (item: HeldItem | null) => void;
   setMyRotation: (rot: number) => void;
-  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance') => void;
-  sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep' | 'pray'; exit?: [number, number, number] }) => void;
+  setMyAnimation: (anim: 'idle' | 'walk' | 'run' | 'sit' | 'sleep' | 'pray' | 'wave' | 'cheer' | 'dance' | WorkoutPose) => void;
+  sitAtPosition: (position: [number, number, number], rotation?: number, opts?: { animation?: 'sit' | 'sleep' | 'pray' | WorkoutPose; exit?: [number, number, number] }) => void;
   standUp: () => void;
   setFaceRotation: (rotation: number | null) => void;
   setRidingKeke: (isRiding: boolean, kekeId?: string | null, targetDestinationId?: string | null) => void;
@@ -182,6 +188,7 @@ interface GameState {
       | 'report_user'
       | 'campus_map'
       | 'campus_bet'
+      | 'ad_space'
     | 'feedback'
     | 'earn'
     | 'inbox'
@@ -198,6 +205,7 @@ interface GameState {
     | 'volleyball_rally'
       | 'level'
     | 'party'
+    | 'gym'
     | 'arcade'
     | 'sug'
     | 'controls'
@@ -516,8 +524,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setNavigationDestination: (navigationDestination) => set({ navigationDestination }),
   clearNavigationDestination: () => set({ navigationDestination: null }),
-  openMap: () => set({ activeModal: 'campus_map' }),
-  closeMap: () => set((state) => ({ activeModal: state.activeModal === 'campus_map' ? null : state.activeModal })),
+  openMap: () => set({ activeModal: 'campus_map', mapFocusPlayerId: null }),
+  closeMap: () => set((state) => ({ activeModal: state.activeModal === 'campus_map' ? null : state.activeModal, mapFocusPlayerId: null })),
+  mapFocusPlayerId: null,
+  findOnMap: (playerId) => set({ activeModal: 'campus_map', mapFocusPlayerId: playerId }),
 
   // Both are re-evaluated every frame; keep the old reference when nothing meaningful changed.
   setNearbyInteractable: (nearbyInteractable) =>

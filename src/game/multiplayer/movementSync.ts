@@ -5,6 +5,8 @@ export interface MovementSnapshot {
   kekeRiding: boolean;
   /** The car you're driving (config/cars id), or null on foot. */
   car?: string | null;
+  /** Its respray colour id (config/cars CAR_PAINTS), or null for the model colour. */
+  carPaint?: string | null;
 }
 
 export function hasMeaningfulMovementChange(
@@ -23,5 +25,6 @@ export function hasMeaningfulMovementChange(
     || rotationDelta >= 0.06
     || next.animation !== previous.animation
     || next.kekeRiding !== previous.kekeRiding
-    || (next.car ?? null) !== (previous.car ?? null);
+    || (next.car ?? null) !== (previous.car ?? null)
+    || (next.carPaint ?? null) !== (previous.carPaint ?? null);
 }

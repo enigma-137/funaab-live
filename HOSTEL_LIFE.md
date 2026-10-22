@@ -180,3 +180,15 @@ Deferred: Blender GLBs, freeform furniture dragging, partial debt repayment, coo
 electricity/fuel simulation, rent, host business income, cross-world realtime DMs
 (existing persistence remains), and full server physics. Live provider authentication,
 email and real mobile hardware remain deployment smoke tests.
+
+## Home kitchen (migration 054)
+
+- Buy foodstuff from Iya Ibeji, then Hostel → **kitchen** (or tap your Small Table / Gas Cooker → Cook).
+- Rice, Indomie, Spaghetti and Eggs are cooked: they need a Pot in your bag and a Gas Cooker or Gas Cylinder
+  placed in the room. The pot steams on the stove for a few seconds, then the dish is served. Garri, Bread
+  and Water are served as they are.
+- What's served stands on the Small Table, plated like at Floral World: one dish and one drink at a time
+  (`hostel_rooms.served_food` / `served_drink`). It rides on the room snapshot, so guests see it too.
+- The owner or any guest allowed in the room can eat or drink what's served (tap the table → Eat / Drink).
+- `hostel_kitchen` enforces the rules and uses one foodstuff per serve; `src/config/homeKitchen.ts` mirrors
+  them. Tests: `npm run test:home-kitchen:db`, `npm run test:home-kitchen:browser`.

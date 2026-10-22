@@ -14,7 +14,7 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   login: (email: string, password?: string) => Promise<boolean>;
-  signup: (username: string, college: string, email: string, password?: string) => Promise<boolean>;
+  signup: (username: string, college: string, email: string, password?: string, emailOptIn?: boolean) => Promise<boolean>;
   guestLogin: (username: string, college: string, avatar?: Partial<AvatarConfig>) => boolean;
   updateAvatar: (avatar: Partial<AvatarConfig>) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -261,7 +261,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signup: async (username: string, college: string, email: string, password?: string) => {
+  signup: async (username: string, college: string, email: string, password?: string, emailOptIn = false) => {
     set({ isLoading: true, error: null });
 
     const cleanUsername = String(username || '').trim();
@@ -348,6 +348,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           data: {
             username: cleanUsername,
             college,
+            // Consent to event emails, kept on the auth user (auth.users.raw_user_meta_data).
+            email_opt_in: emailOptIn,
+            email_opt_in_at: emailOptIn ? new Date().toISOString() : null,
           },
         },
       });

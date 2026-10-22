@@ -273,6 +273,13 @@ const locationMetadata: Record<
     color: '#7c3aed',
     description: 'The Arena: dance floor with party lights, the Arena Bar, tic-tac-toe and pool. Open every night 7 PM–5 AM; ₦5,000 gate fee covers the whole night.',
   },
+  gym: {
+    category: 'sports',
+    categoryLabel: 'Campus Gym',
+    icon: '🏋️',
+    color: '#ea580c',
+    description: 'FUNAAB Fitness Gym: treadmills, dumbbells, squat rack, punching bag and skipping. Open 6–10 AM and 4–9 PM; ₦1,000 pass per session.',
+  },
   'fpy-farm': {
     category: 'landmark',
     categoryLabel: 'Teaching Farm',

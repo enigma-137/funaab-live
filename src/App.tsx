@@ -48,17 +48,19 @@ import { StatusStrip } from './ui/StatusStrip';
 import { TodayPlan } from './ui/TodayPlan';
 import { FirstDayGuide } from './ui/FirstDayGuide';
 import { LevelSheet } from './ui/LevelSheet';
+import { GymSheet, GymWorkoutBar } from './ui/GymSheet';
 import { PartySheet } from './ui/PartySheet';
 import { ArcadeSheet } from './ui/ArcadeSheet';
 import { SugSheet } from './ui/SugSheet';
 import { ControlsSheet } from './ui/ControlsSheet';
 import { NoticeBanner } from './ui/NoticeBanner';
 import { Joystick } from './ui/Joystick';
-import { HustlesSheet } from './ui/HustlesSheet';
+import { HustlesSheet, RoomShopSales } from './ui/HustlesSheet';
 import { EstateSheet, EstateWatcher } from './ui/EstateSheet';
 import { CarWatcher, FuelSheet, GarageSheet } from './ui/CarSheets';
 import { GroupChatSheet, GroupWatcher, NewGroupSheet } from './ui/GroupChat';
 import { LeagueSheet } from './ui/LeagueSheet';
+import { AdSpaceSheet } from './ui/AdSpaceSheet';
 import { BackgroundGate } from './ui/BackgroundChooser';
 import { useLectureStore } from './stores/lectureStore';
 import { LibraryLife } from './ui/LibraryLife';
@@ -203,6 +205,8 @@ export const App: React.FC = () => {
       {activeModal === 'volleyball_rally' && <RallyPanel />}
       {activeModal === 'level' && <LevelSheet />}
       {activeModal === 'party' && <PartySheet />}
+      {activeModal === 'gym' && <GymSheet />}
+      <GymWorkoutBar />
       {activeModal === 'arcade' && <ArcadeSheet />}
       {activeModal === 'sug' && <SugSheet />}
       {activeModal === 'controls' && <ControlsSheet />}
@@ -218,6 +222,7 @@ export const App: React.FC = () => {
       {activeModal === 'group_chat' && <GroupChatSheet />}
       {activeModal === 'new_group' && <NewGroupSheet />}
       {!isInClassroom && <BackgroundGate />}
+      <RoomShopSales />
       {activeModal === 'player_profile' && <PlayerInteractionModal />}
       {activeModal === 'friends' && <FriendsModal />}
       {activeModal === 'inventory' && <InventoryModal />}
@@ -227,6 +232,7 @@ export const App: React.FC = () => {
       {activeModal === 'send_money' && <SendMoneyModal />}
       {activeModal === 'daily_reward' && <DailyRewardModal />}
       {activeModal === 'campus_bet' && <CampusBetModal />}
+      {activeModal === 'ad_space' && <AdSpaceSheet />}
       {activeModal === 'food_vendor' && <FoodVendorSheet />}
       {activeModal === 'timetable' && <MyTimetable />}
       {activeModal === 'lecture_hall' && (

@@ -20,6 +20,16 @@ const M = {
   plate: mat('#fafafa', { roughness: 0.3 }),
   jollof: mat('#d9541e', { roughness: 0.85 }),
   chicken: mat('#a8571f', { roughness: 0.7 }),
+  // Job packages
+  bagRed: mat('#c8102e', { roughness: 0.7 }),
+  bagTrim: mat('#f4c430', { roughness: 0.6 }),
+  strap: mat('#1f2937', { roughness: 0.8 }),
+  kraft: mat('#c9a46a', { roughness: 0.95 }),
+  seal: mat('#9b1c1c', { roughness: 0.4 }),
+  cone: mat('#f97316', { roughness: 0.6 }),
+  coneBand: mat('#f8fafc', { roughness: 0.6 }),
+  caseBlack: mat('#111827', { roughness: 0.5 }),
+  caseLatch: mat('#9ca3af', { metalness: 0.6, roughness: 0.3 }),
 };
 const G = {
   pack: new THREE.BoxGeometry(0.2, 0.07, 0.15),
@@ -36,6 +46,16 @@ const G = {
   plate: new THREE.CylinderGeometry(0.14, 0.11, 0.018, 20),
   mound: new THREE.SphereGeometry(0.085, 14, 8),
   drumstick: new THREE.SphereGeometry(0.04, 10, 6),
+  deliveryBag: new THREE.BoxGeometry(0.3, 0.28, 0.24),
+  bagLid: new THREE.BoxGeometry(0.31, 0.03, 0.25),
+  bagBand: new THREE.BoxGeometry(0.302, 0.05, 0.242),
+  handle: new THREE.TorusGeometry(0.05, 0.008, 6, 12, Math.PI),
+  envelope: new THREE.BoxGeometry(0.23, 0.008, 0.31),
+  seal: new THREE.CylinderGeometry(0.022, 0.022, 0.006, 12),
+  cone: new THREE.ConeGeometry(0.07, 0.2, 12),
+  coneBand: new THREE.CylinderGeometry(0.043, 0.05, 0.03, 12),
+  case: new THREE.BoxGeometry(0.3, 0.1, 0.22),
+  latch: new THREE.BoxGeometry(0.03, 0.03, 0.01),
 };
 
 /** `served`: standing on a table (origin at the table top) instead of in a hand. */
@@ -62,6 +82,41 @@ export function HeldProp({ kind, served = false }: { kind: HeldKind; served?: bo
           <mesh geometry={G.bowl} material={M.bowl} castShadow />
           <mesh geometry={G.noodles} material={M.noodles} position={[0, 0.028, 0]} />
           <mesh geometry={G.egg} material={M.egg} position={[0.025, 0.03, 0.01]} scale={[1, 0.45, 1]} />
+        </group>
+      );
+    case 'delivery_bag': // insulated food-delivery bag, carried by its handle
+      return (
+        <group position={[0, -0.13, 0.03]}>
+          <mesh geometry={G.handle} material={M.strap} position={[0, 0.17, 0]} />
+          <mesh geometry={G.deliveryBag} material={M.bagRed} castShadow />
+          <mesh geometry={G.bagLid} material={M.bagRed} position={[0, 0.145, 0]} />
+          <mesh geometry={G.bagBand} material={M.bagTrim} position={[0, 0.02, 0]} />
+        </group>
+      );
+    case 'envelope': // sealed brown envelope, held flat
+      return (
+        <group position={[0, 0, 0.1]} rotation={[0.35, 0, 0]}>
+          <mesh geometry={G.envelope} material={M.kraft} castShadow />
+          <mesh geometry={G.seal} material={M.seal} position={[0, 0.006, 0.08]} />
+        </group>
+      );
+    case 'cones': // a stack of training cones
+      return (
+        <group position={[0, 0.02, 0.06]}>
+          {[0, 0.035, 0.07].map((y) => (
+            <group key={y} position={[0, y, 0]}>
+              <mesh geometry={G.cone} material={M.cone} position={[0, 0.1, 0]} castShadow />
+              <mesh geometry={G.coneBand} material={M.coneBand} position={[0, 0.12, 0]} />
+            </group>
+          ))}
+        </group>
+      );
+    case 'kit': // controller kit in a hard case
+      return (
+        <group position={[0, -0.08, 0.05]}>
+          <mesh geometry={G.handle} material={M.strap} position={[0, 0.06, 0]} />
+          <mesh geometry={G.case} material={M.caseBlack} castShadow />
+          {[-0.08, 0.08].map((x) => <mesh key={x} geometry={G.latch} material={M.caseLatch} position={[x, 0.02, 0.112]} />)}
         </group>
       );
     case 'water':

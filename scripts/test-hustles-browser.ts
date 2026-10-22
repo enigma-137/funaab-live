@@ -1,4 +1,4 @@
-// Hustles on phones: room shop restock/collect, POS shift at the kiosk, photo shoot, errands.
+// Hustles on phones: room shop restock + sales paid automatically, POS shift at the kiosk, photo shoot, errands.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,6 +27,7 @@ fs.mkdirSync(out, { recursive: true });
         restock_shop: (b: any) => { rpcCalls.push(`restock:${b.p_item}`); units += 10; ready = 2; return { ...shop(), balance: 6900 }; },
         collect_shop: () => { rpcCalls.push('collect'); const paid = ready * 90; units -= ready; ready = 0; return { ...shop(), paid, balance: 7080 }; },
         errand_board: () => board(),
+        car_garage: () => ({ cars: [] }),
         post_errand: (b: any) => { rpcCalls.push(`post:${b.p_kind}:${b.p_reward}`); mine = [{ id: 'e-mine', kind: b.p_kind, reward: b.p_reward, status: 'open', role: 'poster', other: null }]; return { ...board(), balance: 6700 }; },
         accept_errand: (b: any) => { rpcCalls.push(`accept:${b.p_errand}`); mine = [...mine, { id: b.p_errand, kind: 'carry_load', reward: 300, status: 'accepted', role: 'runner', other: 'Chidi' }]; return board(); },
         background_state: () => ({ chosen: true, background: 'struggling', title: 'Struggling home', weekly: 400, hustle_bonus_percent: 20, allowance_ready: false }),
@@ -59,22 +60,28 @@ fs.mkdirSync(out, { recursive: true });
         await sheet.waitFor();
         const b = await settledBox(page, sheet);
         assert(b.y + b.height <= height && b.width <= width - 12, `hustles sheet fits (${JSON.stringify(b)})`);
-        assert.match(await sheet.innerText(), /Today ₦250 of ₦2,500 · \+20% hustle bonus/);
+        assert.match(await sheet.innerText(), /Today ₦250 of ₦25,000 · \+20% hustle bonus/);
 
         // Room shop.
         await sheet.getByRole('button', { name: 'Restock ₦600' }).click();
-        await sheet.getByRole('button', { name: 'Collect 2 sales' }).click();
-        await page.locator('.campus-toast', { hasText: 'Room shop sales collected' }).waitFor();
-        assert.deepEqual(rpcCalls.slice(0, 2), ['restock:snacks', 'collect']);
+        // Sales are paid by themselves (every minute in the app); no Collect button.
+        assert.equal(await sheet.getByRole('button', { name: /Collect/ }).count(), 0);
+        await sheet.getByText('10 on shelf').waitFor();
+        await page.waitForTimeout(500); // let the sheet's own opening check finish
+        await page.evaluate(async () => (await import('/src/stores/hustleStore.ts' as any)).useHustleStore.getState().settleShop());
+        await page.locator('.campus-toast', { hasText: 'Room shop sold 2 · paid to your wallet' }).waitFor();
+        await sheet.getByRole('button', { name: 'Wallet history' }).waitFor();
+        // (The app also settles once when it starts, before there's any stock.)
+        assert.deepEqual(rpcCalls.slice(rpcCalls.indexOf('restock:snacks'), rpcCalls.indexOf('restock:snacks') + 2), ['restock:snacks', 'collect']);
 
         // Errands: accept one, post one (only the kind + reward are sent).
         await sheet.getByRole('button', { name: 'I’ll do it' }).click();
         await sheet.getByText('walk up to them to hand over').waitFor();
         await sheet.getByLabel('Errand', { exact: true }).selectOption('bring_notes');
-        await sheet.getByLabel('Reward in Naira').fill('250');
+        await sheet.getByLabel('Reward in Naira').fill('2500');
         await sheet.getByRole('button', { name: 'Post', exact: true }).click();
         await sheet.getByText('waiting for a runner').waitFor();
-        assert(rpcCalls.includes('accept:e-open') && rpcCalls.includes('post:bring_notes:250'));
+        assert(rpcCalls.includes('accept:e-open') && rpcCalls.includes('post:bring_notes:2500'));
         await page.screenshot({ path: path.join(out, `hustles-${width}-sheet.png`), fullPage: false });
         await sheet.getByRole('button', { name: 'Close Hustles' }).click();
 
