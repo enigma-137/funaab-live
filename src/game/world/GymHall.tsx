@@ -122,7 +122,7 @@ const MEMBERS = [
   { id: 'gym-member-0', at: [-5.5, 0.18, -5.7] as V3, yaw: Math.PI, pose: 'jog' },
   { id: 'gym-member-1', at: [-6.4, 0, 1.2] as V3, yaw: Math.PI / 2, pose: 'lift' },
   { id: 'gym-member-2', at: [6.6, 0, 5.2] as V3, yaw: -Math.PI / 2, pose: 'skip' },
-].map((m) => ({ ...m, look: npcAppearance(m.id, { topStyle: 'tee' }) }));
+].map((m) => ({ ...m, look: npcAppearance(m.id, { topStyle: 't-shirt' }) }));
 
 export function GymHall() {
   const batches = useMemo(buildGym, []);

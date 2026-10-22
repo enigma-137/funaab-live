@@ -1,7 +1,8 @@
 // What a student carries for a minute after buying food or a drink, so the purchase feels real.
 // Purely visual: the item is already in the student's Bag on the server.
 
-export const HELD_ITEM_KINDS = ['pack', 'wrap', 'bowl', 'water', 'malt'] as const;
+// Packages carried on a campus job (config/campusJobs.ts JOB_HANDOVERS) use the same channel.
+export const HELD_ITEM_KINDS = ['pack', 'wrap', 'bowl', 'water', 'malt', 'delivery_bag', 'envelope', 'cones', 'kit'] as const;
 export type HeldKind = (typeof HELD_ITEM_KINDS)[number];
 export type HeldItem = { kind: HeldKind; until: number };
 
