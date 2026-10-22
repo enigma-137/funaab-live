@@ -420,3 +420,8 @@
 .hostel-dock strong{display:flex!important;align-items:center;justify-content:space-between}
 .hostel-dock-close{min-width:30px;min-height:30px;border-radius:50%;font-size:18px;line-height:1}
 .room-quick{position:fixed;z-index:35;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);width:52px;height:52px;border-radius:50%;background:#f6f9f4ee;border:2px solid #b6c9b7;font-size:24px;box-shadow:0 4px 14px #102a1840;display:grid;place-items:center}
+/* Home kitchen: why a dish can't be made yet. */
+.hostel-panel .hostel-kitchen-why {
+  font-size: 0.72rem;
+  color: #a35b12;
+}

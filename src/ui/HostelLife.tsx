@@ -16,6 +16,7 @@ import { useSocialStore } from "../stores/socialStore";
 import { toast } from "../stores/toastStore";
 import { HOSTEL_SHOP, hostelItem } from "../config/hostelShop";
 import { WEARABLES, isKeepsake } from "../config/hostelItems";
+import { DISHES, dishFor, kitchenBlocker } from "../config/homeKitchen";
 import { FLOORS, PAINTS, ROOM_EXPANSION_PRICE, floorById, paintById, roomSizeOf } from "../config/roomMakeover";
 import "./hostel.css";
 import { ESTATE_HOUSES, houseDoor } from "../config/estate";
@@ -27,7 +28,7 @@ export const leaveRoom = () => {
   return s.travel("hostel");
 };
 export const openHostel = (
-  panel: "home" | "shop" | "decorate" | "debts" | "invites" = "home",
+  panel: "home" | "shop" | "decorate" | "kitchen" | "debts" | "invites" = "home",
 ) => {
   useHostelStore.setState({ panel, error: null, notice: null });
   useGameStore.getState().setActiveModal("hostel");
@@ -250,6 +251,8 @@ export function HostelLife() {
                       ? "Make room for you."
                       : s.panel === "makeover"
                         ? "Room makeover"
+                      : s.panel === "kitchen"
+                        ? "Home kitchen"
                       : s.panel === "invites"
                         ? "Come my place."
                         : s.owner ? `${s.snapshot?.owner_name || "Student"}’s Room` : "HOSTEL"}
@@ -267,7 +270,7 @@ export function HostelLife() {
             </button>
           </header>
           <nav aria-label="Hostel sections">
-            {(["home", "shop", "decorate", "makeover", "debts", "invites"] as const).map(
+            {(["home", "shop", "decorate", "kitchen", "makeover", "debts", "invites"] as const).map(
               (p) => (
                 <button
                   key={p}
@@ -365,6 +368,73 @@ export function HostelLife() {
                 {mine && <p>Current privacy: {s.snapshot?.room.privacy}</p>}
               </>
             )}
+            {s.panel === "kitchen" && (() => {
+              const placed = (id: string) => !!s.snapshot?.placements.some((p) => p.item_id === id);
+              const owned = (id: string) => inventory.find((x) => x.itemId === id)?.quantity || 0;
+              const served = { food: s.snapshot?.room.served_food ?? null, drink: s.snapshot?.room.served_drink ?? null };
+              const onTable = [dishFor(served.food), dishFor(served.drink)].filter(Boolean);
+              return (
+                <>
+                  <p>
+                    Buy foodstuff from Iya Ibeji, cook it, and it's served on your Small Table for everyone in the room to
+                    see. Friends visiting can eat what's served.
+                  </p>
+                  {!s.owner && (
+                    <div className="hostel-actions">
+                      <button onClick={() => s.travel("room")}>Go to my room</button>
+                    </div>
+                  )}
+                  {s.owner && (
+                    <>
+                      <h2>On the table</h2>
+                      {onTable.length ? (
+                        <div className="hostel-actions">
+                          {onTable.map((d) => (
+                            <button key={d!.item} onClick={() => void s.kitchen("eat", { slot: d!.slot })}>
+                              {d!.slot === "drink" ? "Drink" : "Eat"} {d!.name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>Nothing yet. The table is waiting.</p>
+                      )}
+                    </>
+                  )}
+                  {mine && (
+                    <>
+                      <h2>Cook & serve</h2>
+                      {s.cooking && <p role="status">🍲 Cooking {dishFor(s.cooking.item)?.name}… the pot is on the fire.</p>}
+                      <div className="hostel-items">
+                        {DISHES.map((d) => {
+                          const why = kitchenBlocker(d, { owned, placed, served });
+                          return (
+                            <article key={d.item}>
+                              <HostelThumbnail id={d.item} name={d.name} />
+                              <h2>{d.name}</h2>
+                              <p>
+                                {hostelItem(d.item)?.name} in bag: {owned(d.item)}
+                                {d.cooked ? " · needs a pot & gas" : ""}
+                              </p>
+                              {why && <p className="hostel-kitchen-why">{why}</p>}
+                              <div className="hostel-actions">
+                                <button disabled={!!why} onClick={() => void s.kitchen("serve", { item: d.item })}>
+                                  {d.verb}
+                                </button>
+                                {!owned(d.item) && (
+                                  <button onClick={() => { setCategory("Foodstuff"); useHostelStore.setState({ panel: "shop" }); }}>
+                                    Buy
+                                  </button>
+                                )}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
             {s.panel === "shop" && (
               <>
                 <p>

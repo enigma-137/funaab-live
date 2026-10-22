@@ -16,6 +16,8 @@
     "test:department:db": "node scripts/test-department-db.cjs",
     "test:username:db": "node scripts/test-username-db.cjs",
     "test:room-makeover:db": "tsx scripts/test-room-makeover-db.ts",
+    "test:home-kitchen:db": "tsx scripts/test-home-kitchen-db.ts",
+    "test:home-kitchen:browser": "tsx scripts/test-home-kitchen-browser.ts",
     "test:held-item": "tsx scripts/test-held-item.ts",
     "test:classroom-chat": "tsx scripts/test-classroom-chat.ts",
     "test:student:db": "node scripts/test-student-db.cjs",

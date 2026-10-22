@@ -10,6 +10,7 @@ import {
   extent,
 } from "../../config/roomPlacement";
 import { HostelItemModel } from "./HostelItemModel";
+import { HomeMeal } from "./HomeMeal";
 import { useHostelStore } from "../../stores/hostelStore";
 import { hostelItem } from "../../config/hostelShop";
 import { HostelCompound } from "./HostelCompound";
@@ -160,6 +161,7 @@ function RoomLights({ halfX }: { halfX: number }) {
 
 export function HostelEnvironment() {
   const { owner, snapshot, preview, travel, selected, pose } = useHostelStore();
+  const cooking = useHostelStore((s) => !!s.cooking);
   const user = useAuthStore((s) => s.user);
   const select = (id: string) => {
     if (preview || pose) return;
@@ -215,6 +217,7 @@ export function HostelEnvironment() {
           <CuboidCollider args={[0.625, 0.15, 1]} position={[0, 0.15, 0]} />
         </RigidBody>
       </group>
+      <HomeMeal />
       {lodge && <LodgeDecor halfX={halfX} />}
       {estate && <EstateDecor halfX={halfX} marble={floorStyle.id === "default"} />}
       {snapshot?.placements
@@ -241,7 +244,7 @@ export function HostelEnvironment() {
                 active={
                   p.item_id === "hostel_tv_basic"
                     ? snapshot.room.tv_on
-                    : p.active
+                    : p.active || (p.item_id === "hostel_cooker" && cooking)
                 }
               />
               {floor && (
