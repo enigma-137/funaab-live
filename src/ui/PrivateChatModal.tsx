@@ -3,8 +3,9 @@ import { useSocialStore } from '../stores/socialStore';
 import { useAuthStore } from '../stores/authStore';
 import { useWalletStore } from '../stores/walletStore';
 import { networkManager } from '../game/multiplayer/networkManager';
-import { Send, DollarSign, ShieldAlert, Ban, X, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Send, ShieldAlert, Ban, X, ArrowLeft, Plus, Wallet, UserPlus, UserCheck, Home } from 'lucide-react';
 import { useGameStore } from '../stores/gameStore';
+import { useHostelStore } from '../stores/hostelStore';
 
 export const PrivateChatModal: React.FC = () => {
   const { user } = useAuthStore();
@@ -16,11 +17,17 @@ export const PrivateChatModal: React.FC = () => {
     blockUser,
     unblockUser,
     openReportModal,
+    friends,
+    addFriend,
   } = useSocialStore();
   const { balance, transferMoney } = useWalletStore();
 
   const [messageInput, setMessageInput] = useState('');
   const [showTransferPanel, setShowTransferPanel] = useState(false);
+  // The + button opens a row of actions: send money, add friend, invite home.
+  const [showActions, setShowActions] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [inviting, setInviting] = useState(false);
   const [transferAmount, setTransferAmount] = useState('200');
   const [transferNote, setTransferNote] = useState('');
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
@@ -33,6 +40,7 @@ export const PrivateChatModal: React.FC = () => {
   const partnerKey = activeDmPartner.username.toLowerCase();
   const conversation = directMessages[partnerKey] || [];
   const isBlocked = blockedUserIds.includes(activeDmPartner.id);
+  const isFriend = friends.some((f) => f.id === activeDmPartner.id);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -49,6 +57,32 @@ export const PrivateChatModal: React.FC = () => {
       messageInput.trim()
     );
     setMessageInput('');
+  };
+
+  const flash = (ok: boolean, text: string) => {
+    setActionNotice({ ok, text });
+    setTimeout(() => setActionNotice(null), 3000);
+  };
+
+  const handleAddFriend = () => {
+    if (isFriend) return;
+    addFriend(user.id, { id: activeDmPartner.id, username: activeDmPartner.username, college: activeDmPartner.college });
+    flash(true, `@${activeDmPartner.username} is now your friend.`);
+  };
+
+  // The server only lets you invite accepted friends; the invite lasts two hours.
+  const handleInviteHome = async () => {
+    if (!isFriend || inviting) return;
+    setInviting(true);
+    const ok = await useHostelStore.getState().command('invite', { guest: activeDmPartner.id });
+    setInviting(false);
+    if (ok) {
+      networkManager.sendPrivateChat(activeDmPartner.id, activeDmPartner.username, '🏠 I invited you to my hostel room. Open Hostel → Invites to come over.');
+      flash(true, `Invite sent to @${activeDmPartner.username}. It lasts 2 hours.`);
+      setShowActions(false);
+    } else {
+      flash(false, useHostelStore.getState().error || 'Could not send the invite.');
+    }
   };
 
   const handleSendMoneyInChat = async () => {
@@ -306,20 +340,58 @@ export const PrivateChatModal: React.FC = () => {
           </div>
         ) : (
           /* Footer Input Form */
+          <>
+          {actionNotice && (
+            <div role="status" style={{ ...actionNoticeStyle, color: actionNotice.ok ? '#6ee7b7' : '#fca5a5' }}>
+              {actionNotice.ok ? '✅' : '⚠️'} {actionNotice.text}
+            </div>
+          )}
+          {showActions && (
+            <div style={actionMenuStyle} role="menu" aria-label="Chat actions">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => { setShowTransferPanel(!showTransferPanel); setShowActions(false); }}
+                style={{ ...actionChipStyle, ...(showTransferPanel ? actionChipActiveStyle : {}) }}
+              >
+                <Wallet style={actionIconStyle} /> Send money
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleAddFriend}
+                disabled={isFriend}
+                style={{ ...actionChipStyle, ...(isFriend ? actionChipDoneStyle : {}) }}
+              >
+                {isFriend ? <UserCheck style={actionIconStyle} /> : <UserPlus style={actionIconStyle} />} {isFriend ? 'Friends' : 'Add friend'}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleInviteHome}
+                disabled={!isFriend || inviting}
+                title={isFriend ? 'Invite to your hostel room' : 'Add them as a friend first'}
+                style={{ ...actionChipStyle, ...(!isFriend ? actionChipDisabledStyle : {}) }}
+              >
+                <Home style={actionIconStyle} /> {inviting ? 'Inviting…' : 'Invite home'}
+              </button>
+            </div>
+          )}
           <form onSubmit={handleSendMessage} style={footerFormStyle}>
-            {/* Quick Send Money Toggle */}
+            {/* Actions menu: send money, add friend, invite home */}
             <button
               type="button"
-              onClick={() => setShowTransferPanel(!showTransferPanel)}
+              onClick={() => setShowActions(!showActions)}
               style={{
                 ...btnMoneyToggleStyle,
-                backgroundColor: showTransferPanel ? '#065f46' : '#1e293b',
-                borderColor: showTransferPanel ? '#10b981' : '#334155',
+                backgroundColor: showActions ? '#065f46' : '#1e293b',
+                borderColor: showActions ? '#10b981' : '#334155',
               }}
-              title="Send Money in Chat"
+              title="More actions"
+              aria-label="More actions"
+              aria-expanded={showActions}
             >
-              <DollarSign style={{ width: '15px', height: '15px', color: '#34d399' }} />
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#34d399' }}>₦</span>
+              <Plus style={{ width: '17px', height: '17px', color: '#34d399', transform: showActions ? 'rotate(45deg)' : 'none', transition: 'transform 0.15s' }} />
             </button>
 
             <input
@@ -342,6 +414,7 @@ export const PrivateChatModal: React.FC = () => {
               <Send style={{ width: '14px', height: '14px' }} />
             </button>
           </form>
+          </>
         )}
       </div>
     </div>
@@ -528,6 +601,44 @@ const btnMoneyToggleStyle: React.CSSProperties = {
   borderRadius: '8px',
   border: '1px solid #334155',
   cursor: 'pointer',
+};
+
+const actionMenuStyle: React.CSSProperties = {
+  backgroundColor: '#1e293b',
+  borderTop: '1px solid #334155',
+  padding: '8px 10px 0',
+  display: 'flex',
+  gap: '5px',
+  overflowX: 'auto',
+};
+
+const actionChipStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  flexShrink: 0,
+  backgroundColor: '#0f172a',
+  border: '1px solid #334155',
+  borderRadius: '999px',
+  color: '#e2e8f0',
+  fontSize: '12px',
+  fontWeight: 700,
+  padding: '7px 10px',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};
+
+const actionChipActiveStyle: React.CSSProperties = { backgroundColor: '#065f46', borderColor: '#10b981' };
+const actionChipDoneStyle: React.CSSProperties = { color: '#6ee7b7', borderColor: '#065f46', cursor: 'default' };
+const actionChipDisabledStyle: React.CSSProperties = { opacity: 0.45, cursor: 'not-allowed' };
+const actionIconStyle: React.CSSProperties = { width: '13px', height: '13px', color: '#34d399' };
+
+const actionNoticeStyle: React.CSSProperties = {
+  backgroundColor: '#0b1220',
+  borderTop: '1px solid #334155',
+  padding: '6px 12px',
+  fontSize: '11.5px',
+  fontWeight: 600,
 };
 
 const chatInputFieldStyle: React.CSSProperties = {
