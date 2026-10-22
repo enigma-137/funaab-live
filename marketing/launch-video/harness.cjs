@@ -4,6 +4,10 @@ const ID = '00000000-0000-4000-8000-000000000001';
 const profile = { id: ID, username: 'Emmanuel', college: 'COLENG',
   avatar_config: { bodyType: 'masculine', skinTone: '#8d5524', hairstyle: 'fade', topStyle: 'jersey', topColor: '#15803d', bottomStyle: 'joggers', bottomColor: '#1e293b', shoeStyle: 'sneakers', shoeColor: '#eeeeea', shirtColor: '#15803d', skinColor: '#8d5524' },
   onboarding_completed: true, course_id: 'FST', game_matric_number: 'FST/26/1001' };
+// A furnished room with a kitchen corner for the cooking shot.
+const pl = (item, x, z, rotation = 0, y = 0) => ({ item_id: item, owner_id: ID, anchor: 'free:' + item, x, y, z, rotation });
+const HOSTEL = { owner_name: 'Emmanuel', room: { owner_id: ID, privacy: 'invite', tv_on: true, wall_paint: 'mint', floor_style: 'wood', rested_at: null, security_at: null, served_food: null, served_drink: null },
+  placements: [pl('hostel_table', 0.6, -0.6), pl('hostel_cooker', 2.6, -3.1), pl('hostel_bed_double', -2.4, -2.4), pl('hostel_tv_basic', 3.3, 1, -Math.PI / 2)] };
 const journey = { beta_player: false, draft: {}, orientation_steps: ['a','b','c','d','e'], orientation_completed: true, admission_story_completed: true };
 async function launch({ width = 1920, height = 1080, scale = 1, peers = [] } = {}) {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -19,8 +23,10 @@ async function launch({ width = 1920, height = 1080, scale = 1, peers = [] } = {
     if (p.endsWith('/wallets')) data = { balance: 7500 };
     if (p.endsWith('/friends')) data = [];
     if (p.endsWith('/job_runs')) data = null;
+    if (p.endsWith('/inventory')) data = ['hostel_pot', 'hostel_food_rice', 'hostel_cooker', 'hostel_table'].map((id) => ({ id, item_id: id, item_name: id, item_type: 'hostel', quantity: 1 }));
     if (p.endsWith('/car_garage')) data = { cars: [{ car: 'car_gwagon', litres: 40 }, { car: 'car_lexus', litres: 20 }] };
     if (p.endsWith('/group_list')) data = [];
+    if (p.endsWith('/hostel_snapshot')) data = HOSTEL;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
   await context.route('**/campus-summary', (r) => r.fulfill({ status: 200, contentType: 'application/json',

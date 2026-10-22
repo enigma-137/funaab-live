@@ -61,3 +61,14 @@ To re-render it:
 - Lay out the frames with `PAGE=compose3.html OUT=/out3 node compose.cjs`, then encode `out3/` with `music3.wav`.
 
 The chapel only opens on Sundays, so its shot moves the game clock two days ahead (`window.__dayShift` in `vtime.js`).
+
+## "New on campus" (third update video)
+
+`funaab-live-race-gym-plaza.mp4` is 34 s long, 1080p, with music only. Its shots are the Campus Grand Prix, the gym, Gate Plaza shops and billboards, better transport (the Korope on the campus route, with no fares shown) and cooking at home, then the end card. `race-gym-plaza-poster.jpg` is its thumbnail.
+
+To re-render it:
+- Run `node render4.cjs race gym plaza` and `node render4.cjs transport kitchen`. The two groups can run in parallel.
+- Generate the music with `python3 music.py 34 -1 -1 music4.wav`.
+- Lay out the frames with `PAGE=compose4.html OUT=/out4 node compose.cjs`, then encode `out4/` with `music4.wav`.
+
+The race uses an autopilot that steers along the race line. The gym shot moves the game clock to 5:30 PM Lagos time so the gym is open. The kitchen room comes from the mocked `hostel_snapshot` in `harness.cjs`.
