@@ -115,3 +115,11 @@ export const inTown = (p: Point) => p[0] >= TOWN_BOUNDS.minX && p[0] <= TOWN_BOU
 export const TOWN_ROOM = 'world:funaab:hostel';
 export const CAMPUS_ROOM = 'world:funaab:main';
 export const canDriveIn = (room: string) => room === CAMPUS_ROOM || room === TOWN_ROOM;
+
+/** Passed under an arch, walking or driving: which way the road takes you (null: not crossed).
+ *  Town: anywhere west of the TO FUNAAB arch. Campus: west of the HOSTEL · TOWN arch, on the gate road. */
+export function crossedRoad(room: string, x: number, z: number): 'campus' | 'town' | null {
+  if (room === TOWN_ROOM) return x < TOWN_LINK.town.exit[0] ? 'campus' : null;
+  if (room === CAMPUS_ROOM) return x < TOWN_LINK.campus.exit[0] - 1 && Math.abs(z - TOWN_LINK.campus.exit[2]) < TOWN_LINK.campus.radius ? 'town' : null;
+  return null;
+}

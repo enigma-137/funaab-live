@@ -6,7 +6,7 @@ import { isParkedKeke } from '../../config/kekeRoutes';
 import { RACE, gridSpot } from '../../config/carRace';
 import { toast } from '../../stores/toastStore';
 import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
-import { CAMPUS_ROOM, TOWN_BOUNDS, TOWN_LINK, TOWN_ROOM, canDriveIn } from '../../config/hostelTown';
+import { CAMPUS_ROOM, TOWN_BOUNDS, TOWN_ROOM, canDriveIn, crossedRoad } from '../../config/hostelTown';
 import { CarBody, Cockpit } from '../vehicles/CarBody';
 import { ECONOMY_CONFIG } from '../../config/economy';
 import { onDanceFloor, partyOpen } from '../../config/partyHall';
@@ -266,7 +266,6 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
-      else if (t === 'to-campus' || t === 'to-town') void useCarStore.getState().takeRoad(t === 'to-campus' ? 'campus' : 'town');
       else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') parkCar();
       else if (t === 'unride') useCarStore.getState().leaveRide();
@@ -521,13 +520,12 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const pump = onCampus ? FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius) : undefined;
       const start = RACE.track[0];
       const atStart = onCampus && race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(start[0] - d.x, start[2] - d.z) < RACE.startRadius;
-      // The road between campus (west end of the gate road) and the hostel town (the arch at its west end).
-      const link = onCampus ? TOWN_LINK.campus : TOWN_LINK.town;
-      const atLink = race.status === 'idle' && Math.hypot(link.exit[0] - d.x, link.exit[2] - d.z) < link.radius;
+      // Drove under the arch between campus (west end of the gate road) and the hostel town: through you go.
+      const crossed = race.status === 'idle' ? crossedRoad(room, d.x, d.z) : null;
+      if (crossed) void useCarStore.getState().takeRoad(crossed);
       const near: InteractableZone = pump
         ? { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: pump, radius: FUEL_STATION.pumpRadius }
         : atStart ? { id: 'race-start', type: 'car', targetId: 'race', label: RACE.name, actionText: 'Start the race', position: start, radius: RACE.startRadius }
-        : atLink ? { id: 'road-link', type: 'car', targetId: onCampus ? 'to-town' : 'to-campus', label: onCampus ? 'Road to the hostel' : 'Road to school', actionText: onCampus ? 'Drive to hostel' : 'Drive to campus', position: link.exit, radius: link.radius }
         : { id: 'my-car', type: 'car', targetId: 'park', label: model.name, actionText: Math.abs(d.speed) > 1 ? 'Stop to park' : 'Park & get out', position: feet, radius: 3 };
       if (useGameStore.getState().nearbyInteractable?.actionText !== near.actionText) setNearbyInteractable(near);
       setIsOnRestrictedLawn(false);
@@ -756,8 +754,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           best = dist;
           spot = { id: seat.id, type: 'bench', label: seat.label, actionText: 'Sit down', position: seat.position, radius: 1.3, rotation: seat.rotation };
         }
-        const link = TOWN_LINK.town, toLink = Math.hypot(feetPosition[0] - link.exit[0], feetPosition[2] - link.exit[2]);
-        if (toLink < link.radius && toLink < best) { best = toLink; spot = { id: 'road-link', type: 'car', targetId: 'to-campus', label: 'Road to school', actionText: 'Walk to campus', position: link.exit, radius: link.radius }; }
+        // Walked under the TO FUNAAB arch: on to campus.
+        if (crossedRoad(TOWN_ROOM, feetPosition[0], feetPosition[2])) void useCarStore.getState().takeRoad('campus');
         const myCar = useCarStore.getState().parked;
         if (myCar?.where === 'hostel') {
           const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
@@ -853,9 +851,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       if((k.isStopped||passing)&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='korope-1'?'Korope Bus':k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:passing?'Stop it & hop on':k.id==='korope-1'?(k.phase==='WAITING'?'Join Korope':'Hop On'):k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
     }
     // Your parked car and the fuel pumps (on foot you can fill a car you own too).
-    // The road to the hostel town, at the west end of the gate road.
-    const toTown = Math.hypot(feetPosition[0] - TOWN_LINK.campus.exit[0], feetPosition[2] - TOWN_LINK.campus.exit[2]);
-    if (toTown < TOWN_LINK.campus.radius && toTown < minDistance) { minDistance = toTown; closestInteractable = { id: 'road-link', type: 'car', targetId: 'to-town', label: 'Road to the hostel', actionText: 'Walk to hostel', position: TOWN_LINK.campus.exit, radius: TOWN_LINK.campus.radius }; }
+    // Walked under the HOSTEL · TOWN arch at the west end of the gate road: on to the hostel town.
+    if (!isRidingKeke && crossedRoad(CAMPUS_ROOM, feetPosition[0], feetPosition[2])) void useCarStore.getState().takeRoad('town');
     const myCar = useCarStore.getState().parked;
     if (myCar && myCar.where !== 'hostel') {
       const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);

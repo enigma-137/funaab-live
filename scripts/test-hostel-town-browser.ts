@@ -96,9 +96,15 @@ const ME = { id: '00000000-0000-4000-8000-0000000000e1', username: 'Enigma', col
       assert.ok(stopped, 'a passing car stopped in front of you');
       await shot('traffic-stops');
       // Walk into the stopped car: it's solid.
-      await page.keyboard.down('s'); await page.waitForTimeout(1500); await page.keyboard.up('s');
-      const me = await pos(), front = (await traffic()).filter((c) => c.lane === 'west' && c.x > laneX).sort((a, b) => a.x - b.x)[0];
-      assert.ok(front.x - me[0] > 2.2, `the car body blocks you (you ${me[0].toFixed(1)}, car ${front.x.toFixed(1)})`);
+      // Walk into the stopped car: it's solid (you slide round it, never through it).
+      await page.keyboard.down('s');
+      try {
+        for (let i = 0; i < 10; i++) {
+          await page.waitForTimeout(150);
+          const me = await pos();
+          for (const c of await traffic()) assert.ok(!(Math.abs(me[0] - c.x) < 2.1 && Math.abs(me[2] - c.z) < 0.9), `never inside a car (you ${me.map((n) => n.toFixed(1))}, car ${c.x.toFixed(1)},${c.z})`);
+        }
+      } finally { await page.keyboard.up('s'); }
       // Looking down the street from the gate; and the arch at the end of it.
       await camera(-Math.PI / 2 + 0.6, 0.25);
       await page.waitForTimeout(1200);
@@ -119,32 +125,44 @@ const ME = { id: '00000000-0000-4000-8000-0000000000e1', username: 'Enigma', col
       await page.waitForTimeout(1500);
       await shot('campus-arrival');
 
-      // Reverse back to the road to the hostel; the prompt takes you to town.
+      // Reverse back under the HOSTEL · TOWN arch: no button, straight through to town.
       await page.keyboard.down('s');
-      try { await until('gameStore', 'return s.getState().nearbyInteractable?.targetId === "to-town"', 'road-to-hostel prompt', 60); }
+      try { await until('hostelStore', 'return s.getState().roomId === "world:funaab:hostel"', 'back in town', 80); }
       finally { await page.keyboard.up('s'); }
-      await page.waitForTimeout(1200);
-      await tap('Drive to hostel');
-      await until('hostelStore', 'return s.getState().roomId === "world:funaab:hostel"', 'back in town');
       await until('carStore', 'return s.getState().driving === "car_corolla" && s.getState().parked?.where === "hostel"', 'driving in town');
       await page.waitForTimeout(1500);
       await camera(Math.PI / 2 + 0.5, 0.25);
       await page.waitForTimeout(1200);
       await shot('town-arrival');
-
+      // The TO FUNAAB arch works at the wheel too: a car just past it (west) goes through to campus
+      // as soon as you drive it. (Reversing there would bump the passing car waiting behind you.)
+      await tap('Park & get out');
+      await until('carStore', 'return !s.getState().driving', 'parked');
+      await store('carStore', `s.setState({ parked: { ...s.getState().parked, position: [${TOWN_LINK.town.exit[0] - 1}, 0, ${TOWN_LINK.town.exit[2]}] } }); s.getState().enter()`);
+      await until('hostelStore', 'return s.getState().roomId === "world:funaab:main"', 'drove through the town arch');
+      await until('carStore', 'return s.getState().driving === "car_corolla" && !s.getState().parked?.where', 'at the wheel on campus');
+      await page.waitForTimeout(1500);
+      await page.keyboard.down('s');
+      try { await until('hostelStore', 'return s.getState().roomId === "world:funaab:hostel"', 'back in town again', 80); }
+      finally { await page.keyboard.up('s'); }
+      await until('carStore', 'return s.getState().driving === "car_corolla"', 'still at the wheel');
+      await page.waitForTimeout(1500);
       // Park on the street and walk the road on foot.
       await tap('Park & get out');
       await until('carStore', 'return !s.getState().driving && s.getState().parked?.where === "hostel"', 'parked on the street');
-      await goTo(TOWN_LINK.town.exit[0] + 2, TOWN_LINK.town.exit[2] + 4, 'return s.getState().nearbyInteractable?.targetId === "to-campus"', 'at the arch on foot');
-      await camera(-Math.PI / 2, 0.2);
+      await goTo(TOWN_LINK.town.exit[0] + 4, TOWN_LINK.town.exit[2] + 4, `return s.getState().myPosition[0] > ${TOWN_LINK.town.exit[0] + 3}`, 'by the arch on foot');
+      await camera(Math.PI / 2, 0.2);
       await page.waitForTimeout(1500);
       await shot('arch');
-      await tap('Walk to campus');
+      // Walk under the arch (west): straight through to campus.
+      await store('hostelStore', `s.setState({ teleport: [${TOWN_LINK.town.exit[0] - 1}, 0, ${TOWN_LINK.town.exit[2] + 4}] })`);
       await until('hostelStore', 'return s.getState().roomId === "world:funaab:main"', 'walked to campus');
+      const arrived = await pos();
+      assert.ok(Math.hypot(arrived[0] - TOWN_LINK.campus.arriveFoot[0], arrived[2] - TOWN_LINK.campus.arriveFoot[2]) < 1.5, `on foot you come out on the gate road (${arrived})`);
       await until('carStore', 'return !s.getState().driving && s.getState().parked?.where === "hostel"', 'the car stays in town');
 
       assert.deepEqual(errors, []);
-      console.log('HOSTEL TOWN BROWSER PASSED: car homes to the hostel garage, chairs and bench seat you, drive in the town, the road to school lands you at the wheel on the gate road and back, park on the street, walk the road to campus.');
+      console.log('HOSTEL TOWN BROWSER PASSED: car homes to the hostel garage, chairs and bench seat you, drive in the town, passing cars stop and are solid, driving under the arches takes you to campus and back at the wheel, walking under the town arch takes you to campus.');
     } finally { await context.close(); }
   } finally { await browser.close(); }
 })().catch((e) => { console.error(e); process.exit(1); });
