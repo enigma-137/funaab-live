@@ -93,7 +93,7 @@ interface HostelState {
   travel: (
     target: "campus" | "hostel" | "room",
     owner?: string,
-    /** Campus only: where to arrive (e.g. outside the estate house) instead of the main gate. */
+    /** Campus or courtyard: where to arrive (e.g. outside the estate house, or by your hostel garage) instead of the gate. */
     at?: [number, number, number],
   ) => Promise<void>;
 }
@@ -358,7 +358,7 @@ export const useHostelStore = create<HostelState>((set, get) => ({
           ? at ?? CAMPUS_SPAWN
           : target === "room"
             ? [0, 0, 2]
-            : HOSTEL_SPAWN,
+            : at ?? HOSTEL_SPAWN,
       activeModal: null,
       nearbyInteractable: null,
       isRidingKeke: false,

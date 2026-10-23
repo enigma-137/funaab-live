@@ -5,7 +5,7 @@ import { useRaceStore } from '../../stores/raceStore';
 import { isParkedKeke } from '../../config/kekeRoutes';
 import { RACE, gridSpot } from '../../config/carRace';
 import { toast } from '../../stores/toastStore';
-import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
+import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, HOSTEL_DRIVEWAY, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
 import { CarBody, Cockpit } from '../vehicles/CarBody';
 import { ECONOMY_CONFIG } from '../../config/economy';
 import { onDanceFloor, partyOpen } from '../../config/partyHall';
@@ -32,7 +32,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { openFoodVendor } from '../../stores/foodVendorStore';
 import { openFootball, useFootballStore, amParticipant } from '../../stores/footballStore';
 import { openCourtGame, courtStores, onCourt } from '../../stores/courtGameStore';
-import { HOSTEL_COURTYARD_BOUND, HOSTEL_SPAWN } from '../../config/hostelCompound';
+import { HOSTEL_COURTYARD_BOUND, HOSTEL_GARAGE, HOSTEL_SEATS, HOSTEL_SPAWN } from '../../config/hostelCompound';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 import { useAdStore } from '../../stores/adStore';
 
@@ -264,6 +264,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'hostel-drive') void useCarStore.getState().driveFromHostel();
+      else if (t === 'hostel-park') void useCarStore.getState().parkAtHostel();
       else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') parkCar();
       else if (t === 'unride') useCarStore.getState().leaveRide();
@@ -513,9 +515,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const pump = FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius);
       const start = RACE.track[0];
       const atStart = race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(start[0] - d.x, start[2] - d.z) < RACE.startRadius;
+      const atHostel = race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(HOSTEL_DRIVEWAY.position[0] - d.x, HOSTEL_DRIVEWAY.position[2] - d.z) < HOSTEL_DRIVEWAY.radius;
       const near: InteractableZone = pump
         ? { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: pump, radius: FUEL_STATION.pumpRadius }
         : atStart ? { id: 'race-start', type: 'car', targetId: 'race', label: RACE.name, actionText: 'Start the race', position: start, radius: RACE.startRadius }
+        : atHostel ? { id: 'hostel-park', type: 'car', targetId: 'hostel-park', label: 'Hostel garage', actionText: 'Park at hostel', position: HOSTEL_DRIVEWAY.position, radius: HOSTEL_DRIVEWAY.radius }
         : { id: 'my-car', type: 'car', targetId: 'park', label: model.name, actionText: Math.abs(d.speed) > 1 ? 'Stop to park' : 'Park & get out', position: feet, radius: 3 };
       if (useGameStore.getState().nearbyInteractable?.actionText !== near.actionText) setNearbyInteractable(near);
       setIsOnRestrictedLawn(false);
@@ -725,7 +729,30 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       updateOrbitCamera(_camTarget.set(nextX,nextY,nextZ),cameraYaw,cameraPitch,camDist,camHeight,0.6,0.8,delta);
     }
 
-    if(offCampus) { setIsOnRestrictedLawn(false); setNearbyInteractable(null); return; }
+    if(offCampus) {
+      setIsOnRestrictedLawn(false);
+      // Hostel courtyard: sit on the chairs and tree benches, and drive out of your garage.
+      let spot: InteractableZone | null = null;
+      if (roomState.roomId === 'world:funaab:hostel' && !roomState.owner) {
+        let best = 999;
+        const others = useGameStore.getState().players;
+        for (const seat of HOSTEL_SEATS) {
+          const dist = Math.hypot(feetPosition[0] - seat.position[0], feetPosition[2] - seat.position[2]);
+          if (dist > 1.3 || dist >= best) continue;
+          // A seat someone is already sitting on is not offered.
+          if (Object.values(others).some((p) => p.animation === 'sit' && Math.hypot(p.position[0] - seat.position[0], p.position[2] - seat.position[2]) < 0.3)) continue;
+          best = dist;
+          spot = { id: seat.id, type: 'bench', label: seat.label, actionText: 'Sit down', position: seat.position, radius: 1.3, rotation: seat.rotation };
+        }
+        const myCar = useCarStore.getState().parked;
+        if (myCar?.where === 'hostel') {
+          const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
+          if (dist < HOSTEL_GARAGE.radius && dist < best + 1) spot = { id: 'my-car', type: 'car', targetId: 'hostel-drive', label: CAR_MODELS[myCar.car]?.name ?? 'Your car', actionText: 'Drive out', position: myCar.position, radius: HOSTEL_GARAGE.radius };
+        }
+      }
+      setNearbyInteractable(spot);
+      return;
+    }
     // Terrain Classification & FUNAAB Lawn Rule Enforcement
     const terrain = classifyTerrain(feetPosition[0], feetPosition[2]);
     setIsOnRestrictedLawn(terrain.restricted);
@@ -808,7 +835,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     }
     // Your parked car and the fuel pumps (on foot you can fill a car you own too).
     const myCar = useCarStore.getState().parked;
-    if (myCar) {
+    if (myCar && myCar.where !== 'hostel') {
       const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
       if (dist < 3.6 && dist < minDistance + 1) { minDistance = dist; closestInteractable = { id: 'my-car', type: 'car', targetId: 'drive', label: CAR_MODELS[myCar.car]?.name ?? 'Your car', actionText: 'Drive', position: myCar.position, radius: 3.6 }; }
     }

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import {
-  BUILDING, FLOOR_HEIGHT, HOSTEL_COMPOUND_ASSET, HOSTEL_COURTYARD_BOUND, HOSTEL_DOORS, IYA_IBEJI, LANDING,
+  BUILDING, FLOOR_HEIGHT, HOSTEL_COMPOUND_ASSET, HOSTEL_COURTYARD_BOUND, HOSTEL_DOORS, HOSTEL_GARAGE, IYA_IBEJI, LANDING,
   ROOM_WIDTH, ROOMS_PER_FLOOR, SECURITY_POST, STAIRS, doorFor, hostelCompoundColliders,
 } from '../../config/hostelCompound';
 import { useGameStore } from '../../stores/gameStore';
@@ -11,6 +11,7 @@ import { useHostelStore } from '../../stores/hostelStore';
 import { useInputStore } from '../../stores/inputStore';
 import { openHostel } from '../../ui/HostelLife';
 import { useDayNight, NIGHT_LIGHTS_FROM } from './dayNight';
+import { ParkedCar } from '../vehicles/CarWorld';
 
 // Procedural stand-in for /models/hostel/hostel_compound_main.glb. Gameplay (doors, stairs, room
 // travel) reads config/hostelCompound.ts, so a Blender model can replace these meshes untouched.
@@ -300,6 +301,23 @@ function Courtyard() {
   </group>;
 }
 
+/** Carport by the east wall: back wall, two posts and a sloped roof. Your car waits under it. */
+function HostelGarage() {
+  const { minX, maxX, backZ, frontZ, roofY } = HOSTEL_GARAGE;
+  const w = maxX - minX, d = frontZ - backZ, cx = (minX + maxX) / 2, cz = (backZ + frontZ) / 2;
+  const signMat = useDisposable(() => canvasMaterial(256, 64, sign(256, 64, '#24553c', '#f7efd6', [['GARAGE', 34]])), []);
+  return <group name="hostel-garage">
+    <Box p={[cx, 0.02, cz]} s={[w, 0.04, d]} m={mats.concreteDark} />
+    <Box p={[cx, roofY / 2, backZ]} s={[w, roofY, 0.24]} m={mats.wall} />
+    {[backZ + 0.3, frontZ - 0.2].map((z) => <Box key={z} p={[minX, roofY / 2, z]} s={[0.2, roofY, 0.2]} m={mats.metal} />)}
+    <Box p={[cx, roofY + 0.12, cz + 0.1]} s={[w + 0.4, 0.12, d + 0.5]} m={mats.roof} r={[-0.05, 0, 0]} />
+    <Box p={[cx, roofY - 0.08, frontZ + 0.15]} s={[w + 0.4, 0.3, 0.06]} m={mats.roofDark} />
+    {/* Sign on the front fascia, facing the courtyard. */}
+    <mesh position={[cx, roofY - 0.08, frontZ + 0.19]} material={signMat} scale={[1.4, 0.35, 1]}><planeGeometry args={[1, 1]} /></mesh>
+    <ParkedCar hostel />
+  </group>;
+}
+
 /** Every collider comes from config, the same list the physics test walks a capsule through. */
 function CompoundColliders() {
   const colliders = useMemo(hostelCompoundColliders, []);
@@ -357,5 +375,6 @@ export function HostelCompound({ myRoom }: { myRoom: number | null }) {
     <Staircase />
     <IyaIbejiShop />
     <SecurityPost />
+    <HostelGarage />
   </group>;
 }

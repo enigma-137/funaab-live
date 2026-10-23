@@ -53,10 +53,22 @@ export const FUEL_STATION = {
   pumpRadius: 4,
 };
 
-/** Where your car waits when you take it out: the estate car park if you rent there, else the campus car park. */
+/** Where your car waits when you take it out: the estate car park if you rent there, else your hostel
+ *  garage (config/hostelCompound.ts HOSTEL_GARAGE). `campus` is the old campus car park home. */
 export const CAR_HOME = {
   estate: [ESTATE.carPark.maxX - 2, 0, ESTATE.carPark.minZ + 2.6] as Point,
   campus: [-75, 0, 60] as Point,
+};
+
+/** On campus, the hostel's driveway (beside the walkway up from the keke stop): stop here and tap
+ *  Park at hostel to put the car in your hostel garage; driving out of the garage starts you here. */
+export const HOSTEL_DRIVEWAY = {
+  position: [61, 0, 2] as Point,
+  /** Facing the campus road (−X). */
+  rotation: -Math.PI / 2,
+  /** Where you stand when you come out to it, before you get in. */
+  stepOut: [61, 0, 4.2] as Point,
+  radius: 6,
 };
 
 /** Where the driver sits in the car (car-local; the driver's side is the left, +X). */

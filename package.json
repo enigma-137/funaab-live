@@ -59,6 +59,7 @@
     "test:vendors": "tsx scripts/test-food-vendors.ts",
     "test:vendors:db": "tsx scripts/test-food-vendors-db.ts",
     "test:hostel:compound": "tsx scripts/test-hostel-compound.ts",
+    "test:hostel:garage:browser": "tsx scripts/test-hostel-garage-browser.ts",
     "test:football": "tsx scripts/test-football.ts && tsx scripts/test-football-worker.ts",
     "test:basketball": "tsx scripts/test-basketball.ts",
     "test:volleyball": "tsx scripts/test-volleyball.ts",

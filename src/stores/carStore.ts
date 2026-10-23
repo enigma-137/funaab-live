@@ -2,12 +2,17 @@ import { create } from 'zustand';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
-import { CAR_HOME, CAR_MODELS, CAR_PAINTS, FUEL, isCarId, isPaintId } from '../config/cars';
+import { CAR_HOME, CAR_MODELS, CAR_PAINTS, FUEL, HOSTEL_DRIVEWAY, isCarId, isPaintId } from '../config/cars';
+import { HOSTEL_GARAGE } from '../config/hostelCompound';
+import { useHostelStore } from './hostelStore';
 import { useEstateStore } from './estateStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 
 type Point = [number, number, number];
-export interface ParkedCar { car: string; position: Point; rotation: number }
+/** `where: 'hostel'`: in your hostel garage (position is in the compound); otherwise on campus. */
+export interface ParkedCar { car: string; position: Point; rotation: number; where?: 'hostel' }
+const inHostelGarage = (car: string): ParkedCar => ({ car, position: HOSTEL_GARAGE.car, rotation: HOSTEL_GARAGE.rotation, where: 'hostel' });
+const atCampusHome = (p: ParkedCar) => !p.where && p.position[0] === CAR_HOME.campus[0] && p.position[2] === CAR_HOME.campus[2];
 
 interface CarStore {
   /** Fuel in litres per owned car (from the database). */
@@ -22,10 +27,14 @@ interface CarStore {
   busy: boolean;
   error: string | null;
   load: () => Promise<void>;
-  /** Put a car at its home car park, ready to walk to. */
+  /** Put a car at home, ready to walk to: the estate car park, else your hostel garage. */
   takeOut: (car: string, estate: boolean) => void;
   enter: () => void;
   park: (position: Point, rotation: number) => void;
+  /** Stopped at the hostel driveway on campus: put the car in your hostel garage and walk in. */
+  parkAtHostel: () => Promise<void>;
+  /** From your hostel garage: out to the hostel driveway on campus, at the wheel. */
+  driveFromHostel: () => Promise<void>;
   buyFuel: (car: string, litres: number) => Promise<boolean>;
   /** Respray one of your cars (₦5,000, kept by the database). */
   paintCar: (car: string, paint: string) => Promise<boolean>;
@@ -44,7 +53,7 @@ interface CarStore {
 
 const storeKey = 'funaab:parked-car:v1';
 const readParked = (): ParkedCar | null => {
-  try { const p = JSON.parse(localStorage.getItem(storeKey) || 'null'); return p && isCarId(p.car) && Array.isArray(p.position) ? p : null; } catch { return null; }
+  try { const p = JSON.parse(localStorage.getItem(storeKey) || 'null'); return p && isCarId(p.car) && Array.isArray(p.position) ? { ...p, where: p.where === 'hostel' ? 'hostel' : undefined } : null; } catch { return null; }
 };
 const saveParked = (p: ParkedCar | null) => { try { if (p) localStorage.setItem(storeKey, JSON.stringify(p)); else localStorage.removeItem(storeKey); } catch { /* private mode */ } };
 
@@ -79,15 +88,17 @@ export const useCarStore = create<CarStore>((set, get) => ({
     if (p && !(p.car in fuel)) { saveParked(null); set({ parked: null }); }
     // Own a car but none is out: park it at home (the estate if you rent there) so you can see it.
     const first = Object.keys(fuel).find((id) => CAR_MODELS[id]);
-    if (!get().parked && !get().driving && first) {
+    const old = get().parked;
+    if (!get().driving && first && (!old || atCampusHome(old))) {
       if (!useEstateStore.getState().state) await useEstateStore.getState().load();
       const estate = !!useEstateStore.getState().state?.renting;
-      get().takeOut(first, estate);
-      toast({ icon: '🚗', text: `Your ${CAR_MODELS[first].name} is parked at ${estate ? 'the Royal Gardens Estate car park' : 'the campus car park'}. Phone → Garage → Show me my car.`, tone: 'info', ms: 7000 });
+      // A car left at the old campus car park home moves home too.
+      get().takeOut(old?.car ?? first, estate);
+      toast({ icon: '🚗', text: `Your ${CAR_MODELS[old?.car ?? first].name} is parked ${estate ? 'at the Royal Gardens Estate car park' : 'in your hostel garage'}. Phone → Garage → Show me my car.`, tone: 'info', ms: 7000 });
     }
   },
   takeOut: (car, estate) => {
-    const parked: ParkedCar = { car, position: estate ? CAR_HOME.estate : CAR_HOME.campus, rotation: estate ? -Math.PI / 2 : 0 };
+    const parked: ParkedCar = estate ? { car, position: CAR_HOME.estate, rotation: -Math.PI / 2 } : inHostelGarage(car);
     saveParked(parked);
     set({ parked, driving: null });
   },
@@ -104,6 +115,25 @@ export const useCarStore = create<CarStore>((set, get) => ({
     saveParked(parked);
     set({ driving: null, parked, view: 'outside' });
     void flushBurn(car);
+  },
+  parkAtHostel: async () => {
+    const car = get().driving;
+    if (!car) return;
+    const parked = inHostelGarage(car);
+    saveParked(parked);
+    set({ driving: null, parked, view: 'outside' });
+    void flushBurn(car);
+    await useHostelStore.getState().travel('hostel', undefined, HOSTEL_GARAGE.stepOut);
+    toast({ icon: '🚗', text: `${CAR_MODELS[car]?.name ?? 'Your car'} is in your hostel garage. Walk up to it and tap Drive out when you need it.`, tone: 'good', ms: 6000 });
+  },
+  driveFromHostel: async () => {
+    const p = get().parked;
+    if (!p || p.where !== 'hostel' || get().driving || useHostelStore.getState().transition) return;
+    const parked: ParkedCar = { car: p.car, position: HOSTEL_DRIVEWAY.position, rotation: HOSTEL_DRIVEWAY.rotation };
+    saveParked(parked);
+    set({ parked });
+    await useHostelStore.getState().travel('campus', undefined, HOSTEL_DRIVEWAY.stepOut);
+    if (useHostelStore.getState().roomId === 'world:funaab:main') get().enter();
   },
   buyFuel: async (car, litres) => {
     set({ busy: true, error: null });

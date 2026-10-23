@@ -27,6 +27,28 @@ export const IYA_IBEJI = { position: [12.6, 0, -1] as Point, door: [10.2, 0, -1]
 export const SECURITY_POST: Point = [8.5, 0, 12.5];
 export const SECURITY_RADIUS = 3;
 
+/** Carport in the east corner by the perimeter wall, open toward the gate. Your car lives here
+ *  unless you rent at the estate; drive out to campus from it, or tap Park at hostel on campus. */
+export const HOSTEL_GARAGE = {
+  minX: 12.2, maxX: 16.4, backZ: 4.2, frontZ: 10.8, roofY: 2.7,
+  car: [14.3, 0, 7.4] as Point,
+  /** Facing +Z: nose out of the carport. */
+  rotation: 0,
+  /** Where you stand after parking (in front of the carport). */
+  stepOut: [13.4, 0, 11.4] as Point,
+  /** Drive out prompt: from the car's centre, so standing just in front of the carport counts. */
+  radius: 4.6,
+};
+
+/** Courtyard seats: the four plastic chairs round the table and two per tree bench.
+ *  `rotation` is the way a seated student faces (0 = +Z). */
+export const HOSTEL_SEATS = [
+  ...[-6.8, -5.2].map((x, i) => ({ id: `hostel-chair-s${i}`, label: 'Plastic Chair', position: [x, 0, 2.2] as Point, rotation: 0 })),
+  ...[-6.8, -5.2].map((x, i) => ({ id: `hostel-chair-n${i}`, label: 'Plastic Chair', position: [x, 0, 3.8] as Point, rotation: Math.PI })),
+  ...[2.5, 3.5].map((z, i) => ({ id: `hostel-bench-w${i}`, label: 'Tree Bench', position: [3.2, 0, z] as Point, rotation: -Math.PI / 2 })),
+  ...[2.5, 3.5].map((z, i) => ({ id: `hostel-bench-e${i}`, label: 'Tree Bench', position: [6.8, 0, z] as Point, rotation: Math.PI / 2 })),
+];
+
 export interface HostelDoor { number: number; floor: number; position: Point; stand: Point }
 /** Room 1–6 ground floor left→right, 7–12 first floor. `position` is the door's base centre. */
 export const HOSTEL_DOORS: HostelDoor[] = Array.from({ length: FLOORS * ROOMS_PER_FLOOR }, (_, i) => {
@@ -87,6 +109,8 @@ export function hostelCompoundColliders(): BoxCollider[] {
     { id: 'water-tank', half: [1.1, 1.6, 1.1], pos: [-14, 1.6, -14] },
     { id: 'iya-ibeji', half: [2.2, 1.5, 3], pos: [IYA_IBEJI.position[0], 1.5, IYA_IBEJI.position[2]] },
     { id: 'security-post', half: [1, 1.2, 1], pos: [SECURITY_POST[0], 1.2, SECURITY_POST[2]] },
+    { id: 'garage-back', half: [(HOSTEL_GARAGE.maxX - HOSTEL_GARAGE.minX) / 2, HOSTEL_GARAGE.roofY / 2, 0.12], pos: [(HOSTEL_GARAGE.minX + HOSTEL_GARAGE.maxX) / 2, HOSTEL_GARAGE.roofY / 2, HOSTEL_GARAGE.backZ] },
+    ...[HOSTEL_GARAGE.backZ + 0.3, HOSTEL_GARAGE.frontZ - 0.2].map((z, i) => ({ id: `garage-post-${i}`, half: [0.1, HOSTEL_GARAGE.roofY / 2, 0.1] as Point, pos: [HOSTEL_GARAGE.minX, HOSTEL_GARAGE.roofY / 2, z] as Point })),
   ];
   // Columns along the balcony edge.
   for (let i = 0; i <= ROOMS_PER_FLOOR; i++) out.push({ id: `column-${i}`, half: [0.14, H / 2, 0.14], pos: [minX + i * ROOM_WIDTH, H / 2, corridorFrontZ - 0.12] });

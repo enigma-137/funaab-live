@@ -2,17 +2,18 @@ import React from 'react';
 import { CuboidCollider, RigidBody } from '@react-three/rapier';
 import { useCarStore } from '../../stores/carStore';
 import { useHostelStore } from '../../stores/hostelStore';
-import { CAR_MODELS, DRIVE, FUEL_STATION } from '../../config/cars';
+import { CAR_MODELS, DRIVE, FUEL_STATION, HOSTEL_DRIVEWAY } from '../../config/cars';
 import { CarBody } from './CarBody';
 import { CarRace } from './CarRace';
 import { CampusSign } from '../world/CampusSign';
 
-/** Your car where you left it (others see it while you drive). Solid, so people walk round it. */
-function ParkedCar() {
+/** Your car where you left it (others see it while you drive). Solid, so people walk round it.
+ *  `hostel`: draw the car kept in your hostel garage (the courtyard) instead of one on campus. */
+export function ParkedCar({ hostel = false }: { hostel?: boolean }) {
   const parked = useCarStore((s) => s.parked);
   const driving = useCarStore((s) => s.driving);
   const paint = useCarStore((s) => (parked ? s.paint[parked.car] ?? null : null));
-  if (!parked || driving) return null;
+  if (!parked || driving || (parked.where === 'hostel') !== hostel) return null;
   const k = CAR_MODELS[parked.car]?.scale ?? 1;
   return (
     <group position={parked.position} rotation={[0, parked.rotation, 0]}>
@@ -62,8 +63,31 @@ function FuelStation() {
   );
 }
 
+/** Painted bay at the hostel driveway: stop on it and tap Park at hostel. */
+function HostelDriveway() {
+  const [x, , z] = HOSTEL_DRIVEWAY.position;
+  return (
+    <group name="hostel-driveway" position={[x, 0, z]} rotation={[0, HOSTEL_DRIVEWAY.rotation, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.025, 0]} receiveShadow>
+        <planeGeometry args={[3.2, 6]} />
+        <meshStandardMaterial color="#475569" roughness={1} />
+      </mesh>
+      {[-1.5, 1.5].map((sx) => (
+        <mesh key={sx} rotation={[-Math.PI / 2, 0, 0]} position={[sx, 0.03, 0]}><planeGeometry args={[0.12, 6]} /><meshBasicMaterial color="#fde047" /></mesh>
+      ))}
+      <group position={[2.4, 0, 2.6]}>
+        <mesh position={[0, 1.1, 0]}><boxGeometry args={[0.12, 2.2, 0.12]} /><meshStandardMaterial color="#334155" /></mesh>
+        {/* Faces the campus road. */}
+        <group position={[0, 2.5, 0]}>
+          <CampusSign width={2.2} height={0.8} title="HOSTEL PARKING" subtitle="STOP · PARK AT HOSTEL" />
+        </group>
+      </group>
+    </group>
+  );
+}
+
 export function CarWorld() {
   const onCampus = useHostelStore((s) => s.roomId === 'world:funaab:main');
   if (!onCampus) return null;
-  return (<><FuelStation /><ParkedCar /><CarRace /></>);
+  return (<><FuelStation /><HostelDriveway /><ParkedCar /><CarRace /></>);
 }

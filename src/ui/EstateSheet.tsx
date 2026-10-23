@@ -57,9 +57,9 @@ export function EstateSheet() {
             <button className="academic-primary academic-wide" disabled={busy || s.lodge} onClick={async () => {
               if (!(await act('rent_estate'))) return;
               toast({ icon: '🏡', text: 'Welcome to Royal Gardens Estate!', amount: -ESTATE.weeklyRent, tone: 'good' });
-              // A car waiting at the campus car park moves to the estate car park.
+              // A car waiting at home (hostel garage, or the old campus car park) moves to the estate car park.
               const c = useCarStore.getState(), p = c.parked;
-              if (p && !c.driving && p.position[0] === CAR_HOME.campus[0] && p.position[2] === CAR_HOME.campus[2]) c.takeOut(p.car, true);
+              if (p && !c.driving && (p.where === 'hostel' || (p.position[0] === CAR_HOME.campus[0] && p.position[2] === CAR_HOME.campus[2]))) c.takeOut(p.car, true);
             }}>
               Rent for {naira(ESTATE.weeklyRent)} (first week)
             </button>
