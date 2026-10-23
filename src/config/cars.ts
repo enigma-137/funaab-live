@@ -60,17 +60,6 @@ export const CAR_HOME = {
   campus: [-75, 0, 60] as Point,
 };
 
-/** On campus, the hostel's driveway (beside the walkway up from the keke stop): stop here and tap
- *  Park at hostel to put the car in your hostel garage; driving out of the garage starts you here. */
-export const HOSTEL_DRIVEWAY = {
-  position: [61, 0, 2] as Point,
-  /** Facing the campus road (−X). */
-  rotation: -Math.PI / 2,
-  /** Where you stand when you come out to it, before you get in. */
-  stepOut: [61, 0, 4.2] as Point,
-  radius: 6,
-};
-
 /** Where the driver sits in the car (car-local; the driver's side is the left, +X). */
 export const DRIVER_SEAT: Point = [0.42, 0.02, -0.25];
 

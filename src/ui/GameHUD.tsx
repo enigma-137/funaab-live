@@ -198,8 +198,7 @@ export const GameHUD: React.FC = () => {
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
-      else if (t === 'hostel-drive') void useCarStore.getState().driveFromHostel();
-      else if (t === 'hostel-park') void useCarStore.getState().parkAtHostel();
+      else if (t === 'to-campus' || t === 'to-town') void useCarStore.getState().takeRoad(t === 'to-campus' ? 'campus' : 'town');
       else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') window.dispatchEvent(new Event('car-park'));
       else if (t === 'unride') useCarStore.getState().leaveRide();

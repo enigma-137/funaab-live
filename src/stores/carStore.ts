@@ -2,14 +2,15 @@ import { create } from 'zustand';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useWalletStore } from './walletStore';
 import { toast } from './toastStore';
-import { CAR_HOME, CAR_MODELS, CAR_PAINTS, FUEL, HOSTEL_DRIVEWAY, isCarId, isPaintId } from '../config/cars';
+import { CAR_HOME, CAR_MODELS, CAR_PAINTS, FUEL, isCarId, isPaintId } from '../config/cars';
+import { TOWN_LINK, TOWN_ROOM } from '../config/hostelTown';
 import { HOSTEL_GARAGE } from '../config/hostelCompound';
 import { useHostelStore } from './hostelStore';
 import { useEstateStore } from './estateStore';
 import { networkManager } from '../game/multiplayer/networkManager';
 
 type Point = [number, number, number];
-/** `where: 'hostel'`: in your hostel garage (position is in the compound); otherwise on campus. */
+/** `where: 'hostel'`: in the hostel town (the garage or the street; position is in that world); otherwise on campus. */
 export interface ParkedCar { car: string; position: Point; rotation: number; where?: 'hostel' }
 const inHostelGarage = (car: string): ParkedCar => ({ car, position: HOSTEL_GARAGE.car, rotation: HOSTEL_GARAGE.rotation, where: 'hostel' });
 const atCampusHome = (p: ParkedCar) => !p.where && p.position[0] === CAR_HOME.campus[0] && p.position[2] === CAR_HOME.campus[2];
@@ -30,11 +31,10 @@ interface CarStore {
   /** Put a car at home, ready to walk to: the estate car park, else your hostel garage. */
   takeOut: (car: string, estate: boolean) => void;
   enter: () => void;
-  park: (position: Point, rotation: number) => void;
-  /** Stopped at the hostel driveway on campus: put the car in your hostel garage and walk in. */
-  parkAtHostel: () => Promise<void>;
-  /** From your hostel garage: out to the hostel driveway on campus, at the wheel. */
-  driveFromHostel: () => Promise<void>;
+  /** Park where you are; `room` is the world the car is in (campus or the hostel town). */
+  park: (position: Point, rotation: number, room?: string) => void;
+  /** The road between campus and the hostel town: at the wheel if you're driving, else on foot. */
+  takeRoad: (to: 'campus' | 'town') => Promise<void>;
   buyFuel: (car: string, litres: number) => Promise<boolean>;
   /** Respray one of your cars (₦5,000, kept by the database). */
   paintCar: (car: string, paint: string) => Promise<boolean>;
@@ -108,32 +108,25 @@ export const useCarStore = create<CarStore>((set, get) => ({
     if ((get().fuel[p.car] ?? 0) <= 0.01) toast({ icon: '⛽', text: 'The tank is empty. You can sit in it, but you need fuel to move: buy some at the fuel station.', tone: 'bad', ms: 6000 });
     set({ driving: p.car, ride: null });
   },
-  park: (position, rotation) => {
+  park: (position, rotation, room = useHostelStore.getState().roomId) => {
     const car = get().driving;
     if (!car) return;
-    const parked = { car, position, rotation };
+    const parked: ParkedCar = { car, position, rotation, ...(room === TOWN_ROOM ? { where: 'hostel' as const } : {}) };
     saveParked(parked);
     set({ driving: null, parked, view: 'outside' });
     void flushBurn(car);
   },
-  parkAtHostel: async () => {
-    const car = get().driving;
-    if (!car) return;
-    const parked = inHostelGarage(car);
-    saveParked(parked);
-    set({ driving: null, parked, view: 'outside' });
-    void flushBurn(car);
-    await useHostelStore.getState().travel('hostel', undefined, HOSTEL_GARAGE.stepOut);
-    toast({ icon: '🚗', text: `${CAR_MODELS[car]?.name ?? 'Your car'} is in your hostel garage. Walk up to it and tap Drive out when you need it.`, tone: 'good', ms: 6000 });
-  },
-  driveFromHostel: async () => {
-    const p = get().parked;
-    if (!p || p.where !== 'hostel' || get().driving || useHostelStore.getState().transition) return;
-    const parked: ParkedCar = { car: p.car, position: HOSTEL_DRIVEWAY.position, rotation: HOSTEL_DRIVEWAY.rotation };
-    saveParked(parked);
-    set({ parked });
-    await useHostelStore.getState().travel('campus', undefined, HOSTEL_DRIVEWAY.stepOut);
-    if (useHostelStore.getState().roomId === 'world:funaab:main') get().enter();
+  takeRoad: async (to) => {
+    if (useHostelStore.getState().transition) return;
+    const car = get().driving, side = to === 'campus' ? TOWN_LINK.campus : TOWN_LINK.town;
+    // Still at the wheel: the car arrives with you, so it's drawn and driven from there.
+    if (car) {
+      const parked: ParkedCar = { car, position: side.arriveCar.position, rotation: side.arriveCar.rotation, ...(to === 'town' ? { where: 'hostel' as const } : {}) };
+      saveParked(parked);
+      set({ parked });
+      void flushBurn(car);
+    }
+    await useHostelStore.getState().travel(to === 'campus' ? 'campus' : 'hostel', undefined, car ? side.arriveCar.position : side.arriveFoot);
   },
   buyFuel: async (car, litres) => {
     set({ busy: true, error: null });

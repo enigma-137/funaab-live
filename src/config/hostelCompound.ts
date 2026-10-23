@@ -24,20 +24,24 @@ export const STAIRS = { minX: -12.2, maxX: -10.4, bottomZ: -0.4, topZ: BUILDING.
 export const LANDING = { minX: STAIRS.minX, maxX: BUILDING.minX, minZ: BUILDING.facadeZ, maxZ: BUILDING.corridorFrontZ };
 
 export const IYA_IBEJI = { position: [12.6, 0, -1] as Point, door: [10.2, 0, -1] as Point };
-export const SECURITY_POST: Point = [8.5, 0, 12.5];
+/** Beside the gate on the west, clear of the car's path from the garage out of the gate. */
+export const SECURITY_POST: Point = [-6, 0, 13.4];
+/** The front gate (middle of the +Z wall) stands open onto the town street: wide enough to drive through. */
+export const HOSTEL_GATE_HALF = 3.4;
 export const SECURITY_RADIUS = 3;
 
-/** Carport in the east corner by the perimeter wall, open toward the gate. Your car lives here
- *  unless you rent at the estate; drive out to campus from it, or tap Park at hostel on campus. */
+/** Carport against the front wall, just east of the gate, open at its west end. Your car lives here
+ *  unless you rent at the estate: drive west out of it, turn left through the gate onto the town
+ *  street (config/hostelTown.ts), then right for school. */
 export const HOSTEL_GARAGE = {
-  minX: 12.2, maxX: 16.4, backZ: 4.2, frontZ: 10.8, roofY: 2.7,
-  car: [14.3, 0, 7.4] as Point,
-  /** Facing +Z: nose out of the carport. */
-  rotation: 0,
-  /** Where you stand after parking (in front of the carport). */
-  stepOut: [13.4, 0, 11.4] as Point,
-  /** Drive out prompt: from the car's centre, so standing just in front of the carport counts. */
-  radius: 4.6,
+  minX: 4.6, maxX: 11.2, minZ: 12, maxZ: 16.45, roofY: 2.7,
+  car: [7.9, 0, 14.2] as Point,
+  /** Facing −X: nose toward the gate. */
+  rotation: -Math.PI / 2,
+  /** Where you stand to get to it (on the courtyard side). */
+  stepOut: [7.9, 0, 10.6] as Point,
+  /** Drive prompt: from the car's centre. */
+  radius: 3.8,
 };
 
 /** Courtyard seats: the four plastic chairs round the table and two per tree bench.
@@ -82,6 +86,9 @@ export const STAIR_GEOMETRY = (() => {
 })();
 export const WALL_AT = HOSTEL_COURTYARD_BOUND + 0.6;
 
+/** Carport posts along its courtyard side (X positions). */
+export const garagePosts = () => [HOSTEL_GARAGE.minX + 0.2, (HOSTEL_GARAGE.minX + HOSTEL_GARAGE.maxX) / 2];
+
 export function hostelCompoundColliders(): BoxCollider[] {
   const { minX, maxX, backZ, facadeZ, corridorFrontZ } = BUILDING;
   const H = FLOOR_HEIGHT * 2, cx = (minX + maxX) / 2;
@@ -91,7 +98,8 @@ export function hostelCompoundColliders(): BoxCollider[] {
   const out: BoxCollider[] = [
     { id: 'ground', half: [WALL_AT + 0.5, 0.2, WALL_AT + 0.5], pos: [0, -0.2, 0] },
     { id: 'wall-back', half: [WALL_AT, 1, 0.15], pos: [0, 1, -WALL_AT] },
-    { id: 'wall-front', half: [WALL_AT, 1, 0.15], pos: [0, 1, WALL_AT] },
+    ...[-1, 1].map((side) => ({ id: `wall-front-${side < 0 ? 'w' : 'e'}`, half: [(WALL_AT - HOSTEL_GATE_HALF) / 2, 1, 0.15] as Point, pos: [side * (WALL_AT + HOSTEL_GATE_HALF) / 2, 1, WALL_AT] as Point })),
+    ...[-1, 1].map((side) => ({ id: `gate-pillar-${side < 0 ? 'w' : 'e'}`, half: [0.3, 1.2, 0.3] as Point, pos: [side * HOSTEL_GATE_HALF, 1.2, WALL_AT] as Point })),
     { id: 'wall-left', half: [0.15, 1, WALL_AT], pos: [-WALL_AT, 1, 0] },
     { id: 'wall-right', half: [0.15, 1, WALL_AT], pos: [WALL_AT, 1, 0] },
     { id: 'room-block', half: [(maxX - minX) / 2, H / 2, (facadeZ - backZ) / 2], pos: [cx, H / 2, (backZ + facadeZ) / 2] },
@@ -109,8 +117,8 @@ export function hostelCompoundColliders(): BoxCollider[] {
     { id: 'water-tank', half: [1.1, 1.6, 1.1], pos: [-14, 1.6, -14] },
     { id: 'iya-ibeji', half: [2.2, 1.5, 3], pos: [IYA_IBEJI.position[0], 1.5, IYA_IBEJI.position[2]] },
     { id: 'security-post', half: [1, 1.2, 1], pos: [SECURITY_POST[0], 1.2, SECURITY_POST[2]] },
-    { id: 'garage-back', half: [(HOSTEL_GARAGE.maxX - HOSTEL_GARAGE.minX) / 2, HOSTEL_GARAGE.roofY / 2, 0.12], pos: [(HOSTEL_GARAGE.minX + HOSTEL_GARAGE.maxX) / 2, HOSTEL_GARAGE.roofY / 2, HOSTEL_GARAGE.backZ] },
-    ...[HOSTEL_GARAGE.backZ + 0.3, HOSTEL_GARAGE.frontZ - 0.2].map((z, i) => ({ id: `garage-post-${i}`, half: [0.1, HOSTEL_GARAGE.roofY / 2, 0.1] as Point, pos: [HOSTEL_GARAGE.minX, HOSTEL_GARAGE.roofY / 2, z] as Point })),
+    { id: 'garage-back', half: [0.12, HOSTEL_GARAGE.roofY / 2, (HOSTEL_GARAGE.maxZ - HOSTEL_GARAGE.minZ) / 2], pos: [HOSTEL_GARAGE.maxX, HOSTEL_GARAGE.roofY / 2, (HOSTEL_GARAGE.minZ + HOSTEL_GARAGE.maxZ) / 2] },
+    ...garagePosts().map((x, i) => ({ id: `garage-post-${i}`, half: [0.1, HOSTEL_GARAGE.roofY / 2, 0.1] as Point, pos: [x, HOSTEL_GARAGE.roofY / 2, HOSTEL_GARAGE.minZ] as Point })),
   ];
   // Columns along the balcony edge.
   for (let i = 0; i <= ROOMS_PER_FLOOR; i++) out.push({ id: `column-${i}`, half: [0.14, H / 2, 0.14], pos: [minX + i * ROOM_WIDTH, H / 2, corridorFrontZ - 0.12] });

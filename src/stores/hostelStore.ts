@@ -7,6 +7,8 @@ import { useGameStore } from "./gameStore";
 import { useInputStore } from "./inputStore";
 import { useWalletStore } from "./walletStore";
 import { useLectureStore } from "./lectureStore";
+import { useCarStore } from "./carStore";
+import { TOWN_ROOM, canDriveIn } from "../config/hostelTown";
 import { networkManager } from "../game/multiplayer/networkManager";
 import {
   candidate,
@@ -352,6 +354,12 @@ export const useHostelStore = create<HostelState>((set, get) => ({
           ? "world:funaab:hostel"
           : `world:funaab:hostel-room:${roomOwner}`;
     useInputStore.getState().clearTargetDestination();
+    // Leaving at the wheel by any way but the road (Campus button, your room…): the car stays where you were.
+    const cars = useCarStore.getState();
+    if (cars.driving) {
+      const p = cars.parked, arrives = canDriveIn(roomId) && !!p && (p.where === "hostel") === (roomId === TOWN_ROOM);
+      if (!arrives) { const g = useGameStore.getState(); cars.park(g.myPosition, g.myRotation, get().roomId); }
+    }
     useGameStore.setState({
       myPosition:
         target === "campus"
