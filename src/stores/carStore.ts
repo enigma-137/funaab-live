@@ -57,6 +57,7 @@ const readParked = (): ParkedCar | null => {
 };
 const saveParked = (p: ParkedCar | null) => { try { if (p) localStorage.setItem(storeKey, JSON.stringify(p)); else localStorage.removeItem(storeKey); } catch { /* private mode */ } };
 
+let roadBusy = false;
 let pendingBurn = 0;
 let reporting = false;
 
@@ -117,7 +118,10 @@ export const useCarStore = create<CarStore>((set, get) => ({
     void flushBurn(car);
   },
   takeRoad: async (to) => {
-    if (useHostelStore.getState().transition) return;
+    // Passing under an arch fires every frame until the trip starts: only the first one goes.
+    if (roadBusy || useHostelStore.getState().transition) return;
+    roadBusy = true;
+    try {
     const car = get().driving, side = to === 'campus' ? TOWN_LINK.campus : TOWN_LINK.town;
     // Still at the wheel: the car arrives with you, so it's drawn and driven from there.
     if (car) {
@@ -127,6 +131,7 @@ export const useCarStore = create<CarStore>((set, get) => ({
       void flushBurn(car);
     }
     await useHostelStore.getState().travel(to === 'campus' ? 'campus' : 'hostel', undefined, car ? side.arriveCar.position : side.arriveFoot);
+    } finally { roadBusy = false; }
   },
   buyFuel: async (car, litres) => {
     set({ busy: true, error: null });
