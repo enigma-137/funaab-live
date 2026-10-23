@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { RigidBody, CuboidCollider } from '@react-three/rapier';
+import { RigidBody, CuboidCollider, type RapierRigidBody } from '@react-three/rapier';
 import {
   TOWN_BOUNDS, TOWN_BUILDINGS, TOWN_LAMPS, TOWN_LINK, TOWN_PARKED_CARS, TOWN_ROAD, TOWN_TRAFFIC, TOWN_WALKERS, type TownBuilding,
 } from '../../config/hostelTown';
@@ -104,10 +104,15 @@ function ParkedCars() {
   return <>{TOWN_PARKED_CARS.map((c, i) => <group key={i} position={c.position} rotation={[0, c.rotation, 0]}><CarBody id={c.car} paint={c.paint} /></group>)}</>;
 }
 
+/** Where each passing car is right now (for tests and anything that needs to look). */
+export const trafficNow: Array<{ id: string; x: number; z: number; v: number; lane: 'west' | 'east' }> = [];
+
 /** Through traffic: each car runs its lane end to end and comes round again, and slows to a stop
- *  for anyone (you, other students, a car ahead) in front of it. Drawn per device, no server. */
+ *  for anyone (you, other students, a car ahead) in front of it. Solid (a moving collider), so
+ *  people walk round it and your car bumps it. Drawn per device, no server. */
 function Traffic() {
   const refs = useRef<(THREE.Group | null)[]>([]);
+  const bodies = useRef<(RapierRigidBody | null)[]>([]);
   const state = useMemo(() => {
     const len = TOWN_ROAD.maxX - TOWN_ROAD.minX - 8;
     return TOWN_TRAFFIC.map((t) => ({ ...t, len, s: t.offset * len, v: t.speed }));
@@ -121,16 +126,29 @@ function Traffic() {
       const dir = c.lane === 'west' ? -1 : 1, z = c.lane === 'west' ? TOWN_ROAD.westLane : TOWN_ROAD.eastLane, x = xOf(c);
       const reach = 2.6 * (CAR_MODELS[c.car]?.scale ?? 1);
       let gap = Infinity;
-      for (const [px, pz] of people) if (Math.abs(pz - z) < 1.9) { const ahead = (px - x) * dir; if (ahead > 0) gap = Math.min(gap, ahead - reach); }
+      // Anyone in front of the bonnet, or already alongside the body (stepped off the pavement), stops it.
+      for (const [px, pz] of people) if (Math.abs(pz - z) < 1.9) { const ahead = (px - x) * dir; if (ahead > -reach) gap = Math.min(gap, ahead - reach); }
       for (const o of state) if (o !== c && o.lane === c.lane) { const ahead = (xOf(o) - x) * dir; if (ahead > 0) gap = Math.min(gap, ahead - 2 * reach); }
       const want = gap < 2 ? 0 : gap < 9 ? c.speed * (gap - 2) / 7 : c.speed;
       c.v += Math.max(-10 * dt, Math.min(3 * dt, want - c.v));
       c.s = (c.s + Math.max(0, c.v) * dt) % c.len;
       const g = refs.current[i];
       if (g) { g.position.set(xOf(c), 0, z); g.rotation.y = dir * Math.PI / 2; }
+      trafficNow[i] = { id: c.id, x: xOf(c), z, v: c.v, lane: c.lane };
+      const b = bodies.current[i];
+      if (b) { b.setNextKinematicTranslation({ x: xOf(c), y: 0, z }); b.setNextKinematicRotation({ x: 0, y: Math.sin(dir * Math.PI / 4), z: 0, w: Math.cos(dir * Math.PI / 4) }); }
     });
   });
-  return <>{TOWN_TRAFFIC.map((t, i) => <group key={t.id} ref={(g) => { refs.current[i] = g; }}><CarBody id={t.car} paint={t.paint} /></group>)}</>;
+  const startX = (c: (typeof state)[number]) => c.lane === 'west' ? TOWN_ROAD.maxX - 4 - c.s : TOWN_ROAD.minX + 4 + c.s;
+  return <>{TOWN_TRAFFIC.map((t, i) => {
+    const k = CAR_MODELS[t.car]?.scale ?? 1, z = t.lane === 'west' ? TOWN_ROAD.westLane : TOWN_ROAD.eastLane, dir = t.lane === 'west' ? -1 : 1;
+    return <React.Fragment key={t.id}>
+      <group ref={(g) => { refs.current[i] = g; }}><CarBody id={t.car} paint={t.paint} /></group>
+      <RigidBody ref={(b) => { bodies.current[i] = b; }} type="kinematicPosition" colliders={false} position={[startX(state[i]), 0, z]} rotation={[0, dir * Math.PI / 2, 0]}>
+        <CuboidCollider args={[DRIVE.half[0] * k, DRIVE.half[1], DRIVE.half[2] * k]} position={[0, DRIVE.half[1] + 0.12, 0]} />
+      </RigidBody>
+    </React.Fragment>;
+  })}</>;
 }
 
 /** Neighbours walking up and down the pavements. */

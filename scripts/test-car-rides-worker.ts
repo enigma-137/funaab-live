@@ -59,7 +59,17 @@ async function main(){
     await g1.packet({type:'group_ping',groupId:'g-1',to:['00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000012'],text:'ignored'});
     assert.deepEqual(last(g2,'group_ping'),{type:'group_ping',groupId:'g-1',from:'S11'},'member pinged, no message text');
     assert(!last(g1,'group_ping')&&!last(g3,'group_ping'),'not the sender, not outsiders');
-    console.log('CAR RIDES WORKER PASSED (+ group pings): only a driving car, next to it, not your own; two seats then full; seat freed on leaving; batch shows riders; park or disconnect lets everyone out.');
+    // The hostel town (its own world): driving at the far west end is accepted, and lifts work there too.
+    const town:any=new WorldRoomDO({storage} as any,{ENABLE_GUEST_MODE:'true'} as any);
+    const joinTown=async(n:number,at:[number,number,number])=>{const s=new Socket();await town.handleSession(s,null,'world:funaab:hostel');await s.packet({type:'join',room:'world:funaab:hostel',player:{id:`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,username:`T${n}`,position:at}});return s;};
+    const td=await joinTown(21,[0,0,8]),tr=await joinTown(22,[-150,0,27]);
+    const TD=town.sessions.get(td).connectionId;
+    for(const x of [-20,-60,-100,-140,-150]) await td.packet({type:'move',position:[x,0,22.8],rotation:-Math.PI/2,animation:'sit',car:'car_corolla'});
+    assert.deepEqual(town.players.get(TD).position,[-150,0,22.8],'town positions are accepted');
+    assert.equal(town.players.get(TD).car,'car_corolla','driving in town');
+    await tr.packet({type:'car_ride',driver:TD});
+    assert.equal(last(tr,'car_ride_result').ok,true,'a lift in town');
+    console.log('CAR RIDES WORKER PASSED (+ group pings, hostel town): only a driving car, next to it, not your own; two seats then full; seat freed on leaving; batch shows riders; park or disconnect lets everyone out; driving and lifts in the hostel town.');
   }finally{globalThis.WebSocket=oldWS;globalThis.setInterval=oldInterval;}
 }
 main().then(()=>process.exit(0)).catch((e)=>{console.error(e);process.exit(1);});

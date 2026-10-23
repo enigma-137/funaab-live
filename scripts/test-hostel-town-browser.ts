@@ -47,6 +47,8 @@ const ME = { id: '00000000-0000-4000-8000-0000000000e1', username: 'Enigma', col
       await until('carStore', 'return s.getState().parked?.where === "hostel"', 'car in the hostel garage');
       await store('hostelStore', 'return s.getState().travel("hostel")');
       await until('hostelStore', 'return s.getState().roomId === "world:funaab:hostel"', 'in the courtyard');
+      // First visit: a hint says where the car is and how to get to school.
+      await page.getByText('Your car is in the garage by the gate. Drive out, turn right', { exact: false }).waitFor({ timeout: 15000 });
       await page.waitForTimeout(1500);
 
       // The plastic chairs and the tree bench take a seat.
@@ -74,11 +76,38 @@ const ME = { id: '00000000-0000-4000-8000-0000000000e1', username: 'Enigma', col
       const after = await pos();
       assert.ok(after[0] < before[0] - 1, `the car drives west out of the carport (${before} → ${after})`);
 
+      // Passing cars are solid and stop for you: stand in the westbound lane and walk east into the
+      // traffic; you never end up inside a car.
+      await tap('Park & get out');
+      await until('carStore', 'return !s.getState().driving', 'parked in the courtyard');
+      const traffic = () => page.evaluate(async () => (await import('/src/game/world/HostelTown.tsx' as any)).trafficNow) as Promise<Array<{ x: number; z: number; v: number; lane: string }>>;
+      // Step into the westbound lane where no car is right now, then wait for traffic to reach you.
+      let laneX = -60;
+      for (let i = 0; i < 50; i++) { const cars = await traffic(); if (cars.every((c) => c.lane !== 'west' || Math.abs(c.x - laneX) > 12)) break; await page.waitForTimeout(200); }
+      await goTo(laneX, 22.8, `const p = s.getState().myPosition; return Math.abs(p[0] - (${laneX})) < 0.5 && Math.abs(p[2] - 22.8) < 0.5`, 'in the lane');
+      await camera(Math.PI / 2 + 0.25, 0.3);
+      let stopped = false;
+      for (let i = 0; i < 150 && !stopped; i++) {
+        const cars = (await traffic()).filter((c) => c.lane === 'west');
+        for (const c of cars) assert.ok(Math.abs(c.x - laneX) > 2.5, `a passing car never drives into you (car at ${c.x.toFixed(1)})`);
+        stopped = cars.some((c) => c.x > laneX && c.x - laneX < 8 && Math.abs(c.v) < 0.3);
+        await page.waitForTimeout(200);
+      }
+      assert.ok(stopped, 'a passing car stopped in front of you');
+      await shot('traffic-stops');
+      // Walk into the stopped car: it's solid.
+      await page.keyboard.down('s'); await page.waitForTimeout(1500); await page.keyboard.up('s');
+      const me = await pos(), front = (await traffic()).filter((c) => c.lane === 'west' && c.x > laneX).sort((a, b) => a.x - b.x)[0];
+      assert.ok(front.x - me[0] > 2.2, `the car body blocks you (you ${me[0].toFixed(1)}, car ${front.x.toFixed(1)})`);
       // Looking down the street from the gate; and the arch at the end of it.
       await camera(-Math.PI / 2 + 0.6, 0.25);
       await page.waitForTimeout(1200);
       await shot('street');
 
+      const car = await store('carStore', 'return s.getState().parked.position') as number[];
+      await goTo(car[0] + 1.5, car[2] - 2.6, 'return s.getState().nearbyInteractable?.targetId === "drive"', 'back at the car');
+      await tap('Drive');
+      await until('carStore', 'return s.getState().driving === "car_corolla"', 'at the wheel again');
       // The road to school: arrive on the campus gate road at the wheel.
       await store('carStore', 'return s.getState().takeRoad("campus")');
       await until('hostelStore', 'return s.getState().roomId === "world:funaab:main"', 'on campus');

@@ -3,6 +3,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useHostelStore } from '../stores/hostelStore';
 import { useInputStore } from '../stores/inputStore';
+import { useCarStore } from '../stores/carStore';
+import { toast } from '../stores/toastStore';
 import { doorFor, hostelRoomFor, isAtDoor } from '../config/hostelCompound';
 
 /**
@@ -27,6 +29,21 @@ export function HostelCompoundHud() {
     useInputStore.getState().clearTargetDestination();
     void useHostelStore.getState().travel('room').finally(() => setEntering(false));
   };
+  // First time in the courtyard: say the gate opens onto the town and how to get to school.
+  useEffect(() => {
+    if (!inCourtyard || !user) return;
+    const key = `funaab:town-hint:v1:${user.id}`;
+    const remember = () => { try { localStorage.setItem(key, '1'); } catch { /* private mode */ } };
+    try { if (localStorage.getItem(key)) return; } catch { /* private mode: show it anyway */ }
+    const car = useCarStore.getState().parked?.where === 'hostel';
+    const t = setTimeout(() => { remember(); toast({
+      icon: car ? '🚗' : '🛣️', tone: 'info', ms: 9000,
+      text: car
+        ? 'Your car is in the garage by the gate. Drive out, turn right, and the road at the end of the street takes you to school.'
+        : 'The gate opens onto the town. Turn right and walk to the end of the street: the road there takes you to school.',
+    }); }, 1200);
+    return () => clearTimeout(t);
+  }, [inCourtyard, user?.id]);
   useEffect(() => {
     if (!inCourtyard || !atDoor || modal) return;
     const key = (e: KeyboardEvent) => {
