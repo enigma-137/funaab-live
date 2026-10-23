@@ -53,7 +53,8 @@ export const FUEL_STATION = {
   pumpRadius: 4,
 };
 
-/** Where your car waits when you take it out: the estate car park if you rent there, else the campus car park. */
+/** Where your car waits when you take it out: the estate car park if you rent there, else your hostel
+ *  garage (config/hostelCompound.ts HOSTEL_GARAGE). `campus` is the old campus car park home. */
 export const CAR_HOME = {
   estate: [ESTATE.carPark.maxX - 2, 0, ESTATE.carPark.minZ + 2.6] as Point,
   campus: [-75, 0, 60] as Point,

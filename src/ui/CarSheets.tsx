@@ -9,6 +9,9 @@ import { CAR_MODELS, CAR_PAINTS, FUEL, FUEL_STATION, RESPRAY_PRICE, fuelPrice, p
 import { RACE, formatRaceTime } from '../config/carRace';
 import { useRaceStore } from '../stores/raceStore';
 import { ESTATE } from '../config/estate';
+import { HOSTEL_GARAGE } from '../config/hostelCompound';
+import { TOWN_ROAD, TOWN_ROOM } from '../config/hostelTown';
+import { useHostelStore } from '../stores/hostelStore';
 
 const naira = (n: number) => `₦${Math.round(n).toLocaleString()}`;
 
@@ -56,8 +59,18 @@ export function GarageSheet() {
   const owned = Object.keys(fuel).filter((id) => CAR_MODELS[id]);
   const go = (to: [number, number, number], name: string) => {
     setModal(null);
+    // In the hostel town (the garage or the street): go there, beside it.
+    const p = useCarStore.getState().parked;
+    if (p?.where === 'hostel') {
+      const inGarage = Math.hypot(p.position[0] - HOSTEL_GARAGE.car[0], p.position[2] - HOSTEL_GARAGE.car[2]) < 1;
+      const beside: [number, number, number] = inGarage ? HOSTEL_GARAGE.stepOut : [p.position[0], 0, p.position[2] + (p.position[2] < TOWN_ROAD.westLane ? 2.8 : -2.8)];
+      if (useHostelStore.getState().roomId !== TOWN_ROOM || useHostelStore.getState().owner) void useHostelStore.getState().travel('hostel', undefined, beside);
+      else useHostelStore.setState({ teleport: beside });
+      return;
+    }
     useGameStore.getState().setNavigationDestination({ id: 'my-car', name, shortName: name, position: to, icon: '🚗' });
   };
+  const home = renting ? ESTATE.shortName : 'your hostel garage';
   return (
     <Sheet title="Garage" subtitle="Your cars · fuel · where they're parked" icon="🚗" accent="#2563eb" onClose={() => setModal(null)}>
       <div className="academic-body">
@@ -70,20 +83,20 @@ export function GarageSheet() {
           const m = CAR_MODELS[id], out = parked?.car === id, inUse = driving === id;
           return (
             <section key={id} className="hustle-card">
-              <h3>{m.name} <small>{inUse ? 'driving now' : out ? 'parked' : 'in the garage'}</small></h3>
+              <h3>{m.name} <small>{inUse ? 'driving now' : out ? (parked!.where === 'hostel' ? 'at the hostel' : 'parked on campus') : 'in the garage'}</small></h3>
               <FuelBar litres={fuel[id] ?? 0} />
               <PaintPicker car={id} />
               {inUse ? <p className="academic-note">Tap Park & get out when you stop.</p> : out ? (
                 <div className="hustle-row">
                   <button className="hustle-btn" onClick={() => go(parked!.position, m.name)}>Show me my car</button>
-                  <button className="hustle-btn is-quiet" onClick={() => { takeOut(id, renting); toast({ icon: '🚗', text: `${m.name} is back at ${renting ? ESTATE.shortName : 'the campus car park'}.`, tone: 'info' }); }}>Bring it home</button>
+                  <button className="hustle-btn is-quiet" onClick={() => { takeOut(id, renting); toast({ icon: '🚗', text: `${m.name} is back at ${home}.`, tone: 'info' }); }}>Bring it home</button>
                 </div>
               ) : (
                 <button className="academic-primary academic-wide" disabled={!!driving} onClick={() => {
                   takeOut(id, renting);
                   const p = useCarStore.getState().parked!;
                   go(p.position, m.name);
-                  toast({ icon: '🚗', text: `${m.name} is waiting at ${renting ? 'the Royal Gardens car park' : 'the campus car park'}. Follow the arrow, then tap Drive.`, tone: 'info', ms: 6000 });
+                  toast({ icon: '🚗', text: renting ? `${m.name} is waiting at the Royal Gardens car park. Follow the arrow, then tap Drive.` : `${m.name} is waiting in your hostel garage. Walk up to it and tap Drive.`, tone: 'info', ms: 6000 });
                 }}>Take it out</button>
               )}
             </section>

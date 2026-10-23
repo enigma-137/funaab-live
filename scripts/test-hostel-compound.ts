@@ -4,9 +4,10 @@
 import assert from 'node:assert/strict';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {
-  BUILDING, FLOOR_HEIGHT, HOSTEL_COURTYARD_BOUND, HOSTEL_DOORS, HOSTEL_SPAWN, IYA_IBEJI, LANDING, SECURITY_POST, STAIRS,
+  BUILDING, FLOOR_HEIGHT, HOSTEL_COURTYARD_BOUND, HOSTEL_DOORS, HOSTEL_GARAGE, HOSTEL_GATE_HALF, HOSTEL_SPAWN, IYA_IBEJI, LANDING, SECURITY_POST, STAIRS,
   STAIR_GEOMETRY, doorFor, hostelCompoundColliders, hostelRoomFor, isAtDoor,
 } from '../src/config/hostelCompound';
+import { CAR_MODELS, DRIVE } from '../src/config/cars';
 
 type V3 = [number, number, number];
 
@@ -123,11 +124,28 @@ async function main() {
   assert(near(p, [IYA_IBEJI.door[0] - 0.6, 0, IYA_IBEJI.door[2] + 0.6], 0.5), `reach Iya Ibeji ${p}`);
   p = walk([IYA_IBEJI.position[0] + 1, 0, IYA_IBEJI.door[2]], 2);
   assert(p[0] < IYA_IBEJI.position[0] - 2, `cannot walk into the shop ${p}`);
-  // 12. Perimeter wall holds.
+  // 12. Perimeter wall holds either side of the gate; the gate itself is open onto the street.
   place(HOSTEL_SPAWN);
-  p = walk([0, 0, HOSTEL_COURTYARD_BOUND + 6], 6);
+  p = walk([-10, 0, HOSTEL_COURTYARD_BOUND + 6], 6);
   assert(p[2] < HOSTEL_COURTYARD_BOUND + 0.6, `perimeter wall holds ${p}`);
+  place(HOSTEL_SPAWN);
+  p = walk([0, 0, HOSTEL_COURTYARD_BOUND + 6]);
+  assert(p[2] > HOSTEL_COURTYARD_BOUND + 4, `walk out of the open gate ${p}`);
+  // 13. The biggest car drives out of the garage: west under the carport, then a left turn through the
+  //     gate, with LocalPlayer's driving model (the car turns about its centre at a 2.5 m radius).
+  place([0, 0, -40]);
+  const k = CAR_MODELS.car_gwagon.scale, car = new RAPIER.Cuboid(DRIVE.half[0] * k, DRIVE.half[1], DRIVE.half[2] * k);
+  const [gx, , gz] = HOSTEL_GARAGE.car, r = 2.5, turnX = 0 + r;
+  const path: Array<[number, number, number]> = [];
+  for (let x = gx; x >= turnX; x -= 0.2) path.push([x, gz, -Math.PI / 2]);
+  for (let a = 0; a <= Math.PI / 2 + 1e-6; a += Math.PI / 60) path.push([turnX - r * Math.sin(a), gz + r - r * Math.cos(a), -Math.PI / 2 + a]);
+  for (let z = gz + r; z < HOSTEL_COURTYARD_BOUND + 6; z += 0.2) path.push([0, z, 0]);
+  assert(Math.abs(path.at(-1)![0]) < HOSTEL_GATE_HALF - DRIVE.half[0] * k, 'the gate is wider than the car');
+  for (const [x, z, h] of path) {
+    const hit = world.intersectionWithShape({ x, y: DRIVE.half[1] + 0.12, z }, { x: 0, y: Math.sin(h / 2), z: 0, w: Math.cos(h / 2) }, car);
+    assert(!hit, `car clears the garage and gate at ${[x.toFixed(1), z.toFixed(1)]}`);
+  }
 
-  console.log('HOSTEL COMPOUND PASSED: 12 numbered doors on 2 floors, stable even room assignment, floor-aware door prompt, real Rapier walk up the stairs, along the balcony to Room 10, back down, balcony/end/landing/stair rails hold, facade + stair mass + shop solid, ground doors reachable under the balcony, Iya Ibeji reachable, perimeter wall holds.');
+  console.log('HOSTEL COMPOUND PASSED: 12 numbered doors on 2 floors, stable even room assignment, floor-aware door prompt, real Rapier walk up the stairs, along the balcony to Room 10, back down, balcony/end/landing/stair rails hold, facade + stair mass + shop solid, ground doors reachable under the balcony, Iya Ibeji reachable, perimeter wall holds, gate open, a G-Wagon drives out of the garage and through the gate.');
 }
 main().catch((e) => { console.error(e); process.exit(1); });

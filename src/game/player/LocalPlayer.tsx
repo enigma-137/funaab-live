@@ -6,6 +6,7 @@ import { isParkedKeke } from '../../config/kekeRoutes';
 import { RACE, gridSpot } from '../../config/carRace';
 import { toast } from '../../stores/toastStore';
 import { CAR_MODELS, DRIVE, DRIVER_SEAT, FUEL_STATION, PASSENGER_SEATS, SEAT_EYE } from '../../config/cars';
+import { CAMPUS_ROOM, TOWN_BOUNDS, TOWN_LINK, TOWN_ROOM, canDriveIn } from '../../config/hostelTown';
 import { CarBody, Cockpit } from '../vehicles/CarBody';
 import { ECONOMY_CONFIG } from '../../config/economy';
 import { onDanceFloor, partyOpen } from '../../config/partyHall';
@@ -32,7 +33,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { openFoodVendor } from '../../stores/foodVendorStore';
 import { openFootball, useFootballStore, amParticipant } from '../../stores/footballStore';
 import { openCourtGame, courtStores, onCourt } from '../../stores/courtGameStore';
-import { HOSTEL_COURTYARD_BOUND, HOSTEL_SPAWN } from '../../config/hostelCompound';
+import { HOSTEL_GARAGE, HOSTEL_SEATS, HOSTEL_SPAWN } from '../../config/hostelCompound';
 import { CAMERA_ROTATION_RATE, damp, dampFactor, dampFollow, orbitPosition } from '../camera/cameraMath';
 import { useAdStore } from '../../stores/adStore';
 
@@ -120,7 +121,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   // Driving: the car's own kinematic collider and controller (so the whole car body hits walls),
   // its ground position, heading and speed.
   const carPhys = useRef<{ body: any; collider: any; controller: any; car: string } | null>(null);
-  const drive = useRef({ x: 0, z: 0, heading: 0, speed: 0, active: false });
+  const drive = useRef({ x: 0, z: 0, heading: 0, speed: 0, active: false, room: CAMPUS_ROOM });
   const drivingCar = useCarStore((s) => s.driving);
   const ride = useCarStore((s) => s.ride);
   const carView = useCarStore((s) => s.view);
@@ -129,7 +130,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
   const myPaint = useCarStore((s) => (s.driving ? s.paint[s.driving] ?? null : null));
   // Getting a lift: smoothed copy of the driver's car position and heading.
   const rideSmooth = useRef({ x: 0, z: 0, heading: 0, init: false });
-  const onCampusNow = useHostelStore((s) => s.roomId === 'world:funaab:main');
+  // Campus or the hostel town: the two places you can drive (and so sit in a car).
+  const drivableNow = useHostelStore((s) => canDriveIn(s.roomId));
 
   const { world, rapier } = useRapier();
   const { camera, size } = useThree();
@@ -242,7 +244,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     const d = drive.current, car = useCarStore.getState().driving;
     if (!car) return;
     if (Math.abs(d.speed) > 1) { toast({ icon: '🚗', text: 'Slow down to a stop before you park.', tone: 'info' }); return; }
-    useCarStore.getState().park([d.x, 0, d.z], d.heading);
+    useCarStore.getState().park([d.x, 0, d.z], d.heading, d.room);
     d.active = false; d.speed = 0;
     removeCarPhys();
     const out = DRIVE.half[0] * (CAR_MODELS[car]?.scale ?? 1) + 0.8;
@@ -264,6 +266,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
     if (nearbyInteractable?.type === 'car') {
       const t = nearbyInteractable.targetId || '';
       if (t === 'drive') useCarStore.getState().enter();
+      else if (t === 'to-campus' || t === 'to-town') void useCarStore.getState().takeRoad(t === 'to-campus' ? 'campus' : 'town');
       else if (t === 'race') useRaceStore.getState().start();
       else if (t === 'park') parkCar();
       else if (t === 'unride') useCarStore.getState().leaveRide();
@@ -410,9 +413,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       camera.lookAt(ex + Math.sin(look) * 10, SEAT_EYE - 0.05 - cameraPitch * 2, ez + Math.cos(look) * 10);
     };
 
-    // 1a. GETTING A LIFT in someone else's car (campus only)
+    // 1a. GETTING A LIFT in someone else's car (campus or the hostel town)
     const liftState = useCarStore.getState();
-    if (liftState.ride && useHostelStore.getState().roomId === 'world:funaab:main') {
+    if (liftState.ride && canDriveIn(useHostelStore.getState().roomId)) {
       const drv = players[liftState.ride.driver];
       if (!drv || !drv.car) { liftState.rideEnded('driver_left'); }
       else {
@@ -438,11 +441,16 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       }
     }
 
-    // 1b. DRIVING YOUR CAR (campus only)
+    // 1b. DRIVING YOUR CAR (campus or the hostel town)
     const carState = useCarStore.getState();
-    if (carState.driving && controller && useHostelStore.getState().roomId === 'world:funaab:main') {
+    const room = useHostelStore.getState().roomId;
+    if (carState.driving && controller && canDriveIn(room)) {
+      const onCampus = room === CAMPUS_ROOM, bounds = onCampus ? worldData.bounds : TOWN_BOUNDS;
       const model = CAR_MODELS[carState.driving], k = model.scale, d = drive.current;
+      // Crossed between campus and town at the wheel: start again from where the car arrived.
+      if (d.active && d.room !== room) { d.active = false; removeCarPhys(); }
       if (!d.active) {
+        d.room = room;
         const p = carState.parked;
         d.x = p?.position[0] ?? body.translation().x; d.z = p?.position[2] ?? body.translation().z;
         d.heading = p?.rotation ?? currentRotation.current; d.speed = 0; d.active = true;
@@ -465,7 +473,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       }
       const held = race.status === 'countdown';
       if (held) d.speed = 0;
-      const modal = Boolean(useGameStore.getState().activeModal);
+      const modal = Boolean(useGameStore.getState().activeModal) || !!useHostelStore.getState().transition;
       const kp = keysPressed.current;
       const [jx, jy] = modal ? [0, 0] : useInputStore.getState().joystick;
       const throttle = modal || held ? 0 : Math.max(-1, Math.min(1, -jy + ((kp['w'] || kp['arrowup']) ? 1 : 0) - ((kp['s'] || kp['arrowdown']) ? 1 : 0)));
@@ -492,8 +500,8 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       const moved = cp.controller.computedMovement();
       const wanted = Math.hypot(want.x, want.z), got = Math.hypot(moved.x, moved.z);
       if (wanted > 0.001 && got < wanted * 0.35) d.speed *= 0.25; // bumped into something
-      d.x = Math.max(worldData.bounds.minX + 2, Math.min(worldData.bounds.maxX - 2, d.x + moved.x));
-      d.z = Math.max(worldData.bounds.minZ + 2, Math.min(worldData.bounds.maxZ - 2, d.z + moved.z));
+      d.x = Math.max(bounds.minX + 2, Math.min(bounds.maxX - 2, d.x + moved.x));
+      d.z = Math.max(bounds.minZ + 2, Math.min(bounds.maxZ - 2, d.z + moved.z));
       if (got > 0) carState.drove(got);
       body.setNextKinematicTranslation({ x: d.x, y: PLAYER_CENTER_OFFSET, z: d.z });
       currentRotation.current = d.heading;
@@ -510,19 +518,23 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       if (carState.view === 'inside') insideCamera(d.x, d.z, d.heading, DRIVER_SEAT);
       else { setLensFov(50); updateOrbitCamera(_camTarget.set(d.x, PLAYER_CENTER_OFFSET, d.z), cameraYaw, cameraPitch, 13.5, 5.4, 0.6, 0.9, delta); }
       // At a pump you can fill up; anywhere else the button parks the car.
-      const pump = FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius);
+      const pump = onCampus ? FUEL_STATION.pumps.find((q) => Math.hypot(q[0] - d.x, q[2] - d.z) < FUEL_STATION.pumpRadius) : undefined;
       const start = RACE.track[0];
-      const atStart = race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(start[0] - d.x, start[2] - d.z) < RACE.startRadius;
+      const atStart = onCampus && race.status === 'idle' && Math.abs(d.speed) < 1 && Math.hypot(start[0] - d.x, start[2] - d.z) < RACE.startRadius;
+      // The road between campus (west end of the gate road) and the hostel town (the arch at its west end).
+      const link = onCampus ? TOWN_LINK.campus : TOWN_LINK.town;
+      const atLink = race.status === 'idle' && Math.hypot(link.exit[0] - d.x, link.exit[2] - d.z) < link.radius;
       const near: InteractableZone = pump
         ? { id: 'fuel-pump', type: 'car', targetId: 'fuel', label: FUEL_STATION.name, actionText: 'Buy fuel', position: pump, radius: FUEL_STATION.pumpRadius }
         : atStart ? { id: 'race-start', type: 'car', targetId: 'race', label: RACE.name, actionText: 'Start the race', position: start, radius: RACE.startRadius }
+        : atLink ? { id: 'road-link', type: 'car', targetId: onCampus ? 'to-town' : 'to-campus', label: onCampus ? 'Road to the hostel' : 'Road to school', actionText: onCampus ? 'Drive to hostel' : 'Drive to campus', position: link.exit, radius: link.radius }
         : { id: 'my-car', type: 'car', targetId: 'park', label: model.name, actionText: Math.abs(d.speed) > 1 ? 'Stop to park' : 'Park & get out', position: feet, radius: 3 };
       if (useGameStore.getState().nearbyInteractable?.actionText !== near.actionText) setNearbyInteractable(near);
       setIsOnRestrictedLawn(false);
       return;
     }
-    // Left campus while driving (hostel, library): the car stays parked where you were.
-    if (carState.driving && drive.current.active) carState.park([drive.current.x, 0, drive.current.z], drive.current.heading);
+    // Left while driving (your room, the library): the car stays parked where you were.
+    if (carState.driving && drive.current.active) carState.park([drive.current.x, 0, drive.current.z], drive.current.heading, drive.current.room);
     if (drive.current.active) { drive.current.active = false; removeCarPhys(); }
 
     const seatedAt = useGameStore.getState().seatedAt;
@@ -669,11 +681,14 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       currentAnimation.current = onDanceFloor([currentTranslation.x, 0, currentTranslation.z]) && partyOpen(Date.now()) ? 'dance' : 'idle';
     }
 
-    // World Boundary Clamping
-    nextX = Math.max(worldData.bounds.minX + 0.5, Math.min(worldData.bounds.maxX - 0.5, nextX));
-    nextZ = Math.max(worldData.bounds.minZ + 0.5, Math.min(worldData.bounds.maxZ - 0.5, nextZ));
-
-    if(offCampus) { const inRoom=!!useHostelStore.getState().owner, bound=roomState.roomId === 'world:funaab:library'?11.4:inRoom?3.5:HOSTEL_COURTYARD_BOUND;
+    // World Boundary Clamping: campus, or the hostel town (the compound walls keep you in the courtyard
+    // except through its gate), or a room / the library.
+    const worldBounds = !offCampus ? worldData.bounds : roomState.roomId === TOWN_ROOM && !roomState.owner ? TOWN_BOUNDS : null;
+    if (worldBounds) {
+      nextX = Math.max(worldBounds.minX + 0.5, Math.min(worldBounds.maxX - 0.5, nextX));
+      nextZ = Math.max(worldBounds.minZ + 0.5, Math.min(worldBounds.maxZ - 0.5, nextZ));
+    }
+    if(offCampus && !worldBounds) { const inRoom=!!useHostelStore.getState().owner, bound=roomState.roomId === 'world:funaab:library'?11.4:3.5;
       // An expanded room (migration 024) is wider along X.
       const boundX=inRoom?ROOM_SIZES[roomSizeNow()].halfX-0.5:bound;nextX=Math.max(-boundX,Math.min(boundX,nextX));nextZ=Math.max(-bound,Math.min(bound,nextZ)); }
     if(offCampus&&roomState.pose){[nextX,nextY,nextZ]=roomState.pose.position;nextY+=PLAYER_CENTER_OFFSET;currentRotation.current=roomState.pose.rotation;}
@@ -725,7 +740,38 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       updateOrbitCamera(_camTarget.set(nextX,nextY,nextZ),cameraYaw,cameraPitch,camDist,camHeight,0.6,0.8,delta);
     }
 
-    if(offCampus) { setIsOnRestrictedLawn(false); setNearbyInteractable(null); return; }
+    if(offCampus) {
+      setIsOnRestrictedLawn(false);
+      // Hostel courtyard and town: sit on the chairs and tree benches, drive your car, hop in a
+      // neighbour's car, or take the road to school at the arch.
+      let spot: InteractableZone | null = null;
+      if (roomState.roomId === TOWN_ROOM && !roomState.owner) {
+        let best = 999;
+        const others = useGameStore.getState().players;
+        for (const seat of HOSTEL_SEATS) {
+          const dist = Math.hypot(feetPosition[0] - seat.position[0], feetPosition[2] - seat.position[2]);
+          if (dist > 1.3 || dist >= best) continue;
+          // A seat someone is already sitting on is not offered.
+          if (Object.values(others).some((p) => p.animation === 'sit' && Math.hypot(p.position[0] - seat.position[0], p.position[2] - seat.position[2]) < 0.3)) continue;
+          best = dist;
+          spot = { id: seat.id, type: 'bench', label: seat.label, actionText: 'Sit down', position: seat.position, radius: 1.3, rotation: seat.rotation };
+        }
+        const link = TOWN_LINK.town, toLink = Math.hypot(feetPosition[0] - link.exit[0], feetPosition[2] - link.exit[2]);
+        if (toLink < link.radius && toLink < best) { best = toLink; spot = { id: 'road-link', type: 'car', targetId: 'to-campus', label: 'Road to school', actionText: 'Walk to campus', position: link.exit, radius: link.radius }; }
+        const myCar = useCarStore.getState().parked;
+        if (myCar?.where === 'hostel') {
+          const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
+          if (dist < HOSTEL_GARAGE.radius && dist < best + 1) { best = dist; spot = { id: 'my-car', type: 'car', targetId: 'drive', label: CAR_MODELS[myCar.car]?.name ?? 'Your car', actionText: 'Drive', position: myCar.position, radius: HOSTEL_GARAGE.radius }; }
+        }
+        for (const p of Object.values(others)) {
+          if (!p.car || !p.connectionId) continue;
+          const dist = Math.hypot(feetPosition[0] - p.position[0], feetPosition[2] - p.position[2]);
+          if (dist < 4.5 && dist < best) { best = dist; spot = { id: `ride-${p.connectionId}`, type: 'car', targetId: `ride:${p.connectionId}`, label: `${p.username}'s ${CAR_MODELS[p.car]?.name ?? 'car'}`, actionText: `Ride with ${p.username}`, position: p.position, radius: 4.5 }; }
+        }
+      }
+      setNearbyInteractable(spot);
+      return;
+    }
     // Terrain Classification & FUNAAB Lawn Rule Enforcement
     const terrain = classifyTerrain(feetPosition[0], feetPosition[2]);
     setIsOnRestrictedLawn(terrain.restricted);
@@ -807,8 +853,11 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
       if((k.isStopped||passing)&&dist<8&&dist<minDistance){minDistance=dist;closestInteractable={id:k.id,type:'keke_stop',targetId:k.id,label:k.id==='korope-1'?'Korope Bus':k.id==='keke-1'?'Route Keke':'Car Park Keke',actionText:passing?'Stop it & hop on':k.id==='korope-1'?(k.phase==='WAITING'?'Join Korope':'Hop On'):k.phase==='BOARDING'?'Join Ride':'Book Ride',position:k.position,radius:8};}
     }
     // Your parked car and the fuel pumps (on foot you can fill a car you own too).
+    // The road to the hostel town, at the west end of the gate road.
+    const toTown = Math.hypot(feetPosition[0] - TOWN_LINK.campus.exit[0], feetPosition[2] - TOWN_LINK.campus.exit[2]);
+    if (toTown < TOWN_LINK.campus.radius && toTown < minDistance) { minDistance = toTown; closestInteractable = { id: 'road-link', type: 'car', targetId: 'to-town', label: 'Road to the hostel', actionText: 'Walk to hostel', position: TOWN_LINK.campus.exit, radius: TOWN_LINK.campus.radius }; }
     const myCar = useCarStore.getState().parked;
-    if (myCar) {
+    if (myCar && myCar.where !== 'hostel') {
       const dist = Math.hypot(feetPosition[0] - myCar.position[0], feetPosition[2] - myCar.position[2]);
       if (dist < 3.6 && dist < minDistance + 1) { minDistance = dist; closestInteractable = { id: 'my-car', type: 'car', targetId: 'drive', label: CAR_MODELS[myCar.car]?.name ?? 'Your car', actionText: 'Drive', position: myCar.position, radius: 3.6 }; }
     }
@@ -922,9 +971,9 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
 
       {/* Visual Avatar Mesh attached to physics body with offset to match feet level */}
       <group ref={avatarVisualRef} position={[0, -PLAYER_CENTER_OFFSET, 0]}>
-        {drivingCar && onCampusNow && (carView === 'inside' ? <Cockpit id={drivingCar} paint={myPaint} /> : <CarBody id={drivingCar} paint={myPaint} />)}
-        {ride && rideCar && onCampusNow && carView === 'inside' && (() => { const seat = PASSENGER_SEATS[ride.seat] ?? PASSENGER_SEATS[0]; return <group position={[-seat[0], -seat[1], -seat[2]]}><Cockpit id={rideCar} paint={ridePaint} /></group>; })()}
-        <group position={drivingCar && onCampusNow ? DRIVER_SEAT : [0, 0, 0]}>
+        {drivingCar && drivableNow && (carView === 'inside' ? <Cockpit id={drivingCar} paint={myPaint} /> : <CarBody id={drivingCar} paint={myPaint} />)}
+        {ride && rideCar && drivableNow && carView === 'inside' && (() => { const seat = PASSENGER_SEATS[ride.seat] ?? PASSENGER_SEATS[0]; return <group position={[-seat[0], -seat[1], -seat[2]]}><Cockpit id={rideCar} paint={ridePaint} /></group>; })()}
+        <group position={drivingCar && drivableNow ? DRIVER_SEAT : [0, 0, 0]}>
         <AvatarModel
           userId={user.id}
           username={user.username}
@@ -934,7 +983,7 @@ export const LocalPlayer: React.FC<{offCampus?:boolean}> = ({offCampus=false}) =
           isLocal
           held={myHeldItem}
           table={seatedAt && seatedAt.animation !== 'sleep' ? diningSpotAt(seatedAt.position) : null}
-          hidden={onCampusNow && (!!drivingCar || !!ride)}
+          hidden={drivableNow && (!!drivingCar || !!ride)}
         />
         </group>
       </group>

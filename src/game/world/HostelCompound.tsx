@@ -3,22 +3,24 @@ import * as THREE from 'three';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import {
-  BUILDING, FLOOR_HEIGHT, HOSTEL_COMPOUND_ASSET, HOSTEL_COURTYARD_BOUND, HOSTEL_DOORS, IYA_IBEJI, LANDING,
-  ROOM_WIDTH, ROOMS_PER_FLOOR, SECURITY_POST, STAIRS, doorFor, hostelCompoundColliders,
+  BUILDING, FLOOR_HEIGHT, HOSTEL_COMPOUND_ASSET, HOSTEL_COURTYARD_BOUND, HOSTEL_DOORS, HOSTEL_GARAGE, HOSTEL_GATE_HALF, IYA_IBEJI, LANDING,
+  ROOM_WIDTH, ROOMS_PER_FLOOR, SECURITY_POST, STAIRS, doorFor, garagePosts, hostelCompoundColliders,
 } from '../../config/hostelCompound';
 import { useGameStore } from '../../stores/gameStore';
 import { useHostelStore } from '../../stores/hostelStore';
 import { useInputStore } from '../../stores/inputStore';
 import { openHostel } from '../../ui/HostelLife';
 import { useDayNight, NIGHT_LIGHTS_FROM } from './dayNight';
+import { ParkedCar } from '../vehicles/CarWorld';
+import { HostelTown } from './HostelTown';
 
 // Procedural stand-in for /models/hostel/hostel_compound_main.glb. Gameplay (doors, stairs, room
 // travel) reads config/hostelCompound.ts, so a Blender model can replace these meshes untouched.
 type V3 = [number, number, number];
-const cube = new THREE.BoxGeometry(1, 1, 1);
-const cyl = new THREE.CylinderGeometry(1, 1, 1, 10);
-const std = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra });
-const mats = {
+export const cube = new THREE.BoxGeometry(1, 1, 1);
+export const cyl = new THREE.CylinderGeometry(1, 1, 1, 10);
+export const std = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, ...extra });
+export const mats = {
   wall: std('#e6d3a3'), wallLow: std('#b89a63'), concrete: std('#c9c3b4'), concreteDark: std('#a7a091'), ground: std('#b8b2a2'),
   roof: std('#2f6b46'), roofDark: std('#24543a'), door: std('#24553c'), frame: std('#f1e6c8'), louvre: std('#2c2a26'),
   rail: std('#1f4d36', { roughness: 0.6 }), metal: std('#3f3f46', { roughness: 0.5, metalness: 0.3 }), tank: std('#1c1c1c'),
@@ -28,9 +30,9 @@ const mats = {
   mine: new THREE.MeshBasicMaterial({ color: '#4ade80' }),
 };
 
-interface T { p: V3; s?: V3; r?: V3 }
+export interface T { p: V3; s?: V3; r?: V3 }
 /** One draw call for many identical props (doors, windows, columns, balusters, steps). */
-function Instances({ geometry = cube, material, items, onClick, shadows = true }: {
+export function Instances({ geometry = cube, material, items, onClick, shadows = true }: {
   geometry?: THREE.BufferGeometry; material: THREE.Material; items: T[]; onClick?: (e: ThreeEvent<MouseEvent>) => void; shadows?: boolean;
 }) {
   const ref = useRef<THREE.InstancedMesh>(null);
@@ -43,22 +45,22 @@ function Instances({ geometry = cube, material, items, onClick, shadows = true }
   }, [items]);
   return <instancedMesh ref={ref} args={[geometry, material, items.length]} castShadow={shadows} receiveShadow onClick={onClick} />;
 }
-const Box = ({ p, s, m, r }: { p: V3; s: V3; m: THREE.Material; r?: V3 }) => <mesh geometry={cube} material={m} position={p} scale={s} rotation={r} castShadow receiveShadow />;
+export const Box = ({ p, s, m, r }: { p: V3; s: V3; m: THREE.Material; r?: V3 }) => <mesh geometry={cube} material={m} position={p} scale={s} rotation={r} castShadow receiveShadow />;
 
 /** Canvas lettering with system fonts only (no font fetch can stall the world). */
-function canvasMaterial(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
+export function canvasMaterial(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) {
   const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
   draw(canvas.getContext('2d')!);
   const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4;
   return new THREE.MeshBasicMaterial({ map, toneMapped: false });
 }
-function useDisposable<T extends THREE.Material | THREE.BufferGeometry>(make: () => T, deps: unknown[]) {
+export function useDisposable<T extends THREE.Material | THREE.BufferGeometry>(make: () => T, deps: unknown[]) {
   const value = useMemo(make, deps);
   useEffect(() => () => { (value as any).map?.dispose?.(); value.dispose(); }, [value]);
   return value;
 }
 const FONT = (w: number, s: number) => `${w} ${s}px "Arial Black", Arial, sans-serif`;
-const sign = (w: number, h: number, bg: string, fg: string, lines: [string, number][]) => (c: CanvasRenderingContext2D) => {
+export const sign = (w: number, h: number, bg: string, fg: string, lines: [string, number][]) => (c: CanvasRenderingContext2D) => {
   c.fillStyle = bg; c.fillRect(0, 0, w, h);
   c.strokeStyle = fg; c.lineWidth = Math.max(3, h * 0.04); c.strokeRect(4, 4, w - 8, h - 8);
   c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -234,7 +236,7 @@ function SecurityPost() {
 }
 
 function Courtyard() {
-  const B = HOSTEL_COURTYARD_BOUND, wallAt = B + 0.6, gateHalf = 2.2;
+  const B = HOSTEL_COURTYARD_BOUND, wallAt = B + 0.6, gateHalf = HOSTEL_GATE_HALF;
   const noticeMat = useDisposable(() => canvasMaterial(256, 200, (c) => {
     c.fillStyle = '#7c5a3a'; c.fillRect(0, 0, 256, 200);
     c.fillStyle = '#f7efd6'; c.fillRect(14, 14, 228, 172);
@@ -248,13 +250,14 @@ function Courtyard() {
     <>
       {/* Concrete compound floor + walkway */}
       <Box p={[0, -0.2, 0]} s={[2 * wallAt + 1, 0.4, 2 * wallAt + 1]} m={mats.ground} />
-      {/* Perimeter wall with a gate gap at the front */}
+      {/* Perimeter wall with the gate at the front, standing open onto the street */}
       <Box p={[0, 1, -wallAt]} s={[2 * wallAt, 2, 0.3]} m={mats.wall} />
       <Box p={[-wallAt, 1, 0]} s={[0.3, 2, 2 * wallAt]} m={mats.wall} />
       <Box p={[wallAt, 1, 0]} s={[0.3, 2, 2 * wallAt]} m={mats.wall} />
       {[-1, 1].map((side) => <Box key={side} p={[side * (wallAt + gateHalf) / 2, 1, wallAt]} s={[wallAt - gateHalf, 2, 0.3]} m={mats.wall} />)}
       {[-1, 1].map((side) => <Box key={`cap${side}`} p={[side * gateHalf, 1.2, wallAt]} s={[0.6, 2.4, 0.6]} m={mats.wall} />)}
-      <Box p={[0, 1, wallAt + 0.05]} s={[2 * gateHalf - 0.6, 2, 0.08]} m={mats.tank} />
+      {[-1, 1].map((side) => <Box key={`leaf${side}`} p={[side * (gateHalf + 1.7), 1, wallAt + 0.22]} s={[gateHalf - 0.3, 2, 0.08]} m={mats.tank} />)}
+      <Box p={[0, 0.02, wallAt]} s={[2 * gateHalf, 0.04, 1.2]} m={mats.concreteDark} />
       {/* Tree planter with benches */}
       <Box p={[5, 0.2, 3]} s={[3.2, 0.4, 3.2]} m={mats.concreteDark} />
       {/* Plastic table */}
@@ -292,11 +295,27 @@ function Courtyard() {
       {[-2.1, -0.9, 0.4, 1.7].map((x, i) => <Box key={x} p={[x, 1.45, 0]} s={[0.8, 0.75, 0.02]} m={mats.cloth[i]} />)}
     </group>
     {/* Notice board by the gate */}
-    <group position={[-4, 0, 13.5]}>
+    <group position={[-10.5, 0, 14.5]}>
       {[-0.7, 0.7].map((x) => <Box key={x} p={[x, 0.9, 0]} s={[0.08, 1.8, 0.08]} m={mats.wood} />)}
       {/* Faces into the courtyard (−z), where students read it. */}
       <mesh position={[0, 1.55, -0.05]} rotation={[0, Math.PI, 0]} material={noticeMat} scale={[1.6, 1.25, 1]}><planeGeometry args={[1, 1]} /></mesh>
     </group>
+  </group>;
+}
+
+/** Carport against the front wall by the gate: end wall, posts and a roof. Your car waits under it. */
+function HostelGarage() {
+  const { minX, maxX, minZ, maxZ, roofY } = HOSTEL_GARAGE;
+  const w = maxX - minX, d = maxZ - minZ, cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+  const signMat = useDisposable(() => canvasMaterial(256, 64, sign(256, 64, '#24553c', '#f7efd6', [['GARAGE', 34]])), []);
+  return <group name="hostel-garage">
+    <Box p={[cx, 0.02, cz]} s={[w, 0.04, d]} m={mats.concreteDark} />
+    <Box p={[maxX, roofY / 2, cz]} s={[0.24, roofY, d]} m={mats.wall} />
+    {garagePosts().map((x) => <Box key={x} p={[x, roofY / 2, minZ]} s={[0.2, roofY, 0.2]} m={mats.metal} />)}
+    <Box p={[cx, roofY + 0.12, cz - 0.1]} s={[w + 0.4, 0.12, d + 0.4]} m={mats.roof} r={[0.05, 0, 0]} />
+    <Box p={[cx, roofY - 0.08, minZ - 0.15]} s={[w + 0.4, 0.3, 0.06]} m={mats.roofDark} />
+    {/* Sign on the courtyard fascia. */}
+    <mesh position={[cx, roofY - 0.08, minZ - 0.19]} rotation={[0, Math.PI, 0]} material={signMat} scale={[1.4, 0.35, 1]}><planeGeometry args={[1, 1]} /></mesh>
   </group>;
 }
 
@@ -357,5 +376,9 @@ export function HostelCompound({ myRoom }: { myRoom: number | null }) {
     <Staircase />
     <IyaIbejiShop />
     <SecurityPost />
+    <HostelGarage />
+    {/* Your car wherever you left it out here: in the garage or on the street. */}
+    <ParkedCar hostel />
+    <HostelTown />
   </group>;
 }
