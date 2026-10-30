@@ -4,6 +4,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useSocialStore, listConversations } from '../stores/socialStore';
 import { useGameStore } from '../stores/gameStore';
+import { INVITES } from '../config/invites';
+import { formatNaira } from '../config/economy';
 import { X, Users, UserMinus, UserPlus, Send, MessageSquare, MapPin } from 'lucide-react';
 
 export const FriendsModal: React.FC = () => {
@@ -29,6 +31,12 @@ export const FriendsModal: React.FC = () => {
               <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
                 Walk up to any student on campus, click them or press [E] to add them as a friend!
               </p>
+              <button
+                onClick={() => setActiveModal('invite')}
+                className="mt-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition"
+              >
+                Invite friends from outside · earn {formatNaira(INVITES.REWARD)} each
+              </button>
             </div>
           ) : (
             friends.map((friend) => {

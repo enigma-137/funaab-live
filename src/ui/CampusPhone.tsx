@@ -57,6 +57,7 @@ export function CampusPhone({ status, onProfile, onClose, closeRef }: {
     { id: 'goals', label: 'Goals', glyph: 'goals', colors: ['#fbbf24', '#d97706'], open: () => { setModal(null); useDailyPlanStore.getState().setOpen(true); }, badge: goalsReady },
     { id: 'hostel', label: 'Hostel', glyph: 'hostel', colors: ['#fb923c', '#c2410c'], open: () => openHostel() },
     { id: 'friends', label: 'Friends', glyph: 'friends', colors: ['#60a5fa', '#2563eb'], open: () => setModal('friends') },
+    { id: 'invite', label: 'Invite', glyph: 'friends', colors: ['#4ade80', '#16a34a'], open: () => setModal('invite') },
     { id: 'league', label: 'League', glyph: 'league', colors: ['#facc15', '#a16207'], open: () => setModal('league') },
     { id: 'garage', label: 'Garage', glyph: 'hostel', colors: ['#93c5fd', '#1d4ed8'], open: () => setModal('garage') },
     { id: 'estate', label: 'Estate', glyph: 'hostel', colors: ['#c4b5fd', '#6d28d9'], open: () => setModal('estate') },

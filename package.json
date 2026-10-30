@@ -19,6 +19,7 @@
     "test:home-kitchen:db": "tsx scripts/test-home-kitchen-db.ts",
     "test:home-kitchen:browser": "tsx scripts/test-home-kitchen-browser.ts",
     "test:gym:db": "tsx scripts/test-gym-db.ts",
+    "test:invites:db": "tsx scripts/test-invites-db.ts",
     "test:gym:worker": "tsx scripts/test-gym-worker.ts",
     "test:gym:browser": "tsx scripts/test-gym-browser.ts",
     "test:job-handover:browser": "tsx scripts/test-job-handover-browser.ts",

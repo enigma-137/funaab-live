@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ECONOMY_CONFIG, formatNaira } from '../config/economy';
 import { useAuthStore } from '../stores/authStore';
+import { useInviteStore, inviteOwner } from '../stores/inviteStore';
 import worldData from '../config/campusWorld';
 import type { CampusSummary } from '../config/campusSummary';
 import { networkManager } from '../game/multiplayer/networkManager';
@@ -147,6 +148,16 @@ export const LandingPage: React.FC = () => {
   const [emailOptIn, setEmailOptIn] = useState(false);
   // Who is on campus right now; hidden when the server can't be reached.
   const [summary, setSummary] = useState<CampusSummary | null>(null);
+
+  // Arrived through a friend's invite link: say who, so the sign-up feels personal.
+  const inviteCode = useInviteStore((s) => s.pending);
+  const [invitedBy, setInvitedBy] = useState<string | null>(null);
+  useEffect(() => {
+    if (!inviteCode) return;
+    let live = true;
+    inviteOwner(inviteCode).then((name) => { if (live) setInvitedBy(name); });
+    return () => { live = false; };
+  }, [inviteCode]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -310,6 +321,12 @@ export const LandingPage: React.FC = () => {
                   : 'Hop directly into the campus as a guest.'}
               </p>
             </div>
+
+            {invitedBy && isSignUp && (
+              <div className="p-3 mb-5 rounded-xl bg-[#E8F5E9] border border-[#C8E6C9] text-[#0B5D36] text-xs font-semibold">
+                🤝 @{invitedBy} invited you. Sign up and you'll be campus friends straight away.
+              </div>
+            )}
 
             {error && (
               <div className="p-3 mb-5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium">{error}</div>

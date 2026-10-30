@@ -9,6 +9,7 @@ import { ModalCloseButton } from './ModalCloseButton';
 import { DAILY_GOALS, DAILY_PLAN } from '../config/dailyPlan';
 import { HUSTLE_RULES } from '../config/hustles';
 import { useDailyPlanStore } from '../stores/dailyPlanStore';
+import { INVITES } from '../config/invites';
 
 type Way = {
   id: string;
@@ -48,6 +49,12 @@ export function EarnPanel() {
       pays: `${formatNaira(E.DAILY_RESUMPTION_ALLOWANCE)} every day`,
       how: 'Free money once a day. Just come back tomorrow for more.',
       action: 'Claim it', go: () => setModal('daily_reward'),
+    },
+    {
+      id: 'invite', icon: '🤝', title: 'Invite friends',
+      pays: `${formatNaira(INVITES.REWARD)} for each friend`,
+      how: `Share your invite link. When a friend signs up with it and reaches Level ${INVITES.UNLOCK_LEVEL}, you get paid.`,
+      action: 'Get my link', go: () => setModal('invite'),
     },
     {
       id: 'tasks', icon: '🔥', title: "Today's Plan",
