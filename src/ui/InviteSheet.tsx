@@ -17,9 +17,10 @@ export function InviteSheet() {
   useEffect(() => { void load(); }, [load]);
 
   const link = state ? inviteLink(state.code) : '';
-  const reward = formatNaira(INVITES.REWARD);
+  const joinReward = formatNaira(INVITES.JOIN_REWARD);
+  const levelReward = formatNaira(INVITES.LEVEL_REWARD);
   const message = `Come and join me on FUNAAB Life, our campus in 3D! Sign up with my link: ${link}`;
-  const paidCount = state?.friends.filter((f) => f.paid).length ?? 0;
+  const paidCount = state?.friends.filter((f) => f.join_paid).length ?? 0;
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(link); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
@@ -33,14 +34,14 @@ export function InviteSheet() {
   };
 
   return (
-    <Sheet title="Invite friends" subtitle={`Get ${reward} for every friend you bring`} icon="🤝" accent="#16a34a" onClose={() => setModal(null)}>
+    <Sheet title="Invite friends" subtitle={`Get ${joinReward} for every friend who signs up`} icon="🤝" accent="#16a34a" onClose={() => setModal(null)}>
       {!state ? <p className="p-6 text-xs text-slate-400">Loading your invite link…</p> : (
         <div className="space-y-4 p-5 text-white">
           <section className="rounded-2xl border border-emerald-500/30 bg-emerald-950/40 p-4">
             <ol className="space-y-1.5 text-xs leading-relaxed text-slate-200">
               <li>1. Send your link to a friend who isn't on FUNAAB Life yet.</li>
-              <li>2. They sign up with it — you become friends straight away.</li>
-              <li>3. When they reach <b>Level {INVITES.UNLOCK_LEVEL}</b> by playing, you get <b className="text-emerald-300">{reward}</b>.</li>
+              <li>2. They sign up with it: you become friends and you get <b className="text-emerald-300">{joinReward}</b> straight away.</li>
+              <li>3. When they reach <b>Level {INVITES.UNLOCK_LEVEL}</b> by playing, you get <b className="text-emerald-300">{levelReward}</b> more.</li>
             </ol>
             <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2">
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-emerald-200">{link}</span>
@@ -82,8 +83,10 @@ export function InviteSheet() {
                   <li key={f.id} className="flex items-center gap-3 rounded-xl border border-slate-800/80 bg-slate-950/70 p-3">
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">@{f.username} <span className="text-[11px] font-normal text-slate-500">{f.college}</span></div>
-                      <div className={`text-[11px] ${f.paid ? 'text-emerald-300' : 'text-slate-400'}`}>
-                        {f.paid ? `Level ${f.level} · you got ${reward}` : `Level ${f.level} · ${reward} when they reach Level ${INVITES.UNLOCK_LEVEL}`}
+                      <div className={`text-[11px] ${f.join_paid ? 'text-emerald-300' : 'text-slate-400'}`}>
+                        Level {f.level} · {!f.join_paid ? `not paid (over the ${INVITES.MAX_PAID}-invite limit)`
+                          : f.level_paid ? `you got ${formatNaira(INVITES.JOIN_REWARD + INVITES.LEVEL_REWARD)}`
+                          : `you got ${joinReward} · ${levelReward} more at Level ${INVITES.UNLOCK_LEVEL}`}
                       </div>
                     </div>
                     {!isFriend && user && (

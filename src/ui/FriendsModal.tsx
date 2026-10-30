@@ -35,7 +35,7 @@ export const FriendsModal: React.FC = () => {
                 onClick={() => setActiveModal('invite')}
                 className="mt-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition"
               >
-                Invite friends from outside · earn {formatNaira(INVITES.REWARD)} each
+                Invite friends from outside · earn {formatNaira(INVITES.JOIN_REWARD)} each
               </button>
             </div>
           ) : (

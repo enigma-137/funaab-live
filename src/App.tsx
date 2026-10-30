@@ -138,6 +138,14 @@ export const App: React.FC = () => {
   useEffect(() => { if (user) loadSocialData(user.id); }, [user?.id]);
   // After loadSocialData, so the friend added for the inviter isn't overwritten.
   useEffect(() => { if (user) void useInviteStore.getState().redeemPending(user.id); }, [user?.id]);
+  // Invite payments land while the inviter may be playing: check now and every minute.
+  useEffect(() => {
+    if (!user) return;
+    const check = () => { if (document.visibilityState === 'visible') void useInviteStore.getState().checkNews(); };
+    check();
+    const t = window.setInterval(check, 60000);
+    return () => window.clearInterval(t);
+  }, [user?.id]);
 
   if (isInitializingAuth) {
     return (
