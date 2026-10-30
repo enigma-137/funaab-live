@@ -1,10 +1,11 @@
-// Invite to earn: share your link, get paid when the friend you bring reaches the unlock level.
-// Mirrored by migration 056 (the database is the authority; scripts/test-invites-db.ts checks drift).
+// Invite to earn: share your link, get paid when a friend signs up with it, and again when they
+// reach the unlock level. Mirrored by migrations 056 and 057 (the database is the authority; scripts/test-invites-db.ts checks drift).
 
 export const INVITES = {
-  /** Paid to the inviter once, per student they bring in. */
-  REWARD: 10000,
-  /** The new student must reach this level before the inviter is paid. */
+  /** Paid to the inviter as soon as the student they invited signs up. */
+  JOIN_REWARD: 10000,
+  /** Paid to the inviter when that student reaches UNLOCK_LEVEL. */
+  LEVEL_REWARD: 5000,
   UNLOCK_LEVEL: 2,
   /** Most paid invites per student. */
   MAX_PAID: 20,

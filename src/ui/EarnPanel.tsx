@@ -52,8 +52,8 @@ export function EarnPanel() {
     },
     {
       id: 'invite', icon: '🤝', title: 'Invite friends',
-      pays: `${formatNaira(INVITES.REWARD)} for each friend`,
-      how: `Share your invite link. When a friend signs up with it and reaches Level ${INVITES.UNLOCK_LEVEL}, you get paid.`,
+      pays: `${formatNaira(INVITES.JOIN_REWARD)} per friend + ${formatNaira(INVITES.LEVEL_REWARD)} at Level ${INVITES.UNLOCK_LEVEL}`,
+      how: `Share your invite link. You get paid as soon as a friend signs up with it, and again when they reach Level ${INVITES.UNLOCK_LEVEL}.`,
       action: 'Get my link', go: () => setModal('invite'),
     },
     {

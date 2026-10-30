@@ -3,10 +3,13 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { INVITES, normalizeInviteCode } from '../config/invites';
 import { useSocialStore } from './socialStore';
 import { toast } from './toastStore';
+import { useWalletStore } from './walletStore';
+import { useAuthStore } from './authStore';
 
-// Mirror of my_invite() (migration 056). The database links invites and pays rewards.
-export interface InvitedFriend { id: string; username: string; college: string; level: number; paid: boolean }
-export interface InviteState { code: string; reward: number; level: number; max_paid: number; earned: number; friends: InvitedFriend[] }
+// Mirror of my_invite() (migrations 056, 057). The database links invites and pays rewards.
+export interface InvitedFriend { id: string; username: string; college: string; level: number; join_paid: boolean; level_paid: boolean }
+export interface InviteState { code: string; join_reward: number; level_reward: number; level: number; max_paid: number; earned: number; friends: InvitedFriend[] }
+interface InviteNews { kind: 'join' | 'level'; amount: number; username: string }
 
 const KEY = 'funaab_invite_code';
 const read = () => { try { return normalizeInviteCode(localStorage.getItem(KEY)); } catch { return null; } };
@@ -30,7 +33,11 @@ interface InviteStore {
   load: () => Promise<void>;
   /** Links a freshly signed-up student to whoever invited them. */
   redeemPending: (userId: string) => Promise<void>;
+  /** Tells the inviter about payments they haven't seen yet. */
+  checkNews: () => Promise<void>;
 }
+
+let checking = false;
 
 export const useInviteStore = create<InviteStore>((set, get) => ({
   state: null,
@@ -54,6 +61,21 @@ export const useInviteStore = create<InviteStore>((set, get) => ({
     if (error || !data?.id) return;
     useSocialStore.getState().addFriend(userId, { id: data.id, username: data.username, college: data.college });
     toast({ icon: '🤝', text: `You joined with @${data.username}'s invite. You're now friends!`, tone: 'good', ms: 6000 });
+  },
+  checkNews: async () => {
+    if (!isSupabaseConfigured || checking) return;
+    checking = true;
+    try {
+      const { data, error } = await supabase.rpc('invite_news');
+      if (error || !Array.isArray(data) || !data.length) return;
+      for (const n of data as InviteNews[]) {
+        const text = n.kind === 'join' ? `@${n.username} joined with your invite link!` : `@${n.username} reached Level ${INVITES.UNLOCK_LEVEL}. Invite bonus!`;
+        toast({ icon: '🤝', text, amount: Number(n.amount), tone: 'good', ms: 7000 });
+      }
+      const user = useAuthStore.getState().user;
+      if (user) void useWalletStore.getState().loadWallet(user.id);
+      if (get().state) void get().load();
+    } catch { /* older database or offline: try again next time */ } finally { checking = false; }
   },
 }));
 
