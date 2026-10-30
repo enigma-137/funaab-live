@@ -42,6 +42,8 @@ import { ReportUserModal } from './ui/ReportUserModal';
 import { CampusMapModal } from './ui/CampusMapModal';
 import { CampusTourAutoStart } from './ui/CampusTourAutoStart';
 import { EarnPanel } from './ui/EarnPanel';
+import { InviteSheet } from './ui/InviteSheet';
+import { useInviteStore } from './stores/inviteStore';
 import { MessagesInbox } from './ui/MessagesInbox';
 import { ToastStack } from './ui/ToastStack';
 import { StatusStrip } from './ui/StatusStrip';
@@ -134,6 +136,8 @@ export const App: React.FC = () => {
   useEffect(() => { if (user && campusUserId === user.id) networkManager.updateAvatar(user); }, [user?.avatarConfig]);
   useEffect(() => { if (!isAuthenticated) { setCampusUserId(null); networkManager.room='world:funaab:main'; useHostelStore.setState({roomId:'world:funaab:main',owner:null,snapshot:null,invites:[],debts:[]}); useJobStore.setState({run:null,activeJob:null}); } }, [isAuthenticated]);
   useEffect(() => { if (user) loadSocialData(user.id); }, [user?.id]);
+  // After loadSocialData, so the friend added for the inviter isn't overwritten.
+  useEffect(() => { if (user) void useInviteStore.getState().redeemPending(user.id); }, [user?.id]);
 
   if (isInitializingAuth) {
     return (
@@ -249,6 +253,7 @@ export const App: React.FC = () => {
       {activeModal === 'report_user' && <ReportUserModal />}
       {activeModal === 'campus_map' && <CampusMapModal />}
       {activeModal === 'earn' && <EarnPanel />}
+      {activeModal === 'invite' && <InviteSheet />}
       {activeModal === 'inbox' && <MessagesInbox />}
 
       {/* First-visit guided tour (replaces the old touch-controls popup) */}
