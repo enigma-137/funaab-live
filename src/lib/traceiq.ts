@@ -123,7 +123,53 @@ export function trackTraceIQEvent(eventName: string, properties: Record<string, 
   }
 }
 
-export type TraceIQLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
+// --- Activity pings -------------------------------------------------------------
+// The game is one page and most play goes over the multiplayer WebSocket, which
+// TraceIQ can't see. Background requests (invite checks, campus summary, …) don't
+// count as activity in TraceIQ, so without this a player who has been playing for
+// an hour would show as "last seen" when they joined. A ping is sent only while
+// the tab is visible and the player has actually touched, clicked or pressed a key
+// recently, so an idle open tab never looks active.
+export const ACTIVITY_PING_INTERVAL_MS = 5 * 60 * 1000;
+export const ACTIVITY_RECENT_INPUT_MS = 2 * 60 * 1000;
+const ACTIVITY_CHECK_MS = 60 * 1000;
+
+export function shouldSendActivityPing(state: {
+  now: number;
+  lastInputAt: number | null;
+  lastPingAt: number | null;
+  visible: boolean;
+}): boolean {
+  if (!state.visible || state.lastInputAt === null) return false;
+  if (state.now - state.lastInputAt > ACTIVITY_RECENT_INPUT_MS) return false;
+  return state.lastPingAt === null || state.now - state.lastPingAt >= ACTIVITY_PING_INTERVAL_MS;
+}
+
+/** Starts activity pings; returns a function that stops them. */
+export function startTraceIQActivityPings(properties: () => Record<string, unknown> = () => ({})): () => void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => {};
+
+  let lastInputAt: number | null = null;
+  let lastPingAt: number | null = null;
+  const inputEvents = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const;
+  const onInput = () => { lastInputAt = Date.now(); };
+  const check = () => {
+    const now = Date.now();
+    if (!shouldSendActivityPing({ now, lastInputAt, lastPingAt, visible: document.visibilityState === 'visible' })) return;
+    lastPingAt = now;
+    trackTraceIQEvent('player_active', properties());
+  };
+
+  for (const type of inputEvents) window.addEventListener(type, onInput, { passive: true, capture: true });
+  const timer = window.setInterval(check, ACTIVITY_CHECK_MS);
+
+  return () => {
+    window.clearInterval(timer);
+    for (const type of inputEvents) window.removeEventListener(type, onInput, { capture: true });
+  };
+}
+
+export type TraceIQLogLevel ='debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 // Sends a structured line to TraceIQ Logs (tagged with the session and player).
 // Never pass tokens, URLs with credentials, or chat text in `attributes`.
