@@ -69,7 +69,7 @@ import { LibraryLife } from './ui/LibraryLife';
 import { CampusBetModal } from './ui/CampusBetModal';
 import { FoodVendorSheet } from './ui/FoodVendorSheet';
 import { LIBRARY_ROOM } from './config/library';
-import { identifyTraceIQUser, trackTraceIQEvent } from './lib/traceiq';
+import { identifyTraceIQUser, startTraceIQActivityPings, trackTraceIQEvent } from './lib/traceiq';
 
 export const App: React.FC = () => {
   const [campusUserId, setCampusUserId] = useState<string | null>(null);
@@ -111,6 +111,7 @@ export const App: React.FC = () => {
   }, [user?.id, user?.college, user?.courseId, user?.onboardingCompleted, user?.lastWorld, user?.username]);
 
   useEffect(() => {
+    let stopActivityPings: (() => void) | null = null;
     if (isAuthenticated && user && campusUserId === user.id && user.onboardingCompleted) {
       // Connect to Multiplayer network
       networkManager.connect(user);
@@ -124,11 +125,14 @@ export const App: React.FC = () => {
         college: user.college,
         courseId: user.courseId ?? null,
       });
+      // Real play happens over the WebSocket, which TraceIQ can't see: tell it the player is still here.
+      stopActivityPings = startTraceIQActivityPings(() => ({ room: networkManager.room }));
     } else {
       networkManager.disconnect();
     }
 
     return () => {
+      stopActivityPings?.();
       networkManager.disconnect();
     };
   }, [isAuthenticated, user?.id, campusUserId, user?.onboardingCompleted]);
